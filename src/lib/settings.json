@@ -1,0 +1,33 @@
+{
+  "searchKeyword": "Senior Product Manager",
+  "searchLocation": "Remote",
+  "remoteOnly": true,
+  "aiStrictness": "Standard",
+  "resumeCustomizationMaxPercentage": 20,
+  "theme": "light",
+  "sources": {
+    "indeed": true,
+    "linkedin": true,
+    "greenhouse": true,
+    "lever": true,
+    "ashby": true,
+    "glassdoor": true,
+    "ziprecruiter": true,
+    "monster": true,
+    "wellfound": true,
+    "workable": true,
+    "smartrecruiters": true,
+    "breezy": true,
+    "weworkremotely": true,
+    "remoteco": true,
+    "remoteok": true,
+    "workingnomads": true,
+    "remotive": true,
+    "jsearch": true
+  },
+  "customCareerPages": [
+    "https://boards.greenhouse.io/anthropic",
+    "https://jobs.lever.co/openai"
+  ],
+  "profile": "I am a Senior Product Manager looking for high-growth tech opportunities.\n\nCRITERIA & WEIGHTS:\n1. Compensation (20%): Look for high salary ranges ($160k+).\n2. Product Fit (20%): BOOSTS: UX, CX, AI PM workflows. PENALTIES: Backend engineering, data architecture.\n3. Remote Flexibility (15%): Score 100 for fully remote.\n4. AI Maturity (10%): Score high if building AI products.\n5. Leadership (10%): Score high if there is opportunity for team leadership.\n6. Growth (10%): Score high if it's a fast-growing company.\n7. Culture (10%): Score based on indications of a strong culture.\n8. Tech Stack (5%): Score high if using modern tech."
+}

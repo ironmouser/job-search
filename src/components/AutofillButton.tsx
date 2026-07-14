@@ -1,0 +1,72 @@
+"use client";
+
+import { useState } from 'react';
+import { Bot, ExternalLink, Copy, CheckCircle } from 'lucide-react';
+
+export default function AutofillButton({ jobId, jobUrl }: { jobId: string, jobUrl: string }) {
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleAutofill = async () => {
+    setIsLaunching(true);
+    try {
+      const res = await fetch('/api/autofill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId })
+      });
+      
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to fetch application assets');
+      }
+      
+      const data = await res.json();
+      
+      // Copy the generated cover letter to the clipboard
+      if (data.coverLetter) {
+        await navigator.clipboard.writeText(data.coverLetter);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      }
+
+      // Update job status to applied in the background
+      fetch(`/api/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'applied', applied_at: new Date().toISOString() })
+      }).catch(console.error);
+
+      // Open the job board in a new tab exactly as requested
+      window.open(jobUrl, '_blank');
+      
+      setIsLaunching(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+    } catch (e: any) {
+      console.error(e);
+      alert(`Error: ${e.message}`);
+      setIsLaunching(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <button 
+        onClick={handleAutofill} 
+        disabled={isLaunching}
+        className="btn-primary" 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.5rem', 
+          ...(copied ? { background: '#10b981', color: '#fff' } : {}),
+          transition: 'background 0.3s'
+        }}
+      >
+        {copied ? <Copy size={18} /> : <Bot size={18} className={isLaunching ? "animate-pulse" : ""} />}
+        {isLaunching ? 'Preparing...' : copied ? 'Cover Letter Copied! Opening...' : 'Smart Apply (New Tab)'}
+      </button>
+    </div>
+  );
+}
