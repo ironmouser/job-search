@@ -65,133 +65,190 @@ export async function scrapeCustomPages(urls: string[]) {
     if (!urls || urls.length === 0) return [];
 
     const jobs: any[] = [];
-    const fcSites: string[] = [];
+    const logsData: any[] = [];
 
     for (const url of urls.slice(0, 10)) {
-        const { $: cheerio$, usedFirecrawl } = await fetchPage(url);
-        if (usedFirecrawl) fcSites.push(url);
-        const $ = cheerio$;
-        if (!$) continue;
+        let errorMsg: string | null = null;
+        let pageJobsCount = 0;
+        let siteUsedFc = false;
+        const initialJobsLength = jobs.length;
+
+        const cacheKey = { source: `Custom: ${url}`, keyword: '', location: '' };
+        try {
+            const cached = await prisma.scrapeCache.findUnique({
+                where: { source_keyword_location: cacheKey }
+            });
+            if (cached && cached.expiresAt > new Date()) {
+                console.log(`Cache hit for ${url}`);
+                const cachedJobs = cached.rawJobs as any[];
+                jobs.push(...cachedJobs);
+                
+                let domain = url;
+                try { domain = new URL(url).hostname.replace(/^www\./, ''); } catch(e) {}
+                logsData.push({
+                    scraperName: `Custom: ${domain} (Cached)`,
+                    targetUrl: url,
+                    status: 'SUCCESS',
+                    resultsCount: cachedJobs.length,
+                    usedFirecrawl: false,
+                    firecrawlSites: [],
+                    errorDetails: null
+                });
+                continue;
+            }
+        } catch (e) {
+            console.warn('Cache check failed:', e);
+        }
 
         try {
-            if (url.includes('boards.greenhouse.io')) {
-                const companyName = $('title').text().replace('Job Board', '').trim();
-                $('.opening').each((_, el) => {
-                    const titleEl = $(el).find('a');
-                    const locationEl = $(el).find('.location');
-                    const href = titleEl.attr('href') || '';
-                    const fullUrl = href.startsWith('http') ? href : `https://boards.greenhouse.io${href}`;
-                    jobs.push({
-                        title: titleEl.text().trim() || 'Unknown Role',
-                        company: companyName,
-                        location: locationEl.text().trim() || 'Unknown Location',
-                        description: `Apply at: ${fullUrl}`,
-                        url: fullUrl,
-                        source: 'Greenhouse'
+            const { $: cheerio$, usedFirecrawl } = await fetchPage(url);
+            if (usedFirecrawl) siteUsedFc = true;
+            const $ = cheerio$;
+            
+            if (!$) {
+                errorMsg = 'Failed to fetch page';
+            } else {
+                if (url.includes('boards.greenhouse.io')) {
+                    const companyName = $('title').text().replace('Job Board', '').trim();
+                    $('.opening').each((_, el) => {
+                        const titleEl = $(el).find('a');
+                        const locationEl = $(el).find('.location');
+                        const href = titleEl.attr('href') || '';
+                        const fullUrl = href.startsWith('http') ? href : `https://boards.greenhouse.io${href}`;
+                        jobs.push({
+                            title: titleEl.text().trim() || 'Unknown Role',
+                            company: companyName,
+                            location: locationEl.text().trim() || 'Unknown Location',
+                            description: `Apply at: ${fullUrl}`,
+                            url: fullUrl,
+                            source: 'Greenhouse'
+                        });
                     });
-                });
 
-            } else if (url.includes('jobs.lever.co')) {
-                const companyName = $('title').text().split('–')[0]?.trim() || 
-                                    $('.main-header-logo img').attr('alt') || 
-                                    $('.main-header-text').text().trim() || 'Lever Company';
-                $('.posting').each((_, el) => {
-                    const titleEl = $(el).find('h5');
-                    const locationEl = $(el).find('.sort-by-location, .posting-categories .location');
-                    const linkEl = $(el).find('a.posting-title');
-                    const href = linkEl.attr('href') || '';
-                    jobs.push({
-                        title: titleEl.text().trim() || 'Unknown Role',
-                        company: companyName,
-                        location: locationEl.text().trim() || 'Unknown Location',
-                        description: `Apply at: ${href}`,
-                        url: href,
-                        source: 'Lever'
+                } else if (url.includes('jobs.lever.co')) {
+                    const companyName = $('title').text().split('–')[0]?.trim() || 
+                                        $('.main-header-logo img').attr('alt') || 
+                                        $('.main-header-text').text().trim() || 'Lever Company';
+                    $('.posting').each((_, el) => {
+                        const titleEl = $(el).find('h5');
+                        const locationEl = $(el).find('.sort-by-location, .posting-categories .location');
+                        const linkEl = $(el).find('a.posting-title');
+                        const href = linkEl.attr('href') || '';
+                        jobs.push({
+                            title: titleEl.text().trim() || 'Unknown Role',
+                            company: companyName,
+                            location: locationEl.text().trim() || 'Unknown Location',
+                            description: `Apply at: ${href}`,
+                            url: href,
+                            source: 'Lever'
+                        });
                     });
-                });
 
-            } else if (url.includes('jobs.ashbyhq.com')) {
-                const companyName = $('title').text().trim();
-                $('a[href*="/jobs/"]').each((_, el) => {
-                    const titleEl = $(el).find('h3');
-                    const locationEl = $(el).find('p');
-                    const href = $(el).attr('href') || '';
-                    const fullUrl = href.startsWith('http') ? href : `https://jobs.ashbyhq.com${href}`;
-                    jobs.push({
-                        title: titleEl.text().trim() || $(el).text().trim() || 'Unknown Role',
-                        company: companyName,
-                        location: locationEl.text().trim() || 'Unknown Location',
-                        description: `Apply at: ${fullUrl}`,
-                        url: fullUrl,
-                        source: 'Ashby'
+                } else if (url.includes('jobs.ashbyhq.com')) {
+                    const companyName = $('title').text().trim();
+                    $('a[href*="/jobs/"]').each((_, el) => {
+                        const titleEl = $(el).find('h3');
+                        const locationEl = $(el).find('p');
+                        const href = $(el).attr('href') || '';
+                        const fullUrl = href.startsWith('http') ? href : `https://jobs.ashbyhq.com${href}`;
+                        jobs.push({
+                            title: titleEl.text().trim() || $(el).text().trim() || 'Unknown Role',
+                            company: companyName,
+                            location: locationEl.text().trim() || 'Unknown Location',
+                            description: `Apply at: ${fullUrl}`,
+                            url: fullUrl,
+                            source: 'Ashby'
+                        });
                     });
-                });
 
-            } else if (url.includes('workable.com')) {
-                const companyName = $('title').text().trim();
-                $('[data-ui="job-posting"], li.job').each((_, el) => {
-                    const titleEl = $(el).find('a, h2, h3').first();
-                    const href = titleEl.attr('href') || $(el).find('a').first().attr('href') || '';
-                    jobs.push({
-                        title: titleEl.text().trim() || 'Unknown Role',
-                        company: companyName,
-                        location: $(el).text().includes('Remote') ? 'Remote' : 'Unknown Location',
-                        description: `Apply at: ${href}`,
-                        url: href,
-                        source: 'Workable'
+                } else if (url.includes('workable.com')) {
+                    const companyName = $('title').text().trim();
+                    $('[data-ui="job-posting"], li.job').each((_, el) => {
+                        const titleEl = $(el).find('a, h2, h3').first();
+                        const href = titleEl.attr('href') || $(el).find('a').first().attr('href') || '';
+                        jobs.push({
+                            title: titleEl.text().trim() || 'Unknown Role',
+                            company: companyName,
+                            location: $(el).text().includes('Remote') ? 'Remote' : 'Unknown Location',
+                            description: `Apply at: ${href}`,
+                            url: href,
+                            source: 'Workable'
+                        });
                     });
-                });
 
-            } else if (url.includes('smartrecruiters.com')) {
-                const companyName = $('title').text().trim();
-                $('li.opening-job, a.link--block').each((_, el) => {
-                    const titleEl = $(el).find('h4').length ? $(el).find('h4') : $(el);
-                    const linkEl = el.tagName === 'a' ? $(el) : $(el).find('a');
-                    const href = linkEl.attr('href') || '';
-                    jobs.push({
-                        title: titleEl.text().trim() || 'Unknown Role',
-                        company: companyName,
-                        location: 'Unknown Location',
-                        description: `Apply at: ${href}`,
-                        url: href,
-                        source: 'SmartRecruiters'
+                } else if (url.includes('smartrecruiters.com')) {
+                    const companyName = $('title').text().trim();
+                    $('li.opening-job, a.link--block').each((_, el) => {
+                        const titleEl = $(el).find('h4').length ? $(el).find('h4') : $(el);
+                        const linkEl = el.tagName === 'a' ? $(el) : $(el).find('a');
+                        const href = linkEl.attr('href') || '';
+                        jobs.push({
+                            title: titleEl.text().trim() || 'Unknown Role',
+                            company: companyName,
+                            location: 'Unknown Location',
+                            description: `Apply at: ${href}`,
+                            url: href,
+                            source: 'SmartRecruiters'
+                        });
                     });
-                });
 
-            } else if (url.includes('breezy.hr')) {
-                const companyName = $('title').text().trim();
-                $('li.position').each((_, el) => {
-                    const titleEl = $(el).find('h2');
-                    const linkEl = $(el).find('a');
-                    const href = linkEl.attr('href') || '';
-                    const locationEl = $(el).find('.location');
-                    jobs.push({
-                        title: titleEl.text().trim() || 'Unknown Role',
-                        company: companyName,
-                        location: locationEl.text().trim() || 'Unknown Location',
-                        description: `Apply at: ${href}`,
-                        url: href,
-                        source: 'Breezy'
+                } else if (url.includes('breezy.hr')) {
+                    const companyName = $('title').text().trim();
+                    $('li.position').each((_, el) => {
+                        const titleEl = $(el).find('h2');
+                        const linkEl = $(el).find('a');
+                        const href = linkEl.attr('href') || '';
+                        const locationEl = $(el).find('.location');
+                        jobs.push({
+                            title: titleEl.text().trim() || 'Unknown Role',
+                            company: companyName,
+                            location: locationEl.text().trim() || 'Unknown Location',
+                            description: `Apply at: ${href}`,
+                            url: href,
+                            source: 'Breezy'
+                        });
                     });
-                });
+                }
             }
         } catch (e: any) {
             console.warn(`Error parsing ${url}: ${e.message}`);
+            errorMsg = e.message;
         }
+
+        pageJobsCount = jobs.length - initialJobsLength;
+        const newJobs = jobs.slice(initialJobsLength);
+
+        try {
+            await prisma.scrapeCache.upsert({
+                where: { source_keyword_location: cacheKey },
+                update: { rawJobs: newJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+                create: { ...cacheKey, rawJobs: newJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
+            });
+        } catch(e) {
+            console.warn('Failed to save custom page cache:', e);
+        }
+
+        try {
+            let domain = url;
+            try { domain = new URL(url).hostname.replace(/^www\./, ''); } catch(e) {}
+            logsData.push({
+                scraperName: `Custom: ${domain}`,
+                targetUrl: url,
+                status: errorMsg ? 'FAILURE' : 'SUCCESS',
+                resultsCount: pageJobsCount,
+                usedFirecrawl: siteUsedFc,
+                firecrawlSites: siteUsedFc ? [url] : [],
+                errorDetails: errorMsg || null
+            });
+        } catch (e) {}
     }
 
     try {
-        await prisma.scraperLog.create({
-            data: {
-                scraperName: 'Custom Career Pages',
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
-                resultsCount: jobs.length,
-                usedFirecrawl: fcSites.length > 0,
-                firecrawlSites: fcSites
-            }
-        });
+        for (const log of logsData) {
+            await prisma.scraperLog.create({ data: log });
+        }
     } catch (dbErr) {
-        console.error('Error saving scraper log:', dbErr);
+        console.error('Error saving custom scraper logs:', dbErr);
     }
 
     return jobs;
@@ -208,13 +265,28 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     if (urls.length === 0) return [];
 
     const jobs: any[] = [];
-    const fcSites: string[] = [];
 
     // Fetch all pages in parallel
     const results = await Promise.allSettled(
         urls.map(async ({ url, source }) => {
+            const pageJobs: any[] = [];
+            let sourceFcSites: string[] = [];
+            let errorMsg: string | null = null;
+
+            const cacheKey = { source, keyword, location: '' };
+            try {
+                const cached = await prisma.scrapeCache.findUnique({
+                    where: { source_keyword_location: cacheKey }
+                });
+                if (cached && cached.expiresAt > new Date()) {
+                    console.log(`Cache hit for ${source}: ${keyword}`);
+                    return { source, jobs: cached.rawJobs as any[], usedFirecrawl: false, firecrawlSites: [], error: null, url, isCached: true };
+                }
+            } catch (e) {
+                console.warn('Cache check failed:', e);
+            }
+
             if (source === 'remoteok') {
-                const pageJobs: any[] = [];
                 try {
                     const res = await fetch(url, {
                         headers: {
@@ -236,14 +308,17 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                 });
                             }
                         }
+                    } else {
+                        errorMsg = `HTTP Error: ${res.status}`;
                     }
                 } catch (e: any) {
                     console.warn(`Error parsing remoteok API: ${e.message}`);
+                    errorMsg = e.message;
                 }
-                return pageJobs;
+                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url };
             }
+
             if (source === 'remotive') {
-                const pageJobs: any[] = [];
                 try {
                     const res = await fetch(url);
                     if (res.ok) {
@@ -262,21 +337,25 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                 }
                             }
                         }
+                    } else {
+                        errorMsg = `HTTP Error: ${res.status}`;
                     }
                 } catch (e: any) {
                     console.warn(`Error parsing remotive API: ${e.message}`);
+                    errorMsg = e.message;
                 }
-                return pageJobs;
+                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url };
             }
 
-            const { $: cheerio$, usedFirecrawl } = await fetchPage(url);
-            if (usedFirecrawl) fcSites.push(url);
-            const $ = cheerio$;
-            if (!$) return [];
-
-            const pageJobs: any[] = [];
-
             try {
+                const { $: cheerio$, usedFirecrawl } = await fetchPage(url);
+                if (usedFirecrawl) sourceFcSites.push(url);
+                const $ = cheerio$;
+                
+                if (!$) {
+                    return { source, jobs: [], usedFirecrawl, firecrawlSites: sourceFcSites, error: 'Failed to fetch page', url };
+                }
+
                 if (source === 'weworkremotely') {
                     $('li:not(.view-all) > a[href^="/remote-jobs/"]').each((_, el) => {
                         const titleEl = $(el).find('.title');
@@ -325,30 +404,54 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                 }
             } catch (e: any) {
                 console.warn(`Error parsing remote aggregator ${source}: ${e.message}`);
+                errorMsg = e.message;
             }
 
-            return pageJobs;
+            try {
+                if (!errorMsg) {
+                    await prisma.scrapeCache.upsert({
+                        where: { source_keyword_location: cacheKey },
+                        update: { rawJobs: pageJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+                        create: { ...cacheKey, rawJobs: pageJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
+                    });
+                }
+            } catch(e) {
+                console.warn('Failed to save aggregator cache:', e);
+            }
+
+            return { source, jobs: pageJobs, usedFirecrawl: sourceFcSites.length > 0, firecrawlSites: sourceFcSites, error: errorMsg, url, isCached: false };
         })
     );
 
+    const sourceDisplayNames: Record<string, string> = {
+        weworkremotely: 'WeWorkRemotely',
+        remoteco: 'Remote.co',
+        remoteok: 'RemoteOK',
+        workingnomads: 'WorkingNomads',
+        remotive: 'Remotive'
+    };
+
     for (const result of results) {
         if (result.status === 'fulfilled') {
-            jobs.push(...result.value);
-        }
-    }
+            const data = result.value;
+            jobs.push(...data.jobs);
 
-    try {
-        await prisma.scraperLog.create({
-            data: {
-                scraperName: 'Remote Aggregators',
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
-                resultsCount: jobs.length,
-                usedFirecrawl: fcSites.length > 0,
-                firecrawlSites: fcSites
+            try {
+                await prisma.scraperLog.create({
+                    data: {
+                        scraperName: `${sourceDisplayNames[data.source] || data.source}${(data as any).isCached ? ' (Cached)' : ''}`,
+                        targetUrl: data.url,
+                        status: data.error ? 'FAILURE' : (data.jobs.length > 0 ? 'SUCCESS' : 'SUCCESS'),
+                        resultsCount: data.jobs.length,
+                        usedFirecrawl: data.usedFirecrawl,
+                        firecrawlSites: data.firecrawlSites,
+                        errorDetails: data.error || null
+                    }
+                });
+            } catch (dbErr) {
+                console.error('Error saving scraper log:', dbErr);
             }
-        });
-    } catch (dbErr) {
-        console.error('Error saving scraper log:', dbErr);
+        }
     }
 
     return jobs;

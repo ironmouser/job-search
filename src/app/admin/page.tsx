@@ -236,7 +236,7 @@ export default function AdminDashboard() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '1rem' }}>
         <ShieldAlert size={48} className="text-accent" />
-        <h3 style={{ color: '#fff' }}>Access Denied</h3>
+        <h3 style={{ color: "var(--text-primary)" }}>Access Denied</h3>
         <p style={{ color: 'var(--text-secondary)' }}>You do not have permission to view this page.</p>
       </div>
     );
@@ -320,10 +320,10 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {filteredUsers.map(user => (
-                    <tr key={user.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", fontSize: "0.95rem" }}>
+                    <tr key={user.id} style={{ borderBottom: "1px solid var(--border-glass)", fontSize: "0.95rem" }}>
                       <td style={{ padding: "1rem" }}>
                         <div style={{ display: "flex", flexDirection: "column" }}>
-                          <span style={{ fontWeight: 500, color: "#fff" }}>{user.name || "No name"}</span>
+                          <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>{user.name || "No name"}</span>
                           <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{user.email}</span>
                         </div>
                       </td>
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
                             value={user.role}
                             disabled={savingUserId === user.id}
                             onChange={(e) => handleUpdateUser(user.id, { role: e.target.value as 'USER' | 'ADMIN' })}
-                            style={{ background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--border-glass)", padding: "0.25rem", borderRadius: "6px" }}
+                            style={{ background: "var(--bg-color)", color: "var(--text-primary)", border: "1px solid var(--border-glass)", padding: "0.25rem", borderRadius: "6px" }}
                           >
                             <option value="USER">User</option>
                             <option value="ADMIN">Admin</option>
@@ -355,7 +355,7 @@ export default function AdminDashboard() {
                             value={user.planTier}
                             disabled={savingUserId === user.id}
                             onChange={(e) => handleUpdateUser(user.id, { planTier: e.target.value })}
-                            style={{ background: "rgba(0,0,0,0.3)", color: "#fff", border: "1px solid var(--border-glass)", padding: "0.25rem", borderRadius: "6px" }}
+                            style={{ background: "var(--bg-color)", color: "var(--text-primary)", border: "1px solid var(--border-glass)", padding: "0.25rem", borderRadius: "6px" }}
                           >
                             <option value="FREE">Free</option>
                             <option value="PRO">Pro</option>
@@ -398,13 +398,13 @@ export default function AdminDashboard() {
               
               {/* Category 1: AI Features */}
               <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <h4 style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#fff", fontSize: "1.1rem", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.5rem" }}>
+                <h4 style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", fontSize: "1.1rem", borderBottom: "1px solid var(--border-glass)", paddingBottom: "0.5rem" }}>
                   <Sparkles size={18} className="text-accent" /> AI Features (Pro Gated)
                 </h4>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>AI Opportunity Scoring</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>AI Opportunity Scoring</div>
                       <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Scores jobs against user preferences using Google Gemini.</div>
                     </div>
                     <ToggleSwitch checked={settings.aiOpportunityScoringIsPro} onChange={() => setSettings({ ...settings, aiOpportunityScoringIsPro: !settings.aiOpportunityScoringIsPro })} />
@@ -412,7 +412,7 @@ export default function AdminDashboard() {
                   
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>AI Tailored Resume & Cover Letter</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>AI Tailored Resume & Cover Letter</div>
                       <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Generates custom resume/cover letter markdown drafts using Anthropic Claude.</div>
                     </div>
                     <ToggleSwitch checked={settings.aiAssetGenerationIsPro} onChange={() => setSettings({ ...settings, aiAssetGenerationIsPro: !settings.aiAssetGenerationIsPro })} />
@@ -420,7 +420,7 @@ export default function AdminDashboard() {
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>AI Application Q&A Helper</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>AI Application Q&A Helper</div>
                       <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Drafts high-quality application responses to custom job application questions.</div>
                     </div>
                     <ToggleSwitch checked={settings.aiQaHelperIsPro} onChange={() => setSettings({ ...settings, aiQaHelperIsPro: !settings.aiQaHelperIsPro })} />
@@ -430,12 +430,12 @@ export default function AdminDashboard() {
 
               {/* Category 2: Email Sync */}
               <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <h4 style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#fff", fontSize: "1.1rem", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.5rem" }}>
+                <h4 style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", fontSize: "1.1rem", borderBottom: "1px solid var(--border-glass)", paddingBottom: "0.5rem" }}>
                   <Mail size={18} className="text-accent" /> Integration Pipelines
                 </h4>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                   <div>
-                    <div style={{ fontWeight: 600, color: "#fff" }}>Email Sync (IMAP)</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Email Sync (IMAP)</div>
                     <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Automatically crawls and scans linked user mailboxes to discover job alerts.</div>
                   </div>
                   <ToggleSwitch checked={settings.emailsSyncIsPro} onChange={() => setSettings({ ...settings, emailsSyncIsPro: !settings.emailsSyncIsPro })} />
@@ -444,14 +444,14 @@ export default function AdminDashboard() {
 
               {/* Category 3: Crawlers */}
               <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <h4 style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#fff", fontSize: "1.1rem", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.5rem" }}>
+                <h4 style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", fontSize: "1.1rem", borderBottom: "1px solid var(--border-glass)", paddingBottom: "0.5rem" }}>
                   <Cpu size={18} className="text-accent" /> Job Search Crawlers
                 </h4>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   {/* JSearch */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>JSearch API</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>JSearch API</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>LinkedIn, Indeed, Glassdoor, ZipRecruiter</div>
                     </div>
                     <ToggleSwitch checked={settings.jsearchIsPro} onChange={() => setSettings({ ...settings, jsearchIsPro: !settings.jsearchIsPro })} />
@@ -459,7 +459,7 @@ export default function AdminDashboard() {
                   {/* Greenhouse */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>Greenhouse</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Greenhouse</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Greenhouse ATS scraping</div>
                     </div>
                     <ToggleSwitch checked={settings.greenhouseIsPro} onChange={() => setSettings({ ...settings, greenhouseIsPro: !settings.greenhouseIsPro })} />
@@ -467,7 +467,7 @@ export default function AdminDashboard() {
                   {/* Workable */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>Workable</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Workable</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Workable ATS scraping</div>
                     </div>
                     <ToggleSwitch checked={settings.workableIsPro} onChange={() => setSettings({ ...settings, workableIsPro: !settings.workableIsPro })} />
@@ -475,7 +475,7 @@ export default function AdminDashboard() {
                   {/* SmartRecruiters */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>SmartRecruiters</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>SmartRecruiters</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>SmartRecruiters ATS scraping</div>
                     </div>
                     <ToggleSwitch checked={settings.smartrecruitersIsPro} onChange={() => setSettings({ ...settings, smartrecruitersIsPro: !settings.smartrecruitersIsPro })} />
@@ -483,7 +483,7 @@ export default function AdminDashboard() {
                   {/* Breezy */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>Breezy.hr</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Breezy.hr</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Breezy ATS scraping</div>
                     </div>
                     <ToggleSwitch checked={settings.breezyIsPro} onChange={() => setSettings({ ...settings, breezyIsPro: !settings.breezyIsPro })} />
@@ -491,7 +491,7 @@ export default function AdminDashboard() {
                   {/* Remotive */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>Remotive</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Remotive</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Remotive Remote Aggregator</div>
                     </div>
                     <ToggleSwitch checked={settings.remotiveIsPro} onChange={() => setSettings({ ...settings, remotiveIsPro: !settings.remotiveIsPro })} />
@@ -499,7 +499,7 @@ export default function AdminDashboard() {
                   {/* Lever */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>Lever.co</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Lever.co</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Lever ATS scraping</div>
                     </div>
                     <ToggleSwitch checked={settings.leverIsPro} onChange={() => setSettings({ ...settings, leverIsPro: !settings.leverIsPro })} />
@@ -507,7 +507,7 @@ export default function AdminDashboard() {
                   {/* Ashby */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>AshbyHQ</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>AshbyHQ</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Ashby ATS scraping</div>
                     </div>
                     <ToggleSwitch checked={settings.ashbyIsPro} onChange={() => setSettings({ ...settings, ashbyIsPro: !settings.ashbyIsPro })} />
@@ -515,7 +515,7 @@ export default function AdminDashboard() {
                   {/* WeWorkRemotely */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>WeWorkRemotely</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>WeWorkRemotely</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>WWR Remote Aggregator</div>
                     </div>
                     <ToggleSwitch checked={settings.weworkremotelyIsPro} onChange={() => setSettings({ ...settings, weworkremotelyIsPro: !settings.weworkremotelyIsPro })} />
@@ -523,7 +523,7 @@ export default function AdminDashboard() {
                   {/* Remote.co */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>Remote.co</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Remote.co</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Remote.co aggregator</div>
                     </div>
                     <ToggleSwitch checked={settings.remotecoIsPro} onChange={() => setSettings({ ...settings, remotecoIsPro: !settings.remotecoIsPro })} />
@@ -531,7 +531,7 @@ export default function AdminDashboard() {
                   {/* RemoteOK */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>RemoteOK</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>RemoteOK</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>RemoteOK aggregator</div>
                     </div>
                     <ToggleSwitch checked={settings.remoteokIsPro} onChange={() => setSettings({ ...settings, remoteokIsPro: !settings.remoteokIsPro })} />
@@ -539,7 +539,7 @@ export default function AdminDashboard() {
                   {/* WorkingNomads */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: "#fff" }}>WorkingNomads</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>WorkingNomads</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>WorkingNomads aggregator</div>
                     </div>
                     <ToggleSwitch checked={settings.workingnomadsIsPro} onChange={() => setSettings({ ...settings, workingnomadsIsPro: !settings.workingnomadsIsPro })} />
@@ -578,7 +578,7 @@ export default function AdminDashboard() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                   <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
                     <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Total Runs (24h)</div>
-                    <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#fff" }}>{scraperStats.totalRuns24h}</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--text-primary)" }}>{scraperStats.totalRuns24h}</div>
                   </div>
                   <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
                     <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Success Rate</div>
@@ -588,7 +588,7 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
                     <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Jobs Found (24h)</div>
-                    <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#fff" }}>{scraperStats.totalJobsScraped24h}</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--text-primary)" }}>{scraperStats.totalJobsScraped24h}</div>
                   </div>
                   <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
                     <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>IP Bot Blocks (24h)</div>
@@ -613,8 +613,8 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody>
                       {scraperLogs.map((log: any) => (
-                        <tr key={log.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                          <td style={{ padding: "0.75rem", color: "#fff", fontWeight: 500 }}>{log.scraperName}</td>
+                        <tr key={log.id} style={{ borderBottom: "1px solid var(--border-glass)" }}>
+                          <td style={{ padding: "0.75rem", color: "var(--text-primary)", fontWeight: 500 }}>{log.scraperName}</td>
                           <td style={{ padding: "0.75rem" }}>
                             <span className={log.status === 'SUCCESS' ? 'tag tag-pro' : 'tag tag-free'} style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", background: log.status === 'SUCCESS' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: log.status === 'SUCCESS' ? '#22c55e' : '#ef4444' }}>
                               {log.status}

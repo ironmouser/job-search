@@ -241,3 +241,17 @@ model UserJob {
   @@unique([userId, jobId])
   @@map("user_jobs")
 }
+
+model ScrapeCache {
+  id        String   @id @default(cuid())
+  source    String   
+  keyword   String   @default("")
+  location  String   @default("")
+  rawJobs   Json     @default("[]")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  @@unique([source, keyword, location])
+  @@index([expiresAt])
+  @@map("scrape_cache")
+}

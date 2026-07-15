@@ -77,7 +77,7 @@ export async function POST(
         }
 
         if (!scrapedData || !scrapedData.description) {
-            return NextResponse.json({ error: 'Failed to scrape full details from both Firecrawl and Apify (Upstream timeout or block)' }, { status: 502 });
+            return NextResponse.json({ error: 'Failed to scrape full details from both Firecrawl and JSearch (Upstream timeout or block)' }, { status: 502 });
         }
 
         const updatePayload: any = {

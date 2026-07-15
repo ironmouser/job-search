@@ -1,8 +1,21 @@
-// No longer requires settings import
+import { prisma } from './prisma';
 
 export async function scrapeJSearch(keyword: string, location: string) {
     if (!process.env.RAPIDAPI_KEY) {
         throw new Error('RAPIDAPI_KEY is missing in environment variables.');
+    }
+
+    const cacheKey = { source: 'JSearch', keyword, location };
+    try {
+        const cached = await prisma.scrapeCache.findUnique({
+            where: { source_keyword_location: cacheKey }
+        });
+        if (cached && cached.expiresAt > new Date()) {
+            console.log(`Cache hit for JSearch: ${keyword} in ${location}`);
+            return cached.rawJobs as any[];
+        }
+    } catch (e) {
+        console.warn('Cache check failed:', e);
     }
 
     const url = new URL('https://jsearch.p.rapidapi.com/search-v2');
@@ -27,7 +40,7 @@ export async function scrapeJSearch(keyword: string, location: string) {
     console.log(`Scraped ${items.length} raw jobs from JSearch.`);
     
     // Normalize JSearch format
-    return items.map((job: any) => ({
+    const rawJobs = items.map((job: any) => ({
         title: job.job_title,
         company: job.employer_name,
         location: `${job.job_city ? job.job_city + ', ' : ''}${job.job_state ? job.job_state + ', ' : ''}${job.job_country || ''}`.trim().replace(/,\s*$/, '') || 'Remote',
@@ -36,6 +49,18 @@ export async function scrapeJSearch(keyword: string, location: string) {
         url: job.job_apply_link || job.job_google_link,
         source: job.job_publisher || 'JSearch'
     }));
+
+    try {
+        await prisma.scrapeCache.upsert({
+            where: { source_keyword_location: cacheKey },
+            update: { rawJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+            create: { ...cacheKey, rawJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
+        });
+    } catch (e) {
+        console.warn('Failed to save JSearch cache:', e);
+    }
+
+    return rawJobs;
 }
 
 export async function fetchSingleJobJSearch(title: string, company: string) {
