@@ -591,7 +591,7 @@ export default function AdminDashboard() {
                     <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#fff" }}>{scraperStats.totalJobsScraped24h}</div>
                   </div>
                   <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
-                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Firecrawl Fallbacks</div>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>IP Bot Blocks (24h)</div>
                     <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--warning)" }}>{scraperStats.firecrawlFallbacks24h}</div>
                   </div>
                 </div>
@@ -606,7 +606,7 @@ export default function AdminDashboard() {
                         <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Scraper</th>
                         <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Status</th>
                         <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Results</th>
-                        <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Firecrawl Used</th>
+                        <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Bot Block / Fallback</th>
                         <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Time</th>
                         <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Errors</th>
                       </tr>
@@ -623,11 +623,11 @@ export default function AdminDashboard() {
                           <td style={{ padding: "0.75rem", color: "var(--text-secondary)" }}>{log.resultsCount} jobs</td>
                           <td style={{ padding: "0.75rem" }}>
                             {log.usedFirecrawl ? (
-                              <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", color: "var(--warning)", fontSize: "0.8rem" }}>
-                                <Sparkles size={12} /> Yes ({log.firecrawlSites?.length || 0})
+                              <span title={log.firecrawlSites?.join(', ')} style={{ display: "flex", alignItems: "center", gap: "0.25rem", color: "var(--warning)", fontSize: "0.8rem", cursor: "help" }}>
+                                <Sparkles size={12} /> IP Blocked ({log.firecrawlSites?.length || 0} sites)
                               </span>
                             ) : (
-                              <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>No</span>
+                              <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>Clean IP</span>
                             )}
                           </td>
                           <td style={{ padding: "0.75rem", color: "var(--text-secondary)" }}>
