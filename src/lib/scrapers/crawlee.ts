@@ -1,6 +1,17 @@
+import cp from 'child_process';
+
 // Disable memory snapshot to prevent "spawn ps ENOENT" error on environments where `ps` isn't accessible.
 process.env.CRAWLEE_DISABLE_SYSTEM_INFO = 'true';
 process.env.CRAWLEE_MEMORY_MOCK_ENABLED = 'true';
+
+// Monkey-patch spawn to intercept 'ps' commands which Crawlee ignores if they fail to parse, but crashes if they ENOENT.
+const originalSpawn = cp.spawn;
+(cp as any).spawn = function(command: string, args: any[], options: any) {
+    if (command === 'ps') {
+        return originalSpawn('echo', [''], options);
+    }
+    return originalSpawn(command, args, options);
+};
 
 export async function scrapeCustomPages(urls: string[]) {
     if (!urls || urls.length === 0) return [];
