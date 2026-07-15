@@ -24,7 +24,10 @@ export default async function Dashboard() {
   let userJobs: any[] = [];
   try {
     userJobs = await prisma.userJob.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        status: { not: 'deleted' }
+      },
       include: {
         job: {
           include: {

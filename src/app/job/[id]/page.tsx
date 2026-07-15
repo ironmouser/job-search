@@ -43,6 +43,14 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   }
 
   const job = userJob.job;
+
+  if (!job.isViewed) {
+    await prisma.job.update({
+      where: { id: job.id },
+      data: { isViewed: true }
+    });
+  }
+
   const status = userJob.status;
   const appliedAt = userJob.appliedAt;
   const scores = job.opportunityScores?.[0];

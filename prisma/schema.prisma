@@ -23,6 +23,7 @@ model Job {
   status           String    @default("discovered")
   appliedAt        DateTime? @map("applied_at") @db.Timestamptz(6)
   isArchived       Boolean   @default(false) @map("is_archived")
+  isViewed         Boolean   @default(false) @map("is_viewed")
 
   userJobs          UserJob[]
   opportunityScores OpportunityScore[]

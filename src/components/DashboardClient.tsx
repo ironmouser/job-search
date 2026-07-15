@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar } from 'lucide-react';
 import SyncButton from '@/components/SyncButton';
+import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter } from 'next/navigation';
 
 export default function DashboardClient({ jobs }: { jobs: any[] }) {
@@ -285,7 +286,10 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Matches ({filteredAndSortedJobs.length})</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Matches ({filteredAndSortedJobs.length})</h3>
+          <DashboardCleanup onCleanupComplete={() => router.refresh()} />
+        </div>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
