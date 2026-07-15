@@ -47,7 +47,7 @@ export default function AdminDashboard() {
 
   // Fetch Users
   useEffect(() => {
-    if (activeTab === 'users') {
+    if (activeTab === 'users' && session && (session.user as any)?.role === 'ADMIN') {
       setLoadingUsers(true);
       fetch('/api/admin/users')
         .then(res => res.json())
@@ -57,11 +57,11 @@ export default function AdminDashboard() {
         .catch(console.error)
         .finally(() => setLoadingUsers(false));
     }
-  }, [activeTab]);
+  }, [activeTab, session]);
 
   // Fetch Settings
   useEffect(() => {
-    if (activeTab === 'gates') {
+    if (activeTab === 'gates' && session && (session.user as any)?.role === 'ADMIN') {
       setLoadingSettings(true);
       fetch('/api/admin/settings')
         .then(res => res.json())
@@ -77,7 +77,7 @@ export default function AdminDashboard() {
         .catch(console.error)
         .finally(() => setLoadingSettings(false));
     }
-  }, [activeTab]);
+  }, [activeTab, session]);
 
   const handleUpdateUser = async (userId: string, updates: Partial<UserRecord>) => {
     setSavingUserId(userId);
