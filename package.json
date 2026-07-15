@@ -19,6 +19,7 @@
     "apify-client": "^2.23.4",
     "cheerio": "^1.2.0",
     "dotenv": "^17.4.2",
+    "got-scraping": "^4.2.1",
     "html2pdf.js": "^0.14.0",
     "imapflow": "^1.4.7",
     "lucide-react": "^1.24.0",

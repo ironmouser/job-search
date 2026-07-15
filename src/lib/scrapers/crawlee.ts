@@ -5,50 +5,52 @@ import * as cheerio from 'cheerio';
  * Replaces PlaywrightCrawler to avoid needing Chromium on the server.
  */
 
-const HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.9',
-};
+import { gotScraping } from 'got-scraping';
 
 async function fetchPage(url: string, retries = 3): Promise<cheerio.CheerioAPI | null> {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-            const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(15000) });
-            if (!res.ok) {
-                console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.status})`);
-                
-                // If it's a 403 Forbidden (Bot Block) and we have a Firecrawl key, fallback to Firecrawl
-                if (res.status === 403 && process.env.FIRECRAWL_API_KEY) {
-                    console.info(`Falling back to Firecrawl for ${url}`);
-                    try {
-                        const fcRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`
-                            },
-                            body: JSON.stringify({ url, formats: ['html'] })
-                        });
-                        
-                        if (fcRes.ok) {
-                            const fcData = await fcRes.json();
-                            if (fcData.success && fcData.data && fcData.data.html) {
-                                return cheerio.load(fcData.data.html);
-                            }
-                        }
-                        console.warn(`Firecrawl fallback failed for ${url}`);
-                    } catch (fcErr: any) {
-                        console.warn(`Firecrawl fallback error for ${url}: ${fcErr.message}`);
-                    }
-                }
+            const res = await gotScraping({
+                url,
+                timeout: { request: 15000 },
+                retry: { limit: 0 },
+                throwHttpErrors: false,
+            });
 
-                if (attempt === retries) return null;
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // simple backoff
-                continue;
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+                return cheerio.load(res.body);
             }
-            const html = await res.text();
-            return cheerio.load(html);
+
+            console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.statusCode})`);
+            
+            // If it's a 403 Forbidden (Bot Block) and we have a Firecrawl key, fallback to Firecrawl
+            if (res.statusCode === 403 && process.env.FIRECRAWL_API_KEY) {
+                console.info(`Falling back to Firecrawl for ${url}`);
+                try {
+                    const fcRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`
+                        },
+                        body: JSON.stringify({ url, formats: ['html'] })
+                    });
+                    
+                    if (fcRes.ok) {
+                        const fcData = await fcRes.json();
+                        if (fcData.success && fcData.data && fcData.data.html) {
+                            return cheerio.load(fcData.data.html);
+                        }
+                    }
+                    console.warn(`Firecrawl fallback failed for ${url}`);
+                } catch (fcErr: any) {
+                    console.warn(`Firecrawl fallback error for ${url}: ${fcErr.message}`);
+                }
+            }
+
+            if (attempt === retries) return null;
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // simple backoff
+            continue;
         } catch (e: any) {
             console.warn(`Attempt ${attempt}: Error fetching ${url}: ${e.message}`);
             if (attempt === retries) return null;
