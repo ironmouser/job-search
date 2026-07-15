@@ -76,9 +76,8 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
     try {
       const res = await fetch(`/api/jobs/${id}/fetch-details`, { method: 'POST' });
       if (res.ok) {
-        // Automatically rescore and regenerate after fetching new description
+        // Automatically rescore after fetching new description
         await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
-        await fetch('/api/generate', { method: 'POST', body: JSON.stringify({}) });
         setFetchStatuses(prev => ({ ...prev, [id]: 'success' }));
         router.refresh();
       } else {
@@ -107,9 +106,6 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
         // Also score the new jobs
         setSyncMessage('Scoring Opportunities...');
         await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
-        // And generate assets
-        setSyncMessage('Generating Assets...');
-        await fetch('/api/generate', { method: 'POST', body: JSON.stringify({}) });
         router.refresh();
       } else {
         console.error('Failed to sync emails');

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { ArrowLeft, CheckCircle, Copy } from 'lucide-react';
+import { ArrowLeft, CheckCircle, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import AutofillButton from '@/components/AutofillButton';
@@ -8,6 +8,7 @@ import FeedbackButtons from '@/components/FeedbackButtons';
 import ApplicationQA from '@/components/ApplicationQA';
 import CopyToClipboardButton from '@/components/CopyToClipboardButton';
 import BackToTopButton from '@/components/BackToTopButton';
+import GenerateAssetsButton from '@/components/GenerateAssetsButton';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -95,90 +96,130 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
       <div className="job-detail-grid">
         
         {/* Main Content Area */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', minWidth: 0 }}>
-          <ApplicationQA jobId={job.id} />
-
-          {/* Generated Assets Section */}
-          {assets ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginBottom: '3rem' }}>
-              <details className="glass-card" style={{ cursor: 'pointer' }}>
-                <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-                    <CheckCircle size={20} /> Tailored Networking Message
-                  </h3>
-                  <CopyToClipboardButton textToCopy={assets.networkingMessage || ''} />
-                </summary>
-                <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
-                  <p>{assets.networkingMessage}</p>
-                </div>
-              </details>
-
-              <details className="glass-card" style={{ cursor: 'pointer' }}>
-                <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-                    <CheckCircle size={20} /> Cover Letter
-                  </h3>
-                  <CopyToClipboardButton textToCopy={assets.coverLetterMarkdown || ''} />
-                </summary>
-                <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: '1.5rem', cursor: 'auto' }}>
-                  {assets.coverLetterMarkdown}
-                </div>
-              </details>
-              
-              <details className="glass-card" style={{ cursor: 'pointer' }}>
-                <summary style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-                    <CheckCircle size={20} /> Tailored Resume Extract
-                  </h3>
-                </summary>
-                <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto', overflow: 'auto' }}>
-                  <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                    {assets.tailoredResumeMarkdown}
-                  </div>
-                  <ResumeActions jobId={job.id} markdownText={assets.tailoredResumeMarkdown || ''} />
-                </div>
-              </details>
-            </div>
-          ) : (
-            <div className="glass-card" style={{ marginBottom: '2rem', textAlign: 'center', padding: '3rem' }}>
-              <p style={{ color: 'var(--text-secondary)' }}>Assets haven't been generated for this job yet.</p>
-              {totalScore >= 80 && (
-                <button className="btn-outline" style={{ marginTop: '1rem' }}>Generate Assets</button>
-              )}
-            </div>
-          )}
-
-          {/* Raw JD */}
-          <div className="glass-card">
-            <h3 style={{ marginBottom: '1rem' }}>Original Job Description</h3>
-            <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95rem' }}>
-              {job.description}
-            </div>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', minWidth: 0 }}>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem', marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Step 1: Review Job Description */}
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>1</div>
+              <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Review Job Description</h2>
+            </div>
+            <div className="glass-card">
+              <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95rem' }}>
+                {job.description}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '1.5rem' }}>
               <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />
-              {totalScore && (
-                <div className={`score-badge ${scoreClass}`} style={{ width: '64px', height: '64px', fontSize: '1.5rem' }}>
-                  {totalScore}
-                </div>
-              )}
-              <AutofillButton jobId={job.id} jobUrl={job.url} />
+            </div>
+          </section>
+
+          {/* Step 2: Application Assets */}
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>2</div>
+              <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Generate Assets</h2>
             </div>
             
+            {assets ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <details className="glass-card" style={{ cursor: 'pointer' }}>
+                  <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
+                      <CheckCircle size={20} /> Tailored Networking Message
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <CopyToClipboardButton textToCopy={assets.networkingMessage || ''} />
+                      <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
+                    </div>
+                  </summary>
+                  <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
+                    <p>{assets.networkingMessage}</p>
+                  </div>
+                </details>
+
+                <details className="glass-card" style={{ cursor: 'pointer' }}>
+                  <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
+                      <CheckCircle size={20} /> Cover Letter
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <CopyToClipboardButton textToCopy={assets.coverLetterMarkdown || ''} />
+                      <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
+                    </div>
+                  </summary>
+                  <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: '1.5rem', cursor: 'auto' }}>
+                    {assets.coverLetterMarkdown}
+                  </div>
+                </details>
+                
+                <details className="glass-card" style={{ cursor: 'pointer' }}>
+                  <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
+                      <CheckCircle size={20} /> Tailored Resume Extract
+                    </h3>
+                    <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
+                  </summary>
+                  <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto', overflow: 'auto' }}>
+                    <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                      {assets.tailoredResumeMarkdown}
+                    </div>
+                    <ResumeActions jobId={job.id} markdownText={assets.tailoredResumeMarkdown || ''} />
+                  </div>
+                </details>
+              </div>
+            ) : (
+              <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', padding: '2rem' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 0.5rem 0' }}>Tailored Application Assets</h3>
+                  <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>
+                    Generate a highly personalized cover letter, networking message, and resume extract tailored specifically to this role using your profile and the job description.
+                  </p>
+                </div>
+                <GenerateAssetsButton jobId={job.id} />
+              </div>
+            )}
+          </section>
+
+          {/* Step 3: Apply */}
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>3</div>
+              <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Apply</h2>
+            </div>
+            <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', padding: '2rem' }}>
+              <div>
+                <h3 style={{ margin: '0 0 0.5rem 0' }}>Smart Apply</h3>
+                <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>
+                  Use your Antigravity agent to automatically fill out the application form on the company's career page.
+                </p>
+              </div>
+              <AutofillButton jobId={job.id} jobUrl={job.url} />
+            </div>
+          </section>
+
+          {/* Step 4: Application Q&A */}
+          <section style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
+              <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Application Q&A</h2>
+            </div>
+            <ApplicationQA jobId={job.id} />
+          </section>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', marginBottom: '2rem' }}>
             <BackToTopButton />
           </div>
         </div>
 
         {/* Sidebar - Scoring */}
-        <div>
+        <div style={{ paddingTop: '3.5rem' }}>
           {scores ? (
             <div className="glass-card" style={{ position: 'sticky', top: '2rem' }}>
               <h3 style={{ marginBottom: '1.5rem' }}>AI Opportunity Score</h3>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <ScoreRow label="Product Fit (20%)" score={scores.productFitScore} />
+                <ScoreRow label="Company Fit (20%)" score={scores.productFitScore} />
                 <ScoreRow label="Compensation (20%)" score={scores.compensationScore} />
                 <ScoreRow label="Remote Flex (15%)" score={scores.remoteFlexibilityScore} />
                 <ScoreRow label="AI Maturity (10%)" score={scores.aiMaturityScore} />

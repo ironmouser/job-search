@@ -21,16 +21,77 @@ export default function OnboardingPage() {
         resumeMarkdown: '',
     });
     const [goal, setGoal] = useState('I am looking for high-growth tech opportunities.');
-    const [weights, setWeights] = useState({
-        compensation: 20,
-        productFit: 20,
-        remoteFlexibility: 15,
-        aiMaturity: 10,
-        leadership: 10,
-        growth: 10,
-        culture: 10,
-        techStack: 5
+    
+    type PriorityLevel = 'mustHave' | 'important' | 'niceToHave';
+    const [bucketState, setBucketState] = useState<Record<string, PriorityLevel>>({
+        compensation: 'important',
+        productFit: 'important',
+        remoteFlexibility: 'niceToHave',
+        aiMaturity: 'niceToHave',
+        leadership: 'niceToHave',
+        growth: 'niceToHave',
+        culture: 'niceToHave',
+        techStack: 'niceToHave'
     });
+    
+    const [draggedItem, setDraggedItem] = useState<string | null>(null);
+
+    const criteriaList = [
+        { id: 'compensation', label: 'Compensation & Benefits', desc: 'Salary, equity, health, retirement packages' },
+        { id: 'productFit', label: 'Company Fit', desc: 'Company/business stability, market demand, and role alignment' },
+        { id: 'remoteFlexibility', label: 'Remote Flexibility', desc: 'Work-from-home policy, flexible hours' },
+        { id: 'aiMaturity', label: 'AI Maturity & Tooling', desc: 'Use of AI tools, modern infrastructure' },
+        { id: 'leadership', label: 'Leadership & Vision', desc: 'Executive strength, mentorship quality' },
+        { id: 'growth', label: 'Career Growth', desc: 'Promotions, learning budgets, responsibilities' },
+        { id: 'culture', label: 'Work Culture', desc: 'Work-life balance, diversity, collaboration' },
+        { id: 'techStack', label: 'Tech Stack', desc: 'Modern frameworks, developer tooling' }
+    ];
+
+    const getCalculatedWeights = () => {
+        const points: Record<PriorityLevel, number> = { mustHave: 5, important: 3, niceToHave: 1 };
+        let totalPoints = 0;
+        const mappedPoints: Record<string, number> = {};
+        
+        Object.keys(bucketState).forEach(key => {
+            const p = points[bucketState[key] as PriorityLevel];
+            mappedPoints[key] = p;
+            totalPoints += p;
+        });
+
+        const calculated: Record<string, number> = {};
+        Object.keys(mappedPoints).forEach(key => {
+            calculated[key] = Math.round((mappedPoints[key] / totalPoints) * 100);
+        });
+        
+        const sum = Object.values(calculated).reduce((a, b) => a + b, 0);
+        if (sum !== 100 && Object.keys(calculated).length > 0) {
+            const diff = 100 - sum;
+            calculated[Object.keys(calculated)[0]] += diff;
+        }
+        
+        return calculated;
+    };
+
+    const handleDragStart = (e: React.DragEvent, id: string) => {
+        setDraggedItem(id);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDropToBucket = (e: React.DragEvent, level: PriorityLevel) => {
+        e.preventDefault();
+        const id = e.dataTransfer.getData('text/plain');
+        if (id) {
+            setBucketState(prev => ({ ...prev, [id]: level }));
+        }
+        setDraggedItem(null);
+    };
+
 
     const handleChange = (key: string, value: any) => {
         setFormData({ ...formData, [key]: value });
@@ -79,18 +140,19 @@ export default function OnboardingPage() {
     const handleSubmit = async () => {
         setLoading(true);
         try {
+            const calculatedWeights = getCalculatedWeights();
             const finalProfile = `# Job Search Goal
 ${goal}
 
 # Evaluation Criteria Weights
-- Compensation: ${weights.compensation}%
-- Product Fit: ${weights.productFit}% (Company business viability and overall role alignment)
-- Remote Flexibility: ${weights.remoteFlexibility}%
-- AI Maturity: ${weights.aiMaturity}%
-- Leadership: ${weights.leadership}%
-- Growth: ${weights.growth}%
-- Culture: ${weights.culture}%
-- Tech Stack: ${weights.techStack}%`;
+- Compensation: ${calculatedWeights.compensation}%
+- Company Fit: ${calculatedWeights.productFit}% (Company business viability and overall role alignment)
+- Remote Flexibility: ${calculatedWeights.remoteFlexibility}%
+- AI Maturity: ${calculatedWeights.aiMaturity}%
+- Leadership: ${calculatedWeights.leadership}%
+- Growth: ${calculatedWeights.growth}%
+- Culture: ${calculatedWeights.culture}%
+- Tech Stack: ${calculatedWeights.techStack}%`;
 
             const res = await fetch('/api/onboarding', {
                 method: 'POST',
@@ -276,44 +338,69 @@ ${goal}
 
                         <div style={{ marginBottom: '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
-                                <label style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>2. Adjust Evaluation Weights</label>
-                                <span style={{ 
-                                    fontSize: '0.9rem', 
-                                    fontWeight: 'bold', 
-                                    color: Object.values(weights).reduce((a, b) => a + b, 0) === 100 ? '#10b981' : '#f59e0b'
-                                }}>
-                                    Total Weight: {Object.values(weights).reduce((a, b) => a + b, 0)}%
-                                    {Object.values(weights).reduce((a, b) => a + b, 0) !== 100 && ' (will be normalized)'}
-                                </span>
+                                <label style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>2. Sort Your Priorities</label>
+                                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Drag & Drop to re-weight</span>
                             </div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Drag the sliders to prioritize the criteria you care most about.</p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Percentages dynamically update. Must-Haves carry 5x more weight than Nice-to-Haves.</p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                                {[
-                                    { key: 'compensation', label: 'Compensation & Benefits', desc: 'Salary, equity, health, retirement packages' },
-                                    { key: 'productFit', label: 'Business Viability & Role Fit', desc: 'Company/business stability, market demand, and role alignment' },
-                                    { key: 'remoteFlexibility', label: 'Remote Flexibility', desc: 'Work-from-home policy, flexible hours' },
-                                    { key: 'aiMaturity', label: 'AI Maturity & Tooling', desc: 'Use of AI tools, modern infrastructure' },
-                                    { key: 'leadership', label: 'Leadership & Vision', desc: 'Executive strength, mentorship quality' },
-                                    { key: 'growth', label: 'Career Growth', desc: 'Promotions, learning budgets, responsibilities' },
-                                    { key: 'culture', label: 'Work Culture', desc: 'Work-life balance, diversity, collaboration' },
-                                    { key: 'techStack', label: 'Tech Stack', desc: 'Modern frameworks, developer tooling' }
-                                ].map(({ key, label, desc }) => (
-                                    <div key={key} style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem' }}>
-                                            <span style={{ fontWeight: 500, fontSize: '0.95rem' }}>{label}</span>
-                                            <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)', fontSize: '0.9rem' }}>{weights[key as keyof typeof weights]}%</span>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', minHeight: '350px' }}>
+                                
+                                {([
+                                    { level: 'mustHave', title: '🔥 Must-Haves', desc: 'Dealbreakers', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
+                                    { level: 'important', title: '⭐ Important', desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
+                                    { level: 'niceToHave', title: '✨ Nice-to-Haves', desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
+                                ] as const).map(bucket => (
+                                    <div 
+                                        key={bucket.level}
+                                        onDragOver={handleDragOver}
+                                        onDrop={(e) => handleDropToBucket(e, bucket.level as PriorityLevel)}
+                                        style={{ 
+                                            background: bucket.bg, 
+                                            border: `1px solid ${bucket.border}`, 
+                                            borderRadius: '8px', 
+                                            padding: '1rem',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.75rem'
+                                        }}
+                                    >
+                                        <div style={{ marginBottom: '0.5rem' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{bucket.title}</h3>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{bucket.desc}</span>
                                         </div>
-                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>{desc}</p>
-                                        <input 
-                                            type="range"
-                                            min="0"
-                                            max="100"
-                                            step="5"
-                                            value={weights[key as keyof typeof weights]}
-                                            onChange={(e) => setWeights(prev => ({ ...prev, [key]: parseInt(e.target.value) }))}
-                                            style={{ width: '100%', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
-                                        />
+                                        
+                                        {criteriaList.filter(c => bucketState[c.id] === bucket.level).map(c => {
+                                            const calculatedWeights = getCalculatedWeights();
+                                            const pct = calculatedWeights[c.id];
+                                            return (
+                                                <div 
+                                                    key={c.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, c.id)}
+                                                    onDragEnd={() => setDraggedItem(null)}
+                                                    style={{ 
+                                                        background: 'var(--bg-color)', 
+                                                        padding: '0.75rem', 
+                                                        borderRadius: '6px', 
+                                                        border: '1px solid var(--border-glass)',
+                                                        cursor: 'grab',
+                                                        opacity: draggedItem === c.id ? 0.5 : 1,
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.label}</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)', fontSize: '0.85rem' }}>{pct}%</span>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{c.desc}</div>
+                                                </div>
+                                            );
+                                        })}
+                                        {criteriaList.filter(c => bucketState[c.id] === bucket.level).length === 0 && (
+                                            <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-secondary)', fontSize: '0.85rem', border: '1px dashed var(--border-glass)', borderRadius: '6px' }}>
+                                                Drop items here
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

@@ -29,11 +29,6 @@ export default function SyncButton({ onSyncStateChange }: SyncButtonProps) {
       onSyncStateChange?.(true, 'Scoring Opportunities...');
       await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
 
-      // 3. Generate Assets
-      setStatusText('Generating Assets...');
-      onSyncStateChange?.(true, 'Generating Assets...');
-      await fetch('/api/generate', { method: 'POST', body: JSON.stringify({}) });
-
       setStatusText('Done!');
       onSyncStateChange?.(true, 'Done!');
       // Refresh the page to show new data

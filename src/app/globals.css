@@ -165,6 +165,20 @@ input:focus, select:focus, textarea:focus {
   animation: fadeIn 0.4s ease forwards;
 }
 
+/* Accordion Chevrons */
+details summary::-webkit-details-marker {
+  display: none;
+}
+details summary {
+  list-style: none;
+}
+.accordion-chevron {
+  transition: transform 0.2s ease-in-out;
+}
+details[open] summary .accordion-chevron {
+  transform: rotate(180deg);
+}
+
 /* Custom Top Stat Cards */
 .top-stat-card {
   background-color: rgba(214, 217, 221, 0.1) !important;

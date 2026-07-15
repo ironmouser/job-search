@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2 } from 'lucide-react';
+import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown } from 'lucide-react';
 
 export default function ApplicationQA({ jobId }: { jobId: string }) {
   const [question, setQuestion] = useState('');
@@ -78,13 +78,16 @@ export default function ApplicationQA({ jobId }: { jobId: string }) {
 
   return (
     <details className="glass-card" style={{ cursor: 'pointer', margin: 0 }}>
-      <summary style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0, fontWeight: 600, fontSize: '1.17em' }}>
-        <MessageSquare size={20} /> Application Q&A Generator
+      <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', listStyle: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0, fontWeight: 600, fontSize: '1.17em' }}>
+          <MessageSquare size={20} /> Application Q&A Generator
+        </div>
+        <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
       </summary>
       <div style={{ cursor: 'auto', paddingTop: '1.5rem' }}>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-        Paste a question from the job application below, and the AI will generate a tailored response based on your profile and the job description.
-      </p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+          <strong>Feature Overview:</strong> Use this tool to answer tricky job application questions (e.g., "Why this company?") or to prepare for your upcoming interviews. Simply paste any question below, and your agent will generate a strategic, highly tailored response that perfectly aligns your background with the specific needs of this role.
+        </p>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <textarea

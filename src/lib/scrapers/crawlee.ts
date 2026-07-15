@@ -201,7 +201,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     const urls: { url: string; source: string }[] = [];
     if (sources.weworkremotely) urls.push({ url: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keyword)}`, source: 'weworkremotely' });
     if (sources.remoteco) urls.push({ url: `https://remote.co/remote-jobs/search/?search_keywords=${encodeURIComponent(keyword)}`, source: 'remoteco' });
-    if (sources.remoteok) urls.push({ url: `https://remoteok.com/remote-${encodeURIComponent(keyword.replace(/\s+/g, '-'))}-jobs`, source: 'remoteok' });
+    if (sources.remoteok) urls.push({ url: `https://remoteok.com/api?tag=${encodeURIComponent(keyword.replace(/\s+/g, '-'))}`, source: 'remoteok' });
     if (sources.workingnomads) urls.push({ url: `https://www.workingnomads.com/jobs?category=&q=${encodeURIComponent(keyword)}`, source: 'workingnomads' });
     if (sources.remotive) urls.push({ url: `https://remotive.com/remote-jobs/search?query=${encodeURIComponent(keyword)}`, source: 'remotive' });
 
@@ -213,6 +213,36 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     // Fetch all pages in parallel
     const results = await Promise.allSettled(
         urls.map(async ({ url, source }) => {
+            if (source === 'remoteok') {
+                const pageJobs: any[] = [];
+                try {
+                    const res = await fetch(url, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        for (let i = 1; i < data.length; i++) {
+                            const job = data[i];
+                            if (job.position && job.company) {
+                                pageJobs.push({
+                                    title: job.position,
+                                    company: job.company,
+                                    location: job.location || 'Remote',
+                                    description: `Apply at: ${job.url}`,
+                                    url: job.url,
+                                    source: 'RemoteOK'
+                                });
+                            }
+                        }
+                    }
+                } catch (e: any) {
+                    console.warn(`Error parsing remoteok API: ${e.message}`);
+                }
+                return pageJobs;
+            }
+
             const { $: cheerio$, usedFirecrawl } = await fetchPage(url);
             if (usedFirecrawl) fcSites.push(url);
             const $ = cheerio$;
@@ -249,20 +279,6 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             description: `Apply at: ${fullUrl}`,
                             url: fullUrl,
                             source: 'Remote.co'
-                        });
-                    });
-                } else if (source === 'remoteok') {
-                    $('tr.job').each((_, el) => {
-                        const titleEl = $(el).find('h2');
-                        const companyEl = $(el).find('h3');
-                        const urlAttr = $(el).data('url') || '';
-                        pageJobs.push({
-                            title: titleEl.text().trim() || 'Unknown Role',
-                            company: companyEl.text().trim() || 'RemoteOK Company',
-                            location: 'Remote',
-                            description: `Apply at: https://remoteok.com${urlAttr}`,
-                            url: `https://remoteok.com${urlAttr}`,
-                            source: 'RemoteOK'
                         });
                     });
                 } else if (source === 'workingnomads') {
