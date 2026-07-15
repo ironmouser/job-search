@@ -1,9 +1,11 @@
-import { PlaywrightCrawler } from 'crawlee';
-
+// Disable memory snapshot to prevent "spawn ps ENOENT" error on environments where `ps` isn't accessible.
 process.env.CRAWLEE_DISABLE_SYSTEM_INFO = 'true';
 process.env.CRAWLEE_MEMORY_MOCK_ENABLED = 'true';
+
 export async function scrapeCustomPages(urls: string[]) {
     if (!urls || urls.length === 0) return [];
+    
+    const { PlaywrightCrawler } = await import('crawlee');
 
     const jobs: any[] = [];
 
@@ -172,6 +174,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 
     const jobs: any[] = [];
 
+    const { PlaywrightCrawler } = await import('crawlee');
     const crawler = new PlaywrightCrawler({
         maxRequestsPerCrawl: 3, // only 3 search pages max
         async requestHandler({ request, page, log }) {
