@@ -1,5 +1,7 @@
 import { PlaywrightCrawler } from 'crawlee';
 
+process.env.CRAWLEE_DISABLE_SYSTEM_INFO = 'true';
+process.env.CRAWLEE_MEMORY_MOCK_ENABLED = 'true';
 export async function scrapeCustomPages(urls: string[]) {
     if (!urls || urls.length === 0) return [];
 
