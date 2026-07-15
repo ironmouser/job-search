@@ -6,8 +6,14 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     useEffect(() => {
         const applyTheme = () => {
             fetch('/api/settings', { cache: 'no-store' })
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok || res.headers.get('content-type')?.includes('text/html')) {
+                        return null;
+                    }
+                    return res.json();
+                })
                 .then(data => {
+                    if (!data) return;
                     if (data.theme === 'dark') {
                         document.body.classList.remove('light-theme');
                     } else {
