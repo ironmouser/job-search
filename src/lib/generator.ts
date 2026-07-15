@@ -18,13 +18,15 @@ export async function generateAssetsForJob(userId: string, jobId: string, jobTit
     const tone = settings.aiStrictness || 'Standard';
 
     // Read the base resume
-    const resumePath = path.join(process.cwd(), 'src/lib/base_resume.md');
-    let baseResume = '';
-    try {
-        baseResume = fs.readFileSync(resumePath, 'utf8');
-    } catch (e) {
-        console.error("Failed to read base resume file.", e);
-        throw new Error("Base resume not found at src/lib/base_resume.md");
+    let baseResume = settings.resumeMarkdown || '';
+    if (!baseResume) {
+        const resumePath = path.join(process.cwd(), 'src/lib/base_resume.md');
+        try {
+            baseResume = fs.readFileSync(resumePath, 'utf8');
+        } catch (e) {
+            console.error("Failed to read base resume file.", e);
+            throw new Error("Base resume not found at src/lib/base_resume.md");
+        }
     }
 
     const systemPrompt = `You are an expert career strategist and executive resume writer. 
@@ -86,6 +88,7 @@ ${baseResume}
         const data = await prisma.applicationAsset.create({
             data: {
                 jobId: jobId,
+                userId: userId,
                 tailoredResumeMarkdown: assets.tailored_resume,
                 coverLetterMarkdown: assets.cover_letter,
                 networkingMessage: assets.networking_message,
@@ -125,13 +128,15 @@ export async function generateApplicationAnswer(
     const qaExamples: { question: string, answer: string }[] = (settings as any).qaExamples || [];
 
     // Read the base resume
-    const resumePath = path.join(process.cwd(), 'src/lib/base_resume.md');
-    let baseResume = '';
-    try {
-        baseResume = fs.readFileSync(resumePath, 'utf8');
-    } catch (e) {
-        console.error("Failed to read base resume file.", e);
-        throw new Error("Base resume not found at src/lib/base_resume.md");
+    let baseResume = settings.resumeMarkdown || '';
+    if (!baseResume) {
+        const resumePath = path.join(process.cwd(), 'src/lib/base_resume.md');
+        try {
+            baseResume = fs.readFileSync(resumePath, 'utf8');
+        } catch (e) {
+            console.error("Failed to read base resume file.", e);
+            throw new Error("Base resume not found at src/lib/base_resume.md");
+        }
     }
 
     let examplesText = '';

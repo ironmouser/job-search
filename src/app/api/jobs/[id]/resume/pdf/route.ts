@@ -2,14 +2,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { marked } from 'marked';
 import { chromium } from 'playwright';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return new NextResponse('Unauthorized', { status: 401 });
+        }
+        const userId = session.user.id;
+
         const { id } = await params;
 
         // Fetch the tailored resume markdown
         const assets = await prisma.applicationAsset.findFirst({
-            where: { jobId: id },
+            where: { jobId: id, userId: userId },
             select: { tailoredResumeMarkdown: true }
         });
 

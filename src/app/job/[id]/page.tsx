@@ -1,27 +1,50 @@
 import { prisma } from '@/lib/prisma';
 import { ArrowLeft, CheckCircle, Copy } from 'lucide-react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import AutofillButton from '@/components/AutofillButton';
 import ResumeActions from '@/components/ResumeActions';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import ApplicationQA from '@/components/ApplicationQA';
 import CopyToClipboardButton from '@/components/CopyToClipboardButton';
 import BackToTopButton from '@/components/BackToTopButton';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export default async function JobDetail({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    redirect('/');
+  }
+  const userId = session.user.id;
   const { id } = await params;
   
-  // Fetch job with scores and assets
-  const job = await prisma.job.findUnique({
-    where: { id: id },
-    include: { opportunityScores: true, applicationAssets: true, jobFeedbacks: true }
+  // Fetch user specific job status and relation, with scores and assets scoped to the user
+  const userJob = await prisma.userJob.findUnique({
+    where: {
+      userId_jobId: {
+        userId,
+        jobId: id
+      }
+    },
+    include: {
+      job: {
+        include: {
+          opportunityScores: { where: { userId } },
+          applicationAssets: { where: { userId } },
+          jobFeedbacks: { where: { userId } }
+        }
+      }
+    }
   });
 
-  if (!job) {
+  if (!userJob) {
     notFound();
   }
 
+  const job = userJob.job;
+  const status = userJob.status;
+  const appliedAt = userJob.appliedAt;
   const scores = job.opportunityScores?.[0];
   const assets = job.applicationAssets?.[0];
   const feedback = job.jobFeedbacks?.[0];
@@ -41,12 +64,12 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           <div className="job-meta" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
             <span>📍 {job.location || 'Remote'}</span>
             <span>💰 {job.salaryRange || 'Unlisted'}</span>
-            {job.status === 'applied' || job.appliedAt ? (
+            {status === 'applied' || appliedAt ? (
               <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                ✓ Applied {job.appliedAt ? new Date(job.appliedAt).toLocaleDateString() : ''}
+                ✓ Applied {appliedAt ? new Date(appliedAt).toLocaleDateString() : ''}
               </span>
             ) : (
-              <span className={`badge badge-${job.status}`}>{job.status.replace('_', ' ')}</span>
+              <span className={`badge badge-${status}`}>{status.replace('_', ' ')}</span>
             )}
           </div>
         </div>

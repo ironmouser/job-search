@@ -17,6 +17,28 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [fetchStatuses, setFetchStatuses] = useState<Record<string, 'fetching' | 'success' | 'error'>>({});
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+
+  useEffect(() => {
+    if (isSyncing) {
+      const script = document.createElement('script');
+      script.src = "https://tenor.com/embed.js";
+      script.async = true;
+      script.id = "tenor-embed-script";
+      document.body.appendChild(script);
+
+      document.body.style.overflow = 'hidden';
+
+      return () => {
+        const existingScript = document.getElementById("tenor-embed-script");
+        if (existingScript) {
+          existingScript.remove();
+        }
+        document.body.style.overflow = '';
+      };
+    }
+  }, [isSyncing]);
 
   useEffect(() => {
     const saved = localStorage.getItem('jobAgentDashboardState');
@@ -76,12 +98,16 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
 
   const handleEmailSync = async () => {
     setIsEmailSyncing(true);
+    setIsSyncing(true);
+    setSyncMessage('Syncing Emails...');
     try {
       const res = await fetch('/api/sync/email', { method: 'POST' });
       if (res.ok) {
         // Also score the new jobs
+        setSyncMessage('Scoring Opportunities...');
         await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
         // And generate assets
+        setSyncMessage('Generating Assets...');
         await fetch('/api/generate', { method: 'POST', body: JSON.stringify({}) });
         router.refresh();
       } else {
@@ -91,6 +117,8 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
       console.error(e);
     } finally {
       setIsEmailSyncing(false);
+      setIsSyncing(false);
+      setSyncMessage('');
     }
   };
 
@@ -207,14 +235,17 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
         <div className="header-actions" style={{ display: 'flex', gap: '1rem' }}>
           <button 
             onClick={handleEmailSync} 
-            disabled={isEmailSyncing}
+            disabled={isEmailSyncing || isSyncing}
             className="btn-outline" 
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
             <Mail size={16} />
             {isEmailSyncing ? 'Syncing...' : 'Sync Emails'}
           </button>
-          <SyncButton />
+          <SyncButton onSyncStateChange={(loading, text) => {
+            setIsSyncing(loading);
+            setSyncMessage(text);
+          }} />
         </div>
       </div>
 
@@ -530,6 +561,31 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {isSyncing && (
+        <div className="sync-overlay-backdrop">
+          <div className="sync-overlay-content">
+            <h2>Syncing in Progress</h2>
+            <p className="sync-overlay-text">{syncMessage}</p>
+            <p className="sync-overlay-subtext">
+              This could take up to a minute to complete.<br />
+              Please do not close or refresh this page.
+            </p>
+            <div className="tenor-gif-container">
+              <div 
+                className="tenor-gif-embed" 
+                data-postid="18485855" 
+                data-share-method="host" 
+                data-aspect-ratio="1" 
+                data-width="100%"
+              >
+                <a href="https://tenor.com/view/o2-o2robot-o2ad-bubl-o2bubl-gif-18485855">O2 O2robot GIF</a>
+                from <a href="https://tenor.com/search/o2-gifs">O2 GIFs</a>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

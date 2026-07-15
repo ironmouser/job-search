@@ -40,6 +40,7 @@ export async function POST(
     }
 
     const answer = await generateApplicationAnswer(
+      session.user.id,
       job.title,
       job.description || '',
       job.company,
