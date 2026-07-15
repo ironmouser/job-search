@@ -11,19 +11,25 @@ const HEADERS = {
     'Accept-Language': 'en-US,en;q=0.9',
 };
 
-async function fetchPage(url: string): Promise<cheerio.CheerioAPI | null> {
-    try {
-        const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(15000) });
-        if (!res.ok) {
-            console.warn(`Failed to fetch ${url}: ${res.status}`);
-            return null;
+async function fetchPage(url: string, retries = 3): Promise<cheerio.CheerioAPI | null> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(15000) });
+            if (!res.ok) {
+                console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.status})`);
+                if (attempt === retries) return null;
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // simple backoff
+                continue;
+            }
+            const html = await res.text();
+            return cheerio.load(html);
+        } catch (e: any) {
+            console.warn(`Attempt ${attempt}: Error fetching ${url}: ${e.message}`);
+            if (attempt === retries) return null;
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
-        const html = await res.text();
-        return cheerio.load(html);
-    } catch (e: any) {
-        console.warn(`Error fetching ${url}: ${e.message}`);
-        return null;
     }
+    return null;
 }
 
 export async function scrapeCustomPages(urls: string[]) {
