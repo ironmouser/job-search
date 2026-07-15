@@ -1,6 +1,6 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
-import { supabase } from './supabase';
+import { prisma } from './prisma';
 import { normalizeAndSaveJobs } from './apify';
 import { extractJobsFromEmailText } from './scoring';
 
@@ -20,7 +20,7 @@ const JOB_BOARDS = [
   'lever.co',
 ];
 
-export async function fetchEmailsAndExtractJobs() {
+export async function fetchEmailsAndExtractJobs(userId: string) {
   if (!IMAP_HOST || !IMAP_USER || !IMAP_PASS) {
     throw new Error('IMAP credentials are not configured in environment variables.');
   }
@@ -40,15 +40,14 @@ export async function fetchEmailsAndExtractJobs() {
     await client.connect();
 
     // 1. Get last sync time
-    const { data: syncLog, error: syncError } = await supabase
-      .from('sync_logs')
-      .select('last_synced_at')
-      .eq('sync_type', 'email')
-      .single();
+    const syncLog = await prisma.syncLog.findFirst({
+        where: { syncType: 'email' },
+        select: { id: true, lastSyncedAt: true }
+    });
 
     let sinceDate = new Date();
-    if (syncLog?.last_synced_at) {
-      sinceDate = new Date(syncLog.last_synced_at);
+    if (syncLog?.lastSyncedAt) {
+      sinceDate = new Date(syncLog.lastSyncedAt);
     } else {
       // Default to 2 days ago if no log exists
       sinceDate.setDate(sinceDate.getDate() - 2);
@@ -119,16 +118,18 @@ ${uniqueUrls.join('\n')}
 
       // 3. Save to database
       if (rawJobs.length > 0) {
-        await normalizeAndSaveJobs(rawJobs);
+        await normalizeAndSaveJobs(rawJobs, userId);
       }
 
-      // 4. Update sync_log (we use direct insert/update logic if upsert isn't perfect)
-      // Since supabase JS client onConflict can sometimes be tricky without unique constraints,
-      // let's do a simple check.
       if (syncLog) {
-         await supabase.from('sync_logs').update({ last_synced_at: new Date().toISOString() }).eq('sync_type', 'email');
+         await prisma.syncLog.update({
+            where: { id: syncLog.id },
+            data: { lastSyncedAt: new Date() }
+         });
       } else {
-         await supabase.from('sync_logs').insert({ sync_type: 'email', last_synced_at: new Date().toISOString() });
+         await prisma.syncLog.create({
+            data: { syncType: 'email', lastSyncedAt: new Date() }
+         });
       }
 
       return rawJobs.length;

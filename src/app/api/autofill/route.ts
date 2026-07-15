@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
     try {
@@ -10,17 +10,16 @@ export async function POST(request: Request) {
         }
 
         // Fetch job and assets
-        const { data: job, error } = await supabase
-            .from('jobs')
-            .select('*, application_assets(*)')
-            .eq('id', jobId)
-            .single();
+        const job = await prisma.job.findUnique({
+            where: { id: jobId },
+            include: { applicationAssets: true }
+        });
 
-        if (error || !job) {
+        if (!job) {
             return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
 
-        let assets = job.application_assets?.[0];
+        let assets = job.applicationAssets?.[0];
         if (!assets) {
             console.log(`Assets missing for job ${jobId}. Generating on the fly...`);
             const { generateAssetsForJob } = require('@/lib/generator');
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ 
             success: true, 
-            coverLetter: assets.cover_letter_markdown
+            coverLetter: assets.coverLetterMarkdown
         }, { status: 200 });
 
     } catch (error: any) {

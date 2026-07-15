@@ -3,14 +3,20 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut } from 'lucide-react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
+
+  if (status === 'loading' || !session) {
+    return null;
+  }
 
   return (
     <aside className="sidebar">
@@ -54,6 +60,41 @@ export default function Navigation() {
             <Settings size={20} />
             Settings
           </Link>
+        </li>
+        <li className="nav-item" style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
+          {session ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <Link href="/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', textDecoration: 'none', borderRadius: '8px', flex: 1, minWidth: 0 }}>
+                  {session.user?.image ? (
+                    <img src={session.user.image} alt="Avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  ) : null}
+                  <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {session.user?.name || session.user?.email}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {(session.user as any)?.planTier === "PRO" ? "Pro Plan" : "Free Plan"}
+                    </span>
+                  </div>
+                </Link>
+                {(session.user as any)?.planTier !== "PRO" && (
+                  <Link href="/pricing" className="btn-outline" style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', marginLeft: '0.5rem', textDecoration: 'none' }}>
+                    Upgrade
+                  </Link>
+                )}
+              </div>
+              <button onClick={() => signOut()} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', color: 'var(--text-secondary)', padding: '0.5rem', borderRadius: '8px' }}>
+                <LogOut size={16} />
+                <span style={{ fontSize: '0.85rem' }}>Logout</span>
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => signIn('google')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', color: 'inherit', padding: '0.5rem', borderRadius: '8px' }}>
+              <LogIn size={20} />
+              Login
+            </button>
+          )}
         </li>
       </nav>
     </aside>

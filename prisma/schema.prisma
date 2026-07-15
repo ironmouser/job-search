@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Job {
+  id                 String    @id @default(uuid()) @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  isCustomCareerPage Boolean   @default(false) @map("is_custom_career_page")
+  addedById          String?   @map("added_by_id")
+  title            String
+  company          String
+  location         String?
+  salaryRange      String?   @map("salary_range")
+  description      String?
+  requirements     String?
+  url              String    @unique
+  source           String?
+  status           String    @default("discovered")
+  appliedAt        DateTime? @map("applied_at") @db.Timestamptz(6)
+  isArchived       Boolean   @default(false) @map("is_archived")
+
+  userJobs          UserJob[]
+  opportunityScores OpportunityScore[]
+  applicationAssets ApplicationAsset[]
+  jobFeedbacks      JobFeedback[]
+
+  @@map("jobs")
+}
+
+model OpportunityScore {
+  id                     String   @id @default(uuid()) @db.Uuid
+  jobId                  String   @map("job_id") @db.Uuid
+  userId                 String?  @map("user_id")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  totalScore             Int      @map("total_score")
+  compensationScore      Int      @map("compensation_score")
+  productFitScore        Int      @map("product_fit_score")
+  remoteFlexibilityScore Int      @map("remote_flexibility_score")
+  aiMaturityScore        Int      @map("ai_maturity_score")
+  leadershipScore        Int      @map("leadership_score")
+  growthScore            Int      @map("growth_score")
+  cultureScore           Int      @map("culture_score")
+  techStackScore         Int      @map("tech_stack_score")
+  analysisNotes          String?  @map("analysis_notes")
+
+  job  Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([totalScore(sort: Desc)])
+  @@index([jobId])
+  @@map("opportunity_scores")
+}
+
+model ApplicationAsset {
+  id                     String   @id @default(uuid()) @db.Uuid
+  jobId                  String   @map("job_id") @db.Uuid
+  userId                 String?  @map("user_id")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  tailoredResumeMarkdown String?  @map("tailored_resume_markdown")
+  coverLetterMarkdown    String?  @map("cover_letter_markdown")
+  networkingMessage      String?  @map("networking_message")
+  portfolioRecommendation String? @map("portfolio_recommendation")
+
+  job  Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("application_assets")
+}
+
+model JobFeedback {
+  id           String   @id @default(uuid()) @db.Uuid
+  jobId        String   @unique @map("job_id") @db.Uuid
+  userId       String?  @map("user_id")
+  feedbackType String   @map("feedback_type") // 'like' or 'dislike'
+  reasons      String[] @default([])
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  job  Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("job_feedback")
+}
+
+model SyncLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  syncType     String   @map("sync_type")
+  lastSyncedAt DateTime @default(now()) @map("last_synced_at") @db.Timestamptz(6)
+
+  @@map("sync_logs")
+}
+
+// NextAuth Models
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  // Stripe & Subscriptions
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  trialEndsAt            DateTime?
+  planTier               String    @default("FREE")
+  isOnboarded            Boolean   @default(false) @map("is_onboarded")
+
+  accounts      Account[]
+  sessions      Session[]
+  
+  userPreferences UserPreferences?
+  userJobs        UserJob[]
+  scores          OpportunityScore[]
+  assets          ApplicationAsset[]
+  feedbacks       JobFeedback[]
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model UserPreferences {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  searchKeyword     String?
+  searchLocation    String?
+  customCareerPages String[] @default([])
+  sources           Json?    @default("{}")
+  remoteOnly        Boolean  @default(false)
+  theme             String   @default("dark")
+  aiStrictness      String   @default("Standard")
+  resumeCustomizationMaxPercentage Int @default(50)
+  resumeMarkdown    String?  @db.Text
+  profile           String?  @db.Text
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model UserJob {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  jobId      String    @map("job_id") @db.Uuid
+  status     String    @default("discovered")
+  appliedAt  DateTime? @map("applied_at") @db.Timestamptz(6)
+  isArchived Boolean   @default(false) @map("is_archived")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job        Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@map("user_jobs")
+}

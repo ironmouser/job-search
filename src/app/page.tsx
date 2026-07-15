@@ -1,47 +1,70 @@
-import { supabase } from '@/lib/supabase';
-import { ExternalLink } from 'lucide-react';
-import Link from 'next/link';
-import SyncButton from '@/components/SyncButton';
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
+import { prisma } from '@/lib/prisma';
 import DashboardClient from '@/components/DashboardClient';
 
-export const revalidate = 0; // Disable static caching for real-time dashboard
+export const revalidate = 0;
 
 export default async function Dashboard() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const thirtyDaysAgoIso = thirtyDaysAgo.toISOString();
-
-  // Fetch jobs and their scores
-  const { data: rawJobs, error } = await supabase
-    .from('jobs')
-    .select(`
-      *,
-      opportunity_scores (
-        total_score
-      ),
-      job_feedback (
-        feedback_type
-      )
-    `)
-    .order('created_at', { ascending: false })
-    .limit(100);
-
-  if (error) {
-    console.error('Error fetching jobs:', JSON.stringify(error, null, 2), error.message, error.details, error.hint);
+  const session = await getServerSession(authOptions);
+  
+  if (!session?.user?.id) {
+    return (
+      <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+        <h1 className="page-title">Welcome to Job Agent</h1>
+        <p className="page-subtitle">Please log in to view your dashboard.</p>
+      </div>
+    );
   }
 
-  // Filter in memory to prevent breaking due to Supabase schema cache
-  const jobs = (rawJobs || []).filter(j => {
+  const userId = session.user.id;
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  let userJobs: any[] = [];
+  try {
+    userJobs = await prisma.userJob.findMany({
+      where: { userId },
+      include: {
+        job: {
+          include: {
+            opportunityScores: { where: { userId }, select: { totalScore: true } },
+            jobFeedbacks: { where: { userId }, select: { feedbackType: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100
+    });
+  } catch (error: any) {
+    console.error('Error fetching jobs:', error);
+  }
+
+  const jobs = userJobs.map(uj => {
+    const j = uj.job;
+    return {
+      id: j.id,
+      title: j.title,
+      company: j.company,
+      location: j.location,
+      salary_range: j.salaryRange,
+      url: j.url,
+      description: j.description,
+      
+      status: uj.status,
+      is_archived: uj.isArchived,
+      created_at: uj.createdAt,
+      applied_at: uj.appliedAt,
+
+      opportunity_scores: j.opportunityScores.map((s: any) => ({ total_score: s.totalScore })),
+      job_feedback: j.jobFeedbacks.map((f: any) => ({ feedback_type: f.feedbackType }))
+    };
+  }).filter(j => {
     if (j.is_archived) return true;
     return new Date(j.created_at) >= thirtyDaysAgo;
   });
 
-  // Calculate some stats
-  const totalDiscovered = jobs?.length || 0;
-  const totalScored = jobs?.filter(j => j.status !== 'discovered').length || 0;
-  const highlyScored = jobs?.filter(j => j.opportunity_scores?.[0]?.total_score >= 80).length || 0;
-
   return (
-    <DashboardClient jobs={jobs || []} />
+    <DashboardClient jobs={jobs} />
   );
 }

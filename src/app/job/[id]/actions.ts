@@ -1,22 +1,15 @@
 'use server';
 
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
 export async function submitJobFeedback(jobId: string, feedbackType: 'like' | 'dislike', reasons: string[]) {
     try {
-        const { error } = await supabase
-            .from('job_feedback')
-            .upsert({
-                job_id: jobId,
-                feedback_type: feedbackType,
-                reasons: reasons
-            }, { onConflict: 'job_id' });
-
-        if (error) {
-            console.error('Failed to submit feedback:', error);
-            return { success: false, error: error.message };
-        }
+        await prisma.jobFeedback.upsert({
+            where: { jobId: jobId },
+            update: { feedbackType: feedbackType, reasons: reasons },
+            create: { jobId: jobId, feedbackType: feedbackType, reasons: reasons }
+        });
 
         revalidatePath(`/job/${jobId}`);
         return { success: true };

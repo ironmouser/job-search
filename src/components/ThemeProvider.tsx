@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const applyTheme = () => {
-            fetch('/api/settings')
+            fetch('/api/settings', { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.theme === 'dark') {

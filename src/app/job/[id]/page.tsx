@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
 import { ArrowLeft, CheckCircle, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -13,25 +13,19 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   
   // Fetch job with scores and assets
-  const { data: job, error } = await supabase
-    .from('jobs')
-    .select(`
-      *,
-      opportunity_scores (*),
-      application_assets (*),
-      job_feedback (*)
-    `)
-    .eq('id', id)
-    .single();
+  const job = await prisma.job.findUnique({
+    where: { id: id },
+    include: { opportunityScores: true, applicationAssets: true, jobFeedbacks: true }
+  });
 
-  if (error || !job) {
+  if (!job) {
     notFound();
   }
 
-  const scores = job.opportunity_scores?.[0];
-  const assets = job.application_assets?.[0];
-  const feedback = job.job_feedback?.[0];
-  const totalScore = scores?.total_score;
+  const scores = job.opportunityScores?.[0];
+  const assets = job.applicationAssets?.[0];
+  const feedback = job.jobFeedbacks?.[0];
+  const totalScore = scores?.totalScore;
   const scoreClass = !totalScore ? '' : totalScore >= 80 ? 'score-high' : 'score-med';
 
   return (
@@ -46,10 +40,10 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           <h1 className="page-title">{job.title}</h1>
           <div className="job-meta" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
             <span>📍 {job.location || 'Remote'}</span>
-            <span>💰 {job.salary_range || 'Unlisted'}</span>
-            {job.status === 'applied' || job.applied_at ? (
+            <span>💰 {job.salaryRange || 'Unlisted'}</span>
+            {job.status === 'applied' || job.appliedAt ? (
               <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                ✓ Applied {job.applied_at ? new Date(job.applied_at).toLocaleDateString() : ''}
+                ✓ Applied {job.appliedAt ? new Date(job.appliedAt).toLocaleDateString() : ''}
               </span>
             ) : (
               <span className={`badge badge-${job.status}`}>{job.status.replace('_', ' ')}</span>
@@ -57,7 +51,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedback_type} />
+          <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />
           {totalScore && (
             <div className={`score-badge ${scoreClass}`} style={{ width: '64px', height: '64px', fontSize: '1.5rem' }}>
               {totalScore}
@@ -81,10 +75,10 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
                     <CheckCircle size={20} /> Tailored Networking Message
                   </h3>
-                  <CopyToClipboardButton textToCopy={assets.networking_message || ''} />
+                  <CopyToClipboardButton textToCopy={assets.networkingMessage || ''} />
                 </summary>
                 <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
-                  <p>{assets.networking_message}</p>
+                  <p>{assets.networkingMessage}</p>
                 </div>
               </details>
 
@@ -93,10 +87,10 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
                     <CheckCircle size={20} /> Cover Letter
                   </h3>
-                  <CopyToClipboardButton textToCopy={assets.cover_letter_markdown || ''} />
+                  <CopyToClipboardButton textToCopy={assets.coverLetterMarkdown || ''} />
                 </summary>
                 <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: '1.5rem', cursor: 'auto' }}>
-                  {assets.cover_letter_markdown}
+                  {assets.coverLetterMarkdown}
                 </div>
               </details>
               
@@ -108,9 +102,9 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 </summary>
                 <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto', overflow: 'auto' }}>
                   <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                    {assets.tailored_resume_markdown}
+                    {assets.tailoredResumeMarkdown}
                   </div>
-                  <ResumeActions jobId={job.id} markdownText={assets.tailored_resume_markdown || ''} />
+                  <ResumeActions jobId={job.id} markdownText={assets.tailoredResumeMarkdown || ''} />
                 </div>
               </details>
             </div>
@@ -133,7 +127,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem', marginBottom: '2rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedback_type} />
+              <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />
               {totalScore && (
                 <div className={`score-badge ${scoreClass}`} style={{ width: '64px', height: '64px', fontSize: '1.5rem' }}>
                   {totalScore}
@@ -153,25 +147,25 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               <h3 style={{ marginBottom: '1.5rem' }}>AI Opportunity Score</h3>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <ScoreRow label="Product Fit (20%)" score={scores.product_fit_score} />
-                <ScoreRow label="Compensation (20%)" score={scores.compensation_score} />
-                <ScoreRow label="Remote Flex (15%)" score={scores.remote_flexibility_score} />
-                <ScoreRow label="AI Maturity (10%)" score={scores.ai_maturity_score} />
-                <ScoreRow label="Leadership (10%)" score={scores.leadership_score} />
-                <ScoreRow label="Growth (10%)" score={scores.growth_score} />
-                <ScoreRow label="Culture (10%)" score={scores.culture_score} />
-                <ScoreRow label="Tech Stack (5%)" score={scores.tech_stack_score} />
+                <ScoreRow label="Product Fit (20%)" score={scores.productFitScore} />
+                <ScoreRow label="Compensation (20%)" score={scores.compensationScore} />
+                <ScoreRow label="Remote Flex (15%)" score={scores.remoteFlexibilityScore} />
+                <ScoreRow label="AI Maturity (10%)" score={scores.aiMaturityScore} />
+                <ScoreRow label="Leadership (10%)" score={scores.leadershipScore} />
+                <ScoreRow label="Growth (10%)" score={scores.growthScore} />
+                <ScoreRow label="Culture (10%)" score={scores.cultureScore} />
+                <ScoreRow label="Tech Stack (5%)" score={scores.techStackScore} />
               </div>
 
               <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-glass)' }}>
                 <h4 style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>AI Analysis Notes</h4>
-                <p style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{scores.analysis_notes}</p>
+                <p style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{scores.analysisNotes}</p>
               </div>
               
-              {assets?.portfolio_recommendation && (
+              {assets?.portfolioRecommendation && (
                 <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(102, 252, 241, 0.1)', borderRadius: '8px', border: '1px solid rgba(102, 252, 241, 0.2)' }}>
                   <h4 style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--accent-primary)' }}>Portfolio Recommendation</h4>
-                  <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>{assets.portfolio_recommendation}</p>
+                  <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>{assets.portfolioRecommendation}</p>
                 </div>
               )}
             </div>

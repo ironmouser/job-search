@@ -1,5 +1,4 @@
-import { supabase } from './supabase';
-import { getSettings } from './settings';
+// No longer requires settings import
 
 export async function scrapeJSearch(keyword: string, location: string) {
     if (!process.env.RAPIDAPI_KEY) {

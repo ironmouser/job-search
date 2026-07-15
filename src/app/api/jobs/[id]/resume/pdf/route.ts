@@ -1,25 +1,24 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
 import { marked } from 'marked';
 import { chromium } from 'playwright';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
 
         // Fetch the tailored resume markdown
-        const { data: assets, error } = await supabase
-            .from('application_assets')
-            .select('tailored_resume_markdown')
-            .eq('job_id', id)
-            .single();
+        const assets = await prisma.applicationAsset.findFirst({
+            where: { jobId: id },
+            select: { tailoredResumeMarkdown: true }
+        });
 
-        if (error || !assets || !assets.tailored_resume_markdown) {
+        if (!assets || !assets.tailoredResumeMarkdown) {
             return new NextResponse('Resume not found', { status: 404 });
         }
 
         // Convert markdown to HTML
-        const htmlContent = marked.parse(assets.tailored_resume_markdown) as string;
+        const htmlContent = marked.parse(assets.tailoredResumeMarkdown) as string;
 
         // Wrap in styled HTML
         const html = `
@@ -97,7 +96,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         await browser.close();
 
         // Return PDF
-        return new NextResponse(pdfBuffer, {
+        return new NextResponse(pdfBuffer as any, {
             status: 200,
             headers: {
                 'Content-Type': 'application/pdf',

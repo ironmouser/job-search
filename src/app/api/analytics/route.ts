@@ -1,19 +1,15 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
     try {
         // We'll fetch all jobs to compute funnel metrics client-side, 
         // or we can aggregate them here. 
         // For simplicity and to allow recent activity, fetching all light job data is fine.
-        const { data: jobs, error } = await supabase
-            .from('jobs')
-            .select('id, title, company, status, created_at, opportunity_scores(total_score)')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            throw error;
-        }
+        const jobs = await prisma.job.findMany({
+            select: { id: true, title: true, company: true, status: true, createdAt: true, opportunityScores: { select: { totalScore: true } } },
+            orderBy: { createdAt: 'desc' }
+        });
 
         // Funnel counts
         const funnel = {

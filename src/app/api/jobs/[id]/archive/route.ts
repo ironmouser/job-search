@@ -1,37 +1,37 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const userId = session.user.id;
     const { id } = await params;
     if (!id) {
       return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
     }
 
-    // Toggle is_archived
-    // First, fetch current state
-    const { data: job, error: fetchError } = await supabase
-        .from('jobs')
-        .select('is_archived')
-        .eq('id', id)
-        .single();
+    const userJob = await prisma.userJob.findUnique({
+        where: { userId_jobId: { userId, jobId: id } },
+        select: { isArchived: true }
+    });
         
-    if (fetchError) throw fetchError;
+    if (!userJob) throw new Error('Job not found in your pipeline');
 
-    const newArchivedState = !job.is_archived;
+    const newArchivedState = !userJob.isArchived;
 
-    const { data, error } = await supabase
-      .from('jobs')
-      .update({ is_archived: newArchivedState })
-      .eq('id', id)
-      .select();
-
-    if (error) {
-      throw error;
-    }
+    const data = await prisma.userJob.update({
+      where: { userId_jobId: { userId, jobId: id } },
+      data: { isArchived: newArchivedState }
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

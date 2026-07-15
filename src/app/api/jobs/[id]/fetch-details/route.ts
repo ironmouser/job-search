@@ -1,25 +1,31 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
 import { fetchSingleJobJSearch } from '@/lib/jsearch';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const userId = session.user.id;
+
         const { id: jobId } = await params;
         if (!jobId) {
             return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
         }
 
         // 1. Fetch the job
-        const { data: job, error: fetchError } = await supabase
-            .from('jobs')
-            .select('*')
-            .eq('id', jobId)
-            .single();
+        const job = await prisma.job.findUnique({
+            where: { id: jobId }
+        });
 
-        if (fetchError || !job) {
+        if (!job) {
             return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
 
@@ -75,22 +81,23 @@ export async function POST(
         }
 
         const updatePayload: any = {
-            description: scrapedData.description,
-            status: 'discovered' 
+            description: scrapedData.description
         };
 
-        if (scrapedData.salary_range) updatePayload.salary_range = scrapedData.salary_range;
+        if (scrapedData.salary_range) updatePayload.salaryRange = scrapedData.salary_range;
         if (scrapedData.location && job.location?.includes('Unknown')) updatePayload.location = scrapedData.location;
 
         // 4. Update the job
-        const { error: updateError } = await supabase
-            .from('jobs')
-            .update(updatePayload)
-            .eq('id', jobId);
+        await prisma.job.update({
+            where: { id: jobId },
+            data: updatePayload
+        });
 
-        if (updateError) {
-            throw updateError;
-        }
+        // 5. Update UserJob status to discovered to trigger rescoring
+        await prisma.userJob.update({
+            where: { userId_jobId: { userId, jobId } },
+            data: { status: 'discovered' }
+        });
 
         return NextResponse.json({ success: true });
 

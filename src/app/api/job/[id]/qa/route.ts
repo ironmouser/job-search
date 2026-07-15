@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
 import { generateApplicationAnswer } from '@/lib/generator';
 
 export async function POST(
@@ -16,13 +16,12 @@ export async function POST(
     }
 
     // Fetch job details
-    const { data: job, error } = await supabase
-      .from('jobs')
-      .select('title, description, company')
-      .eq('id', id)
-      .single();
+    const job = await prisma.job.findUnique({
+      where: { id: id },
+      select: { title: true, description: true, company: true }
+    });
 
-    if (error || !job) {
+    if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 

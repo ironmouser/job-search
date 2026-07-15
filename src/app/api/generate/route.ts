@@ -1,36 +1,41 @@
 import { NextResponse } from 'next/server';
 import { generateAssetsForJob } from '@/lib/generator';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
         const { jobId } = body;
 
         // If no jobId is provided, find jobs that have been scored >= 80 but have no assets yet
         if (!jobId) {
             // First find highly scored jobs
-            const { data: highlyScoredJobs, error: scoreError } = await supabase
-                .from('opportunity_scores')
-                .select('job_id, total_score')
-                .gte('total_score', 80);
-
-            if (scoreError) throw scoreError;
+            const highlyScoredJobs = await prisma.opportunityScore.findMany({
+                where: { totalScore: { gte: 80 } },
+                select: { jobId: true, totalScore: true }
+            });
 
             if (!highlyScoredJobs || highlyScoredJobs.length === 0) {
                 return NextResponse.json({ message: 'No jobs found meeting the >= 80 score threshold.' }, { status: 200 });
             }
 
-            const highScoreJobIds = highlyScoredJobs.map(s => s.job_id);
+            const highScoreJobIds = highlyScoredJobs.map(s => s.jobId);
 
             // Now filter to those that are still in 'scored' status (haven't had assets generated)
-            const { data: pendingJobs, error: jobError } = await supabase
-                .from('jobs')
-                .select('id, title, description, company')
-                .in('id', highScoreJobIds)
-                .eq('status', 'scored');
-
-            if (jobError) throw jobError;
+            const pendingJobs = await prisma.job.findMany({
+                where: {
+                    id: { in: highScoreJobIds },
+                    status: 'scored'
+                },
+                select: { id: true, title: true, description: true, company: true }
+            });
 
             if (!pendingJobs || pendingJobs.length === 0) {
                 return NextResponse.json({ message: 'No new highly-scored jobs require asset generation.' }, { status: 200 });
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
             const results = [];
             for (const job of pendingJobs) {
                 try {
-                    await generateAssetsForJob(job.id, job.title, job.description || '', job.company);
+                    await generateAssetsForJob(session.user.id, job.id, job.title, job.description || '', job.company);
                     results.push({ jobId: job.id, status: 'success' });
                 } catch (e: any) {
                     console.error(`Error generating assets for job ${job.id}:`, e.message);
@@ -56,17 +61,16 @@ export async function POST(request: Request) {
         }
 
         // If a specific jobId is provided
-        const { data: job, error: fetchError } = await supabase
-            .from('jobs')
-            .select('id, title, description, company')
-            .eq('id', jobId)
-            .single();
+        const job = await prisma.job.findUnique({
+            where: { id: jobId },
+            select: { id: true, title: true, description: true, company: true }
+        });
 
-        if (fetchError || !job) {
+        if (!job) {
             return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
         }
 
-        const assets = await generateAssetsForJob(job.id, job.title, job.description || '', job.company);
+        const assets = await generateAssetsForJob(session.user.id, job.id, job.title, job.description || '', job.company);
 
         return NextResponse.json({ 
             message: 'Asset generation complete.', 

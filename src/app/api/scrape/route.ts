@@ -2,12 +2,20 @@ import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/apify';
 import { scrapeJSearch } from '@/lib/jsearch';
 import { scrapeCustomPages, scrapeRemoteAggregators } from '@/lib/scrapers/crawlee';
-import { getSettings } from '@/lib/settings';
+import { getUserSettings } from '@/lib/settings';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const userId = session.user.id;
+
         const body = await request.json();
-        const settings = await getSettings();
+        const settings: any = await getUserSettings(userId);
         
         const keyword = body.keyword || settings.searchKeyword;
         const location = body.location || settings.searchLocation;
@@ -16,15 +24,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing keyword or location in request body and settings.' }, { status: 400 });
         }
 
-        console.log(`Received omni-scrape request for ${keyword} in ${location}`);
+        console.log(`Received omni-scrape request for ${keyword} in ${location} for user ${userId}`);
 
         const sources = settings.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false };
         const customUrls = settings.customCareerPages || [];
 
-        // Parallel scraping promises
         const scrapePromises: Promise<any[]>[] = [];
 
-        // 1. JSearch (Aggregates Indeed, LinkedIn, Glassdoor, ZipRecruiter)
         if (sources.jsearch || sources.indeed || sources.linkedin || sources.glassdoor || sources.ziprecruiter || sources.monster || sources.wellfound) {
             scrapePromises.push(scrapeJSearch(keyword, location).catch(e => {
                 console.error("JSearch scrape failed", e);
@@ -32,7 +38,6 @@ export async function POST(request: Request) {
             }));
         }
 
-        // 4. Open Source Crawlee (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Breezy)
         const urlsToCrawl = customUrls.filter((url: string) => {
             if (url.includes('greenhouse.io') && sources.greenhouse) return true;
             if (url.includes('lever.co') && sources.lever) return true;
@@ -50,7 +55,6 @@ export async function POST(request: Request) {
             }));
         }
 
-        // 5. Open Source Crawlee Remote Aggregators
         if (sources.weworkremotely || sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive) {
             scrapePromises.push(scrapeRemoteAggregators(keyword, sources).catch(e => {
                 console.error("Crawlee remote aggregators scrape failed", e);
@@ -58,18 +62,14 @@ export async function POST(request: Request) {
             }));
         }
 
-        // Await all scrapers
         const results = await Promise.all(scrapePromises);
-        
-        // Flatten array of arrays
         const rawJobs = results.flat();
 
         if (!rawJobs || rawJobs.length === 0) {
              return NextResponse.json({ message: 'No jobs found for the given criteria across active sources.' }, { status: 200 });
         }
 
-        // Normalize and save to Supabase
-        const savedJobs = await normalizeAndSaveJobs(rawJobs);
+        const savedJobs = await normalizeAndSaveJobs(rawJobs, userId);
 
         return NextResponse.json({ 
             message: 'Omni-Scraping and normalization complete.', 

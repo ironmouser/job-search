@@ -1,12 +1,15 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+import { prisma } from './prisma';
+import { UserPreferences } from '@prisma/client';
 
-export async function getSettings() {
-    const settingsPath = path.join(process.cwd(), 'src', 'lib', 'settings.json');
+export async function getUserSettings(userId: string): Promise<Partial<UserPreferences>> {
     try {
-        const content = await fs.readFile(settingsPath, 'utf-8');
-        return JSON.parse(content);
+        const prefs = await prisma.userPreferences.findUnique({
+            where: { userId }
+        });
+        if (!prefs) return {};
+        return prefs;
     } catch (e) {
+        console.error('Error fetching user settings:', e);
         return {};
     }
 }

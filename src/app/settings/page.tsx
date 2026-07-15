@@ -14,7 +14,7 @@ export default function SettingsPage() {
     const isRapidAPIConfigured = true; // Server-side env vars not exposed, mock for now
 
     useEffect(() => {
-        fetch('/api/settings')
+        fetch('/api/settings', { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 setSettings(data);

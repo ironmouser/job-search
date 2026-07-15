@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        const userId = session.user.id;
         const { id } = await context.params;
         const { status, applied_at } = await request.json();
 
@@ -12,17 +20,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
         const updateData: any = { status };
         if (applied_at) {
-            updateData.applied_at = applied_at;
+            updateData.appliedAt = new Date(applied_at);
         }
 
-        const { data, error } = await supabase
-            .from('jobs')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
+        const data = await prisma.userJob.update({
+            where: { userId_jobId: { userId, jobId: id } },
+            data: updateData
+        });
 
         return NextResponse.json(data);
     } catch (e: any) {

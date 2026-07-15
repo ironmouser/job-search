@@ -1,23 +1,60 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { supabase } from './supabase';
-import { getSettings } from './settings';
+import { prisma } from './prisma';
+import { getUserSettings } from './settings';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export async function scoreJob(jobId: string, jobTitle: string, jobDescription: string) {
+export async function scoreJob(userId: string, jobId: string, jobTitle: string, jobDescription: string) {
     if (!process.env.GEMINI_API_KEY) {
         throw new Error('GEMINI_API_KEY is missing.');
     }
 
-    const settings = await getSettings();
+    const settings = await getUserSettings(userId);
     const profileText = settings.profile || "Default Scoring Profile";
 
+    // Helper to parse weights from the profile markdown
+    const parseWeights = (profile: string) => {
+        const defaults = {
+            compensation: 0.20,
+            productFit: 0.20,
+            remoteFlexibility: 0.15,
+            aiMaturity: 0.10,
+            leadership: 0.10,
+            growth: 0.10,
+            culture: 0.10,
+            techStack: 0.05
+        };
+
+        const getWeight = (regex: RegExp, def: number): number => {
+            const match = profile.match(regex);
+            if (match && match[1]) {
+                const val = parseFloat(match[1]) / 100;
+                return isNaN(val) ? def : val;
+            }
+            return def;
+        };
+
+        return {
+            compensation: getWeight(/-\s*Compensation:\s*(\d+)%/i, defaults.compensation),
+            productFit: getWeight(/-\s*(?:Product\s*Fit|ProductFit):\s*(\d+)%/i, defaults.productFit),
+            remoteFlexibility: getWeight(/-\s*(?:Remote\s*Flexibility|RemoteFlexibility):\s*(\d+)%/i, defaults.remoteFlexibility),
+            aiMaturity: getWeight(/-\s*(?:AI\s*Maturity|AIMaturity):\s*(\d+)%/i, defaults.aiMaturity),
+            leadership: getWeight(/-\s*Leadership:\s*(\d+)%/i, defaults.leadership),
+            growth: getWeight(/-\s*Growth:\s*(\d+)%/i, defaults.growth),
+            culture: getWeight(/-\s*Culture:\s*(\d+)%/i, defaults.culture),
+            techStack: getWeight(/-\s*(?:Tech\s*Stack|TechStack):\s*(\d+)%/i, defaults.techStack),
+        };
+    };
+
+    const weights = parseWeights(profileText);
+
     // Fetch recent feedback to inject into the prompt
-    const { data: feedbackData } = await supabase
-        .from('job_feedback')
-        .select('feedback_type, reasons, jobs(title, company)')
-        .order('created_at', { ascending: false })
-        .limit(10);
+    const feedbackData = await prisma.jobFeedback.findMany({
+        where: { userId: userId },
+        select: { feedbackType: true, reasons: true, job: { select: { title: true, company: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+    });
 
     let feedbackContext = "";
     if (feedbackData && feedbackData.length > 0) {
@@ -25,9 +62,9 @@ export async function scoreJob(jobId: string, jobTitle: string, jobDescription: 
         feedbackContext += "The candidate has provided the following explicit feedback on past jobs. You MUST penalize jobs that share traits with the disliked jobs, and boost jobs that share traits with liked jobs.\n\n";
         
         feedbackData.forEach(f => {
-            const jobTitle = (f.jobs as any)?.title || 'Unknown Job';
-            const company = (f.jobs as any)?.company || 'Unknown Company';
-            if (f.feedback_type === 'dislike') {
+            const jobTitle = f.job?.title || 'Unknown Job';
+            const company = f.job?.company || 'Unknown Company';
+            if (f.feedbackType === 'dislike') {
                 const reasons = f.reasons && f.reasons.length > 0 ? f.reasons.join(', ') : 'General poor fit';
                 feedbackContext += `- DISLIKED: ${jobTitle} at ${company}. Reasons: ${reasons}\n`;
             } else {
@@ -76,56 +113,58 @@ Return a JSON object strictly matching this schema:
     try {
         const scores = JSON.parse(responseText);
         
-        // Calculate weighted total score
-        const totalScore = Math.round(
-            (scores.compensation_score * 0.20) +
-            (scores.product_fit_score * 0.20) +
-            (scores.remote_flexibility_score * 0.15) +
-            (scores.ai_maturity_score * 0.10) +
-            (scores.leadership_score * 0.10) +
-            (scores.growth_score * 0.10) +
-            (scores.culture_score * 0.10) +
-            (scores.tech_stack_score * 0.05)
+        // Calculate weighted total score using dynamic parsed weights
+        const sumOfWeights = weights.compensation + weights.productFit + weights.remoteFlexibility + 
+                             weights.aiMaturity + weights.leadership + weights.growth + 
+                             weights.culture + weights.techStack;
+
+        const rawWeightedScore = (
+            (scores.compensation_score * weights.compensation) +
+            (scores.product_fit_score * weights.productFit) +
+            (scores.remote_flexibility_score * weights.remoteFlexibility) +
+            (scores.ai_maturity_score * weights.aiMaturity) +
+            (scores.leadership_score * weights.leadership) +
+            (scores.growth_score * weights.growth) +
+            (scores.culture_score * weights.culture) +
+            (scores.tech_stack_score * weights.techStack)
         );
 
-        const scorePayload = {
-            total_score: totalScore,
-            compensation_score: scores.compensation_score,
-            product_fit_score: scores.product_fit_score,
-            remote_flexibility_score: scores.remote_flexibility_score,
-            ai_maturity_score: scores.ai_maturity_score,
-            leadership_score: scores.leadership_score,
-            growth_score: scores.growth_score,
-            culture_score: scores.culture_score,
-            tech_stack_score: scores.tech_stack_score,
-            analysis_notes: scores.analysis_notes
+        const totalScore = Math.round(sumOfWeights > 0 ? (rawWeightedScore / sumOfWeights) : rawWeightedScore);
+
+        const scorePayload: any = {
+            totalScore: totalScore,
+            compensationScore: scores.compensation_score,
+            productFitScore: scores.product_fit_score,
+            remoteFlexibilityScore: scores.remote_flexibility_score,
+            aiMaturityScore: scores.ai_maturity_score,
+            leadershipScore: scores.leadership_score,
+            growthScore: scores.growth_score,
+            cultureScore: scores.culture_score,
+            techStackScore: scores.tech_stack_score,
+            analysisNotes: scores.analysis_notes
         };
 
-        const { data: existing } = await supabase.from('opportunity_scores').select('id').eq('job_id', jobId).single();
+        const existing = await prisma.opportunityScore.findFirst({ where: { jobId: jobId, userId: userId } });
 
-        let data, error;
+        let data;
         if (existing) {
-            const res = await supabase.from('opportunity_scores').update(scorePayload).eq('id', existing.id).select().single();
-            data = res.data;
-            error = res.error;
+            data = await prisma.opportunityScore.update({
+                where: { id: existing.id },
+                data: scorePayload
+            });
         } else {
-            const res = await supabase.from('opportunity_scores').insert({ job_id: jobId, ...scorePayload }).select().single();
-            data = res.data;
-            error = res.error;
+            data = await prisma.opportunityScore.create({
+                data: { jobId: jobId, userId: userId, ...scorePayload }
+            });
         }
 
-        if (error) throw error;
-
-        // Update the job status (and salary if extracted)
-        const jobUpdatePayload: any = { status: 'scored' };
-        if (scores.extracted_salary) {
-            jobUpdatePayload.salary_range = scores.extracted_salary;
-        }
-
-        await supabase
-            .from('jobs')
-            .update(jobUpdatePayload)
-            .eq('id', jobId);
+        await prisma.job.update({
+            where: { id: jobId },
+            data: {
+                status: 'scored',
+                ...(scores.extracted_salary ? { salaryRange: scores.extracted_salary } : {})
+            }
+        });
 
         return { ...data, total_score: totalScore };
 

@@ -58,3 +58,5 @@ result.json
 # agent config
 .agents/
 CLAUDE.md
+
+/src/generated/prisma

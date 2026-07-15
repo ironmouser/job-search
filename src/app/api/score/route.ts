@@ -1,20 +1,26 @@
 import { NextResponse } from 'next/server';
 import { scoreJob } from '@/lib/scoring';
-import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
         const { jobId } = body;
 
         // If no jobId is provided, score all unscored jobs
         if (!jobId) {
-            const { data: unscoredJobs, error } = await supabase
-                .from('jobs')
-                .select('id, title, description')
-                .eq('status', 'discovered');
+            const unscoredJobs = await prisma.job.findMany({
+                where: { status: 'discovered' },
+                select: { id: true, title: true, description: true }
+            });
 
-            if (error) throw error;
             if (!unscoredJobs || unscoredJobs.length === 0) {
                 return NextResponse.json({ message: 'No unscored jobs found.' }, { status: 200 });
             }
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
             const results = [];
             for (const job of unscoredJobs) {
                 try {
-                    const score = await scoreJob(job.id, job.title, job.description || '');
+                    const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
                     results.push({ jobId: job.id, score: score.total_score });
                 } catch (e: any) {
                     console.error(`Error scoring job ${job.id}:`, e.message);
@@ -39,17 +45,16 @@ export async function POST(request: Request) {
         }
 
         // If jobId is provided, just score that one
-        const { data: job, error: fetchError } = await supabase
-            .from('jobs')
-            .select('id, title, description')
-            .eq('id', jobId)
-            .single();
+        const job = await prisma.job.findUnique({
+            where: { id: jobId },
+            select: { id: true, title: true, description: true }
+        });
 
-        if (fetchError || !job) {
+        if (!job) {
             return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
         }
 
-        const score = await scoreJob(job.id, job.title, job.description || '');
+        const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
 
         return NextResponse.json({ 
             message: 'Job scoring complete.', 

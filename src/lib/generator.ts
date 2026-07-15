@@ -1,19 +1,19 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from './supabase';
+import { prisma } from './prisma';
 import fs from 'fs';
 import path from 'path';
-import { getSettings } from './settings';
+import { getUserSettings } from './settings';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY || '',
 });
 
-export async function generateAssetsForJob(jobId: string, jobTitle: string, jobDescription: string, company: string) {
+export async function generateAssetsForJob(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string) {
     if (!process.env.ANTHROPIC_API_KEY) {
         throw new Error('ANTHROPIC_API_KEY is missing.');
     }
 
-    const settings = await getSettings();
+    const settings = await getUserSettings(userId);
     const driftPercentage = settings.resumeCustomizationMaxPercentage || 25;
     const tone = settings.aiStrictness || 'Standard';
 
@@ -82,26 +82,22 @@ ${baseResume}
     try {
         const assets = JSON.parse(jsonString);
 
-        // Save to Supabase
-        const { data, error } = await supabase
-            .from('application_assets')
-            .insert({
-                job_id: jobId,
-                tailored_resume_markdown: assets.tailored_resume,
-                cover_letter_markdown: assets.cover_letter,
-                networking_message: assets.networking_message,
-                portfolio_recommendation: assets.portfolio_recommendation
-            })
-            .select()
-            .single();
-
-        if (error) throw error;
+        // Save to Prisma
+        const data = await prisma.applicationAsset.create({
+            data: {
+                jobId: jobId,
+                tailoredResumeMarkdown: assets.tailored_resume,
+                coverLetterMarkdown: assets.cover_letter,
+                networkingMessage: assets.networking_message,
+                portfolioRecommendation: assets.portfolio_recommendation
+            }
+        });
 
         // Update job status
-        await supabase
-            .from('jobs')
-            .update({ status: 'asset_generated' })
-            .eq('id', jobId);
+        await prisma.job.update({
+            where: { id: jobId },
+            data: { status: 'asset_generated' }
+        });
 
         return data;
     } catch (e: any) {
@@ -111,6 +107,7 @@ ${baseResume}
 }
 
 export async function generateApplicationAnswer(
+    userId: string,
     jobTitle: string, 
     jobDescription: string, 
     company: string, 
@@ -122,10 +119,10 @@ export async function generateApplicationAnswer(
         throw new Error('ANTHROPIC_API_KEY is missing.');
     }
 
-    const settings = await getSettings();
+    const settings = await getUserSettings(userId);
     const finalTone = tone || 'Confident and strategic';
     const profile = settings.profile || 'No profile specified.';
-    const qaExamples: { question: string, answer: string }[] = settings.qaExamples || [];
+    const qaExamples: { question: string, answer: string }[] = (settings as any).qaExamples || [];
 
     // Read the base resume
     const resumePath = path.join(process.cwd(), 'src/lib/base_resume.md');
