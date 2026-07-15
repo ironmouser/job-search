@@ -76,7 +76,7 @@ export default function SettingsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>UI Theme</label>
                             <select 
-                                value={settings.theme || 'dark'} 
+                                value={settings.theme || 'light'} 
                                 onChange={(e) => handleChange('theme', e.target.value)}
                                 style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                             >
