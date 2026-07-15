@@ -1,13 +1,20 @@
 "use client";
 
 import { useState } from 'react';
-import { Bot, ExternalLink, Copy, CheckCircle } from 'lucide-react';
+import { Bot, ExternalLink, Copy, CheckCircle, Lock } from 'lucide-react';
 
-export default function AutofillButton({ jobId, jobUrl }: { jobId: string, jobUrl: string }) {
+export default function AutofillButton({ jobId, jobUrl, isPro = false, appliesThisWeek = 0 }: { jobId: string, jobUrl: string, isPro?: boolean, appliesThisWeek?: number }) {
   const [isLaunching, setIsLaunching] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const isLocked = !isPro && appliesThisWeek >= 3;
+
   const handleAutofill = async () => {
+    if (isLocked) {
+      alert("Upgrade for unlimited smart applies");
+      return;
+    }
+    
     setIsLaunching(true);
     try {
       const res = await fetch('/api/autofill', {
@@ -64,8 +71,8 @@ export default function AutofillButton({ jobId, jobUrl }: { jobId: string, jobUr
           transition: 'background 0.3s'
         }}
       >
-        {copied ? <Copy size={18} /> : <Bot size={18} className={isLaunching ? "animate-pulse" : ""} />}
-        {isLaunching ? 'Preparing...' : copied ? 'Cover Letter Copied! Opening...' : 'Smart Apply (New Tab)'}
+        {isLocked ? <Lock size={18} /> : copied ? <Copy size={18} /> : <Bot size={18} className={isLaunching ? "animate-pulse" : ""} />}
+        {isLocked ? 'Smart Apply (Locked)' : isLaunching ? 'Preparing...' : copied ? 'Cover Letter Copied! Opening...' : 'Smart Apply (New Tab)'}
       </button>
     </div>
   );

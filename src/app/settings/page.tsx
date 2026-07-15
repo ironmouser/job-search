@@ -30,6 +30,7 @@ export default function SettingsPage() {
 
     const { data: session } = useSession();
     const isAdmin = (session?.user as any)?.role === 'ADMIN';
+    const isPro = (session?.user as any)?.planTier === 'PRO';
 
     const isSupabaseConfigured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
     const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true; // Server-side env vars not exposed, mock for now
@@ -130,51 +131,101 @@ export default function SettingsPage() {
                                 />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Search Location</label>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Enter a location preference</label>
                                 <input 
                                     type="text"
                                     value={settings.searchLocation || ''}
                                     onChange={(e) => handleChange('searchLocation', e.target.value)}
+                                    placeholder='e.g. "Remote", "Austin, TX", "United Kingdom"'
                                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                                 />
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    Examples: "Remote", a specific city ("Austin, TX"), a state/country ("United Kingdom"), or a region ("EMEA").
+                                </span>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Scraper Sources</label>
-                            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                                {['jsearch', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'].map(source => (
-                                    <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={settings.sources?.[source] || false}
-                                            onChange={(e) => {
-                                                const newSources = { ...settings.sources, [source]: e.target.checked };
-                                                handleChange('sources', newSources);
-                                            }}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                        <span style={{ textTransform: 'capitalize' }}>
-                                            {source === 'jsearch' ? 'JSearch (Indeed, LinkedIn, Glassdoor, ZipRecruiter)' : source}
-                                        </span>
+                            
+                            {[
+                                {
+                                    title: 'Global Aggregators',
+                                    sources: ['jsearch'],
+                                    isProOnly: false
+                                },
+                                {
+                                    title: 'US / Remote Tech',
+                                    sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive'],
+                                    isProOnly: false
+                                },
+                                {
+                                    title: 'ATS Integrations',
+                                    sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'],
+                                    isProOnly: false
+                                },
+                                {
+                                    title: 'International Sources',
+                                    sources: ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'],
+                                    isProOnly: true
+                                }
+                            ].map(group => (
+                                <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {group.title}
+                                        {group.isProOnly && !isPro && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '12px', fontWeight: 'bold' }}>PRO</span>}
                                     </label>
-                                ))}
-                            </div>
+                                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                        {group.sources.map(source => {
+                                            const isDisabled = group.isProOnly && !isPro;
+                                            return (
+                                                <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isDisabled ? false : (settings.sources?.[source] || false)}
+                                                        disabled={isDisabled}
+                                                        onChange={(e) => {
+                                                            const newSources = { ...settings.sources, [source]: e.target.checked };
+                                                            handleChange('sources', newSources);
+                                                        }}
+                                                        style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                                                    />
+                                                    <span style={{ textTransform: 'capitalize' }}>
+                                                        {source === 'jsearch' ? 'JSearch (Indeed, LinkedIn, Glassdoor, ZipRecruiter)' : 
+                                                         source === 'jobbank' ? 'Job Bank (CA)' : source}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Custom Career Pages (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Breezy)</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: isPro ? 1 : 0.5 }}>
+                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                Custom Career Pages
+                                {!isPro && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '12px', fontWeight: 'bold' }}>PRO</span>}
+                            </label>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Breezy
+                            </p>
                             <textarea 
-                                value={(settings.customCareerPages || []).join('\n')}
+                                value={isPro ? (settings.customCareerPages || []).join('\n') : ''}
+                                disabled={!isPro}
                                 onChange={(e) => {
                                     const urls = e.target.value.split('\n');
                                     handleChange('customCareerPages', urls);
                                 }}
-                                placeholder="https://boards.greenhouse.io/anthropic&#10;https://jobs.lever.co/openai"
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', minHeight: '100px', resize: 'vertical', fontFamily: 'monospace' }}
+                                placeholder={isPro ? "https://boards.greenhouse.io/anthropic\nhttps://jobs.lever.co/openai" : "Upgrade to Pro to add custom career pages"}
+                                title={!isPro ? "Upgrade to Pro to use this feature" : ""}
+                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', minHeight: '100px', resize: isPro ? 'vertical' : 'none', fontFamily: 'monospace', cursor: isPro ? 'text' : 'not-allowed' }}
                             />
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Put each URL on a new line. These bypass the generic Search Keyword and directly scrape the company page.</span>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                {isPro ? 'Put each URL on a new line. These bypass the generic Search Keyword and directly scrape the company page.' : 'Upgrade to Pro to bypass the generic search and directly scrape specific company career pages.'}
+                            </span>
                         </div>
+
                     </div>
                 </div>
 

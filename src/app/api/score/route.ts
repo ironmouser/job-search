@@ -13,9 +13,25 @@ export async function POST(request: Request) {
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const aiOpportunityScoringIsPro = globalSettings?.aiOpportunityScoringIsPro ?? true;
+        const isPro = (session.user as any).planTier === 'PRO';
 
-        if (aiOpportunityScoringIsPro && (session.user as any).planTier !== 'PRO') {
+        if (aiOpportunityScoringIsPro && !isPro) {
             return NextResponse.json({ error: 'AI Opportunity Scoring is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
+        }
+
+        // Free tier rate-limit: 10 AI scores per rolling 7-day window
+        if (!isPro) {
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const scoresThisWeek = await prisma.opportunityScore.count({
+                where: {
+                    userId: session.user.id,
+                    createdAt: { gte: sevenDaysAgo }
+                }
+            });
+            if (scoresThisWeek >= 10) {
+                return NextResponse.json({ error: 'Free accounts are limited to 10 AI scores per week. Upgrade to Pro for unlimited scoring.' }, { status: 403 });
+            }
         }
 
         const body = await request.json();

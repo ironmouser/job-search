@@ -64,7 +64,20 @@ export async function POST(request: Request) {
         }
 
         const data = await request.json();
-        
+        const isPro = (session.user as any).planTier === 'PRO';
+        const INTERNATIONAL_SOURCES = ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'];
+
+        // Strip Pro-only fields for free users
+        if (!isPro) {
+            data.customCareerPages = [];
+            if (data.sources) {
+                for (const src of INTERNATIONAL_SOURCES) {
+                    data.sources[src] = false;
+                }
+            }
+        }
+
+
         const prefs = await prisma.userPreferences.upsert({
             where: { userId: session.user.id },
             update: {

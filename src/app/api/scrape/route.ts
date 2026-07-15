@@ -54,7 +54,18 @@ export async function POST(request: Request) {
             if (globalSettings.workingnomadsIsPro) sources.workingnomads = false;
         }
 
-        const customUrls = settings.customCareerPages || [];
+        const INTERNATIONAL_SOURCES = ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'];
+
+        if (!isPro) {
+            // Block international sources for free users
+            for (const src of INTERNATIONAL_SOURCES) {
+                sources[src] = false;
+            }
+        }
+
+        // Custom career pages are Pro-only — clear them for free accounts
+        const customUrls = isPro ? (settings.customCareerPages || []) : [];
+
 
         const scrapePromises: Promise<any[]>[] = [];
 

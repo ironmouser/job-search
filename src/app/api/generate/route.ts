@@ -13,9 +13,25 @@ export async function POST(request: Request) {
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const aiAssetGenerationIsPro = globalSettings?.aiAssetGenerationIsPro ?? true;
+        const isPro = (session.user as any).planTier === 'PRO';
 
-        if (aiAssetGenerationIsPro && (session.user as any).planTier !== 'PRO') {
+        if (aiAssetGenerationIsPro && !isPro) {
             return NextResponse.json({ error: 'Tailored Resume & Cover Letter generation is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
+        }
+
+        // Free tier rate-limit: 3 asset generations per rolling 7-day window
+        if (!isPro) {
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const generationsThisWeek = await prisma.applicationAsset.count({
+                where: {
+                    userId: session.user.id,
+                    createdAt: { gte: sevenDaysAgo }
+                }
+            });
+            if (generationsThisWeek >= 3) {
+                return NextResponse.json({ error: 'Free accounts are limited to 3 asset generations per week. Upgrade to Pro for unlimited generation.' }, { status: 403 });
+            }
         }
 
         const body = await request.json();

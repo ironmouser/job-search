@@ -14,6 +14,8 @@ import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
 import ResumeAssetCard from '@/components/ResumeAssetCard';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { headers } from 'next/headers';
+import { calculateResumeSimilarity } from '@/lib/similarity';
 
 export default async function JobDetail({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -29,6 +31,52 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   });
   const planTier = user?.planTier || 'FREE';
   const preferences = user?.userPreferences;
+  
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const headerStore = await headers();
+  const forwardedFor = headerStore.get('x-forwarded-for');
+  const ipAddress = forwardedFor ? forwardedFor.split(',')[0] : 'unknown';
+
+  let appliesThisWeek = await prisma.userJob.count({
+    where: {
+      userId,
+      appliedAt: { gte: sevenDaysAgo }
+    }
+  });
+
+  if (ipAddress !== 'unknown') {
+    const otherUsersOnIp = await prisma.userJob.findMany({
+      where: {
+        ipAddress,
+        appliedAt: { gte: sevenDaysAgo },
+        userId: { not: userId }
+      },
+      select: { userId: true },
+      distinct: ['userId']
+    });
+
+    if (otherUsersOnIp.length > 0) {
+      const currentUserResume = preferences?.resumeMarkdown;
+      for (const { userId: otherUserId } of otherUsersOnIp) {
+        const otherPrefs = await prisma.userPreferences.findUnique({
+          where: { userId: otherUserId },
+          select: { resumeMarkdown: true }
+        });
+        const similarity = calculateResumeSimilarity(currentUserResume, otherPrefs?.resumeMarkdown);
+        if (similarity > 0.8) {
+          const aliasApplies = await prisma.userJob.count({
+            where: {
+              userId: otherUserId,
+              appliedAt: { gte: sevenDaysAgo }
+            }
+          });
+          appliesThisWeek += aliasApplies;
+        }
+      }
+    }
+  }
   
   // Fetch user specific job status and relation, with scores and assets scoped to the user
   const userJob = await prisma.userJob.findUnique({
@@ -99,7 +147,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               {totalScore}
             </div>
           )}
-          <AutofillButton jobId={job.id} jobUrl={job.url} />
+          <AutofillButton jobId={job.id} jobUrl={job.url} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
         </div>
       </div>
 
@@ -183,7 +231,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   Ready to apply? Click the "Smart Apply" button to open the job application on the company's career page.
                 </p>
               </div>
-              <AutofillButton jobId={job.id} jobUrl={job.url} />
+              <AutofillButton jobId={job.id} jobUrl={job.url} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
             </div>
           </section>
 
@@ -220,13 +268,24 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
 
               <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-glass)' }}>
                 <h4 style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>AI Analysis Notes</h4>
-                <p style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{scores.analysisNotes}</p>
+                {planTier === 'PRO' ? (
+                  <p style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{scores.analysisNotes}</p>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: 'rgba(102, 252, 241, 0.05)', border: '1px dashed rgba(102, 252, 241, 0.3)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>🔒 Available with Pro Plan</span>
+                  </div>
+                )}
               </div>
               
-              {assets?.portfolioRecommendation && (
+              {assets?.portfolioRecommendation && planTier === 'PRO' && (
                 <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(102, 252, 241, 0.1)', borderRadius: '8px', border: '1px solid rgba(102, 252, 241, 0.2)' }}>
                   <h4 style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--accent-primary)' }}>Portfolio Recommendation</h4>
                   <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>{assets.portfolioRecommendation}</p>
+                </div>
+              )}
+              {planTier !== 'PRO' && (
+                <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: 'rgba(102, 252, 241, 0.05)', border: '1px dashed rgba(102, 252, 241, 0.3)', borderRadius: '8px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>🔒 Portfolio Recommendation — Available with Pro Plan</span>
                 </div>
               )}
             </div>

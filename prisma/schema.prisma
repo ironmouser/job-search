@@ -242,6 +242,7 @@ model UserJob {
   jobId      String    @map("job_id") @db.Uuid
   status     String    @default("discovered")
   appliedAt  DateTime? @map("applied_at") @db.Timestamptz(6)
+  ipAddress  String?   @map("ip_address")
   isArchived Boolean   @default(false) @map("is_archived")
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 

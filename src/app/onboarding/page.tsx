@@ -225,17 +225,20 @@ ${goal}
                             
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Location</label>
+                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Enter a location preference</label>
                                     <div style={{ position: 'relative' }}>
                                         <MapPin size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                         <input 
                                             type="text"
                                             value={formData.searchLocation}
                                             onChange={(e) => handleChange('searchLocation', e.target.value)}
-                                            placeholder="e.g. San Francisco, CA"
+                                            placeholder='e.g. "Remote", "Austin, TX", "United Kingdom"'
                                             style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '1rem 1rem 1rem 2.5rem', borderRadius: '8px', fontSize: '1rem' }}
                                         />
                                     </div>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        Examples: "Remote", a specific city ("Austin, TX"), a state/country ("United Kingdom"), or a region ("EMEA").
+                                    </span>
                                 </div>
                                 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
