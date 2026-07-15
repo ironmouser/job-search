@@ -19,21 +19,28 @@ export async function scrapeIndeedApify(keyword: string, location: string) {
         maxItems: 15,
     };
 
-    console.log(`Starting Apify Indeed run for ${keyword} in ${location}...`);
-    const run = await apifyClient.actor(actorId).call(input);
-    const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
-    console.log(`Scraped ${items.length} raw jobs from Indeed.`);
-    
-    // Normalize Indeed format
-    return items.map((job: any) => ({
-        title: job.positionName || job.title,
-        company: job.company || job.companyName,
-        location: job.location,
-        salary_range: job.salary || null,
-        description: job.descriptionText || job.description || '',
-        url: job.url || job.jobUrl,
-        source: 'Indeed'
-    }));
+    try {
+        console.log(`Starting Apify Indeed run for ${keyword} in ${location}...`);
+        const run = await apifyClient.actor(actorId).call(input);
+        const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+        console.log(`Scraped ${items.length} raw jobs from Indeed.`);
+        
+        await prisma.scraperLog.create({ data: { scraperName: 'Indeed (Apify)', status: 'SUCCESS', resultsCount: items.length }});
+
+        // Normalize Indeed format
+        return items.map((job: any) => ({
+            title: job.positionName || job.title,
+            company: job.company || job.companyName,
+            location: job.location,
+            salary_range: job.salary || null,
+            description: job.descriptionText || job.description || '',
+            url: job.url || job.jobUrl,
+            source: 'Indeed'
+        }));
+    } catch (e: any) {
+        await prisma.scraperLog.create({ data: { scraperName: 'Indeed (Apify)', status: 'FAILURE', errorDetails: e.message }});
+        throw e;
+    }
 }
 
 export async function scrapeLinkedInApify(keyword: string, location: string) {
@@ -46,93 +53,128 @@ export async function scrapeLinkedInApify(keyword: string, location: string) {
         limit: 15, // Limit to keep it fast
     };
 
-    console.log(`Starting Apify LinkedIn run for ${keyword} in ${location}...`);
-    const run = await apifyClient.actor(actorId).call(input);
-    const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
-    console.log(`Scraped ${items.length} raw jobs from LinkedIn.`);
+    try {
+        console.log(`Starting Apify LinkedIn run for ${keyword} in ${location}...`);
+        const run = await apifyClient.actor(actorId).call(input);
+        const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+        console.log(`Scraped ${items.length} raw jobs from LinkedIn.`);
 
-    // Normalize LinkedIn format from bebity
-    return items.map((job: any) => ({
-        title: job.title,
-        company: job.companyName,
-        location: job.location,
-        salary_range: null,
-        description: job.description || '',
-        url: job.jobUrl || job.url,
-        source: 'LinkedIn'
-    }));
+        await prisma.scraperLog.create({ data: { scraperName: 'LinkedIn (Apify)', status: 'SUCCESS', resultsCount: items.length }});
+
+        // Normalize LinkedIn format from bebity
+        return items.map((job: any) => ({
+            title: job.title,
+            company: job.companyName,
+            location: job.location,
+            salary_range: null,
+            description: job.description || '',
+            url: job.jobUrl || job.url,
+            source: 'LinkedIn'
+        }));
+    } catch (e: any) {
+        await prisma.scraperLog.create({ data: { scraperName: 'LinkedIn (Apify)', status: 'FAILURE', errorDetails: e.message }});
+        return [];
+    }
 }
 
 export async function scrapeGlassdoorApify(keyword: string, location: string) {
     if (!process.env.APIFY_API_TOKEN) return [];
     const actorId = 'bebity/glassdoor-scraper'; 
-    console.log(`Starting Apify Glassdoor run for ${keyword} in ${location}...`);
-    const run = await apifyClient.actor(actorId).call({ keyword, location, limit: 15 });
-    const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
-    console.log(`Scraped ${items.length} raw jobs from Glassdoor.`);
-    return items.map((job: any) => ({
-        title: job.jobTitle || job.title || job.header?.jobTitleText,
-        company: job.companyName || job.company || job.header?.employerNameFromSearch,
-        location: job.location || job.header?.locationName,
-        salary_range: job.salary || job.salaryEstimate?.currencySymbol ? `${job.salaryEstimate.currencySymbol}${job.salaryEstimate.min}-${job.salaryEstimate.max}` : null,
-        description: job.description || job.jobDescriptionText || '',
-        url: job.jobUrl || job.url || job.header?.jobLink,
-        source: 'Glassdoor'
-    }));
+    try {
+        console.log(`Starting Apify Glassdoor run for ${keyword} in ${location}...`);
+        const run = await apifyClient.actor(actorId).call({ keyword, location, limit: 15 });
+        const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+        console.log(`Scraped ${items.length} raw jobs from Glassdoor.`);
+        await prisma.scraperLog.create({ data: { scraperName: 'Glassdoor (Apify)', status: 'SUCCESS', resultsCount: items.length }});
+        
+        return items.map((job: any) => ({
+            title: job.jobTitle || job.title || job.header?.jobTitleText,
+            company: job.companyName || job.company || job.header?.employerNameFromSearch,
+            location: job.location || job.header?.locationName,
+            salary_range: job.salary || job.salaryEstimate?.currencySymbol ? `${job.salaryEstimate.currencySymbol}${job.salaryEstimate.min}-${job.salaryEstimate.max}` : null,
+            description: job.description || job.jobDescriptionText || '',
+            url: job.jobUrl || job.url || job.header?.jobLink,
+            source: 'Glassdoor'
+        }));
+    } catch (e: any) {
+        await prisma.scraperLog.create({ data: { scraperName: 'Glassdoor (Apify)', status: 'FAILURE', errorDetails: e.message }});
+        return [];
+    }
 }
 
 export async function scrapeZipRecruiterApify(keyword: string, location: string) {
     if (!process.env.APIFY_API_TOKEN) return [];
     const actorId = 'orgupdate/ziprecruiter-jobs-scraper'; 
-    console.log(`Starting Apify ZipRecruiter run for ${keyword} in ${location}...`);
-    const run = await apifyClient.actor(actorId).call({ keywords: keyword, location: location, limit: 15 });
-    const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
-    console.log(`Scraped ${items.length} raw jobs from ZipRecruiter.`);
-    return items.map((job: any) => ({
-        title: job.title || job.jobTitle,
-        company: job.companyName || job.company,
-        location: job.location,
-        salary_range: job.salary || job.salaryText || null,
-        description: job.description || job.snippet || '',
-        url: job.url || job.jobUrl,
-        source: 'ZipRecruiter'
-    }));
+    try {
+        console.log(`Starting Apify ZipRecruiter run for ${keyword} in ${location}...`);
+        const run = await apifyClient.actor(actorId).call({ keywords: keyword, location: location, limit: 15 });
+        const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+        console.log(`Scraped ${items.length} raw jobs from ZipRecruiter.`);
+        await prisma.scraperLog.create({ data: { scraperName: 'ZipRecruiter (Apify)', status: 'SUCCESS', resultsCount: items.length }});
+
+        return items.map((job: any) => ({
+            title: job.title || job.jobTitle,
+            company: job.companyName || job.company,
+            location: job.location,
+            salary_range: job.salary || job.salaryText || null,
+            description: job.description || job.snippet || '',
+            url: job.url || job.jobUrl,
+            source: 'ZipRecruiter'
+        }));
+    } catch (e: any) {
+        await prisma.scraperLog.create({ data: { scraperName: 'ZipRecruiter (Apify)', status: 'FAILURE', errorDetails: e.message }});
+        return [];
+    }
 }
 
 export async function scrapeMonsterApify(keyword: string, location: string) {
     if (!process.env.APIFY_API_TOKEN) return [];
     const actorId = 'parseforge/monster-scraper'; 
-    console.log(`Starting Apify Monster run for ${keyword} in ${location}...`);
-    const run = await apifyClient.actor(actorId).call({ query: keyword, location: location, maxItems: 15 });
-    const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
-    console.log(`Scraped ${items.length} raw jobs from Monster.`);
-    return items.map((job: any) => ({
-        title: job.title || job.jobTitle,
-        company: job.company?.name || job.companyName || job.company,
-        location: job.location?.name || job.location,
-        salary_range: job.salary || null,
-        description: job.description || '',
-        url: job.url || job.jobUrl,
-        source: 'Monster'
-    }));
+    try {
+        console.log(`Starting Apify Monster run for ${keyword} in ${location}...`);
+        const run = await apifyClient.actor(actorId).call({ query: keyword, location: location, maxItems: 15 });
+        const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+        console.log(`Scraped ${items.length} raw jobs from Monster.`);
+        await prisma.scraperLog.create({ data: { scraperName: 'Monster (Apify)', status: 'SUCCESS', resultsCount: items.length }});
+
+        return items.map((job: any) => ({
+            title: job.title || job.jobTitle,
+            company: job.company?.name || job.companyName || job.company,
+            location: job.location?.name || job.location,
+            salary_range: job.salary || null,
+            description: job.description || '',
+            url: job.url || job.jobUrl,
+            source: 'Monster'
+        }));
+    } catch (e: any) {
+        await prisma.scraperLog.create({ data: { scraperName: 'Monster (Apify)', status: 'FAILURE', errorDetails: e.message }});
+        return [];
+    }
 }
 
 export async function scrapeWellfoundApify(keyword: string, location: string) {
     if (!process.env.APIFY_API_TOKEN) return [];
     const actorId = 'radeance/wellfound-scraper'; 
-    console.log(`Starting Apify Wellfound run for ${keyword} in ${location}...`);
-    const run = await apifyClient.actor(actorId).call({ keyword: keyword, location: location, maxItems: 15 });
-    const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
-    console.log(`Scraped ${items.length} raw jobs from Wellfound.`);
-    return items.map((job: any) => ({
-        title: job.title || job.jobTitle,
-        company: job.companyName || job.startup?.name,
-        location: job.location || job.locationNames?.join(', '),
-        salary_range: job.salary || job.compensation || null,
-        description: job.description || '',
-        url: job.url || job.jobUrl,
-        source: 'Wellfound'
-    }));
+    try {
+        console.log(`Starting Apify Wellfound run for ${keyword} in ${location}...`);
+        const run = await apifyClient.actor(actorId).call({ keyword: keyword, location: location, maxItems: 15 });
+        const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+        console.log(`Scraped ${items.length} raw jobs from Wellfound.`);
+        await prisma.scraperLog.create({ data: { scraperName: 'Wellfound (Apify)', status: 'SUCCESS', resultsCount: items.length }});
+
+        return items.map((job: any) => ({
+            title: job.title || job.jobTitle,
+            company: job.companyName || job.startup?.name,
+            location: job.location || job.locationNames?.join(', '),
+            salary_range: job.salary || job.compensation || null,
+            description: job.description || '',
+            url: job.url || job.jobUrl,
+            source: 'Wellfound'
+        }));
+    } catch (e: any) {
+        await prisma.scraperLog.create({ data: { scraperName: 'Wellfound (Apify)', status: 'FAILURE', errorDetails: e.message }});
+        return [];
+    }
 }
 
 export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {

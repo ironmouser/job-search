@@ -96,6 +96,21 @@ model SyncLog {
   @@map("sync_logs")
 }
 
+model ScraperLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  scraperName    String   @map("scraper_name")
+  targetUrl      String?  @map("target_url")
+  status         String   // 'SUCCESS', 'FAILURE', 'PARTIAL'
+  resultsCount   Int      @default(0) @map("results_count")
+  errorDetails   String?  @map("error_details")
+  usedFirecrawl  Boolean  @default(false) @map("used_firecrawl")
+  firecrawlSites String[] @default([]) @map("firecrawl_sites")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt(sort: Desc)])
+  @@map("scraper_logs")
+}
+
 // NextAuth Models
 
 enum Role {

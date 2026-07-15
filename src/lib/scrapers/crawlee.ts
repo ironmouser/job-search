@@ -6,8 +6,9 @@ import * as cheerio from 'cheerio';
  */
 
 import { gotScraping } from 'got-scraping';
+import { prisma } from '../prisma';
 
-async function fetchPage(url: string, retries = 3): Promise<cheerio.CheerioAPI | null> {
+async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const res = await gotScraping({
@@ -18,7 +19,7 @@ async function fetchPage(url: string, retries = 3): Promise<cheerio.CheerioAPI |
             });
 
             if (res.statusCode >= 200 && res.statusCode < 300) {
-                return cheerio.load(res.body);
+                return { $: cheerio.load(res.body), usedFirecrawl: false };
             }
 
             console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.statusCode})`);
@@ -39,7 +40,7 @@ async function fetchPage(url: string, retries = 3): Promise<cheerio.CheerioAPI |
                     if (fcRes.ok) {
                         const fcData = await fcRes.json();
                         if (fcData.success && fcData.data && fcData.data.html) {
-                            return cheerio.load(fcData.data.html);
+                            return { $: cheerio.load(fcData.data.html), usedFirecrawl: true };
                         }
                     }
                     console.warn(`Firecrawl fallback failed for ${url}`);
@@ -48,25 +49,28 @@ async function fetchPage(url: string, retries = 3): Promise<cheerio.CheerioAPI |
                 }
             }
 
-            if (attempt === retries) return null;
+            if (attempt === retries) return { $: null, usedFirecrawl: false };
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // simple backoff
             continue;
         } catch (e: any) {
             console.warn(`Attempt ${attempt}: Error fetching ${url}: ${e.message}`);
-            if (attempt === retries) return null;
+            if (attempt === retries) return { $: null, usedFirecrawl: false };
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
     }
-    return null;
+    return { $: null, usedFirecrawl: false };
 }
 
 export async function scrapeCustomPages(urls: string[]) {
     if (!urls || urls.length === 0) return [];
 
     const jobs: any[] = [];
+    const fcSites: string[] = [];
 
     for (const url of urls.slice(0, 10)) {
-        const $ = await fetchPage(url);
+        const { $: cheerio$, usedFirecrawl } = await fetchPage(url);
+        if (usedFirecrawl) fcSites.push(url);
+        const $ = cheerio$;
         if (!$) continue;
 
         try {
@@ -176,6 +180,20 @@ export async function scrapeCustomPages(urls: string[]) {
         }
     }
 
+    try {
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Custom Career Pages',
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                resultsCount: jobs.length,
+                usedFirecrawl: fcSites.length > 0,
+                firecrawlSites: fcSites
+            }
+        });
+    } catch (dbErr) {
+        console.error('Error saving scraper log:', dbErr);
+    }
+
     return jobs;
 }
 
@@ -190,11 +208,14 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     if (urls.length === 0) return [];
 
     const jobs: any[] = [];
+    const fcSites: string[] = [];
 
     // Fetch all pages in parallel
     const results = await Promise.allSettled(
         urls.map(async ({ url, source }) => {
-            const $ = await fetchPage(url);
+            const { $: cheerio$, usedFirecrawl } = await fetchPage(url);
+            if (usedFirecrawl) fcSites.push(url);
+            const $ = cheerio$;
             if (!$) return [];
 
             const pageJobs: any[] = [];
@@ -288,6 +309,20 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
         if (result.status === 'fulfilled') {
             jobs.push(...result.value);
         }
+    }
+
+    try {
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Remote Aggregators',
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                resultsCount: jobs.length,
+                usedFirecrawl: fcSites.length > 0,
+                firecrawlSites: fcSites
+            }
+        });
+    } catch (dbErr) {
+        console.error('Error saving scraper log:', dbErr);
     }
 
     return jobs;

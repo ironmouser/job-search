@@ -72,7 +72,7 @@ export default function AdminDashboard() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'gates'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'gates' | 'scrapers'>('users');
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -100,6 +100,11 @@ export default function AdminDashboard() {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Scraper Logs State
+  const [scraperLogs, setScraperLogs] = useState<any[]>([]);
+  const [scraperStats, setScraperStats] = useState<any>(null);
+  const [loadingScrapers, setLoadingScrapers] = useState(false);
+
   // Redirect if not admin
   useEffect(() => {
     if (session && (session.user as any)?.role !== 'ADMIN') {
@@ -118,6 +123,23 @@ export default function AdminDashboard() {
         })
         .catch(console.error)
         .finally(() => setLoadingUsers(false));
+    }
+  }, [activeTab, session]);
+
+  // Fetch Scraper Logs
+  useEffect(() => {
+    if (activeTab === 'scrapers' && session && (session.user as any)?.role === 'ADMIN') {
+      setLoadingScrapers(true);
+      fetch('/api/admin/scrapers/logs')
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            setScraperLogs(data.logs || []);
+            setScraperStats(data.stats || null);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingScrapers(false));
     }
   }, [activeTab, session]);
 
@@ -245,10 +267,17 @@ export default function AdminDashboard() {
         >
           <Sliders size={16} /> Feature Gates
         </button>
+        <button
+          onClick={() => setActiveTab('scrapers')}
+          className={activeTab === 'scrapers' ? 'btn-primary' : 'btn-outline'}
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+        >
+          <Cpu size={16} /> Scrapers
+        </button>
       </div>
 
       {/* Tab Contents */}
-      {activeTab === 'users' ? (
+      {activeTab === 'users' && (
         <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
             <h3 style={{ fontSize: "1.25rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -349,7 +378,8 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
-      ) : (
+      )}
+      {activeTab === 'gates' && (
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
           {/* Main settings description */}
           <div className="glass-card">
@@ -526,6 +556,99 @@ export default function AdminDashboard() {
               >
                 <Check size={18} /> {savingSettings ? "Saving Settings..." : "Save Feature Gates"}
               </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'scrapers' && (
+        <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          <div>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Cpu size={20} className="text-accent" /> Scraper Performance (Last 24h)
+            </h3>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Overview of automated job collection runs.</p>
+          </div>
+
+          {loadingScrapers ? (
+            <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading scraper data...</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+              {scraperStats && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Total Runs (24h)</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#fff" }}>{scraperStats.totalRuns24h}</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Success Rate</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 600, color: scraperStats.successRate24h >= 90 ? "var(--success)" : "var(--error)" }}>
+                      {scraperStats.successRate24h}%
+                    </div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Jobs Found (24h)</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#fff" }}>{scraperStats.totalJobsScraped24h}</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "1rem", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Firecrawl Fallbacks</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--warning)" }}>{scraperStats.firecrawlFallbacks24h}</div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h4 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "1rem" }}>Recent Scraper Runs</h4>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border-glass)", textAlign: "left" }}>
+                        <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Scraper</th>
+                        <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Status</th>
+                        <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Results</th>
+                        <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Firecrawl Used</th>
+                        <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Time</th>
+                        <th style={{ padding: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>Errors</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {scraperLogs.map((log: any) => (
+                        <tr key={log.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                          <td style={{ padding: "0.75rem", color: "#fff", fontWeight: 500 }}>{log.scraperName}</td>
+                          <td style={{ padding: "0.75rem" }}>
+                            <span className={log.status === 'SUCCESS' ? 'tag tag-pro' : 'tag tag-free'} style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", background: log.status === 'SUCCESS' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: log.status === 'SUCCESS' ? '#22c55e' : '#ef4444' }}>
+                              {log.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.75rem", color: "var(--text-secondary)" }}>{log.resultsCount} jobs</td>
+                          <td style={{ padding: "0.75rem" }}>
+                            {log.usedFirecrawl ? (
+                              <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", color: "var(--warning)", fontSize: "0.8rem" }}>
+                                <Sparkles size={12} /> Yes ({log.firecrawlSites?.length || 0})
+                              </span>
+                            ) : (
+                              <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>No</span>
+                            )}
+                          </td>
+                          <td style={{ padding: "0.75rem", color: "var(--text-secondary)" }}>
+                            {new Date(log.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td style={{ padding: "0.75rem", color: "var(--error)", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={log.errorDetails}>
+                            {log.errorDetails || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                      {scraperLogs.length === 0 && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
+                            No scraper logs found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
         </div>
