@@ -66,6 +66,10 @@ model ApplicationAsset {
   coverLetterMarkdown    String?  @map("cover_letter_markdown")
   networkingMessage      String?  @map("networking_message")
   portfolioRecommendation String? @map("portfolio_recommendation")
+  resumeRegensUsed            Int @default(0) @map("resume_regens_used")
+  coverLetterRegensUsed       Int @default(0) @map("cover_letter_regens_used")
+  networkingMessageRegensUsed Int @default(0) @map("networking_message_regens_used")
+  qaGenerationsUsed           Int @default(0) @map("qa_generations_used")
 
   job  Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -216,6 +220,8 @@ model UserPreferences {
   remoteOnly        Boolean  @default(false)
   theme             String   @default("dark")
   aiStrictness      String   @default("Standard")
+  coverLetterTone       String?  @default("Confident and strategic") @map("cover_letter_tone")
+  networkingMessageTone String?  @default("Confident and strategic") @map("networking_message_tone")
   resumeCustomizationMaxPercentage Int @default(50)
   resumeMarkdown    String?  @db.Text
   profile           String?  @db.Text

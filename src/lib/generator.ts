@@ -40,7 +40,7 @@ CRITICAL GUARDRAILS:
 Return the result as a JSON object with EXACTLY these keys:
 {
   "tailored_resume": "Markdown string of the tailored resume",
-  "cover_letter": "Markdown string of the tailored cover letter",
+  "cover_letter": "Markdown string of the tailored cover letter (aim for around 150 words as a starting point)",
   "networking_message": "A short, 2-3 sentence LinkedIn connection request to the hiring manager or recruiter",
   "portfolio_recommendation": "A 1-2 sentence recommendation on which project from the resume to highlight in interviews"
 }`;
@@ -161,8 +161,9 @@ Your goal is to answer a specific job application question on behalf of the cand
 
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME or TARGET PROFILE.
-2. TONE: ${finalTone}
-3. INSTRUCTION: ${instructionText || 'Answer the question directly and compellingly.'}
+2. LENGTH: Aim for around 65 words as a starting point, unless instructed otherwise.
+3. TONE: ${finalTone}
+4. INSTRUCTION: ${instructionText || 'Answer the question directly and compellingly.'}
 
 Output ONLY the answer to the question in plain text. Do not wrap it in JSON. Do not include any introductory or conversational text.`;
 
@@ -202,4 +203,109 @@ ${question}
     }
 
     return responseText.trim();
+}
+
+export async function regenerateResume(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, customizationAmount?: number) {
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is missing.');
+    const settings = await getUserSettings(userId);
+    const driftPercentage = customizationAmount !== undefined ? customizationAmount : (settings.resumeCustomizationMaxPercentage || 25);
+    
+    let baseResume = settings.resumeMarkdown || '';
+    if (!baseResume) {
+        try { baseResume = fs.readFileSync(path.join(process.cwd(), 'src/lib/base_resume.md'), 'utf8'); } catch (e) {}
+    }
+
+    let instructionText = '';
+    if (instruction === 'different') {
+        instructionText = 'CRITICAL: Take a completely different approach or angle than a standard tailoring.';
+    }
+
+    const systemPrompt = `You are an expert career strategist and executive resume writer. 
+Your goal is to tailor the candidate's resume for a specific job.
+
+CRITICAL GUARDRAILS:
+1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME.
+2. MAXIMUM ${driftPercentage}% DRIFT: You may rephrase bullets to highlight relevant keywords from the job description, but the core truth and structure must remain intact.
+3. INSTRUCTION: ${instructionText || 'Tailor the resume to the job description.'}
+
+Output ONLY the Markdown string of the tailored resume in plain text. Do not wrap it in JSON or Markdown blocks like \`\`\`markdown.`;
+
+    const userPrompt = `COMPANY: ${company}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    
+    const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+    });
+    return ((response as any).content?.[0]?.text || '').trim();
+}
+
+export async function regenerateCoverLetter(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is missing.');
+    const settings = await getUserSettings(userId);
+    const finalTone = tone || 'Confident and strategic';
+    
+    let baseResume = settings.resumeMarkdown || '';
+    if (!baseResume) {
+        try { baseResume = fs.readFileSync(path.join(process.cwd(), 'src/lib/base_resume.md'), 'utf8'); } catch (e) {}
+    }
+
+    let instructionText = '';
+    if (instruction === 'shorter') instructionText = 'CRITICAL: Make the cover letter significantly shorter and more concise.';
+    else if (instruction === 'longer') instructionText = 'CRITICAL: Expand on the cover letter, adding more detail and depth from the resume.';
+    else if (instruction === 'different') instructionText = 'CRITICAL: Take a completely different approach or angle.';
+
+    const systemPrompt = `You are an expert career strategist. Write a tailored cover letter for a specific job.
+CRITICAL GUARDRAILS:
+1. NO HALLUCINATIONS.
+2. LENGTH: Aim for around 150 words as a starting point, unless instructed otherwise.
+3. TONE: ${finalTone}
+4. INSTRUCTION: ${instructionText || 'Write a compelling cover letter.'}
+
+Output ONLY the Markdown string of the cover letter in plain text. Do not wrap it in JSON.`;
+
+    const userPrompt = `COMPANY: ${company}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    
+    const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+    });
+    return ((response as any).content?.[0]?.text || '').trim();
+}
+
+export async function regenerateNetworkingMessage(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
+    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is missing.');
+    const settings = await getUserSettings(userId);
+    const finalTone = tone || 'Confident and strategic';
+    
+    let baseResume = settings.resumeMarkdown || '';
+    if (!baseResume) {
+        try { baseResume = fs.readFileSync(path.join(process.cwd(), 'src/lib/base_resume.md'), 'utf8'); } catch (e) {}
+    }
+
+    let instructionText = '';
+    if (instruction === 'shorter') instructionText = 'CRITICAL: Make the message significantly shorter (LinkedIn connection request length).';
+    else if (instruction === 'longer') instructionText = 'CRITICAL: Expand the message slightly (LinkedIn InMail or cold email length).';
+    else if (instruction === 'different') instructionText = 'CRITICAL: Take a completely different approach or angle.';
+
+    const systemPrompt = `You are an expert career strategist. Write a short networking message to the hiring manager or recruiter.
+CRITICAL GUARDRAILS:
+1. NO HALLUCINATIONS.
+2. TONE: ${finalTone}
+3. INSTRUCTION: ${instructionText || 'Write a 2-3 sentence connection request.'}
+
+Output ONLY the text of the networking message. Do not wrap it in JSON.`;
+
+    const userPrompt = `COMPANY: ${company}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    
+    const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+    });
+    return ((response as any).content?.[0]?.text || '').trim();
 }

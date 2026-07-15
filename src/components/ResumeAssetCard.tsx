@@ -1,0 +1,150 @@
+'use client';
+
+import { useState } from 'react';
+import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown } from 'lucide-react';
+import ResumeActions from './ResumeActions';
+
+export default function ResumeAssetCard({
+    jobId,
+    initialContent,
+    initialRegensUsed,
+    planTier,
+    initialCustomization
+}: {
+    jobId: string;
+    initialContent: string;
+    initialRegensUsed: number;
+    planTier: string;
+    initialCustomization: number;
+}) {
+    const [content, setContent] = useState(initialContent);
+    const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
+    const [customizationAmount, setCustomizationAmount] = useState(initialCustomization || 50);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSavingPref, setIsSavingPref] = useState(false);
+    const [savedPref, setSavedPref] = useState(false);
+    const [error, setError] = useState('');
+
+    const isPro = planTier === 'PRO';
+    const regensLeft = 3 - regensUsed;
+
+    const handleRegenerate = async () => {
+        if (!isPro || regensLeft <= 0) return;
+        setIsLoading(true);
+        setError('');
+        setSavedPref(false);
+        try {
+            const res = await fetch(`/api/job/${jobId}/generate-resume`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instruction: 'different', customizationAmount }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to regenerate');
+            setContent(data.newResume);
+            setRegensUsed(data.regensUsed);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const savePreference = async () => {
+        setIsSavingPref(true);
+        try {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resumeCustomizationMaxPercentage: customizationAmount })
+            });
+            setSavedPref(true);
+        } catch (err) {
+            console.error("Failed to save preference:", err);
+        } finally {
+            setIsSavingPref(false);
+        }
+    };
+
+    return (
+        <details className="glass-card" style={{ cursor: 'pointer' }}>
+            <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
+                    <CheckCircle size={20} /> Tailored Resume Extract
+                </h3>
+                <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
+            </summary>
+            <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto', overflow: 'auto' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexGrow: 1 }}>
+                        <label style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Customization: {customizationAmount}%</label>
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            value={customizationAmount} 
+                            onChange={(e) => setCustomizationAmount(Number(e.target.value))}
+                            style={{ flexGrow: 1, maxWidth: '200px' }}
+                        />
+                    </div>
+
+                    <button
+                        onClick={savePreference}
+                        disabled={isSavingPref || savedPref}
+                        style={{
+                            padding: '0.4rem 0.8rem',
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            background: savedPref ? 'rgba(102, 252, 241, 0.1)' : 'transparent',
+                            color: savedPref ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            border: `1px solid ${savedPref ? 'rgba(102, 252, 241, 0.3)' : 'var(--border-glass)'}`,
+                            borderRadius: '4px',
+                            cursor: (isSavingPref || savedPref) ? 'default' : 'pointer'
+                        }}
+                    >
+                        {isSavingPref ? <Loader2 size={14} className="animate-spin" /> : <ThumbsUp size={14} />}
+                        {savedPref ? 'Saved to Preferences' : 'Save Preference'}
+                    </button>
+                </div>
+
+                <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                    {content}
+                </div>
+                
+                <ResumeActions jobId={jobId} markdownText={content} />
+
+                {error && (
+                    <div style={{ padding: '1rem', background: 'rgba(255, 77, 77, 0.1)', color: 'var(--danger)', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '1rem', marginTop: '1rem' }}>
+                        {error}
+                    </div>
+                )}
+
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    paddingTop: '1rem',
+                    borderTop: '1px solid var(--border-glass)',
+                    flexWrap: 'wrap',
+                    marginTop: '1.5rem'
+                }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        Regenerations left: {isPro ? regensLeft : 0} / 3
+                    </span>
+                    <div style={{ flexGrow: 1 }} />
+                    <button 
+                        onClick={handleRegenerate} 
+                        disabled={isLoading || !isPro || regensLeft <= 0} 
+                        className="btn-outline" 
+                        title={!isPro ? "Pro account only" : ""}
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                    >
+                        {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Different
+                    </button>
+                </div>
+            </div>
+        </details>
+    );
+}

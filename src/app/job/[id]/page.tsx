@@ -9,6 +9,9 @@ import ApplicationQA from '@/components/ApplicationQA';
 import CopyToClipboardButton from '@/components/CopyToClipboardButton';
 import BackToTopButton from '@/components/BackToTopButton';
 import GenerateAssetsButton from '@/components/GenerateAssetsButton';
+import NetworkingAssetCard from '@/components/NetworkingAssetCard';
+import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
+import ResumeAssetCard from '@/components/ResumeAssetCard';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -19,6 +22,13 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   }
   const userId = session.user.id;
   const { id } = await params;
+  
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { userPreferences: true }
+  });
+  const planTier = user?.planTier || 'FREE';
+  const preferences = user?.userPreferences;
   
   // Fetch user specific job status and relation, with scores and assets scoped to the user
   const userJob = await prisma.userJob.findUnique({
@@ -123,50 +133,29 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             
             {assets ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <details className="glass-card" style={{ cursor: 'pointer' }}>
-                  <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-                      <CheckCircle size={20} /> Tailored Networking Message
-                    </h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <CopyToClipboardButton textToCopy={assets.networkingMessage || ''} />
-                      <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
-                    </div>
-                  </summary>
-                  <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
-                    <p>{assets.networkingMessage}</p>
-                  </div>
-                </details>
+                <NetworkingAssetCard 
+                  jobId={job.id} 
+                  initialContent={assets.networkingMessage || ''} 
+                  initialRegensUsed={assets.networkingMessageRegensUsed || 0} 
+                  planTier={planTier} 
+                  initialTone={preferences?.networkingMessageTone || 'Confident and strategic'} 
+                />
 
-                <details className="glass-card" style={{ cursor: 'pointer' }}>
-                  <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-                      <CheckCircle size={20} /> Cover Letter
-                    </h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <CopyToClipboardButton textToCopy={assets.coverLetterMarkdown || ''} />
-                      <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
-                    </div>
-                  </summary>
-                  <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: '1.5rem', cursor: 'auto' }}>
-                    {assets.coverLetterMarkdown}
-                  </div>
-                </details>
+                <CoverLetterAssetCard 
+                  jobId={job.id} 
+                  initialContent={assets.coverLetterMarkdown || ''} 
+                  initialRegensUsed={assets.coverLetterRegensUsed || 0} 
+                  planTier={planTier} 
+                  initialTone={preferences?.coverLetterTone || 'Confident and strategic'} 
+                />
                 
-                <details className="glass-card" style={{ cursor: 'pointer' }}>
-                  <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-                      <CheckCircle size={20} /> Tailored Resume Extract
-                    </h3>
-                    <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
-                  </summary>
-                  <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto', overflow: 'auto' }}>
-                    <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                      {assets.tailoredResumeMarkdown}
-                    </div>
-                    <ResumeActions jobId={job.id} markdownText={assets.tailoredResumeMarkdown || ''} />
-                  </div>
-                </details>
+                <ResumeAssetCard 
+                  jobId={job.id} 
+                  initialContent={assets.tailoredResumeMarkdown || ''} 
+                  initialRegensUsed={assets.resumeRegensUsed || 0} 
+                  planTier={planTier} 
+                  initialCustomization={preferences?.resumeCustomizationMaxPercentage || 50} 
+                />
               </div>
             ) : (
               <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', padding: '2rem' }}>
@@ -204,7 +193,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Application Q&A</h2>
             </div>
-            <ApplicationQA jobId={job.id} />
+            <ApplicationQA jobId={job.id} planTier={planTier} initialQaUsed={assets?.qaGenerationsUsed || 0} />
           </section>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', marginBottom: '2rem' }}>

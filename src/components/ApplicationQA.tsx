@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown } from 'lucide-react';
 
-export default function ApplicationQA({ jobId }: { jobId: string }) {
+export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed = 0 }: { jobId: string; planTier?: string; initialQaUsed?: number }) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [tone, setTone] = useState('Confident and strategic');
@@ -12,9 +12,14 @@ export default function ApplicationQA({ jobId }: { jobId: string }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [savedPref, setSavedPref] = useState(false);
+  const [qaUsed, setQaUsed] = useState(initialQaUsed);
+
+  const isPro = planTier === 'PRO';
+  const limit = isPro ? 10 : 2;
+  const regensLeft = limit - qaUsed;
 
   const handleGenerate = async (instruction?: string) => {
-    if (!question.trim()) return;
+    if (!question.trim() || regensLeft <= 0) return;
     
     setIsLoading(true);
     setError('');
@@ -37,6 +42,9 @@ export default function ApplicationQA({ jobId }: { jobId: string }) {
       }
       
       setAnswer(data.answer);
+      if (data.qaGenerationsUsed !== undefined) {
+        setQaUsed(data.qaGenerationsUsed);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -126,18 +134,24 @@ export default function ApplicationQA({ jobId }: { jobId: string }) {
             <option value="Highly technical and detailed">Highly Technical</option>
           </select>
           
-          <button 
-            onClick={() => handleGenerate()}
-            disabled={isLoading || !question.trim()}
-            className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            {isLoading && !answer ? (
-              <><Loader2 size={16} className="animate-spin" /> Generating...</>
-            ) : (
-              <><Send size={16} /> Generate Response</>
-            )}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Generations left: {regensLeft} / {limit}
+            </span>
+            <button 
+              onClick={() => handleGenerate()}
+              disabled={isLoading || !question.trim() || regensLeft <= 0}
+              className="btn-primary"
+              title={regensLeft <= 0 && !isPro ? "Upgrade to Pro for more generations" : ""}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              {isLoading && !answer ? (
+                <><Loader2 size={16} className="animate-spin" /> Generating...</>
+              ) : (
+                <><Send size={16} /> Generate Response</>
+              )}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -183,13 +197,13 @@ export default function ApplicationQA({ jobId }: { jobId: string }) {
               borderTop: '1px solid var(--border-glass)',
               flexWrap: 'wrap'
             }}>
-              <button onClick={() => handleGenerate('different')} disabled={isLoading} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button onClick={() => handleGenerate('different')} disabled={isLoading || regensLeft <= 0} title={regensLeft <= 0 && !isPro ? "Upgrade to Pro for more" : ""} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Different
               </button>
-              <button onClick={() => handleGenerate('shorter')} disabled={isLoading} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button onClick={() => handleGenerate('shorter')} disabled={isLoading || regensLeft <= 0} title={regensLeft <= 0 && !isPro ? "Upgrade to Pro for more" : ""} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Minimize2 size={14} />} Shorter
               </button>
-              <button onClick={() => handleGenerate('longer')} disabled={isLoading} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button onClick={() => handleGenerate('longer')} disabled={isLoading || regensLeft <= 0} title={regensLeft <= 0 && !isPro ? "Upgrade to Pro for more" : ""} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Maximize2 size={14} />} Expand
               </button>
               

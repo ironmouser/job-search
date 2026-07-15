@@ -52,10 +52,14 @@ export default function SettingsPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
+            const settingsToSave = { ...settings };
+            if (settingsToSave.customCareerPages) {
+                settingsToSave.customCareerPages = settingsToSave.customCareerPages.filter((u: string) => u.trim() !== '');
+            }
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings)
+                body: JSON.stringify(settingsToSave)
             });
             alert('Settings saved successfully!');
             // Dispatch event for theme update
@@ -163,7 +167,7 @@ export default function SettingsPage() {
                             <textarea 
                                 value={(settings.customCareerPages || []).join('\n')}
                                 onChange={(e) => {
-                                    const urls = e.target.value.split('\n').filter(u => u.trim() !== '');
+                                    const urls = e.target.value.split('\n');
                                     handleChange('customCareerPages', urls);
                                 }}
                                 placeholder="https://boards.greenhouse.io/anthropic&#10;https://jobs.lever.co/openai"
