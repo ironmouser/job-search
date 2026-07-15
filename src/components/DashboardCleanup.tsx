@@ -21,11 +21,12 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
     disliked: false,
     viewed: false,
     applied: false,
+    archived: false,
     olderThanDays: ''
   });
 
   const handleCleanup = async () => {
-    if (!filters.disliked && !filters.viewed && !filters.applied && !filters.olderThanDays) {
+    if (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.olderThanDays) {
       alert("Please select at least one criteria for cleanup.");
       return;
     }
@@ -37,6 +38,7 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
           disliked: filters.disliked,
           viewed: filters.viewed,
           applied: filters.applied,
+          archived: filters.archived,
           olderThanDays: filters.olderThanDays ? parseInt(filters.olderThanDays, 10) : null
         };
 
@@ -50,7 +52,7 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
           const data = await res.json();
           alert(`Successfully deleted ${data.count} jobs.`);
           setIsOpen(false);
-          setFilters({ disliked: false, viewed: false, applied: false, olderThanDays: '' });
+          setFilters({ disliked: false, viewed: false, applied: false, archived: false, olderThanDays: '' });
           onCleanupComplete();
         } else {
           const error = await res.json();
@@ -130,6 +132,16 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
                 <span>Remove <strong>applied to</strong> jobs</span>
               </label>
 
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={filters.archived}
+                  onChange={(e) => setFilters(prev => ({ ...prev, archived: e.target.checked }))}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                <span>Remove <strong>archived</strong> jobs</span>
+              </label>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Remove jobs older than</span>
                 <input 
@@ -155,7 +167,7 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
                 onClick={handleCleanup}
                 className="btn-primary"
                 style={{ background: 'var(--status-rejected)', color: 'white' }}
-                disabled={isCleaning || (!filters.disliked && !filters.viewed && !filters.applied && !filters.olderThanDays)}
+                disabled={isCleaning || (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.olderThanDays)}
               >
                 {isCleaning ? 'Deleting...' : 'Delete Jobs'}
               </button>
