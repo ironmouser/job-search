@@ -219,6 +219,10 @@ model UserPreferences {
   resumeCustomizationMaxPercentage Int @default(50)
   resumeMarkdown    String?  @db.Text
   profile           String?  @db.Text
+  emailAddress      String?
+  emailAppPassword  String?
+  imapHost          String?  @default("imap.gmail.com")
+  imapPort          Int?     @default(993)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -18,10 +18,12 @@ export default async function Dashboard() {
   }
 
   const userId = session.user.id;
+  const planTier = (session.user as any).planTier || 'FREE';
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   let userJobs: any[] = [];
+  let userPrefs: any = null;
   try {
     userJobs = await prisma.userJob.findMany({
       where: { 
@@ -39,6 +41,7 @@ export default async function Dashboard() {
       orderBy: { createdAt: 'desc' },
       take: 100
     });
+    userPrefs = await prisma.userPreferences.findUnique({ where: { userId } });
   } catch (error: any) {
     console.error('Error fetching jobs:', error);
   }
@@ -67,7 +70,9 @@ export default async function Dashboard() {
     return new Date(j.created_at) >= thirtyDaysAgo;
   });
 
+  const hasEmailCredentials = !!(userPrefs?.emailAddress && userPrefs?.emailAppPassword);
+
   return (
-    <DashboardClient jobs={jobs} />
+    <DashboardClient jobs={jobs} userPlanTier={planTier} hasEmailCredentials={hasEmailCredentials} />
   );
 }

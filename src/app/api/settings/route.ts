@@ -27,7 +27,11 @@ export async function GET() {
                 customCareerPages: [],
                 sources: { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false },
                 profile: '',
-                resumeMarkdown: ''
+                resumeMarkdown: '',
+                emailAddress: '',
+                emailAppPassword: '',
+                imapHost: 'imap.gmail.com',
+                imapPort: 993
             });
         }
 
@@ -41,7 +45,11 @@ export async function GET() {
             customCareerPages: prefs.customCareerPages,
             sources: prefs.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false },
             profile: prefs.profile || '',
-            resumeMarkdown: prefs.resumeMarkdown || ''
+            resumeMarkdown: prefs.resumeMarkdown || '',
+            emailAddress: prefs.emailAddress || '',
+            emailAppPassword: prefs.emailAppPassword || '',
+            imapHost: prefs.imapHost || 'imap.gmail.com',
+            imapPort: prefs.imapPort || 993
         });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
@@ -69,7 +77,11 @@ export async function POST(request: Request) {
                 customCareerPages: data.customCareerPages,
                 sources: data.sources,
                 profile: data.profile,
-                resumeMarkdown: data.resumeMarkdown
+                resumeMarkdown: data.resumeMarkdown,
+                emailAddress: data.emailAddress,
+                emailAppPassword: data.emailAppPassword,
+                imapHost: data.imapHost,
+                imapPort: data.imapPort
             },
             create: {
                 userId: session.user.id,
@@ -82,7 +94,11 @@ export async function POST(request: Request) {
                 customCareerPages: data.customCareerPages || [],
                 sources: data.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false },
                 profile: data.profile || '',
-                resumeMarkdown: data.resumeMarkdown || ''
+                resumeMarkdown: data.resumeMarkdown || '',
+                emailAddress: data.emailAddress || '',
+                emailAppPassword: data.emailAppPassword || '',
+                imapHost: data.imapHost || 'imap.gmail.com',
+                imapPort: data.imapPort || 993
             }
         });
 

@@ -15,7 +15,7 @@ const SYNC_ANIMATIONS = [
   { id: "20473515", link: "https://tenor.com/view/o2-o2bubl-bubl-bubble-cute-gif-20473515", text: "O2 O2bubl Sticker" },
 ];
 
-export default function DashboardClient({ jobs }: { jobs: any[] }) {
+export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -30,6 +30,8 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
   const [syncMessage, setSyncMessage] = useState('');
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
 
   const toggleJobCheck = (id: string) => {
     setCheckedJobs(prev => {
@@ -142,6 +144,15 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
   const totalArchived = jobs?.filter(j => j.is_archived).length || 0;
 
   const handleEmailSync = async () => {
+    if (userPlanTier !== 'PRO') {
+      setShowUpgradeModal(true);
+      return;
+    }
+    if (!hasEmailCredentials) {
+      setShowConfigModal(true);
+      return;
+    }
+
     setIsEmailSyncing(true);
     setIsSyncing(true);
     setSyncMessage('Syncing Emails...');
@@ -674,6 +685,36 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
           </div>
         </div>
       </div>
+
+      {showUpgradeModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+          <div className="glass-card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+            <h2 style={{ marginBottom: '1rem' }}>Pro Feature</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+              Email Sync is a Pro feature. Upgrade your plan to automatically pull job posts from your email.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button onClick={() => setShowUpgradeModal(false)} className="btn-outline">Cancel</button>
+              <Link href="/pricing" className="btn-primary" onClick={() => setShowUpgradeModal(false)}>Upgrade Plan</Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfigModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+          <div className="glass-card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+            <h2 style={{ marginBottom: '1rem' }}>Configuration Required</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+              You'll need to configure account to be able to pull job post from your email.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button onClick={() => setShowConfigModal(false)} className="btn-outline">Cancel</button>
+              <Link href="/settings#email-sync" className="btn-primary" onClick={() => setShowConfigModal(false)}>Set up now</Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

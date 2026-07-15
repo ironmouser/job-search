@@ -1,13 +1,35 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Database, Key, Bot, Search, Layout, FileText, Save } from 'lucide-react';
+import { Database, Key, Bot, Search, Layout, FileText, Save, Mail } from 'lucide-react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState<any>({});
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [emailProvider, setEmailProvider] = useState<string>('gmail');
+
+    const handleProviderChange = (provider: string) => {
+        setEmailProvider(provider);
+        if (provider === 'gmail') {
+            handleChange('imapHost', 'imap.gmail.com');
+            handleChange('imapPort', 993);
+        } else if (provider === 'yahoo') {
+            handleChange('imapHost', 'imap.mail.yahoo.com');
+            handleChange('imapPort', 993);
+        } else if (provider === 'outlook') {
+            handleChange('imapHost', 'outlook.office365.com');
+            handleChange('imapPort', 993);
+        } else if (provider === 'icloud') {
+            handleChange('imapHost', 'imap.mail.me.com');
+            handleChange('imapPort', 993);
+        }
+    };
+
+    const { data: session } = useSession();
+    const isAdmin = (session?.user as any)?.role === 'ADMIN';
 
     const isSupabaseConfigured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
     const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true; // Server-side env vars not exposed, mock for now
@@ -210,7 +232,122 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* API Connections */}
+                {/* Email Sync Configuration */}
+                <div className="glass-card" id="email-sync">
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                        <Mail size={20} className="text-accent" /> Email Sync Configuration
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Select your provider</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {['gmail', 'outlook', 'yahoo', 'icloud', 'other'].map(provider => (
+                                    <button 
+                                        key={provider}
+                                        onClick={() => handleProviderChange(provider)}
+                                        className={emailProvider === provider ? 'btn-primary' : 'btn-outline'}
+                                        style={{ padding: '0.5rem 1rem', textTransform: 'capitalize', flex: 1, minWidth: '80px', textAlign: 'center' }}
+                                    >
+                                        {provider}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
+                            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Connection Instructions</h4>
+                            <ul style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                {emailProvider === 'gmail' && (
+                                    <>
+                                        <li>Make sure IMAP is enabled in your Gmail settings.</li>
+                                        <li>Go to your Google Account &gt; Security &gt; 2-Step Verification.</li>
+                                        <li>Scroll to the bottom and click on <strong>App passwords</strong>.</li>
+                                        <li>Generate a new app password and paste it below. Do not use your standard Google password.</li>
+                                    </>
+                                )}
+                                {emailProvider === 'outlook' && (
+                                    <>
+                                        <li>Make sure Two-step verification is enabled in your Microsoft Account security settings.</li>
+                                        <li>Go to Security &gt; Advanced security options.</li>
+                                        <li>Scroll down to <strong>App passwords</strong> and click "Create a new app password".</li>
+                                        <li>Paste the generated password below.</li>
+                                    </>
+                                )}
+                                {emailProvider === 'yahoo' && (
+                                    <>
+                                        <li>Log in to your Yahoo Account Security page.</li>
+                                        <li>Click on <strong>Generate and manage app passwords</strong>.</li>
+                                        <li>Enter a name for the app (e.g. Job Agent) and click Generate.</li>
+                                        <li>Paste the generated password below.</li>
+                                    </>
+                                )}
+                                {emailProvider === 'icloud' && (
+                                    <>
+                                        <li>Go to appleid.apple.com and sign in.</li>
+                                        <li>In the Sign-In and Security section, click on <strong>App-Specific Passwords</strong>.</li>
+                                        <li>Click "Generate an app-specific password".</li>
+                                        <li>Paste the generated password below.</li>
+                                    </>
+                                )}
+                                {emailProvider === 'other' && (
+                                    <>
+                                        <li>Please check your email provider's documentation for IMAP settings.</li>
+                                        <li>If your provider uses 2FA, you will likely need to generate an <strong>App Password</strong>.</li>
+                                        <li>Make sure to use the correct IMAP Host and Port below.</li>
+                                    </>
+                                )}
+                            </ul>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Email Address</label>
+                                <input 
+                                    type="email"
+                                    value={settings.emailAddress || ''}
+                                    onChange={(e) => handleChange('emailAddress', e.target.value)}
+                                    placeholder="john@example.com"
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>App Password</label>
+                                <input 
+                                    type="password"
+                                    value={settings.emailAppPassword || ''}
+                                    onChange={(e) => handleChange('emailAppPassword', e.target.value)}
+                                    placeholder="Enter App Password"
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                />
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 2, minWidth: '200px' }}>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>IMAP Host</label>
+                                <input 
+                                    type="text"
+                                    value={settings.imapHost || ''}
+                                    onChange={(e) => handleChange('imapHost', e.target.value)}
+                                    placeholder="imap.example.com"
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '100px' }}>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>IMAP Port</label>
+                                <input 
+                                    type="number"
+                                    value={settings.imapPort || ''}
+                                    onChange={(e) => handleChange('imapPort', Number(e.target.value))}
+                                    placeholder="993"
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* API Connections - Admin only */}
+                {isAdmin && (
                 <div className="glass-card">
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
                         <Database size={20} className="text-accent" /> API Connections
@@ -221,6 +358,7 @@ export default function SettingsPage() {
                         <ConnectionRow name="RapidAPI (JSearch)" status={isRapidAPIConfigured ? 'Connected' : 'Missing'} connected={isRapidAPIConfigured} />
                     </div>
                 </div>
+                )}
 
             </div>
         </div>
