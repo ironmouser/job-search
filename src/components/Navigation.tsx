@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
 export default function Navigation() {
@@ -61,6 +61,14 @@ export default function Navigation() {
             Settings
           </Link>
         </li>
+        {(session.user as any)?.role === 'ADMIN' && (
+          <li className="nav-item">
+            <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={closeMenu}>
+              <Shield size={20} />
+              Admin Panel
+            </Link>
+          </li>
+        )}
         <li className="nav-item" style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
           {session ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>

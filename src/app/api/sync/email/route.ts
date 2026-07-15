@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchEmailsAndExtractJobs } from '@/lib/email';
+import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -10,7 +11,10 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if ((session.user as any).planTier !== 'PRO') {
+    const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
+    const emailsSyncIsPro = globalSettings?.emailsSyncIsPro ?? true;
+
+    if (emailsSyncIsPro && (session.user as any).planTier !== 'PRO') {
       return NextResponse.json({ error: 'Email synchronization is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
     }
     const newJobsCount = await fetchEmailsAndExtractJobs(session.user.id);

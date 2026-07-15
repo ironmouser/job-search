@@ -21,6 +21,13 @@ export default withAuth(
     if (isAuth && token.isOnboarded && isOnboardingPage) {
       return NextResponse.redirect(new URL('/', req.url));
     }
+
+    const isAdminRoute = req.nextUrl.pathname.startsWith('/admin') || req.nextUrl.pathname.startsWith('/api/admin');
+    if (isAdminRoute) {
+      if (token?.role !== 'ADMIN') {
+        return NextResponse.redirect(new URL('/', req.url));
+      }
+    }
   },
   {
     callbacks: {

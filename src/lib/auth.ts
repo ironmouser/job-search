@@ -36,6 +36,7 @@ export const authOptions: AuthOptions = {
         token.id = user.id;
         token.isOnboarded = (user as any).isOnboarded || false;
         token.planTier = (user as any).planTier || "FREE";
+        token.role = (user as any).role || "USER";
       }
       
       if (trigger === "update") {
@@ -43,6 +44,7 @@ export const authOptions: AuthOptions = {
         if (session?.planTier !== undefined) token.planTier = session.planTier;
         if (session?.image !== undefined) token.image = session.image;
         if (session?.name !== undefined) token.name = session.name;
+        if (session?.role !== undefined) token.role = session.role;
       }
       
       return token;
@@ -52,6 +54,7 @@ export const authOptions: AuthOptions = {
         session.user.id = token.id as string;
         (session.user as any).isOnboarded = token.isOnboarded as boolean;
         (session.user as any).planTier = token.planTier as string || "FREE";
+        (session.user as any).role = token.role as string || "USER";
         if (token.image) session.user.image = token.image as string;
         if (token.name) session.user.name = token.name as string;
       }

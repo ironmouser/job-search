@@ -14,7 +14,10 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if ((session.user as any).planTier !== 'PRO') {
+    const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
+    const aiFeaturesIsPro = globalSettings?.aiFeaturesIsPro ?? true;
+
+    if (aiFeaturesIsPro && (session.user as any).planTier !== 'PRO') {
       return NextResponse.json({ error: 'Application Q&A helper is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
     }
 

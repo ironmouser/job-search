@@ -98,12 +98,27 @@ model SyncLog {
 
 // NextAuth Models
 
+enum Role {
+  USER
+  ADMIN
+}
+
+model GlobalSettings {
+  id             String  @id @default("system")
+  jsearchIsPro   Boolean @default(true) @map("jsearch_is_pro")
+  emailsSyncIsPro Boolean @default(true) @map("emails_sync_is_pro")
+  aiFeaturesIsPro Boolean @default(true) @map("ai_features_is_pro")
+
+  @@map("global_settings")
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  role          Role      @default(USER)
 
   // Stripe & Subscriptions
   stripeCustomerId       String?   @unique

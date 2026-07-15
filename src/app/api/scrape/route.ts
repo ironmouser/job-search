@@ -3,6 +3,7 @@ import { normalizeAndSaveJobs } from '@/lib/apify';
 import { scrapeJSearch } from '@/lib/jsearch';
 import { scrapeCustomPages, scrapeRemoteAggregators } from '@/lib/scrapers/crawlee';
 import { getUserSettings } from '@/lib/settings';
+import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -26,10 +27,12 @@ export async function POST(request: Request) {
 
         console.log(`Received omni-scrape request for ${keyword} in ${location} for user ${userId}`);
 
+        const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
+        const jsearchIsPro = globalSettings?.jsearchIsPro ?? true;
         const isPro = (session.user as any).planTier === 'PRO';
         let sources = settings.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false };
         
-        if (!isPro) {
+        if (!isPro && jsearchIsPro) {
             sources = {
                 ...sources,
                 jsearch: false,
