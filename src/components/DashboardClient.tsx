@@ -588,7 +588,7 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
                       Original <ExternalLink size={14} />
                     </a>
                   </div>
-                  <div style={{ marginLeft: 'auto' }}>
+                  <div style={{ marginLeft: 'auto', marginRight: '-12px', marginBottom: '-36px' }}>
                     <input 
                       type="checkbox" 
                       checked={checkedJobs.has(job.id)} 
