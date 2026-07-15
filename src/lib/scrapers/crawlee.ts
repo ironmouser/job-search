@@ -203,7 +203,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     if (sources.remoteco) urls.push({ url: `https://remote.co/remote-jobs/search/?search_keywords=${encodeURIComponent(keyword)}`, source: 'remoteco' });
     if (sources.remoteok) urls.push({ url: `https://remoteok.com/api?tag=${encodeURIComponent(keyword.replace(/\s+/g, '-'))}`, source: 'remoteok' });
     if (sources.workingnomads) urls.push({ url: `https://www.workingnomads.com/jobs?category=&q=${encodeURIComponent(keyword)}`, source: 'workingnomads' });
-    if (sources.remotive) urls.push({ url: `https://remotive.com/remote-jobs/search?query=${encodeURIComponent(keyword)}`, source: 'remotive' });
+    if (sources.remotive) urls.push({ url: `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(keyword)}`, source: 'remotive' });
 
     if (urls.length === 0) return [];
 
@@ -239,6 +239,32 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     }
                 } catch (e: any) {
                     console.warn(`Error parsing remoteok API: ${e.message}`);
+                }
+                return pageJobs;
+            }
+            if (source === 'remotive') {
+                const pageJobs: any[] = [];
+                try {
+                    const res = await fetch(url);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && Array.isArray(data.jobs)) {
+                            for (const job of data.jobs) {
+                                if (job.title && job.company_name) {
+                                    pageJobs.push({
+                                        title: job.title,
+                                        company: job.company_name,
+                                        location: job.candidate_required_location || 'Remote',
+                                        description: `Apply at: ${job.url}`,
+                                        url: job.url,
+                                        source: 'Remotive'
+                                    });
+                                }
+                            }
+                        }
+                    }
+                } catch (e: any) {
+                    console.warn(`Error parsing remotive API: ${e.message}`);
                 }
                 return pageJobs;
             }
@@ -295,22 +321,6 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             url: href,
                             source: 'WorkingNomads'
                         });
-                    });
-                } else if (source === 'remotive') {
-                    $('a[href*="/remote-jobs/"]').each((_, el) => {
-                        const href = $(el).attr('href') || '';
-                        const title = $(el).text().trim();
-                        if (href.includes('-job-') && title.length > 5) {
-                            const fullUrl = href.startsWith('http') ? href : `https://remotive.com${href}`;
-                            pageJobs.push({
-                                title: title,
-                                company: 'Remotive Company',
-                                location: 'Remote',
-                                description: `Apply at: ${fullUrl}`,
-                                url: fullUrl,
-                                source: 'Remotive'
-                            });
-                        }
                     });
                 }
             } catch (e: any) {
