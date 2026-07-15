@@ -474,8 +474,8 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
                                style={{ 
                                  padding: '0.3rem 0.6rem', 
                                  fontSize: '0.75rem',
-                                 borderColor: fetchStatuses[job.id] === 'error' ? 'var(--status-rejected)' : fetchStatuses[job.id] === 'success' ? 'var(--status-interview)' : '',
-                                 color: fetchStatuses[job.id] === 'error' ? 'var(--status-rejected)' : fetchStatuses[job.id] === 'success' ? 'var(--status-interview)' : ''
+                                 borderColor: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : '',
+                                 color: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : ''
                                }}
                              >
                                {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 
@@ -569,8 +569,8 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
                          style={{ 
                            padding: '0.4rem 0.8rem', 
                            fontSize: '0.85rem',
-                           borderColor: fetchStatuses[job.id] === 'error' ? 'var(--status-rejected)' : fetchStatuses[job.id] === 'success' ? 'var(--status-interview)' : '',
-                           color: fetchStatuses[job.id] === 'error' ? 'var(--status-rejected)' : fetchStatuses[job.id] === 'success' ? 'var(--status-interview)' : ''
+                           borderColor: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : '',
+                           color: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : ''
                          }}
                        >
                          {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 

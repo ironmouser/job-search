@@ -76,7 +76,7 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
       <button 
         onClick={() => setIsOpen(true)}
         className="btn-outline"
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderColor: 'var(--status-rejected)', color: 'var(--status-rejected)' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderColor: 'var(--danger)', color: 'var(--danger)' }}
         title="Clean up dashboard"
       >
         <Trash2 size={16} />
@@ -94,12 +94,12 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
             </button>
 
             <h2 style={{ marginTop: 0, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Trash2 size={24} color="var(--status-rejected)" />
+              <Trash2 size={24} color="var(--danger)" />
               Dashboard Cleanup
             </h2>
 
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--status-rejected)', borderRadius: '8px', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-              <AlertCircle size={20} color="var(--status-rejected)" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '8px', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+              <AlertCircle size={20} color="var(--danger)" style={{ flexShrink: 0, marginTop: '2px' }} />
               <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                 Warning: Jobs matching the selected criteria will be hidden from your dashboard.
               </p>
@@ -180,7 +180,7 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
               <button 
                 onClick={handleCleanup}
                 className="btn-primary"
-                style={{ background: 'var(--status-rejected)', color: 'white' }}
+                style={{ background: 'var(--danger)', color: 'white' }}
                 disabled={isCleaning || (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays)}
               >
                 {isCleaning ? 'Deleting...' : 'Delete Jobs'}
