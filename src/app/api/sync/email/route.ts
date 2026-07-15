@@ -9,6 +9,10 @@ export async function POST() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    if ((session.user as any).planTier !== 'PRO') {
+      return NextResponse.json({ error: 'Email synchronization is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
+    }
     const newJobsCount = await fetchEmailsAndExtractJobs(session.user.id);
     return NextResponse.json({ success: true, count: newJobsCount });
   } catch (error: any) {

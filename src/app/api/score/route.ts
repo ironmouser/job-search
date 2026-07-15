@@ -11,6 +11,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if ((session.user as any).planTier !== 'PRO') {
+            return NextResponse.json({ error: 'AI Opportunity Scoring is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
+        }
+
         const body = await request.json();
         const { jobId } = body;
 

@@ -26,7 +26,27 @@ export async function POST(request: Request) {
 
         console.log(`Received omni-scrape request for ${keyword} in ${location} for user ${userId}`);
 
-        const sources = settings.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false };
+        const isPro = (session.user as any).planTier === 'PRO';
+        let sources = settings.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false };
+        
+        if (!isPro) {
+            sources = {
+                ...sources,
+                jsearch: false,
+                indeed: false,
+                linkedin: false,
+                glassdoor: false,
+                ziprecruiter: false,
+                monster: false,
+                wellfound: false,
+                greenhouse: false,
+                workable: false,
+                smartrecruiters: false,
+                breezy: false,
+                remotive: false
+            };
+        }
+
         const customUrls = settings.customCareerPages || [];
 
         const scrapePromises: Promise<any[]>[] = [];
