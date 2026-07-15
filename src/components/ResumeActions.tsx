@@ -20,20 +20,35 @@ export default function ResumeActions({ jobId, markdownText }: { jobId: string, 
     const handleDownload = async () => {
         setIsDownloading(true);
         try {
-            const res = await fetch(`/api/jobs/${jobId}/resume/pdf`);
-            if (!res.ok) throw new Error('Failed to generate PDF');
-            
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'Kurt_Charles_Resume.pdf';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            const { marked } = await import('marked');
+            const html2pdf = (await import('html2pdf.js')).default;
+
+            const htmlContent = await marked.parse(markdownText);
+
+            const html = `
+            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">
+                <style>
+                    h1 { font-size: 24pt; font-weight: bold; margin-bottom: 5px; margin-top: 0; }
+                    h2 { font-size: 14pt; font-weight: bold; margin-top: 20px; margin-bottom: 20px; }
+                    h3 { font-size: 14pt; font-weight: bold; margin-top: 25px; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+                    p { margin: 8px 0; }
+                    ul { margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }
+                    li { margin-bottom: 4px; }
+                    strong { font-weight: bold; }
+                </style>
+                ${htmlContent}
+            </div>
+            `;
+
+            const opt = {
+                margin:       0,
+                filename:     'Kurt_Charles_Resume.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            await html2pdf().set(opt).from(html).save();
         } catch (e: any) {
             console.error(e);
             alert(`Error: ${e.message}`);
