@@ -6,9 +6,10 @@ import { Trash2, X, AlertCircle } from 'lucide-react';
 
 interface DashboardCleanupProps {
   onCleanupComplete: () => void;
+  checkedJobs?: string[];
 }
 
-export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanupProps) {
+export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }: DashboardCleanupProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -22,11 +23,12 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
     viewed: false,
     applied: false,
     archived: false,
+    checked: false,
     olderThanDays: ''
   });
 
   const handleCleanup = async () => {
-    if (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.olderThanDays) {
+    if (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays) {
       alert("Please select at least one criteria for cleanup.");
       return;
     }
@@ -39,6 +41,8 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
           viewed: filters.viewed,
           applied: filters.applied,
           archived: filters.archived,
+          checked: filters.checked,
+          checkedJobIds: filters.checked ? checkedJobs : [],
           olderThanDays: filters.olderThanDays ? parseInt(filters.olderThanDays, 10) : null
         };
 
@@ -52,7 +56,7 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
           const data = await res.json();
           alert(`Successfully deleted ${data.count} jobs.`);
           setIsOpen(false);
-          setFilters({ disliked: false, viewed: false, applied: false, archived: false, olderThanDays: '' });
+          setFilters({ disliked: false, viewed: false, applied: false, archived: false, checked: false, olderThanDays: '' });
           onCleanupComplete();
         } else {
           const error = await res.json();
@@ -142,6 +146,16 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
                 <span>Remove <strong>archived</strong> jobs</span>
               </label>
 
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={filters.checked}
+                  onChange={(e) => setFilters(prev => ({ ...prev, checked: e.target.checked }))}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                <span>Remove <strong>checked</strong> jobs ({checkedJobs.length} selected)</span>
+              </label>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Remove jobs older than</span>
                 <input 
@@ -167,7 +181,7 @@ export default function DashboardCleanup({ onCleanupComplete }: DashboardCleanup
                 onClick={handleCleanup}
                 className="btn-primary"
                 style={{ background: 'var(--status-rejected)', color: 'white' }}
-                disabled={isCleaning || (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.olderThanDays)}
+                disabled={isCleaning || (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays)}
               >
                 {isCleaning ? 'Deleting...' : 'Delete Jobs'}
               </button>

@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { disliked, viewed, applied, archived, olderThanDays } = await request.json();
+    const { disliked, viewed, applied, archived, checked, checkedJobIds, olderThanDays } = await request.json();
     const userId = session.user.id;
 
     // Build the query for UserJob
@@ -35,6 +35,10 @@ export async function POST(request: Request) {
 
     if (archived) {
       conditions.push({ status: 'archived' });
+    }
+
+    if (checked && Array.isArray(checkedJobIds) && checkedJobIds.length > 0) {
+      conditions.push({ jobId: { in: checkedJobIds } });
     }
 
     if (olderThanDays !== null && olderThanDays !== undefined && !isNaN(Number(olderThanDays))) {

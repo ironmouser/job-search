@@ -20,6 +20,24 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
   const [fetchStatuses, setFetchStatuses] = useState<Record<string, 'fetching' | 'success' | 'error'>>({});
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+  const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
+
+  const toggleJobCheck = (id: string) => {
+    setCheckedJobs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllChecks = () => {
+    if (checkedJobs.size === filteredAndSortedJobs.length && filteredAndSortedJobs.length > 0) {
+      setCheckedJobs(new Set());
+    } else {
+      setCheckedJobs(new Set(filteredAndSortedJobs.map(j => j.id)));
+    }
+  };
 
   useEffect(() => {
     if (isSyncing) {
@@ -284,7 +302,13 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Matches ({filteredAndSortedJobs.length})</h3>
-          <DashboardCleanup onCleanupComplete={() => router.refresh()} />
+          <DashboardCleanup 
+            checkedJobs={Array.from(checkedJobs)}
+            onCleanupComplete={() => {
+              router.refresh();
+              setCheckedJobs(new Set());
+            }} 
+          />
         </div>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -378,6 +402,14 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <th style={{ padding: '1rem', width: '40px' }}>
+                  <input 
+                    type="checkbox" 
+                    onChange={toggleAllChecks} 
+                    checked={filteredAndSortedJobs.length > 0 && checkedJobs.size === filteredAndSortedJobs.length}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                </th>
                 <th style={{ padding: '1rem' }}>Company</th>
                 <th style={{ padding: '1rem' }}>Role</th>
                 <th style={{ padding: '1rem' }}>Location</th>
@@ -406,6 +438,14 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
                   
                   return (
                     <tr key={job.id} style={rowStyle}>
+                      <td style={{ padding: '1rem' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={checkedJobs.has(job.id)} 
+                          onChange={() => toggleJobCheck(job.id)}
+                          style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
+                      </td>
                       <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase', fontSize: '0.85rem' }}>{job.company}</td>
                       <td style={{ padding: '1rem' }}>
                         <Link href={`/job/${job.id}`} style={{ textDecoration: 'none', color: 'var(--text-primary)', fontWeight: 600, fontSize: '1.1rem' }}>
@@ -459,7 +499,7 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
               })}
               {filteredAndSortedJobs.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan={8} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No jobs match your current filters.
                   </td>
                 </tr>
@@ -547,6 +587,14 @@ export default function DashboardClient({ jobs }: { jobs: any[] }) {
                     <a href={job.url} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                       Original <ExternalLink size={14} />
                     </a>
+                  </div>
+                  <div style={{ marginLeft: 'auto' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={checkedJobs.has(job.id)} 
+                      onChange={() => toggleJobCheck(job.id)}
+                      style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                    />
                   </div>
                 </div>
               </div>
