@@ -12,9 +12,9 @@ export async function POST(request: Request) {
         }
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
-        const aiFeaturesIsPro = globalSettings?.aiFeaturesIsPro ?? true;
+        const aiAssetGenerationIsPro = globalSettings?.aiAssetGenerationIsPro ?? true;
 
-        if (aiFeaturesIsPro && (session.user as any).planTier !== 'PRO') {
+        if (aiAssetGenerationIsPro && (session.user as any).planTier !== 'PRO') {
             return NextResponse.json({ error: 'Tailored Resume & Cover Letter generation is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
         }
 

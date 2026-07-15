@@ -28,26 +28,30 @@ export async function POST(request: Request) {
         console.log(`Received omni-scrape request for ${keyword} in ${location} for user ${userId}`);
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
-        const jsearchIsPro = globalSettings?.jsearchIsPro ?? true;
         const isPro = (session.user as any).planTier === 'PRO';
         let sources = settings.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false };
         
-        if (!isPro && jsearchIsPro) {
-            sources = {
-                ...sources,
-                jsearch: false,
-                indeed: false,
-                linkedin: false,
-                glassdoor: false,
-                ziprecruiter: false,
-                monster: false,
-                wellfound: false,
-                greenhouse: false,
-                workable: false,
-                smartrecruiters: false,
-                breezy: false,
-                remotive: false
-            };
+        if (!isPro && globalSettings) {
+            if (globalSettings.jsearchIsPro) {
+                sources.jsearch = false;
+                sources.indeed = false;
+                sources.linkedin = false;
+                sources.glassdoor = false;
+                sources.ziprecruiter = false;
+                sources.monster = false;
+                sources.wellfound = false;
+            }
+            if (globalSettings.greenhouseIsPro) sources.greenhouse = false;
+            if (globalSettings.leverIsPro) sources.lever = false;
+            if (globalSettings.ashbyIsPro) sources.ashby = false;
+            if (globalSettings.workableIsPro) sources.workable = false;
+            if (globalSettings.smartrecruitersIsPro) sources.smartrecruiters = false;
+            if (globalSettings.breezyIsPro) sources.breezy = false;
+            if (globalSettings.remotiveIsPro) sources.remotive = false;
+            if (globalSettings.weworkremotelyIsPro) sources.weworkremotely = false;
+            if (globalSettings.remotecoIsPro) sources.remoteco = false;
+            if (globalSettings.remoteokIsPro) sources.remoteok = false;
+            if (globalSettings.workingnomadsIsPro) sources.workingnomads = false;
         }
 
         const customUrls = settings.customCareerPages || [];

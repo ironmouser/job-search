@@ -15,9 +15,9 @@ export async function POST(
     }
 
     const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
-    const aiFeaturesIsPro = globalSettings?.aiFeaturesIsPro ?? true;
+    const aiQaHelperIsPro = globalSettings?.aiQaHelperIsPro ?? true;
 
-    if (aiFeaturesIsPro && (session.user as any).planTier !== 'PRO') {
+    if (aiQaHelperIsPro && (session.user as any).planTier !== 'PRO') {
       return NextResponse.json({ error: 'Application Q&A helper is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
     }
 

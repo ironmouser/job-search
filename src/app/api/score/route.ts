@@ -12,9 +12,9 @@ export async function POST(request: Request) {
         }
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
-        const aiFeaturesIsPro = globalSettings?.aiFeaturesIsPro ?? true;
+        const aiOpportunityScoringIsPro = globalSettings?.aiOpportunityScoringIsPro ?? true;
 
-        if (aiFeaturesIsPro && (session.user as any).planTier !== 'PRO') {
+        if (aiOpportunityScoringIsPro && (session.user as any).planTier !== 'PRO') {
             return NextResponse.json({ error: 'AI Opportunity Scoring is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
         }
 

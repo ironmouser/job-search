@@ -104,10 +104,26 @@ enum Role {
 }
 
 model GlobalSettings {
-  id             String  @id @default("system")
-  jsearchIsPro   Boolean @default(true) @map("jsearch_is_pro")
-  emailsSyncIsPro Boolean @default(true) @map("emails_sync_is_pro")
-  aiFeaturesIsPro Boolean @default(true) @map("ai_features_is_pro")
+  id                    String  @id @default("system")
+  // Scrapers
+  jsearchIsPro          Boolean @default(true) @map("jsearch_is_pro")
+  greenhouseIsPro       Boolean @default(true) @map("greenhouse_is_pro")
+  leverIsPro            Boolean @default(false) @map("lever_is_pro")
+  ashbyIsPro            Boolean @default(false) @map("ashby_is_pro")
+  workableIsPro         Boolean @default(true) @map("workable_is_pro")
+  smartrecruitersIsPro  Boolean @default(true) @map("smartrecruiters_is_pro")
+  breezyIsPro           Boolean @default(true) @map("breezy_is_pro")
+  remotiveIsPro         Boolean @default(true) @map("remotive_is_pro")
+  weworkremotelyIsPro   Boolean @default(false) @map("weworkremotely_is_pro")
+  remotecoIsPro         Boolean @default(false) @map("remoteco_is_pro")
+  remoteokIsPro         Boolean @default(false) @map("remoteok_is_pro")
+  workingnomadsIsPro    Boolean @default(false) @map("workingnomads_is_pro")
+  // Email Sync
+  emailsSyncIsPro       Boolean @default(true) @map("emails_sync_is_pro")
+  // AI Features
+  aiOpportunityScoringIsPro Boolean @default(true) @map("ai_opportunity_scoring_is_pro")
+  aiAssetGenerationIsPro    Boolean @default(true) @map("ai_asset_generation_is_pro")
+  aiQaHelperIsPro           Boolean @default(true) @map("ai_qa_helper_is_pro")
 
   @@map("global_settings")
 }
