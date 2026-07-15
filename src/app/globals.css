@@ -175,6 +175,11 @@ body.light-theme .top-stat-card {
   background-color: #d6d9dd99 !important;
 }
 
+.top-stat-card.active,
+body.light-theme .top-stat-card.active {
+  background-color: color-mix(in srgb, var(--accent-primary) 40%, transparent) !important;
+}
+
 /* Layout */
 .app-container {
   display: flex;
