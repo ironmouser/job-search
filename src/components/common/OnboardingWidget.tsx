@@ -1,33 +1,47 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useHelp } from '../../contexts/HelpContext';
 import { Rocket, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export default function OnboardingWidget() {
     const { getOnboardingProgress, openHelpPanel } = useHelp();
     const progress = getOnboardingProgress();
+    const [overlayDismissed, setOverlayDismissed] = useState(false);
 
     if (progress.percentage === 100) return null;
 
     const handleContinue = () => {
+        setOverlayDismissed(true);
         openHelpPanel(0);
     };
 
     return (
-        <div style={{
-            padding: '2rem',
-            borderRadius: '16px',
-            background: 'var(--bg-glass)',
-            border: '1px solid var(--border-glass)',
-            position: 'relative',
-            overflow: 'hidden',
-            marginBottom: '2rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-        }}>
+        <>
+            {!overlayDismissed && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(4px)',
+                    zIndex: 9998,
+                    cursor: 'pointer'
+                }} onClick={() => setOverlayDismissed(true)} />
+            )}
+            <div style={{
+                padding: '2rem',
+                borderRadius: '16px',
+                background: 'var(--bg-glass)',
+                border: '1px solid var(--border-glass)',
+                position: 'relative',
+                overflow: 'hidden',
+                marginBottom: '2rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5rem',
+                boxShadow: !overlayDismissed ? '0 0 50px rgba(0, 0, 0, 0.5)' : '0 8px 32px rgba(0, 0, 0, 0.2)',
+                zIndex: !overlayDismissed ? 9999 : 1,
+            }}>
             {/* Background Decoration */}
             <Rocket
                 size={160}
@@ -110,6 +124,6 @@ export default function OnboardingWidget() {
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
