@@ -10,6 +10,8 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [emailProvider, setEmailProvider] = useState<string>('gmail');
+    const [testingEmail, setTestingEmail] = useState(false);
+    const [emailTestResult, setEmailTestResult] = useState<{success?: boolean, error?: string} | null>(null);
 
     const handleProviderChange = (provider: string) => {
         setEmailProvider(provider);
@@ -69,6 +71,33 @@ export default function SettingsPage() {
             alert('Failed to save settings');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleTestEmail = async () => {
+        setTestingEmail(true);
+        setEmailTestResult(null);
+        try {
+            const res = await fetch('/api/settings/test-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    emailAddress: settings.emailAddress,
+                    emailAppPassword: settings.emailAppPassword,
+                    imapHost: settings.imapHost,
+                    imapPort: settings.imapPort
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setEmailTestResult({ success: true });
+            } else {
+                setEmailTestResult({ success: false, error: data.error });
+            }
+        } catch (e: any) {
+            setEmailTestResult({ success: false, error: e.message || 'Network error' });
+        } finally {
+            setTestingEmail(false);
         }
     };
 
@@ -398,6 +427,34 @@ export default function SettingsPage() {
                                 />
                             </div>
                         </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                            <button 
+                                onClick={handleTestEmail}
+                                disabled={testingEmail || !settings.emailAddress || !settings.emailAppPassword}
+                                className="btn-outline"
+                                style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                {testingEmail ? (
+                                    <>Testing...</>
+                                ) : (
+                                    <>Test Connection</>
+                                )}
+                            </button>
+                            {emailTestResult && (
+                                <div style={{ 
+                                    fontSize: '0.9rem', 
+                                    color: emailTestResult.success ? '#10b981' : '#ef4444',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
+                                }}>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: emailTestResult.success ? '#10b981' : '#ef4444' }} />
+                                    {emailTestResult.success ? 'Connection successful!' : `Connection failed: ${emailTestResult.error}`}
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 </div>
 
