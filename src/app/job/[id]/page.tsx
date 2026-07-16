@@ -231,7 +231,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   Ready to apply? Click the "Smart Apply" button to open the job application on the company's career page.
                 </p>
               </div>
-              <AutofillButton jobId={job.id} jobUrl={job.url} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
+              <AutofillButton jobId={job.id} jobUrl={job.url} jobTitle={job.title} jobCompany={job.company} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
             </div>
           </section>
 
