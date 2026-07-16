@@ -432,6 +432,10 @@ body.light-theme .nav-item a:hover, body.light-theme .nav-item a.active {
   min-width: 0;
 }
 
+.job-detail-sidebar {
+  padding-top: 3.5rem;
+}
+
 /* Accordion (details/summary) styling for glass-cards */
 details.glass-card {
   overflow: hidden;
@@ -456,7 +460,7 @@ details.glass-card > summary::marker {
   align-items: flex-start;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .app-container {
     flex-direction: column;
   }
@@ -507,7 +511,12 @@ details.glass-card > summary::marker {
   }
   
   .job-detail-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  
+  .job-detail-sidebar {
+    padding-top: 0;
   }
   
   .flex-stack-mobile {

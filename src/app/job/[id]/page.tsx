@@ -250,7 +250,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Sidebar - Scoring */}
-        <div style={{ paddingTop: '3.5rem' }}>
+        <div className="job-detail-sidebar">
           {scores ? (
             <div className="glass-card" style={{ position: 'sticky', top: '2rem' }} data-tour="job-detail-score">
               <h3 style={{ marginBottom: '1.5rem' }}>AI Opportunity Score</h3>

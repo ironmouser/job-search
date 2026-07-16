@@ -660,7 +660,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           <h2>Syncing in Progress</h2>
           <p className="sync-overlay-text">{syncMessage}</p>
           <p className="sync-overlay-subtext">
-            This could take up to a minute to complete.<br />
+            This could take up to 3 minutes to complete.<br />
             Please do not close or refresh this page.
           </p>
           <div className="tenor-gif-container" style={{ position: 'relative' }}>
