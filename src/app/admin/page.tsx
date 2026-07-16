@@ -597,6 +597,24 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {/* Scraper Alerts */}
+              {scraperLogs.some(log => log.status === 'FAILURE' || log.resultsCount === 0) && (
+                <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid var(--error)", padding: "1rem", borderRadius: "8px", display: "flex", alignItems: "flex-start", gap: "0.75rem", color: "var(--error)" }}>
+                  <ShieldAlert size={20} style={{ flexShrink: 0, marginTop: "2px" }} />
+                  <div>
+                    <h4 style={{ fontWeight: 600, marginBottom: "0.25rem" }}>Scraper Anomalies Detected</h4>
+                    <p style={{ fontSize: "0.9rem", color: "var(--text-primary)" }}>
+                      One or more recent scraper runs returned errors or <strong>0 results</strong>. If a scraper consistently returns 0 results for common keywords, its DOM selectors or API may have changed and require developer attention.
+                    </p>
+                    <ul style={{ margin: "0.5rem 0 0 1.5rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                      {Array.from(new Set(scraperLogs.filter(log => log.status === 'FAILURE' || log.resultsCount === 0).map(log => log.scraperName))).map(name => (
+                        <li key={name}>{name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h4 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "1rem" }}>Recent Scraper Runs</h4>
                 <div style={{ overflowX: "auto" }}>
