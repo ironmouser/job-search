@@ -30,7 +30,7 @@ export default function OnboardingWidget() {
             <div style={{
                 padding: '2rem',
                 borderRadius: '16px',
-                background: 'var(--bg-glass)',
+                background: 'var(--bg-surface)',
                 border: '1px solid var(--border-glass)',
                 position: 'relative',
                 overflow: 'hidden',
