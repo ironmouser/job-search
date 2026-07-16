@@ -29,6 +29,7 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
         continuous: true,
         skipBeacon: true,
         styles: {
+            // @ts-expect-error: options is a valid prop at runtime but missing from types
             options: {
                 primaryColor: '#3b82f6',
                 zIndex: 10000,
