@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useHelp } from '../../contexts/HelpContext';
 import { Rocket, CheckCircle2, ArrowRight } from 'lucide-react';
 
@@ -18,7 +19,7 @@ export default function OnboardingWidget() {
 
     return (
         <>
-            {!overlayDismissed && (
+            {!overlayDismissed && typeof document !== 'undefined' && createPortal(
                 <div style={{
                     position: 'fixed',
                     top: 0, left: 0, right: 0, bottom: 0,
@@ -26,7 +27,8 @@ export default function OnboardingWidget() {
                     backdropFilter: 'blur(4px)',
                     zIndex: 9998,
                     cursor: 'pointer'
-                }} onClick={() => setOverlayDismissed(true)} />
+                }} onClick={() => setOverlayDismissed(true)} />,
+                document.body
             )}
             <div style={{
                 padding: '2rem',
