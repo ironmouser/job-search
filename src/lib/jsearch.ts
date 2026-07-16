@@ -12,7 +12,21 @@ export async function scrapeJSearch(keyword: string, location: string) {
         });
         if (cached && cached.expiresAt > new Date()) {
             console.log(`Cache hit for JSearch: ${keyword} in ${location}`);
-            return cached.rawJobs as any[];
+            const cachedJobs = cached.rawJobs as any[];
+            try {
+                await prisma.scraperLog.create({
+                    data: {
+                        scraperName: 'JSearch (Cached)',
+                        targetUrl: 'https://jsearch.p.rapidapi.com/search-v2',
+                        status: 'SUCCESS',
+                        resultsCount: cachedJobs.length,
+                        usedFirecrawl: false,
+                        firecrawlSites: [],
+                        errorDetails: null
+                    }
+                });
+            } catch (e) {}
+            return cachedJobs;
         }
     } catch (e) {
         console.warn('Cache check failed:', e);
@@ -23,16 +37,48 @@ export async function scrapeJSearch(keyword: string, location: string) {
 
     console.log(`Starting JSearch run for ${keyword} in ${location}...`);
     
-    const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-            'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-            'X-RapidAPI-Host': 'jsearch.p.rapidapi.com'
-        }
-    });
+    let response;
+    try {
+        response = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+                'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+                'X-RapidAPI-Host': 'jsearch.p.rapidapi.com'
+            }
+        });
+    } catch (err: any) {
+        try {
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'JSearch',
+                    targetUrl: 'https://jsearch.p.rapidapi.com/search-v2',
+                    status: 'FAILURE',
+                    resultsCount: 0,
+                    usedFirecrawl: false,
+                    firecrawlSites: [],
+                    errorDetails: err.message
+                }
+            });
+        } catch (e) {}
+        throw err;
+    }
 
     if (!response.ok) {
-        throw new Error(`JSearch API returned ${response.status}: ${await response.text()}`);
+        const errorText = await response.text();
+        try {
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'JSearch',
+                    targetUrl: 'https://jsearch.p.rapidapi.com/search-v2',
+                    status: 'FAILURE',
+                    resultsCount: 0,
+                    usedFirecrawl: false,
+                    firecrawlSites: [],
+                    errorDetails: `HTTP ${response.status}: ${errorText}`
+                }
+            });
+        } catch (e) {}
+        throw new Error(`JSearch API returned ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
@@ -59,6 +105,20 @@ export async function scrapeJSearch(keyword: string, location: string) {
     } catch (e) {
         console.warn('Failed to save JSearch cache:', e);
     }
+    
+    try {
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'JSearch',
+                targetUrl: 'https://jsearch.p.rapidapi.com/search-v2',
+                status: 'SUCCESS',
+                resultsCount: rawJobs.length,
+                usedFirecrawl: false,
+                firecrawlSites: [],
+                errorDetails: null
+            }
+        });
+    } catch (e) {}
 
     return rawJobs;
 }
