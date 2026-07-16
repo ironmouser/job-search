@@ -29,8 +29,27 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
 
             console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.statusCode})`);
             
-            // Fallback to Firecrawl for any block or non-200 status
-            if (process.env.FIRECRAWL_API_KEY) {
+            // Fallback to Scrape.do or Firecrawl for any block or non-200 status
+            if (process.env.SCRAPEDO_API_KEY) {
+                console.info(`Falling back to Scrape.do for ${url}`);
+                try {
+                    const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&url=${encodeURIComponent(url)}`;
+                    const sdRes = await gotScraping({
+                        url: scrapeDoUrl,
+                        timeout: { request: 30000 },
+                        retry: { limit: 0 },
+                        throwHttpErrors: false,
+                    });
+                    if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
+                        return { $: cheerio.load(sdRes.body), usedFirecrawl: true };
+                    }
+                    console.warn(`Scrape.do fallback failed for ${url} (Status: ${sdRes.statusCode})`);
+                } catch (err: any) {
+                    console.warn(`Scrape.do fallback error for ${url}: ${err.message}`);
+                }
+            }
+            
+            if (process.env.FIRECRAWL_API_KEY && !process.env.SCRAPEDO_API_KEY) {
                 console.info(`Falling back to Firecrawl for ${url}`);
                 try {
                     const fcRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
@@ -293,7 +312,11 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 
             if (source === 'remoteok') {
                 try {
-                    const res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    if ((res.statusCode < 200 || res.statusCode >= 300) && process.env.SCRAPEDO_API_KEY) {
+                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&url=${encodeURIComponent(url)}`;
+                        res = await gotScraping({ url: scrapeDoUrl, responseType: 'json', throwHttpErrors: false });
+                    }
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         const data = res.body as any;
                         for (let i = 1; i < data.length; i++) {
@@ -321,7 +344,11 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 
             if (source === 'remotive') {
                 try {
-                    const res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    if ((res.statusCode < 200 || res.statusCode >= 300) && process.env.SCRAPEDO_API_KEY) {
+                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&url=${encodeURIComponent(url)}`;
+                        res = await gotScraping({ url: scrapeDoUrl, responseType: 'json', throwHttpErrors: false });
+                    }
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         const data = res.body as any;
                         if (data && Array.isArray(data.jobs)) {
