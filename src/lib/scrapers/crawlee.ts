@@ -295,7 +295,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                 try {
                     const res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
                     if (res.statusCode >= 200 && res.statusCode < 300) {
-                        const data = res.body;
+                        const data = res.body as any;
                         for (let i = 1; i < data.length; i++) {
                             const job = data[i];
                             if (job.position && job.company) {
@@ -323,7 +323,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                 try {
                     const res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
                     if (res.statusCode >= 200 && res.statusCode < 300) {
-                        const data = res.body;
+                        const data = res.body as any;
                         if (data && Array.isArray(data.jobs)) {
                             for (const job of data.jobs) {
                                 if (job.title && job.company_name) {
