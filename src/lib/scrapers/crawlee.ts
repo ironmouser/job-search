@@ -357,16 +357,36 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                 }
 
                 if (source === 'weworkremotely') {
-                    $('li:not(.view-all) > a[href^="/remote-jobs/"]').each((_, el) => {
-                        const titleEl = $(el).find('.title');
-                        const companyEl = $(el).find('.company');
+                    $('li:not(.view-all) > a[href*="/remote-jobs/"]').each((_, el) => {
+                        const titleEl = $(el).find('.new-listing__header__title__text').length > 0 
+                            ? $(el).find('.new-listing__header__title__text') 
+                            : $(el).find('.title');
+                        const companyEl = $(el).find('.new-listing__company-name').length > 0 
+                            ? $(el).find('.new-listing__company-name') 
+                            : $(el).find('.company');
                         const href = $(el).attr('href') || '';
-                        const fullUrl = `https://weworkremotely.com${href}`;
+                        
+                        if (!href.includes('/remote-jobs/')) return;
+                        
+                        const fullUrl = href.startsWith('http') ? href : `https://weworkremotely.com${href}`;
+                        
+                        let salaryText = '';
+                        let locationText = 'Remote';
+                        $(el).find('.new-listing__categories__category, .region').each((_, cat) => {
+                            const text = $(cat).text().trim();
+                            if (text.includes('$') || text.includes('€') || text.includes('£')) {
+                                salaryText = text;
+                            } else if (!text.toLowerCase().includes('time') && !text.toLowerCase().includes('contract') && !text.toLowerCase().includes('boosted') && !text.toLowerCase().includes('top 100')) {
+                                locationText = text;
+                            }
+                        });
+
                         pageJobs.push({
                             title: titleEl.text().trim() || 'Unknown Role',
                             company: companyEl.text().trim() || 'We Work Remotely',
-                            location: 'Remote',
-                            description: `Apply at: ${fullUrl}`,
+                            location: locationText || 'Remote',
+                            description: `Apply at: ${fullUrl}${salaryText ? '\nSalary: ' + salaryText : ''}`,
+                            salary_range: salaryText || null,
                             url: fullUrl,
                             source: 'WWR'
                         });

@@ -31,6 +31,7 @@ export async function POST(request: Request) {
                 searchKeyword: data.searchKeyword || '',
                 searchLocation: data.searchLocation || '',
                 remoteOnly: data.remoteOnly || false,
+                theme: 'light',
                 resumeMarkdown: data.resumeMarkdown || '',
                 profile: data.profile || '',
                 sources: sources

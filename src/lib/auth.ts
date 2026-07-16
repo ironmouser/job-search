@@ -1,6 +1,7 @@
 import { AuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import EmailProvider from "next-auth/providers/email"
+import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 
@@ -24,6 +25,19 @@ export const authOptions: AuthOptions = {
         }
       },
       from: process.env.EMAIL_FROM
+    }),
+    CredentialsProvider({
+      name: "Test Account",
+      credentials: {},
+      async authorize() {
+        let user = await prisma.user.findUnique({ where: { email: "test@example.com" } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: { email: "test@example.com", name: "Test User" }
+          });
+        }
+        return user;
+      }
     }),
   ],
   pages: {

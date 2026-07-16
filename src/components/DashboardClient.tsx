@@ -6,6 +6,7 @@ import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar } from 
 import SyncButton from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter } from 'next/navigation';
+import OnboardingWidget from '@/components/common/OnboardingWidget';
 
 const SYNC_ANIMATIONS = [
   { id: "18485855", link: "https://tenor.com/view/o2-o2robot-o2ad-bubl-o2bubl-gif-18485855", text: "O2 O2robot GIF" },
@@ -324,6 +325,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   return (
     <>
     <div className="animate-fade-in">
+      <OnboardingWidget />
       <div className="flex-stack-mobile" style={{ marginBottom: '2rem' }}>
         <div>
           <h1 className="page-title">Mission Control</h1>
