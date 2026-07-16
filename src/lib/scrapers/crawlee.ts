@@ -243,11 +243,13 @@ export async function scrapeCustomPages(urls: string[]) {
         const newJobs = jobs.slice(initialJobsLength);
 
         try {
-            await prisma.scrapeCache.upsert({
-                where: { source_keyword_location: cacheKey },
-                update: { rawJobs: newJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
-                create: { ...cacheKey, rawJobs: newJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
-            });
+            if (newJobs.length > 0) {
+                await prisma.scrapeCache.upsert({
+                    where: { source_keyword_location: cacheKey },
+                    update: { rawJobs: newJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+                    create: { ...cacheKey, rawJobs: newJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
+                });
+            }
         } catch(e) {
             console.warn('Failed to save custom page cache:', e);
         }
@@ -456,7 +458,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
             }
 
             try {
-                if (!errorMsg) {
+                if (!errorMsg && pageJobs.length > 0) {
                     await prisma.scrapeCache.upsert({
                         where: { source_keyword_location: cacheKey },
                         update: { rawJobs: pageJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
