@@ -324,9 +324,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
   return (
     <>
-    <div className="animate-fade-in">
       <OnboardingWidget />
-      <div className="flex-stack-mobile" style={{ marginBottom: '2rem' }}>
+      <div className="animate-fade-in">
+        <div className="flex-stack-mobile" style={{ marginBottom: '2rem' }}>
         <div>
           <h1 className="page-title">Mission Control</h1>
           <p className="page-subtitle">Your central hub for opportunity management</p>
