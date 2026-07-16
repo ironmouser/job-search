@@ -124,6 +124,7 @@ export default function OnboardingWidget() {
                     </div>
                 </div>
             </div>
+        </div>
         </>
     );
 }
