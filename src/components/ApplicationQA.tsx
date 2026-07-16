@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown } from 'lucide-react';
+import DownloadTextButton from './DownloadTextButton';
 
 export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed = 0 }: { jobId: string; planTier?: string; initialQaUsed?: number }) {
   const [question, setQuestion] = useState('');
@@ -173,17 +174,20 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
               <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Generated Answer
               </h4>
-              <button
-                onClick={copyToClipboard}
-                className="btn-outline"
-                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-              >
-                {copied ? (
-                  <span style={{ color: 'var(--success)' }}>Copied!</span>
-                ) : (
-                  <><Copy size={14} /> Copy</>
-                )}
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <DownloadTextButton textToDownload={answer} filename={`QA_Answer_${jobId.slice(0,8)}.txt`} />
+                <button
+                  onClick={copyToClipboard}
+                  className="btn-outline"
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  {copied ? (
+                    <span style={{ color: 'var(--success)' }}>Copied!</span>
+                  ) : (
+                    <><Copy size={14} /> Copy</>
+                  )}
+                </button>
+              </div>
             </div>
             
             <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, marginBottom: '1.5rem' }}>

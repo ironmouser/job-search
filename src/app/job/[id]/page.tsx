@@ -147,7 +147,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               {totalScore}
             </div>
           )}
-          <AutofillButton jobId={job.id} jobUrl={job.url} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
+          <AutofillButton jobId={job.id} jobUrl={job.url} jobTitle={job.title} jobCompany={job.company} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
         </div>
       </div>
 

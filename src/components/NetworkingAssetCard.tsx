@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Copy, Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown } from 'lucide-react';
 import CopyToClipboardButton from './CopyToClipboardButton';
+import DownloadTextButton from './DownloadTextButton';
 
 export default function NetworkingAssetCard({
     jobId,
@@ -73,6 +74,7 @@ export default function NetworkingAssetCard({
                     <CheckCircle size={20} /> Tailored Networking Message
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <DownloadTextButton textToDownload={content || ''} filename={`NetworkingMessage_${jobId.slice(0,8)}.txt`} />
                     <CopyToClipboardButton textToCopy={content || ''} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>

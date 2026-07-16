@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Bot, ExternalLink, Copy, CheckCircle, Lock } from 'lucide-react';
 
-export default function AutofillButton({ jobId, jobUrl, isPro = false, appliesThisWeek = 0 }: { jobId: string, jobUrl: string, isPro?: boolean, appliesThisWeek?: number }) {
+export default function AutofillButton({ jobId, jobUrl, jobTitle, jobCompany, isPro = false, appliesThisWeek = 0 }: { jobId: string, jobUrl: string, jobTitle: string, jobCompany: string, isPro?: boolean, appliesThisWeek?: number }) {
   const [isLaunching, setIsLaunching] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -44,8 +44,17 @@ export default function AutofillButton({ jobId, jobUrl, isPro = false, appliesTh
         body: JSON.stringify({ status: 'applied', applied_at: new Date().toISOString() })
       }).catch(console.error);
 
-      // Open the job board in a new tab exactly as requested
-      window.open(jobUrl, '_blank');
+      // Check if the URL is an internal circular link due to missing original source
+      let targetUrl = jobUrl;
+      const isInternalLink = jobUrl.includes('jobagenthq.com') || jobUrl.startsWith('/') || jobUrl.includes('localhost') || jobUrl.includes('railway.app');
+      
+      if (isInternalLink) {
+        const searchQuery = encodeURIComponent(`${jobTitle} ${jobCompany} careers`);
+        targetUrl = `https://www.google.com/search?q=${searchQuery}`;
+      }
+
+      // Open the job board (or Google search fallback) in a new tab
+      window.open(targetUrl, '_blank');
       
       setIsLaunching(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });

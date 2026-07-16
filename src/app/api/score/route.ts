@@ -37,21 +37,26 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { jobId } = body;
 
-        // If no jobId is provided, score all unscored jobs
+        // If no jobId is provided, score all unscored jobs for this user
         if (!jobId) {
-            const unscoredJobs = await prisma.job.findMany({
-                where: { status: 'discovered' },
-                select: { id: true, title: true, description: true }
+            const unscoredUserJobs = await prisma.userJob.findMany({
+                where: { 
+                    userId: session.user.id,
+                    status: 'discovered',
+                    job: { opportunityScores: { none: { userId: session.user.id } } }
+                },
+                include: { job: { select: { id: true, title: true, description: true } } }
             });
 
-            if (!unscoredJobs || unscoredJobs.length === 0) {
+            if (!unscoredUserJobs || unscoredUserJobs.length === 0) {
                 return NextResponse.json({ message: 'No unscored jobs found.' }, { status: 200 });
             }
 
-            console.log(`Found ${unscoredJobs.length} unscored jobs. Scoring...`);
+            console.log(`Found ${unscoredUserJobs.length} unscored jobs. Scoring...`);
             
             const results = [];
-            for (const job of unscoredJobs) {
+            for (const uj of unscoredUserJobs) {
+                const job = uj.job;
                 try {
                     const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
                     results.push({ jobId: job.id, score: score.total_score });

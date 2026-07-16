@@ -39,9 +39,12 @@ export async function POST(request: Request) {
 
         // If no jobId is provided, find jobs that have been scored >= 80 but have no assets yet
         if (!jobId) {
-            // First find highly scored jobs
+            // First find highly scored jobs for this user
             const highlyScoredJobs = await prisma.opportunityScore.findMany({
-                where: { totalScore: { gte: 80 } },
+                where: { 
+                    userId: session.user.id,
+                    totalScore: { gte: 80 } 
+                },
                 select: { jobId: true, totalScore: true }
             });
 
@@ -51,23 +54,25 @@ export async function POST(request: Request) {
 
             const highScoreJobIds = highlyScoredJobs.map(s => s.jobId);
 
-            // Now filter to those that are still in 'scored' status (haven't had assets generated)
-            const pendingJobs = await prisma.job.findMany({
+            // Now filter to those that are still in 'scored' status for this user (haven't had assets generated)
+            const pendingUserJobs = await prisma.userJob.findMany({
                 where: {
-                    id: { in: highScoreJobIds },
+                    userId: session.user.id,
+                    jobId: { in: highScoreJobIds },
                     status: 'scored'
                 },
-                select: { id: true, title: true, description: true, company: true }
+                include: { job: { select: { id: true, title: true, description: true, company: true } } }
             });
 
-            if (!pendingJobs || pendingJobs.length === 0) {
+            if (!pendingUserJobs || pendingUserJobs.length === 0) {
                 return NextResponse.json({ message: 'No new highly-scored jobs require asset generation.' }, { status: 200 });
             }
 
-            console.log(`Found ${pendingJobs.length} highly-scored jobs. Generating assets...`);
+            console.log(`Found ${pendingUserJobs.length} highly-scored jobs. Generating assets...`);
             
             const results = [];
-            for (const job of pendingJobs) {
+            for (const uj of pendingUserJobs) {
+                const job = uj.job;
                 try {
                     await generateAssetsForJob(session.user.id, job.id, job.title, job.description || '', job.company);
                     results.push({ jobId: job.id, status: 'success' });

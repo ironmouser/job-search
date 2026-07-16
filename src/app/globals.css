@@ -615,4 +615,7 @@ body.light-theme .sync-overlay-content {
   align-items: center;
 }
 
-
+@keyframes slideUp {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}

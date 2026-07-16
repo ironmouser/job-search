@@ -36,6 +36,8 @@ CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME.
 2. MAXIMUM ${driftPercentage}% DRIFT: You may rephrase bullets to highlight relevant keywords from the job description, but the core truth and structure must remain intact.
 3. TONE: ${tone === 'Strict' ? 'Extremely factual, dry, and strictly professional.' : tone === 'Creative' ? 'Bold, aggressive, highlighting impact and narrative.' : 'Confident, strategic, and concise.'}
+4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
+5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
 
 Return the result as a JSON object with EXACTLY these keys:
 {
@@ -84,9 +86,16 @@ ${baseResume}
     try {
         const assets = JSON.parse(jsonString);
 
-        // Save to Prisma
-        const data = await prisma.applicationAsset.create({
-            data: {
+        // Save to Prisma using upsert to avoid conflicts on retries
+        const data = await prisma.applicationAsset.upsert({
+            where: { userId_jobId: { userId, jobId } },
+            update: {
+                tailoredResumeMarkdown: assets.tailored_resume,
+                coverLetterMarkdown: assets.cover_letter,
+                networkingMessage: assets.networking_message,
+                portfolioRecommendation: assets.portfolio_recommendation
+            },
+            create: {
                 jobId: jobId,
                 userId: userId,
                 tailoredResumeMarkdown: assets.tailored_resume,
@@ -96,9 +105,9 @@ ${baseResume}
             }
         });
 
-        // Update job status
-        await prisma.job.update({
-            where: { id: jobId },
+        // Update UserJob status instead of global Job status
+        await prisma.userJob.update({
+            where: { userId_jobId: { userId, jobId } },
             data: { status: 'asset_generated' }
         });
 
@@ -163,7 +172,9 @@ CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME or TARGET PROFILE.
 2. LENGTH: Aim for around 65 words as a starting point, unless instructed otherwise.
 3. TONE: ${finalTone}
-4. INSTRUCTION: ${instructionText || 'Answer the question directly and compellingly.'}
+4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
+5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+6. INSTRUCTION: ${instructionText || 'Answer the question directly and compellingly.'}
 
 Output ONLY the answer to the question in plain text. Do not wrap it in JSON. Do not include any introductory or conversational text.`;
 
@@ -226,7 +237,9 @@ Your goal is to tailor the candidate's resume for a specific job.
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME.
 2. MAXIMUM ${driftPercentage}% DRIFT: You may rephrase bullets to highlight relevant keywords from the job description, but the core truth and structure must remain intact.
-3. INSTRUCTION: ${instructionText || 'Tailor the resume to the job description.'}
+3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
+4. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+5. INSTRUCTION: ${instructionText || 'Tailor the resume to the job description.'}
 
 Output ONLY the Markdown string of the tailored resume in plain text. Do not wrap it in JSON or Markdown blocks like \`\`\`markdown.`;
 
@@ -261,7 +274,9 @@ CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS.
 2. LENGTH: Aim for around 150 words as a starting point, unless instructed otherwise.
 3. TONE: ${finalTone}
-4. INSTRUCTION: ${instructionText || 'Write a compelling cover letter.'}
+4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
+5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+6. INSTRUCTION: ${instructionText || 'Write a compelling cover letter.'}
 
 Output ONLY the Markdown string of the cover letter in plain text. Do not wrap it in JSON.`;
 
@@ -295,7 +310,9 @@ export async function regenerateNetworkingMessage(userId: string, jobId: string,
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS.
 2. TONE: ${finalTone}
-3. INSTRUCTION: ${instructionText || 'Write a 2-3 sentence connection request.'}
+3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
+4. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+5. INSTRUCTION: ${instructionText || 'Write a 2-3 sentence connection request.'}
 
 Output ONLY the text of the networking message. Do not wrap it in JSON.`;
 

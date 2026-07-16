@@ -1,15 +1,37 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        // We'll fetch all jobs to compute funnel metrics client-side, 
-        // or we can aggregate them here. 
-        // For simplicity and to allow recent activity, fetching all light job data is fine.
-        const jobs = await prisma.job.findMany({
-            select: { id: true, title: true, company: true, status: true, createdAt: true, opportunityScores: { select: { totalScore: true } } },
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        // Fetch all jobs for this user from UserJob to get the correct user-specific status
+        const userJobs = await prisma.userJob.findMany({
+            where: { userId: session.user.id },
+            include: {
+                job: {
+                    select: { id: true, title: true, company: true, opportunityScores: { select: { totalScore: true } } }
+                }
+            },
             orderBy: { createdAt: 'desc' }
         });
+
+        const jobs = userJobs.map((uj: any) => ({
+            id: uj.job.id,
+            title: uj.job.title,
+            company: uj.job.company,
+            status: uj.status,
+            createdAt: uj.createdAt,
+            appliedAt: uj.appliedAt,
+            opportunityScores: uj.job.opportunityScores
+        }));
 
         // Funnel counts
         const funnel = {

@@ -41,9 +41,11 @@ export async function POST(
 
     let asset = userJob.job.applicationAssets[0];
     if (!asset) {
-      // Create asset record if it doesn't exist so we can track usage
-      asset = await prisma.applicationAsset.create({
-        data: {
+      // Create or get asset record if it doesn't exist so we can track usage
+      asset = await prisma.applicationAsset.upsert({
+        where: { userId_jobId: { userId: session.user.id, jobId: id } },
+        update: {},
+        create: {
           jobId: id,
           userId: session.user.id,
           qaGenerationsUsed: 0

@@ -144,27 +144,25 @@ Return a JSON object strictly matching this schema:
             analysisNotes: scores.analysis_notes
         };
 
-        const existing = await prisma.opportunityScore.findFirst({ where: { jobId: jobId, userId: userId } });
+        const data = await prisma.opportunityScore.upsert({
+            where: { userId_jobId: { userId: userId, jobId: jobId } },
+            update: scorePayload,
+            create: { jobId: jobId, userId: userId, ...scorePayload }
+        });
 
-        let data;
-        if (existing) {
-            data = await prisma.opportunityScore.update({
-                where: { id: existing.id },
-                data: scorePayload
-            });
-        } else {
-            data = await prisma.opportunityScore.create({
-                data: { jobId: jobId, userId: userId, ...scorePayload }
+        // Update the user's specific job relation to 'scored'
+        await prisma.userJob.update({
+            where: { userId_jobId: { userId: userId, jobId: jobId } },
+            data: { status: 'scored' }
+        });
+
+        // If salary was extracted, update the global job record
+        if (scores.extracted_salary) {
+            await prisma.job.update({
+                where: { id: jobId },
+                data: { salaryRange: scores.extracted_salary }
             });
         }
-
-        await prisma.job.update({
-            where: { id: jobId },
-            data: {
-                status: 'scored',
-                ...(scores.extracted_salary ? { salaryRange: scores.extracted_salary } : {})
-            }
-        });
 
         return { ...data, total_score: totalScore };
 

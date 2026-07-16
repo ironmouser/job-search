@@ -54,6 +54,7 @@ model OpportunityScore {
 
   @@index([totalScore(sort: Desc)])
   @@index([jobId])
+  @@unique([userId, jobId])
   @@map("opportunity_scores")
 }
 
@@ -75,12 +76,13 @@ model ApplicationAsset {
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([jobId])
+  @@unique([userId, jobId])
   @@map("application_assets")
 }
 
 model JobFeedback {
   id           String   @id @default(uuid()) @db.Uuid
-  jobId        String   @unique @map("job_id") @db.Uuid
+  jobId        String   @map("job_id") @db.Uuid
   userId       String?  @map("user_id")
   feedbackType String   @map("feedback_type") // 'like' or 'dislike'
   reasons      String[] @default([])
@@ -90,6 +92,7 @@ model JobFeedback {
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([jobId])
+  @@unique([userId, jobId])
   @@map("job_feedback")
 }
 
