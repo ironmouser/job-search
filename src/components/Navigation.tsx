@@ -24,7 +24,7 @@ export default function Navigation() {
     <aside className="sidebar">
       <div className="mobile-nav-header">
         <div>
-          <h2 className="page-title" style={{ fontSize: '1.5rem', marginBottom: 0 }}>Job Agent</h2>
+          <h2 className="page-title" style={{ fontSize: '1.5rem', marginBottom: 0 }}>Job Agent HQ</h2>
           <p className="page-subtitle" style={{ fontSize: '0.85rem', marginBottom: 0 }}>Autonomous Career Search</p>
         </div>
         <button className="burger-btn" onClick={toggleMenu} aria-label="Toggle navigation">

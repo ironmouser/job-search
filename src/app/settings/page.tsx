@@ -332,7 +332,7 @@ export default function SettingsPage() {
                                     <>
                                         <li>Log in to your Yahoo Account Security page.</li>
                                         <li>Click on <strong>Generate and manage app passwords</strong>.</li>
-                                        <li>Enter a name for the app (e.g. Job Agent) and click Generate.</li>
+                                        <li>Enter a name for the app (e.g. Job Agent HQ) and click Generate.</li>
                                         <li>Paste the generated password below.</li>
                                     </>
                                 )}

@@ -51,7 +51,7 @@ function LoginForm() {
       
       <div style={{ zIndex: 10, textAlign: "center", marginBottom: "2rem" }}>
         <h2 className="page-title" style={{ fontSize: "2.5rem", color: "#fff" }}>
-          Job Agent
+          Job Agent HQ
         </h2>
         <p className="page-subtitle" style={{ marginTop: "0.5rem" }}>
           Sign in to your account or create a new one

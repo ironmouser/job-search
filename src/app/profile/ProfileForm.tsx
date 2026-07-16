@@ -328,7 +328,7 @@ export default function ProfileForm({
             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
               <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Current Plan</span>
               <span style={{ fontSize: "1.25rem", fontWeight: 600, color: planTier === "PRO" ? "var(--accent-primary)" : "var(--text-primary)" }}>
-                {planTier === "PRO" ? "Job Agent Pro" : "Free Plan"}
+                {planTier === "PRO" ? "Job Agent HQ Pro" : "Free Plan"}
               </span>
             </div>
             {stripeCustomerId ? (

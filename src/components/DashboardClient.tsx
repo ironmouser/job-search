@@ -25,7 +25,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [fetchStatuses, setFetchStatuses] = useState<Record<string, 'fetching' | 'success' | 'error'>>({});
+  const [fetchStatuses, setFetchStatuses] = useState<Record<string, 'fetching' | 'success' | 'error' | 'queued'>>({});
+  const [fetchQueue, setFetchQueue] = useState<{id: string, title: string, company: string}[]>([]);
+  const [activeFetches, setActiveFetches] = useState<{id: string, title: string, company: string}[]>([]);
+  const [showQueueOverlay, setShowQueueOverlay] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
@@ -118,23 +121,59 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     }));
   }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate]);
 
-  const handleFetchDetails = async (id: string) => {
-    setFetchStatuses(prev => ({ ...prev, [id]: 'fetching' }));
+  const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
+    if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
+    setFetchStatuses(prev => ({ ...prev, [job.id]: 'queued' }));
+    setFetchQueue(prev => [...prev, job]);
+    setShowQueueOverlay(true);
+  };
+
+  const processFetchDetails = async (jobItem: {id: string, title: string, company: string}) => {
+    setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'fetching' }));
     try {
-      const res = await fetch(`/api/jobs/${id}/fetch-details`, { method: 'POST' });
+      const res = await fetch(`/api/jobs/${jobItem.id}/fetch-details`, { method: 'POST' });
       if (res.ok) {
-        // Automatically rescore after fetching new description
         await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
-        setFetchStatuses(prev => ({ ...prev, [id]: 'success' }));
+        setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'success' }));
         router.refresh();
       } else {
-        console.error('Failed to fetch details');
-        setFetchStatuses(prev => ({ ...prev, [id]: 'error' }));
+        setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'error' }));
       }
     } catch (e) {
-      console.error(e);
-      setFetchStatuses(prev => ({ ...prev, [id]: 'error' }));
+      setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'error' }));
+    } finally {
+      setActiveFetches(prev => prev.filter(f => f.id !== jobItem.id));
     }
+  };
+
+  useEffect(() => {
+    if (activeFetches.length < 3 && fetchQueue.length > 0) {
+      const slotsAvailable = 3 - activeFetches.length;
+      const nextItems = fetchQueue.slice(0, slotsAvailable);
+      
+      setFetchQueue(prev => prev.slice(slotsAvailable));
+      setActiveFetches(prev => [...prev, ...nextItems]);
+      
+      nextItems.forEach(item => {
+        processFetchDetails(item);
+      });
+    }
+  }, [fetchQueue, activeFetches]);
+
+  useEffect(() => {
+    if (activeFetches.length === 0 && fetchQueue.length === 0 && showQueueOverlay) {
+      const timeout = setTimeout(() => setShowQueueOverlay(false), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [activeFetches, fetchQueue, showQueueOverlay]);
+
+  const removeQueuedItem = (id: string) => {
+    setFetchQueue(prev => prev.filter(item => item.id !== id));
+    setFetchStatuses(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const unarchivedJobs = jobs?.filter(j => !j.is_archived) || [];
@@ -509,8 +548,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
                           {isEmailJob && (!job.description || job.description.length < 500) && (
                              <button 
-                               onClick={() => handleFetchDetails(job.id)} 
-                               disabled={fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'success'} 
+                               onClick={() => handleQueueFetch({ id: job.id, title: job.title, company: job.company })} 
+                               disabled={fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success'} 
                                className={`btn-outline ${fetchStatuses[job.id] === 'error' ? 'error' : ''}`} 
                                style={{ 
                                  padding: '0.3rem 0.6rem', 
@@ -520,6 +559,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                                }}
                              >
                                {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 
+                                fetchStatuses[job.id] === 'queued' ? 'Queued' : 
                                 fetchStatuses[job.id] === 'success' ? '✓ Fetched' : 
                                 fetchStatuses[job.id] === 'error' ? 'Retry' : 'Fetch'}
                              </button>
@@ -604,8 +644,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
                     {job.company?.includes('(Scraped via Email)') && (!job.description || job.description.length < 500) && (
                        <button 
-                         onClick={() => handleFetchDetails(job.id)} 
-                         disabled={fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'success'} 
+                         onClick={() => handleQueueFetch({ id: job.id, title: job.title, company: job.company })} 
+                         disabled={fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success'} 
                          className={`btn-outline ${fetchStatuses[job.id] === 'error' ? 'error' : ''}`} 
                          style={{ 
                            padding: '0.4rem 0.8rem', 
@@ -615,6 +655,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                          }}
                        >
                          {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 
+                          fetchStatuses[job.id] === 'queued' ? 'Queued' : 
                           fetchStatuses[job.id] === 'success' ? '✓ Fetched' : 
                           fetchStatuses[job.id] === 'error' ? 'Failed - Retry' : 'Fetch Details'}
                        </button>
@@ -717,6 +758,72 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               <button onClick={() => setShowConfigModal(false)} className="btn-outline">Cancel</button>
               <Link href="/settings#email-sync" className="btn-primary" onClick={() => setShowConfigModal(false)}>Set up now</Link>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showQueueOverlay && (
+        <div style={{ 
+          position: 'fixed', 
+          bottom: '2rem', 
+          right: '2rem', 
+          width: '320px', 
+          zIndex: 9999,
+          background: 'var(--bg-glass)',
+          border: '1px solid var(--border-glass)',
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(16px)',
+          padding: '1rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.8rem'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem' }}>Fetch Queue</h3>
+            {activeFetches.length === 0 && fetchQueue.length === 0 ? (
+              <span style={{ fontSize: '0.8rem', color: 'var(--success)' }}>Complete</span>
+            ) : (
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                {activeFetches.length} active, {fetchQueue.length} queued
+              </span>
+            )}
+          </div>
+          
+          <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {activeFetches.map(job => (
+              <div key={job.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '6px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-primary)', animation: 'pulse 1.5s infinite' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.company}</div>
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)' }}>Fetching...</span>
+              </div>
+            ))}
+            
+            {fetchQueue.map(job => (
+              <div key={job.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '6px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--text-secondary)' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.company}</div>
+                </div>
+                <button 
+                  onClick={() => removeQueuedItem(job.id)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.2rem' }}
+                  title="Remove from queue"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            
+            {activeFetches.length === 0 && fetchQueue.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                All details fetched successfully!
+              </div>
+            )}
           </div>
         </div>
       )}

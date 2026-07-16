@@ -11,7 +11,7 @@ export default async function Dashboard() {
   if (!session?.user?.id) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-        <h1 className="page-title">Welcome to Job Agent</h1>
+        <h1 className="page-title">Welcome to Job Agent HQ</h1>
         <p className="page-subtitle">Please log in to view your dashboard.</p>
       </div>
     );
