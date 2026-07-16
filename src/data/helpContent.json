@@ -1,0 +1,138 @@
+{
+    "tours": {
+        "dashboard": {
+            "name": "Dashboard Overview",
+            "description": "Learn how to navigate your dashboard and track job applications.",
+            "roles": ["*"],
+            "autoStart": true,
+            "steps": [
+                {
+                    "target": "[data-tour='dashboard-stats']",
+                    "title": "Job Stats",
+                    "content": "View your total discovered jobs, scored jobs, and jobs that are a high fit based on your search criteria.",
+                    "placement": "bottom"
+                },
+                {
+                    "target": "[data-tour='recent-jobs']",
+                    "title": "Recent Jobs",
+                    "content": "Track the jobs you've recently applied to or saved.",
+                    "placement": "top"
+                }
+            ]
+        },
+        "pipeline": {
+            "name": "Pipeline Board",
+            "description": "Learn how to manage your active job applications.",
+            "roles": ["*"],
+            "autoStart": false,
+            "steps": [
+                {
+                    "target": "[data-tour='pipeline-kanban']",
+                    "title": "Pipeline Board",
+                    "content": "Track your applications visually as they move from Applied to Offer.",
+                    "placement": "bottom"
+                },
+                {
+                    "target": "[data-tour='pipeline-status-dropdown']",
+                    "title": "Update Status",
+                    "content": "Quickly change a job's status by using the dropdown on any job card.",
+                    "placement": "bottom"
+                }
+            ]
+        },
+        "settings": {
+            "name": "Settings & Preferences",
+            "description": "Learn how to configure your job preferences.",
+            "roles": ["*"],
+            "autoStart": false,
+            "steps": [
+                {
+                    "target": "[data-tour='job-preferences']",
+                    "title": "Job Preferences",
+                    "content": "Set your desired role, location, and salary expectations.",
+                    "placement": "bottom"
+                },
+                {
+                    "target": "[data-tour='resume-upload']",
+                    "title": "Resume",
+                    "content": "Upload your latest resume so the agent can use it to apply for jobs.",
+                    "placement": "bottom"
+                }
+            ]
+        },
+        "analytics": {
+            "name": "Analytics Dashboard",
+            "description": "Learn how to track your application metrics.",
+            "roles": ["*"],
+            "autoStart": false,
+            "steps": [
+                {
+                    "target": "[data-tour='analytics-stats']",
+                    "title": "High-Level Metrics",
+                    "content": "View your total discovered, scored, applied, and interviewing stats.",
+                    "placement": "bottom"
+                },
+                {
+                    "target": "[data-tour='analytics-funnel']",
+                    "title": "Conversion Funnel",
+                    "content": "See how well you're converting from scored to applied, and applied to interviews.",
+                    "placement": "right"
+                },
+                {
+                    "target": "[data-tour='analytics-status']",
+                    "title": "Pipeline Status",
+                    "content": "Breakdown of jobs currently in every stage of your pipeline.",
+                    "placement": "left"
+                }
+            ]
+        },
+        "assets": {
+            "name": "Base Assets",
+            "description": "Learn how to manage your master resume for AI generation.",
+            "roles": ["*"],
+            "autoStart": false,
+            "steps": [
+                {
+                    "target": "[data-tour='assets-editor']",
+                    "title": "Base Resume Editor",
+                    "content": "This is your master resume text. The AI uses this to tailor a unique version for every job application.",
+                    "placement": "right"
+                },
+                {
+                    "target": "[data-tour='assets-upload']",
+                    "title": "Upload or Paste",
+                    "content": "Upload your existing PDF/Word resume, or paste its text directly to populate the editor.",
+                    "placement": "bottom"
+                }
+            ]
+        },
+        "job_details": {
+            "name": "Job Details Analysis",
+            "description": "Learn how the AI analyzes and helps you apply to jobs.",
+            "roles": ["*"],
+            "autoStart": false,
+            "steps": [
+                {
+                    "target": "[data-tour='job-detail-score']",
+                    "title": "AI Opportunity Score",
+                    "content": "A detailed breakdown of how well this job matches your preferences and profile.",
+                    "placement": "left"
+                },
+                {
+                    "target": "[data-tour='job-detail-description']",
+                    "title": "Review Job Description",
+                    "content": "The original job description scraped from the web.",
+                    "placement": "bottom"
+                },
+                {
+                    "target": "[data-tour='job-detail-assets']",
+                    "title": "Application Assets",
+                    "content": "Generate a tailored cover letter, networking message, and resume extract specifically for this role.",
+                    "placement": "bottom"
+                }
+            ]
+        }
+    },
+    "tooltips": {},
+    "firstTimeHints": {}
+}

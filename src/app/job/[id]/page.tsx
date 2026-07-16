@@ -162,7 +162,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>1</div>
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Review Job Description</h2>
             </div>
-            <div className="glass-card">
+            <div className="glass-card" data-tour="job-detail-description">
               <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95rem' }}>
                 {job.description}
               </div>
@@ -173,7 +173,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           </section>
 
           {/* Step 2: Application Assets */}
-          <section>
+          <section data-tour="job-detail-assets">
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>2</div>
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Generate Assets</h2>
@@ -252,7 +252,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
         {/* Sidebar - Scoring */}
         <div style={{ paddingTop: '3.5rem' }}>
           {scores ? (
-            <div className="glass-card" style={{ position: 'sticky', top: '2rem' }}>
+            <div className="glass-card" style={{ position: 'sticky', top: '2rem' }} data-tour="job-detail-score">
               <h3 style={{ marginBottom: '1.5rem' }}>AI Opportunity Score</h3>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

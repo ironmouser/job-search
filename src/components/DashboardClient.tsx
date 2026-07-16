@@ -302,7 +302,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         </div>
       </div>
 
-      <div className="responsive-grid" style={{ marginBottom: '1.5rem' }}>
+      <div className="responsive-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'all' ? 'active' : ''}`}
           onClick={() => setActiveFilter('all')}
@@ -436,7 +436,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       </div>
       
       {viewMode === 'table' ? (
-        <div style={{ overflowX: 'auto', background: 'var(--bg-glass)', borderRadius: '12px', border: '1px solid var(--border-glass)', marginBottom: '2rem' }}>
+        <div data-tour="recent-jobs" style={{ overflowX: 'auto', background: 'var(--bg-glass)', borderRadius: '12px', border: '1px solid var(--border-glass)', marginBottom: '2rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
@@ -546,7 +546,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           </table>
         </div>
       ) : (
-        <div className="job-card-grid">
+        <div className="job-card-grid" data-tour="recent-jobs">
           {filteredAndSortedJobs.map((job) => {
             const score = job.opportunity_scores?.[0]?.total_score;
             const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';

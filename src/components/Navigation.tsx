@@ -3,13 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import { useHelp } from '@/contexts/HelpContext';
 
 export default function Navigation() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const { openHelpPanel } = useHelp();
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
@@ -69,6 +71,28 @@ export default function Navigation() {
             </Link>
           </li>
         )}
+        <li className="nav-item">
+          <button 
+            onClick={() => { closeMenu(); openHelpPanel(); }} 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem', 
+              padding: '0.8rem 1rem', 
+              color: 'var(--text-secondary)', 
+              background: 'transparent',
+              border: 'none',
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '1rem'
+            }}
+          >
+            <HelpCircle size={20} />
+            Help & Tours
+          </button>
+        </li>
         <li className="nav-item" style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
           {session ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>

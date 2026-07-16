@@ -64,7 +64,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
             </div>
 
             {viewMode === 'kanban' ? (
-                <div style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1 }}>
+                <div style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1 }} data-tour="pipeline-kanban">
                     {COLUMNS.map(col => (
                         <div key={col.id} style={{ flex: '0 0 320px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div style={{ 
@@ -90,6 +90,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                             
                                             {/* Status Dropdown */}
                                             <select 
+                                                data-tour="pipeline-status-dropdown"
                                                 value={job.status} 
                                                 onChange={(e) => updateJobStatus(job.id, e.target.value)}
                                                 style={{ 

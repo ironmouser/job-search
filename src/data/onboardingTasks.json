@@ -1,0 +1,56 @@
+{
+    "phases": [
+        {
+            "id": "phase1",
+            "title": "Phase 1: Getting Started",
+            "tasks": [
+                {
+                    "id": "dashboard",
+                    "title": "Tour the Dashboard",
+                    "description": "Get to know your job tracking dashboard.",
+                    "route": "/",
+                    "tourId": "dashboard",
+                    "roles": ["*"],
+                    "steps": [
+                        "Click Dashboard in the menu.",
+                        "Locate your application statistics.",
+                        "Check the recent jobs section."
+                    ]
+                },
+                {
+                    "id": "settings",
+                    "title": "Configure Preferences",
+                    "description": "Tell the Job Agent what you are looking for.",
+                    "route": "/settings",
+                    "tourId": "settings",
+                    "roles": ["*"],
+                    "steps": [
+                        "Go to Settings in the menu.",
+                        "Set your location and salary preferences.",
+                        "Upload your latest resume.",
+                        "Save your changes."
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "phase2",
+            "title": "Phase 2: Finding Jobs",
+            "tasks": [
+                {
+                    "id": "job_search",
+                    "title": "Search for Jobs",
+                    "description": "Find and save your first job.",
+                    "route": "/jobs/search",
+                    "tourId": "job_search",
+                    "roles": ["*"],
+                    "steps": [
+                        "Go to the Job Search page.",
+                        "Enter a keyword or title.",
+                        "Review the results and click 'Save' on a job you like."
+                    ]
+                }
+            ]
+        }
+    ]
+}

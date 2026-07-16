@@ -115,7 +115,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Job Discovery */}
-                <div className="glass-card">
+                <div className="glass-card" data-tour="job-preferences">
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
                         <Search size={20} className="text-accent" /> Job Discovery
                     </h3>
@@ -277,7 +277,7 @@ export default function SettingsPage() {
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>This exact text is used by the AI to score and rank jobs. Update it to reflect what you truly care about.</span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }} data-tour="resume-upload">
                             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Base Assets</label>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>To update the base resume the AI uses as a template, use the Assets editor.</p>
                             <Link href="/assets" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content' }}>

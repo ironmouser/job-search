@@ -4,6 +4,9 @@ import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText } from "lucid
 import Link from 'next/link';
 import ThemeProvider from "@/components/ThemeProvider";
 import AuthProvider from "@/components/AuthProvider";
+import { HelpProvider } from "@/contexts/HelpContext";
+import TourGuide from "@/components/common/TourGuide";
+import HelpPanel from "@/components/common/HelpPanel";
 
 import Navigation from "@/components/Navigation";
 
@@ -22,14 +25,16 @@ export default function RootLayout({
       <body className="light-theme">
         <AuthProvider>
           <ThemeProvider>
-            <div className="app-container">
-              <Navigation />
-
-              
-              <main className="main-content">
-                {children}
-              </main>
-            </div>
+            <HelpProvider>
+              <TourGuide />
+              <div className="app-container">
+                <Navigation />
+                <main className="main-content">
+                  {children}
+                </main>
+                <HelpPanel />
+              </div>
+            </HelpProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

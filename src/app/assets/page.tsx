@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Save, FileText } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Save, FileText, Upload, Clipboard } from 'lucide-react';
 
 export default function AssetsPage() {
     const [content, setContent] = useState('');
@@ -39,6 +39,48 @@ export default function AssetsPage() {
         }
     };
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/parse-resume', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok && data.markdown) {
+                setContent(data.markdown);
+            } else {
+                throw new Error(data.error || 'Failed to parse resume');
+            }
+        } catch (err: any) {
+            console.error(err);
+            alert(err.message || 'Error parsing file.');
+        } finally {
+            setLoading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handlePaste = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                setContent(text);
+            }
+        } catch (err) {
+            console.error('Failed to read clipboard', err);
+            alert('Could not read from clipboard. Please ensure you have granted permission, or manually paste into the text area.');
+        }
+    };
+
     if (loading) return <div style={{ padding: '2rem' }}>Loading assets...</div>;
 
     return (
@@ -59,10 +101,35 @@ export default function AssetsPage() {
                 </button>
             </div>
 
-            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)' }}>
-                    <FileText size={20} /> base_resume.md
-                </h3>
+            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }} data-tour="assets-editor">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)' }}>
+                        <FileText size={20} /> Base Resume
+                    </h3>
+                    <div style={{ display: 'flex', gap: '0.5rem' }} data-tour="assets-upload">
+                        <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="btn-outline"
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <Upload size={16} /> Upload PDF/DOC
+                        </button>
+                        <input 
+                            type="file" 
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                            style={{ display: 'none' }} 
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                        />
+                        <button 
+                            onClick={handlePaste}
+                            className="btn-outline"
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <Clipboard size={16} /> Paste
+                        </button>
+                    </div>
+                </div>
                 <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}

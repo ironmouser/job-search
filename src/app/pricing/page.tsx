@@ -104,7 +104,7 @@ export default function PricingPage() {
             Advanced AI tools for serious candidates.
           </p>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginBottom: "2rem" }}>
-            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--text-primary)" }}>$15</span>
+            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--text-primary)" }}>$20.00</span>
             <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>/month</span>
           </div>
           <button

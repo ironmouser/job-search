@@ -38,7 +38,7 @@ export default function AnalyticsDashboard() {
         <p className="page-subtitle">Track your application funnel and conversion rates</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }} data-tour="analytics-stats">
         <StatCard title="Total Found" value={funnel.discovered || 0} icon={<Filter size={24} color="#a78bfa" />} />
         <StatCard title="Highly Scored" value={totalScored} icon={<Target size={24} color="#60a5fa" />} />
         <StatCard title="Applications Sent" value={totalApplied} icon={<Send size={24} color="#34d399" />} />
@@ -46,7 +46,7 @@ export default function AnalyticsDashboard() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-        <div className="glass-card">
+        <div className="glass-card" data-tour="analytics-funnel">
           <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <BarChart2 size={20} className="text-accent" /> Conversion Funnel
           </h3>
@@ -67,7 +67,7 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
-        <div className="glass-card">
+        <div className="glass-card" data-tour="analytics-status">
           <h3 style={{ marginBottom: '1.5rem' }}>Pipeline Status</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <StatusRow label="Discovered (Unscored)" count={funnel.discovered || 0} color="var(--text-secondary)" />
