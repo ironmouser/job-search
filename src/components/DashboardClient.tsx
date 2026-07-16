@@ -279,6 +279,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   }, [jobs, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate]);
 
   return (
+    <>
     <div className="animate-fade-in">
       <div className="flex-stack-mobile" style={{ marginBottom: '2rem' }}>
         <div>
@@ -652,6 +653,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         </div>
       )}
 
+      </div>
+
       <div className={`sync-overlay-backdrop ${isSyncing ? 'active' : ''}`}>
         <div className="sync-overlay-content">
           <h2>Syncing in Progress</h2>
@@ -689,14 +692,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       </div>
 
       {showUpgradeModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
           <div className="glass-card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '2rem' }}>
             <h2 style={{ marginBottom: '1rem' }}>Pro Feature</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
               Email Sync is a Pro feature. Upgrade your plan to automatically pull job posts from your email.
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button onClick={() => setShowUpgradeModal(false)} className="btn-outline">Cancel</button>
+               <button onClick={() => setShowUpgradeModal(false)} className="btn-outline">Cancel</button>
               <Link href="/pricing" className="btn-primary" onClick={() => setShowUpgradeModal(false)}>Upgrade Plan</Link>
             </div>
           </div>
@@ -704,7 +707,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       )}
 
       {showConfigModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
           <div className="glass-card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '2rem' }}>
             <h2 style={{ marginBottom: '1rem' }}>Configuration Required</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
@@ -717,6 +720,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
