@@ -91,6 +91,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     };
   }, [isSyncing]);
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   useEffect(() => {
     const saved = localStorage.getItem('jobAgentDashboardState');
     if (saved) {
@@ -107,9 +109,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         console.error('Failed to parse dashboard state from local storage', e);
       }
     }
+    setIsLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('jobAgentDashboardState', JSON.stringify({
       activeFilter,
       viewMode,
@@ -119,7 +123,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       startDate,
       endDate
     }));
-  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate]);
+  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, isLoaded]);
 
   const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
     if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
