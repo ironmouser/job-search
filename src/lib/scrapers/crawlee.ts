@@ -421,8 +421,11 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             }
                         });
 
+                        const title = titleEl.text().trim();
+                        if (!title) return; // Skip non-job links (like marketing/nav links)
+
                         pageJobs.push({
-                            title: titleEl.text().trim() || 'Unknown Role',
+                            title: title,
                             company: companyEl.text().trim() || 'We Work Remotely',
                             location: locationText || 'Remote',
                             description: `Apply at: ${fullUrl}${salaryText ? '\nSalary: ' + salaryText : ''}`,
