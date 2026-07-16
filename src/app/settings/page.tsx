@@ -265,7 +265,7 @@ export default function SettingsPage() {
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Limits how much of your base resume the AI is allowed to rewrite.</span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-tour="target-profile">
                             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                                 Target Profile & Scoring Rubric
                             </label>

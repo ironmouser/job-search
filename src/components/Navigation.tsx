@@ -58,7 +58,7 @@ export default function Navigation() {
           </Link>
         </li>
         <li className="nav-item">
-          <Link href="/settings" className={pathname === '/settings' ? 'active' : ''} onClick={closeMenu}>
+          <Link href="/settings" className={pathname === '/settings' ? 'active' : ''} onClick={closeMenu} data-tour="settings-menu">
             <Settings size={20} />
             Settings
           </Link>

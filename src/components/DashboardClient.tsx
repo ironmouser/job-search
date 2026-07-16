@@ -295,10 +295,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             <Mail size={16} />
             {isEmailSyncing ? 'Syncing...' : 'Sync Emails'}
           </button>
-          <SyncButton onSyncStateChange={(loading, text) => {
-            setIsSyncing(loading);
-            setSyncMessage(text);
-          }} />
+          <div data-tour="dashboard-sync-jobs">
+            <SyncButton onSyncStateChange={(loading, text) => {
+              setIsSyncing(loading);
+              setSyncMessage(text);
+            }} />
+          </div>
         </div>
       </div>
 

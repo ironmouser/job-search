@@ -15,8 +15,14 @@
                 {
                     "target": "[data-tour='recent-jobs']",
                     "title": "Recent Jobs",
-                    "content": "Track the jobs you've recently applied to or saved.",
+                    "content": "View jobs that match your profile and see how well they score as a fit.",
                     "placement": "top"
+                },
+                {
+                    "target": "[data-tour='dashboard-sync-jobs']",
+                    "title": "Job results",
+                    "content": "Click the sync jobs button to search top job boards and web sites for your dream job.",
+                    "placement": "bottom"
                 }
             ]
         },
@@ -47,9 +53,21 @@
             "autoStart": false,
             "steps": [
                 {
+                    "target": "[data-tour='settings-menu']",
+                    "title": "Settings",
+                    "content": "Navigate to the settings menu to configure your preferences.",
+                    "placement": "right"
+                },
+                {
                     "target": "[data-tour='job-preferences']",
-                    "title": "Job Preferences",
-                    "content": "Set your desired role, location, and salary expectations.",
+                    "title": "Job Discovery",
+                    "content": "Set your role, location, and job sites you'd like to search.",
+                    "placement": "bottom"
+                },
+                {
+                    "target": "[data-tour='target-profile']",
+                    "title": "Tell us what you're looking for",
+                    "content": "Let us know what's important in your next role like goals, salary, and work environment.",
                     "placement": "bottom"
                 },
                 {

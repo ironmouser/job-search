@@ -12,9 +12,9 @@
                     "tourId": "dashboard",
                     "roles": ["*"],
                     "steps": [
-                        "Click Dashboard in the menu.",
                         "Locate your application statistics.",
-                        "Check the recent jobs section."
+                        "View jobs that match your profile.",
+                        "Click the sync jobs button to search top job."
                     ]
                 },
                 {
@@ -26,9 +26,9 @@
                     "roles": ["*"],
                     "steps": [
                         "Go to Settings in the menu.",
-                        "Set your location and salary preferences.",
-                        "Upload your latest resume.",
-                        "Save your changes."
+                        "Set your role, location, and job sites.",
+                        "Update your target profile and scoring rubric.",
+                        "Upload your latest resume."
                     ]
                 }
             ]
