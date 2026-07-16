@@ -221,7 +221,7 @@ model UserPreferences {
   customCareerPages String[] @default([])
   sources           Json?    @default("{}")
   remoteOnly        Boolean  @default(false)
-  theme             String   @default("dark")
+  theme             String   @default("light")
   aiStrictness      String   @default("Standard")
   coverLetterTone       String?  @default("Confident and strategic") @map("cover_letter_tone")
   networkingMessageTone String?  @default("Confident and strategic") @map("networking_message_tone")
