@@ -19,13 +19,18 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
             });
 
             if (res.statusCode >= 200 && res.statusCode < 300) {
-                return { $: cheerio.load(res.body), usedFirecrawl: false };
+                const bodyStr = res.body.toString();
+                if (bodyStr.includes('Just a moment...') || bodyStr.includes('cf-challenge-error-title')) {
+                    console.warn(`Attempt ${attempt}: Cloudflare block detected on ${url} despite 200 OK`);
+                } else {
+                    return { $: cheerio.load(res.body), usedFirecrawl: false };
+                }
             }
 
             console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.statusCode})`);
             
-            // If it's a 403 Forbidden (Bot Block) and we have a Firecrawl key, fallback to Firecrawl
-            if (res.statusCode === 403 && process.env.FIRECRAWL_API_KEY) {
+            // Fallback to Firecrawl for any block or non-200 status
+            if (process.env.FIRECRAWL_API_KEY) {
                 console.info(`Falling back to Firecrawl for ${url}`);
                 try {
                     const fcRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
@@ -288,13 +293,9 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 
             if (source === 'remoteok') {
                 try {
-                    const res = await fetch(url, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
+                    const res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        const data = res.body;
                         for (let i = 1; i < data.length; i++) {
                             const job = data[i];
                             if (job.position && job.company) {
@@ -309,20 +310,20 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             }
                         }
                     } else {
-                        errorMsg = `HTTP Error: ${res.status}`;
+                        errorMsg = `HTTP Error: ${res.statusCode}`;
                     }
                 } catch (e: any) {
                     console.warn(`Error parsing remoteok API: ${e.message}`);
                     errorMsg = e.message;
                 }
-                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url };
+                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
             }
 
             if (source === 'remotive') {
                 try {
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        const data = await res.json();
+                    const res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        const data = res.body;
                         if (data && Array.isArray(data.jobs)) {
                             for (const job of data.jobs) {
                                 if (job.title && job.company_name) {
@@ -338,13 +339,13 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             }
                         }
                     } else {
-                        errorMsg = `HTTP Error: ${res.status}`;
+                        errorMsg = `HTTP Error: ${res.statusCode}`;
                     }
                 } catch (e: any) {
                     console.warn(`Error parsing remotive API: ${e.message}`);
                     errorMsg = e.message;
                 }
-                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url };
+                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
             }
 
             try {
