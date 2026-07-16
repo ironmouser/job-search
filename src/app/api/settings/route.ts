@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { encrypt } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export async function GET() {
             profile: prefs.profile || '',
             resumeMarkdown: prefs.resumeMarkdown || '',
             emailAddress: prefs.emailAddress || '',
-            emailAppPassword: prefs.emailAppPassword || '',
+            emailAppPassword: prefs.emailAppPassword ? '********' : '',
             imapHost: prefs.imapHost || 'imap.gmail.com',
             imapPort: prefs.imapPort || 993
         });
@@ -78,24 +79,29 @@ export async function POST(request: Request) {
         }
 
 
+        let updateData: any = {
+            searchKeyword: data.searchKeyword,
+            searchLocation: data.searchLocation,
+            remoteOnly: data.remoteOnly,
+            theme: data.theme,
+            aiStrictness: data.aiStrictness,
+            resumeCustomizationMaxPercentage: data.resumeCustomizationMaxPercentage,
+            customCareerPages: data.customCareerPages,
+            sources: data.sources,
+            profile: data.profile,
+            resumeMarkdown: data.resumeMarkdown,
+            emailAddress: data.emailAddress,
+            imapHost: data.imapHost,
+            imapPort: data.imapPort
+        };
+
+        if (data.emailAppPassword && data.emailAppPassword !== '********') {
+            updateData.emailAppPassword = encrypt(data.emailAppPassword);
+        }
+
         const prefs = await prisma.userPreferences.upsert({
             where: { userId: session.user.id },
-            update: {
-                searchKeyword: data.searchKeyword,
-                searchLocation: data.searchLocation,
-                remoteOnly: data.remoteOnly,
-                theme: data.theme,
-                aiStrictness: data.aiStrictness,
-                resumeCustomizationMaxPercentage: data.resumeCustomizationMaxPercentage,
-                customCareerPages: data.customCareerPages,
-                sources: data.sources,
-                profile: data.profile,
-                resumeMarkdown: data.resumeMarkdown,
-                emailAddress: data.emailAddress,
-                emailAppPassword: data.emailAppPassword,
-                imapHost: data.imapHost,
-                imapPort: data.imapPort
-            },
+            update: updateData,
             create: {
                 userId: session.user.id,
                 searchKeyword: data.searchKeyword || '',
@@ -109,7 +115,7 @@ export async function POST(request: Request) {
                 profile: data.profile || '',
                 resumeMarkdown: data.resumeMarkdown || '',
                 emailAddress: data.emailAddress || '',
-                emailAppPassword: data.emailAppPassword || '',
+                ...(data.emailAppPassword && data.emailAppPassword !== '********' ? { emailAppPassword: encrypt(data.emailAppPassword) } : {}),
                 imapHost: data.imapHost || 'imap.gmail.com',
                 imapPort: data.imapPort || 993
             }

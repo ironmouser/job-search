@@ -3,11 +3,7 @@ import { simpleParser } from 'mailparser';
 import { prisma } from './prisma';
 import { normalizeAndSaveJobs } from './apify';
 import { extractJobsFromEmailText } from './scoring';
-
-const IMAP_HOST = process.env.IMAP_HOST;
-const IMAP_PORT = parseInt(process.env.IMAP_PORT || '993', 10);
-const IMAP_USER = process.env.IMAP_USER;
-const IMAP_PASS = process.env.IMAP_PASS;
+import { decrypt } from './encryption';
 
 const JOB_BOARDS = [
   'indeed.com',
@@ -21,17 +17,26 @@ const JOB_BOARDS = [
 ];
 
 export async function fetchEmailsAndExtractJobs(userId: string) {
-  if (!IMAP_HOST || !IMAP_USER || !IMAP_PASS) {
-    throw new Error('IMAP credentials are not configured in environment variables.');
+  const prefs = await prisma.userPreferences.findUnique({
+    where: { userId }
+  });
+
+  if (!prefs?.emailAddress || !prefs?.emailAppPassword) {
+    throw new Error('Email credentials are not configured in your settings.');
   }
 
+  const imapHost = prefs.imapHost || 'imap.gmail.com';
+  const imapPort = prefs.imapPort || 993;
+  const imapUser = prefs.emailAddress;
+  const imapPass = decrypt(prefs.emailAppPassword);
+
   const client = new ImapFlow({
-    host: IMAP_HOST,
-    port: IMAP_PORT,
-    secure: IMAP_PORT === 993,
+    host: imapHost,
+    port: imapPort,
+    secure: imapPort === 993,
     auth: {
-      user: IMAP_USER,
-      pass: IMAP_PASS,
+      user: imapUser,
+      pass: imapPass,
     },
     logger: false,
   });
