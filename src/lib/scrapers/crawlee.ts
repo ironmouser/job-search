@@ -20,10 +20,20 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
 
             if (res.statusCode >= 200 && res.statusCode < 300) {
                 const bodyStr = res.body.toString();
-                if (bodyStr.includes('Just a moment...') || bodyStr.includes('cf-challenge-error-title')) {
+                const $ = cheerio.load(res.body);
+                const pageTitle = $('title').text().toLowerCase();
+                
+                if (
+                    bodyStr.includes('Just a moment...') || 
+                    bodyStr.includes('cf-challenge-error-title') ||
+                    pageTitle.includes('cloudflare') ||
+                    pageTitle.includes('attention required') ||
+                    pageTitle.includes('security check') ||
+                    pageTitle.includes('access denied')
+                ) {
                     console.warn(`Attempt ${attempt}: Cloudflare block detected on ${url} despite 200 OK`);
                 } else {
-                    return { $: cheerio.load(res.body), usedFirecrawl: false };
+                    return { $, usedFirecrawl: false };
                 }
             }
 
