@@ -81,7 +81,7 @@ export default function AutofillButton({ jobId, jobUrl, jobTitle, jobCompany, is
         }}
       >
         {isLocked ? <Lock size={18} /> : copied ? <Copy size={18} /> : <Bot size={18} className={isLaunching ? "animate-pulse" : ""} />}
-        {isLocked ? 'Smart Apply (Locked)' : isLaunching ? 'Preparing...' : copied ? 'Cover Letter Copied! Opening...' : 'Smart Apply (New Tab)'}
+        {isLocked ? 'Apply to Job (Locked)' : isLaunching ? 'Preparing...' : copied ? 'Cover Letter Copied! Opening...' : 'Apply to Job (New Tab)'}
       </button>
     </div>
   );

@@ -159,7 +159,6 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               {totalScore}
             </div>
           )}
-          <AutofillButton jobId={job.id} jobUrl={job.url} jobTitle={job.title} jobCompany={job.company} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
         </div>
       </div>
 
@@ -243,9 +242,9 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             </div>
             <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', padding: '2rem' }}>
               <div>
-                <h3 style={{ margin: '0 0 0.5rem 0' }}>Smart Apply</h3>
+                <h3 style={{ margin: '0 0 0.5rem 0' }}>Apply to Job</h3>
                 <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>
-                  Ready to apply? Click the "Smart Apply" button to open the job application on the company's career page.
+                  Ready to apply? Click the "Apply to Job" button to open the job application on the company's career page.
                 </p>
               </div>
               <AutofillButton jobId={job.id} jobUrl={job.url} jobTitle={job.title} jobCompany={job.company} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
