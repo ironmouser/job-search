@@ -3,13 +3,16 @@
 import React, { useEffect, useMemo } from 'react';
 import { useJoyride, STATUS } from 'react-joyride';
 import { useHelp } from '../../contexts/HelpContext';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface TourGuideProps {
     tourId?: string;
 }
 
 const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
-    const { activeTour, activeTourId, endTour, startTour, hasSeenTour } = useHelp();
+    const { activeTour, activeTourId, endTour, startTour, hasSeenTour, markOnboardingTaskComplete, openHelpPanel } = useHelp();
+    const router = useRouter();
+    const pathname = usePathname();
     
     // Compute steps synchronously to ensure Joyride gets them immediately
     const steps = useMemo(() => {
@@ -54,13 +57,29 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
         }
     }, [tourId, hasSeenTour, activeTourId, startTour]);
 
+    // Handle cross-page navigation
+    useEffect(() => {
+        if (state.status === 'running' && activeTour && state.index >= 0 && state.index < steps.length) {
+            const currentStep = (activeTour.steps[state.index] as any);
+            if (currentStep.route && currentStep.route !== pathname) {
+                router.push(currentStep.route);
+            }
+        }
+    }, [state.index, state.status, activeTour, pathname, router, steps.length]);
+
     useEffect(() => {
         if ([STATUS.FINISHED, STATUS.SKIPPED].includes(state.status as any)) {
+            if (state.status === STATUS.FINISHED && activeTourId) {
+                markOnboardingTaskComplete(activeTourId);
+                setTimeout(() => {
+                    openHelpPanel(0);
+                }, 300);
+            }
             setTimeout(() => {
                 endTour();
             }, 100);
         }
-    }, [state.status, endTour]);
+    }, [state.status, endTour, activeTourId, markOnboardingTaskComplete, openHelpPanel]);
 
     return <>{Tour}</>;
 };

@@ -30,6 +30,7 @@ interface TourStep {
     title: string;
     content: string;
     placement?: 'top' | 'bottom' | 'left' | 'right' | 'auto';
+    route?: string;
 }
 
 export interface Tour {

@@ -19,6 +19,21 @@ export default function OnboardingChecklist() {
 
     const progress = getOnboardingProgress();
 
+    React.useEffect(() => {
+        if (!expandedPhase) return;
+        
+        const currentPhase = onboardingTasks.phases.find(p => p.id === expandedPhase);
+        if (currentPhase) {
+            const isPhaseCompleted = currentPhase.tasks.every(t => completedOnboardingTasks.has(t.id));
+            if (isPhaseCompleted) {
+                const nextPhase = onboardingTasks.phases.find(p => !p.tasks.every(t => completedOnboardingTasks.has(t.id)));
+                if (nextPhase && nextPhase.id !== expandedPhase) {
+                    setExpandedPhase(nextPhase.id);
+                }
+            }
+        }
+    }, [completedOnboardingTasks, expandedPhase, onboardingTasks.phases]);
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Progress Header */}

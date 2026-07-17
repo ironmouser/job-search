@@ -298,9 +298,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     if (unscoredCurrentJobs.length > 0) {
       unscoredCurrentJobs.forEach(j => scoringInProgress.current.add(j.id));
       const scoreCurrent = async () => {
-        setIsSyncing(true);
-        setSyncMessage('We are scoring some jobs that haven\'t been scored yet. This will just take a moment.');
-        
         try {
           await fetch('/api/score', {
             method: 'POST',
@@ -310,8 +307,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           router.refresh();
         } catch (e) {
           console.error('Failed to score current jobs:', e);
-        } finally {
-          setIsSyncing(false);
         }
       };
       scoreCurrent();
