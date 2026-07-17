@@ -1023,7 +1023,7 @@ export async function scrapeInternational(keyword: string, sources: any) {
                     const company = $(el).find('[class*="company"], [class*="employer"]').text().trim() || 'Job Bank';
                     const location = $(el).find('[class*="location"], [class*="city"]').text().trim() || 'Canada';
                     if (fullUrl.includes('/jobposting/')) {
-                        pageJobs.push({ title: title || keyword, company, location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'JobBankCA' });
+                        pageJobs.push({ title: title || keyword, company, location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'Job Bank (CA)' });
                     }
                 });
             }
@@ -1031,9 +1031,9 @@ export async function scrapeInternational(keyword: string, sources: any) {
             for (const j of pageJobs) {
                 if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
             }
-            await logResult('Job Bank CA', url, pageJobs.length);
+            await logResult('Job Bank (CA)', url, pageJobs.length);
         } catch (e: any) {
-            await logResult('Job Bank CA', url, 0, e.message);
+            await logResult('Job Bank (CA)', url, 0, e.message);
         }
     }
 
@@ -1057,7 +1057,7 @@ export async function scrapeInternational(keyword: string, sources: any) {
                     const company = container.find('[class*="company"], [class*="empresa"]').text().trim() || 'Computrabajo';
                     const location = container.find('[class*="location"], [class*="ciudad"]').text().trim() || 'Mexico';
                     if (title && title.length > 3) {
-                        pageJobs.push({ title, company, location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'Computrabajo' });
+                        pageJobs.push({ title, company, location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'Computrabajo (LATAM)' });
                     }
                 });
             }
@@ -1065,9 +1065,9 @@ export async function scrapeInternational(keyword: string, sources: any) {
             for (const j of pageJobs) {
                 if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
             }
-            await logResult('Computrabajo', url, pageJobs.length);
+            await logResult('Computrabajo (LATAM)', url, pageJobs.length);
         } catch (e: any) {
-            await logResult('Computrabajo', url, 0, e.message);
+            await logResult('Computrabajo (LATAM)', url, 0, e.message);
         }
     }
 
@@ -1103,7 +1103,7 @@ export async function scrapeInternational(keyword: string, sources: any) {
                         location,
                         description: descriptionParts.join('\n'),
                         url: jobUrl,
-                        source: 'Arbeitsagentur'
+                        source: 'Arbeitsagentur (DE)'
                     });
                 }
             }
@@ -1142,14 +1142,14 @@ export async function scrapeInternational(keyword: string, sources: any) {
                         location,
                         description: description ? description + `\n\nApply at: ${jobUrl}` : `Apply at: ${jobUrl}`,
                         url: jobUrl,
-                        source: 'TheMuse'
+                        source: 'The Muse (Global)'
                     });
                 }
             }
             jobs.push(...pageJobs);
-            await logResult('The Muse', url, pageJobs.length);
+            await logResult('The Muse (Global)', url, pageJobs.length);
         } catch (e: any) {
-            await logResult('The Muse', url, 0, e.message);
+            await logResult('The Muse (Global)', url, 0, e.message);
         }
     }
 
