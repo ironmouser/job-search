@@ -177,6 +177,7 @@ export default function SettingsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Scraper Sources</label>
                             
+                            {[
                                 {
                                     title: 'Global Aggregators',
                                     sources: ['jsearch']
