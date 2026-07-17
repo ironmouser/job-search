@@ -18,6 +18,7 @@ export async function POST(req: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (error: any) {
+    console.error("Stripe Webhook Error:", error.message);
     return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
   }
 
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     if (!session?.metadata?.userId) {
+      console.error("Stripe Webhook Error: Missing metadata.userId in session", session.id);
       return new NextResponse("User ID is required", { status: 400 });
     }
 

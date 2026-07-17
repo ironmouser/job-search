@@ -35,9 +35,44 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { jobId } = body;
+        const { jobId, jobIds } = body;
 
-        // If no jobId is provided, score all unscored jobs for this user
+        // If jobIds is provided, score all those specific jobs
+        if (jobIds && Array.isArray(jobIds) && jobIds.length > 0) {
+            const unscoredUserJobs = await prisma.userJob.findMany({
+                where: { 
+                    userId: session.user.id,
+                    jobId: { in: jobIds },
+                    job: { opportunityScores: { none: { userId: session.user.id } } }
+                },
+                include: { job: { select: { id: true, title: true, description: true } } }
+            });
+
+            if (!unscoredUserJobs || unscoredUserJobs.length === 0) {
+                return NextResponse.json({ message: 'No unscored jobs found for provided IDs.' }, { status: 200 });
+            }
+
+            console.log(`Found ${unscoredUserJobs.length} specific unscored jobs. Scoring...`);
+            
+            const results = [];
+            for (const uj of unscoredUserJobs) {
+                const job = uj.job;
+                try {
+                    const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
+                    results.push({ jobId: job.id, score: score.total_score });
+                } catch (e: any) {
+                    console.error(`Error scoring job ${job.id}:`, e.message);
+                    results.push({ jobId: job.id, error: e.message });
+                }
+            }
+
+            return NextResponse.json({ 
+                message: 'Batch scoring complete.', 
+                results 
+            }, { status: 200 });
+        }
+
+        // If no jobId or jobIds is provided, score all unscored jobs for this user
         if (!jobId) {
             const unscoredUserJobs = await prisma.userJob.findMany({
                 where: { 

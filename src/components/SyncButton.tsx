@@ -24,11 +24,6 @@ export default function SyncButton({ onSyncStateChange }: SyncButtonProps) {
         body: JSON.stringify({})
       });
 
-      // 2. Score
-      setStatusText('Scoring Opportunities...');
-      onSyncStateChange?.(true, 'Scoring Opportunities...');
-      await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
-
       setStatusText('Done!');
       onSyncStateChange?.(true, 'Done!');
       // Refresh the page to show new data

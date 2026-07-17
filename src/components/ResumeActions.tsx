@@ -41,9 +41,15 @@ export default function ResumeActions({ jobId, markdownText }: { jobId: string, 
             </div>
             `;
 
+            let extractedName = 'My';
+            const nameMatch = markdownText.match(/^#\s+([^\n]+)/);
+            if (nameMatch && nameMatch[1]) {
+                extractedName = nameMatch[1].trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+            }
+
             const opt = {
                 margin:       0,
-                filename:     'Kurt_Charles_Resume.pdf',
+                filename:     `${extractedName}_Resume.pdf`,
                 image:        { type: 'jpeg' as const, quality: 0.98 },
                 html2canvas:  { scale: 2 },
                 jsPDF:        { unit: 'in' as const, format: 'letter', orientation: 'portrait' as const }

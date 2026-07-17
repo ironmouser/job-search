@@ -12,6 +12,7 @@ import GenerateAssetsButton from '@/components/GenerateAssetsButton';
 import NetworkingAssetCard from '@/components/NetworkingAssetCard';
 import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
 import ResumeAssetCard from '@/components/ResumeAssetCard';
+import AutoFetchJobDetails from '@/components/AutoFetchJobDetails';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
@@ -163,9 +164,13 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Review Job Description</h2>
             </div>
             <div className="glass-card" data-tour="job-detail-description">
-              <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95rem' }}>
-                {job.description}
-              </div>
+              {!job.description ? (
+                <AutoFetchJobDetails jobId={job.id} />
+              ) : (
+                <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95rem' }}>
+                  {job.description}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '1.5rem' }}>
               <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />

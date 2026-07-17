@@ -126,7 +126,7 @@ export async function scrapeCustomPages(urls: string[]) {
                 logsData.push({
                     scraperName: `Custom: ${domain} (Cached)`,
                     targetUrl: url,
-                    status: 'SUCCESS',
+                    status: cachedJobs.length > 0 ? 'SUCCESS' : 'FAILURE',
                     resultsCount: cachedJobs.length,
                     usedFirecrawl: false,
                     firecrawlSites: [],
@@ -570,7 +570,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     data: {
                         scraperName: `${sourceDisplayNames[data.source] || data.source}${(data as any).isCached ? ' (Cached)' : ''}`,
                         targetUrl: data.url,
-                        status: data.error ? 'FAILURE' : (data.jobs.length > 0 ? 'SUCCESS' : 'SUCCESS'),
+                        status: data.error ? 'FAILURE' : (data.jobs.length > 0 ? 'SUCCESS' : 'FAILURE'),
                         resultsCount: data.jobs.length,
                         usedFirecrawl: data.usedFirecrawl,
                         firecrawlSites: data.firecrawlSites,
@@ -628,7 +628,7 @@ export async function scrapeRemotePOC(keyword: string) {
             data: {
                 scraperName: 'RemotePOC',
                 targetUrl: 'https://remotepoc.com/jm-ajax/get_listings/',
-                status: 'SUCCESS',
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
@@ -697,7 +697,7 @@ export async function scrapeKforce(keyword: string) {
             data: {
                 scraperName: 'Kforce',
                 targetUrl: 'https://www.kforce.com/find-work/search-jobs/',
-                status: 'SUCCESS',
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
@@ -736,7 +736,7 @@ export async function scrapeHimalayas(keyword: string) {
             data: {
                 scraperName: 'Himalayas',
                 targetUrl: 'https://himalayas.app/jobs/api',
-                status: 'SUCCESS',
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
@@ -750,11 +750,12 @@ export async function scrapeHimalayas(keyword: string) {
 export async function scrapeIndeed(keyword: string, location: string) {
     const jobs: any[] = [];
     const targetUrl = `https://www.indeed.com/jobs?q=${encodeURIComponent(keyword)}&l=${encodeURIComponent(location)}`;
-    let usedFirecrawl = false;
 
     try {
-        const { $, usedFirecrawl: usedFc } = await fetchPage(targetUrl, 1);
-        usedFirecrawl = usedFc;
+        const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(targetUrl)}`;
+        const res = await fetch(proxyUrl);
+        const html = await res.text();
+        const $ = cheerio.load(html);
         
         if ($) {
             const mosaicData = $('script#mosaic-data').html();
@@ -784,7 +785,7 @@ export async function scrapeIndeed(keyword: string, location: string) {
                 targetUrl,
                 status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
                 resultsCount: jobs.length,
-                usedFirecrawl
+                usedFirecrawl: false
             }
         });
     } catch (e) {
@@ -797,13 +798,45 @@ export async function scrapeIndeed(keyword: string, location: string) {
 export async function scrapeGlassdoor(keyword: string, location: string) {
     const jobs: any[] = [];
     const targetUrl = `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encodeURIComponent(keyword)}&locT=&locId=&locKeyword=${encodeURIComponent(location)}`;
-    let usedFirecrawl = false;
 
     try {
-        const { $, usedFirecrawl: usedFc } = await fetchPage(targetUrl, 1);
-        usedFirecrawl = usedFc;
-        
-        if ($) {
+        const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(targetUrl)}`;
+        const res = await fetch(proxyUrl);
+        const html = await res.text();
+        const $ = cheerio.load(html);
+
+        $('li[data-test="jobListing"]').each((i, el) => {
+            const title = $(el).find('a[data-test="job-title"]').text().trim();
+            const company = $(el).find('span.EmployerProfile_employerName__...').text().trim() || $(el).find('.job-search-8wag7x').text().trim(); // Need to handle obfuscated classes or just extract text properly
+            const jobLoc = $(el).find('.job-search-12qntd3').text().trim() || $(el).find('.JobCard_location__rCz3x').text().trim();
+            let url = $(el).find('a[data-test="job-title"]').attr('href');
+            
+            // Note: Glassdoor obfuscates classes, so we can use a more robust way to find text
+            const textContent = $(el).text();
+            
+            // Let's use a more generic approach to find the job title and link
+            const aTag = $(el).find('a[data-test="job-link"], a[data-test="job-title"], a.JobCard_jobTitle___eVHi');
+            const jobTitle = aTag.text().trim() || $(el).find('.JobCard_seoLink__WdqQv').text().trim();
+            let jobUrl = aTag.attr('href') || $(el).find('.JobCard_seoLink__WdqQv').attr('href');
+            if (jobUrl && !jobUrl.startsWith('http')) jobUrl = 'https://www.glassdoor.com' + jobUrl;
+
+            // Company is usually the first text element in the card before the rating
+            const companyText = $(el).find('div[class*="EmployerProfile"]').text().trim() || $(el).find('span:first-child').text().trim();
+            const locationText = $(el).find('div[data-test="emp-location"]').text().trim() || location;
+
+            if (jobTitle && jobUrl) {
+                jobs.push({
+                    title: jobTitle,
+                    company: companyText || 'Unknown Company',
+                    location: locationText || location,
+                    url: jobUrl.split('?')[0],
+                    source: 'glassdoor'
+                });
+            }
+        });
+
+        // Let's also check if it's the old dom just in case
+        if (jobs.length === 0) {
             const nextData = $('script#__NEXT_DATA__').html();
             if (nextData) {
                 const parsed = JSON.parse(nextData);
@@ -828,11 +861,12 @@ export async function scrapeGlassdoor(keyword: string, location: string) {
                 targetUrl,
                 status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
                 resultsCount: jobs.length,
-                usedFirecrawl
+                usedFirecrawl: false
             }
         });
     } catch (e) {
         console.error("Glassdoor Scrape Error:", e);
+
     }
     
     return jobs;

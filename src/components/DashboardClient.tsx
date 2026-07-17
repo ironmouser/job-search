@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar } from 'lucide-react';
 import SyncButton from '@/components/SyncButton';
@@ -36,6 +36,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  const scoringInProgress = useRef(new Set<string>());
 
   const toggleJobCheck = (id: string) => {
     setCheckedJobs(prev => {
@@ -322,6 +326,57 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     return result;
   }, [jobs, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate]);
+
+  const totalPages = Math.ceil(filteredAndSortedJobs.length / itemsPerPage);
+  const currentJobs = filteredAndSortedJobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    const unscoredCurrentJobs = currentJobs.filter(j => j.status === 'discovered' && !scoringInProgress.current.has(j.id));
+    const otherUnscoredJobs = filteredAndSortedJobs.filter(j => j.status === 'discovered' && !currentJobs.find(cj => cj.id === j.id) && !scoringInProgress.current.has(j.id));
+
+    if (unscoredCurrentJobs.length > 0) {
+      unscoredCurrentJobs.forEach(j => scoringInProgress.current.add(j.id));
+      const scoreCurrent = async () => {
+        setIsSyncing(true);
+        setSyncMessage('We are scoring some jobs that haven\'t been scored yet. This will just take a moment.');
+        
+        try {
+          await fetch('/api/score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobIds: unscoredCurrentJobs.map(j => j.id) })
+          });
+          router.refresh();
+        } catch (e) {
+          console.error('Failed to score current jobs:', e);
+        } finally {
+          setIsSyncing(false);
+        }
+      };
+      scoreCurrent();
+    } else if (otherUnscoredJobs.length > 0) {
+      const scoreBackground = async () => {
+        const chunk = otherUnscoredJobs.slice(0, 5);
+        chunk.forEach(j => scoringInProgress.current.add(j.id));
+        
+        try {
+          await fetch('/api/score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
+          });
+          router.refresh();
+        } catch (e) {
+          console.error('Failed to background score jobs:', e);
+        }
+      };
+      scoreBackground();
+    }
+  }, [currentJobs, filteredAndSortedJobs, router]);
+
   return (
     <>
       <OnboardingWidget />
@@ -492,7 +547,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   <input 
                     type="checkbox" 
                     onChange={toggleAllChecks} 
-                    checked={filteredAndSortedJobs.length > 0 && checkedJobs.size === filteredAndSortedJobs.length}
+                    checked={currentJobs.length > 0 && checkedJobs.size === currentJobs.length}
                     style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                   />
                 </th>
@@ -506,7 +561,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               </tr>
             </thead>
             <tbody>
-              {filteredAndSortedJobs.map(job => {
+              {currentJobs.map(job => {
                   const score = job.opportunity_scores?.[0]?.total_score;
                   const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
                   const isEmailJob = job.company?.includes('(Scraped via Email)');
@@ -584,7 +639,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                     </tr>
                   );
               })}
-              {filteredAndSortedJobs.length === 0 && (
+              {currentJobs.length === 0 && (
                 <tr>
                   <td colSpan={8} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No jobs match your current filters.
@@ -596,7 +651,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         </div>
       ) : (
         <div className="job-card-grid" data-tour="recent-jobs">
-          {filteredAndSortedJobs.map((job) => {
+          {currentJobs.map((job) => {
             const score = job.opportunity_scores?.[0]?.total_score;
             const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
             const isEmailJob = job.company?.includes('(Scraped via Email)');
@@ -689,7 +744,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             );
           })}
   
-          {filteredAndSortedJobs.length === 0 && (
+          {currentJobs.length === 0 && (
             <div className="glass-card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 2rem' }}>
               <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>No jobs match your current filters.</p>
               {jobs.length === 0 && (
@@ -697,6 +752,34 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '2rem', marginBottom: '2rem', alignItems: 'center' }}>
+          <button 
+            className="btn-outline" 
+            disabled={currentPage === 1}
+            onClick={() => {
+              setCurrentPage(p => Math.max(1, p - 1));
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
+            Previous
+          </button>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button 
+            className="btn-outline" 
+            disabled={currentPage === totalPages}
+            onClick={() => {
+              setCurrentPage(p => Math.min(totalPages, p + 1));
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
+            Next
+          </button>
         </div>
       )}
 

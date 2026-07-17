@@ -39,7 +39,7 @@ export default async function Dashboard() {
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 100
+      take: 1000
     });
     userPrefs = await prisma.userPreferences.findUnique({ where: { userId } });
   } catch (error: any) {
