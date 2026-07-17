@@ -16,6 +16,10 @@ export async function GET() {
         const prefs = await prisma.userPreferences.findUnique({
             where: { userId: session.user.id }
         });
+        
+        const globalSettings = await prisma.globalSettings.findUnique({
+            where: { id: 'system' }
+        });
 
         if (!prefs) {
             return NextResponse.json({
@@ -32,7 +36,8 @@ export async function GET() {
                 emailAddress: '',
                 emailAppPassword: '',
                 imapHost: 'imap.gmail.com',
-                imapPort: 993
+                imapPort: 993,
+                globalSettings
             });
         }
 
@@ -50,7 +55,8 @@ export async function GET() {
             emailAddress: prefs.emailAddress || '',
             emailAppPassword: prefs.emailAppPassword ? '********' : '',
             imapHost: prefs.imapHost || 'imap.gmail.com',
-            imapPort: prefs.imapPort || 993
+            imapPort: prefs.imapPort || 993,
+            globalSettings
         });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });

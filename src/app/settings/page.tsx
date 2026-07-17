@@ -177,36 +177,40 @@ export default function SettingsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Scraper Sources</label>
                             
-                            {[
                                 {
                                     title: 'Global Aggregators',
-                                    sources: ['jsearch'],
-                                    isProOnly: false
+                                    sources: ['jsearch']
                                 },
                                 {
                                     title: 'US / Remote Tech',
-                                    sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive'],
-                                    isProOnly: false
+                                    sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive']
                                 },
                                 {
                                     title: 'ATS Integrations',
-                                    sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'],
-                                    isProOnly: false
+                                    sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy']
                                 },
                                 {
                                     title: 'International Sources',
-                                    sources: ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'],
-                                    isProOnly: true
+                                    sources: ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana']
                                 }
                             ].map(group => (
                                 <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         {group.title}
-                                        {group.isProOnly && !isPro && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '12px', fontWeight: 'bold' }}>PRO</span>}
                                     </label>
                                     <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                                         {group.sources.map(source => {
-                                            const isDisabled = group.isProOnly && !isPro;
+                                            // Determine if this specific source requires PRO
+                                            let isProRequired = false;
+                                            
+                                            if (group.title === 'International Sources' || group.title === 'ATS Integrations') {
+                                                isProRequired = true;
+                                            } else if (settings.globalSettings && settings.globalSettings[`${source}IsPro`] !== undefined) {
+                                                isProRequired = settings.globalSettings[`${source}IsPro`];
+                                            }
+                                            
+                                            const isDisabled = isProRequired && !isPro;
+                                            
                                             return (
                                                 <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
                                                     <input 
@@ -219,9 +223,10 @@ export default function SettingsPage() {
                                                         }}
                                                         style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
                                                     />
-                                                    <span style={{ textTransform: 'capitalize' }}>
+                                                    <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                                         {source === 'jsearch' ? 'JSearch (Indeed, LinkedIn, Glassdoor, ZipRecruiter)' : 
                                                          source === 'jobbank' ? 'Job Bank (CA)' : source}
+                                                        {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                     </span>
                                                 </label>
                                             );
