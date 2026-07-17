@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/apify';
 import { scrapeJSearch } from '@/lib/jsearch';
-import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce } from '@/lib/scrapers/crawlee';
+import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor } from '@/lib/scrapers/crawlee';
 import { getUserSettings } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const isPro = (session.user as any).planTier === 'PRO';
-        let sources = settings.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false };
+        let sources = settings.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false, remotepoc: true, kforce: true, himalayas: true };
         
         if (!isPro && globalSettings) {
             if (globalSettings.jsearchIsPro) {
@@ -52,6 +52,7 @@ export async function POST(request: Request) {
             if (globalSettings.remotecoIsPro) sources.remoteco = false;
             if (globalSettings.remoteokIsPro) sources.remoteok = false;
             if (globalSettings.workingnomadsIsPro) sources.workingnomads = false;
+            // assume himalayas is pro as well unless specified
         }
 
         const INTERNATIONAL_SOURCES = ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'];
@@ -69,9 +70,23 @@ export async function POST(request: Request) {
 
         const scrapePromises: Promise<any[]>[] = [];
 
-        if (sources.jsearch || sources.indeed || sources.linkedin || sources.glassdoor || sources.ziprecruiter || sources.monster || sources.wellfound) {
-            scrapePromises.push(scrapeJSearch(keyword, location).catch(e => {
-                console.error("JSearch scrape failed", e);
+        if (sources.indeed) {
+            scrapePromises.push(scrapeIndeed(keyword, location).catch(e => {
+                console.error("Indeed native scrape failed", e);
+                return [];
+            }));
+        }
+
+        if (sources.glassdoor) {
+            scrapePromises.push(scrapeGlassdoor(keyword, location).catch(e => {
+                console.error("Glassdoor native scrape failed", e);
+                return [];
+            }));
+        }
+
+        if (sources.himalayas) {
+            scrapePromises.push(scrapeHimalayas(keyword).catch(e => {
+                console.error("Himalayas scrape failed", e);
                 return [];
             }));
         }
@@ -119,7 +134,29 @@ export async function POST(request: Request) {
         }
 
         const results = await Promise.all(scrapePromises);
-        const rawJobs = results.flat();
+        let rawJobs = results.flat();
+
+        // JSearch Fallback
+        if (sources.jsearch || sources.indeed || sources.glassdoor || sources.linkedin || sources.ziprecruiter || sources.monster || sources.wellfound) {
+            const hasIndeedJobs = rawJobs.some(j => j.source?.toLowerCase().includes('indeed'));
+            const hasGlassdoorJobs = rawJobs.some(j => j.source?.toLowerCase().includes('glassdoor'));
+            
+            // Trigger fallback if they asked for a source we don't have native coverage for (like linkedin),
+            // OR if they asked for indeed/glassdoor and our native scrapers yielded 0 results (due to blocks/timeouts)
+            const needsIndeedFallback = sources.indeed && !hasIndeedJobs;
+            const needsGlassdoorFallback = sources.glassdoor && !hasGlassdoorJobs;
+            const needsOtherSources = sources.linkedin || sources.ziprecruiter || sources.monster || sources.wellfound;
+            
+            if (needsIndeedFallback || needsGlassdoorFallback || needsOtherSources || sources.jsearch) {
+                console.log("Triggering JSearch Fallback...");
+                try {
+                    const fallbackJobs = await scrapeJSearch(keyword, location);
+                    rawJobs = rawJobs.concat(fallbackJobs);
+                } catch(e) {
+                    console.error("JSearch Fallback failed", e);
+                }
+            }
+        }
 
         if (!rawJobs || rawJobs.length === 0) {
              return NextResponse.json({ message: 'No jobs found for the given criteria across active sources.' }, { status: 200 });

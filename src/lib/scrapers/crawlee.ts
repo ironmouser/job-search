@@ -708,3 +708,132 @@ export async function scrapeKforce(keyword: string) {
 
     return jobs;
 }
+
+export async function scrapeHimalayas(keyword: string) {
+    const jobs: any[] = [];
+    try {
+        const res = await fetch(`https://himalayas.app/jobs/api?limit=50`);
+        const data = await res.json();
+        
+        if (data && data.jobs) {
+            for (const job of data.jobs) {
+                // simple keyword filter since their API keyword search isn't always documented well
+                if (keyword && !job.title.toLowerCase().includes(keyword.toLowerCase()) && !job.companyName.toLowerCase().includes(keyword.toLowerCase())) {
+                    continue;
+                }
+                jobs.push({
+                    title: job.title,
+                    company: job.companyName,
+                    location: job.location || 'Remote',
+                    url: job.applicationLink || job.jobUrl,
+                    salary: (job.minSalary && job.maxSalary) ? `$${job.minSalary} - $${job.maxSalary}` : null,
+                    source: 'himalayas'
+                });
+            }
+        }
+
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Himalayas',
+                targetUrl: 'https://himalayas.app/jobs/api',
+                status: 'SUCCESS',
+                resultsCount: jobs.length,
+                usedFirecrawl: false
+            }
+        });
+    } catch (e) {
+        console.error("Himalayas Scrape Error:", e);
+    }
+    return jobs;
+}
+
+export async function scrapeIndeed(keyword: string, location: string) {
+    const jobs: any[] = [];
+    const targetUrl = `https://www.indeed.com/jobs?q=${encodeURIComponent(keyword)}&l=${encodeURIComponent(location)}`;
+    let usedFirecrawl = false;
+
+    try {
+        const { $, usedFirecrawl: usedFc } = await fetchPage(targetUrl, 1);
+        usedFirecrawl = usedFc;
+        
+        if ($) {
+            const mosaicData = $('script#mosaic-data').html();
+            if (mosaicData && mosaicData.includes('window.mosaic.providerData["mosaic-provider-jobcards"]')) {
+                const match = mosaicData.match(/window\.mosaic\.providerData\["mosaic-provider-jobcards"\]\s*=\s*(\{.*?\});/);
+                if (match && match[1]) {
+                    const parsed = JSON.parse(match[1]);
+                    const results = parsed?.metaData?.mosaicProviderJobCardsModel?.results || [];
+                    
+                    for (const job of results) {
+                        jobs.push({
+                            title: job.title,
+                            company: job.company,
+                            location: job.formattedLocation || location,
+                            url: `https://www.indeed.com${job.viewJobLink}`,
+                            salary: job.salarySnippet?.text || null,
+                            source: 'indeed'
+                        });
+                    }
+                }
+            }
+        }
+        
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Indeed (Native)',
+                targetUrl,
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                resultsCount: jobs.length,
+                usedFirecrawl
+            }
+        });
+    } catch (e) {
+        console.error("Indeed Scrape Error:", e);
+    }
+    
+    return jobs;
+}
+
+export async function scrapeGlassdoor(keyword: string, location: string) {
+    const jobs: any[] = [];
+    const targetUrl = `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encodeURIComponent(keyword)}&locT=&locId=&locKeyword=${encodeURIComponent(location)}`;
+    let usedFirecrawl = false;
+
+    try {
+        const { $, usedFirecrawl: usedFc } = await fetchPage(targetUrl, 1);
+        usedFirecrawl = usedFc;
+        
+        if ($) {
+            const nextData = $('script#__NEXT_DATA__').html();
+            if (nextData) {
+                const parsed = JSON.parse(nextData);
+                const results = parsed?.props?.pageProps?.searchResultQueries?.[0]?.jobResults || [];
+                
+                for (const job of results) {
+                    jobs.push({
+                        title: job.jobHeader?.jobTitleText,
+                        company: job.jobHeader?.employerName,
+                        location: job.jobHeader?.locationName || location,
+                        url: `https://www.glassdoor.com${job.jobLink}`,
+                        salary: job.jobHeader?.salaryText || null,
+                        source: 'glassdoor'
+                    });
+                }
+            }
+        }
+        
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Glassdoor (Native)',
+                targetUrl,
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                resultsCount: jobs.length,
+                usedFirecrawl
+            }
+        });
+    } catch (e) {
+        console.error("Glassdoor Scrape Error:", e);
+    }
+    
+    return jobs;
+}

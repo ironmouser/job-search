@@ -196,11 +196,11 @@ export default function SettingsPage() {
                             {[
                                 {
                                     title: 'Global Aggregators',
-                                    sources: ['jsearch']
+                                    sources: ['indeed', 'glassdoor', 'jsearch']
                                 },
                                 {
                                     title: 'US / Remote Tech',
-                                    sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'kforce']
+                                    sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'kforce']
                                 },
                                 {
                                     title: 'ATS Integrations',
@@ -241,7 +241,7 @@ export default function SettingsPage() {
                                                         style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
                                                     />
                                                     <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                        {source === 'jsearch' ? 'JSearch (Indeed, LinkedIn, Glassdoor, ZipRecruiter)' : 
+                                                        {source === 'jsearch' ? 'JSearch (Fallback)' : 
                                                          source === 'jobbank' ? 'Job Bank (CA)' : 
                                                          source === 'remotepoc' ? 'RemotePOC' : source}
                                                         {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
