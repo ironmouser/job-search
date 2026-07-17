@@ -174,6 +174,22 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '0.5rem' }}>
+                            <input 
+                                type="checkbox" 
+                                id="remoteOnly"
+                                checked={settings.remoteOnly || false}
+                                onChange={(e) => handleChange('remoteOnly', e.target.checked)}
+                                style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent)' }}
+                            />
+                            <label htmlFor="remoteOnly" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                Remote Only
+                            </label>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                                (Automatically filter out jobs that do not explicitly state "Remote" in their location)
+                            </span>
+                        </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Scraper Sources</label>
                             
