@@ -624,7 +624,7 @@ export async function scrapeRemotePOC(keyword: string) {
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'RemotePOC',
-                url: 'https://remotepoc.com/jm-ajax/get_listings/',
+                targetUrl: 'https://remotepoc.com/jm-ajax/get_listings/',
                 status: 'SUCCESS',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
@@ -693,7 +693,7 @@ export async function scrapeKforce(keyword: string) {
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'Kforce',
-                url: 'https://www.kforce.com/find-work/search-jobs/',
+                targetUrl: 'https://www.kforce.com/find-work/search-jobs/',
                 status: 'SUCCESS',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
