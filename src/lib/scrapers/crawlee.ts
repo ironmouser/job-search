@@ -52,7 +52,7 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
             if (process.env.SCRAPEDO_API_KEY) {
                 console.info(`Falling back to Scrape.do for ${url}`);
                 try {
-                    const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&url=${encodeURIComponent(url)}`;
+                    const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(url)}`;
                     const sdRes = await gotScraping({
                         url: scrapeDoUrl,
                         timeout: { request: 30000 },
@@ -299,7 +299,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     if (sources.weworkremotely) urls.push({ url: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keyword)}`, source: 'weworkremotely' });
     if (sources.remoteco) urls.push({ url: `https://remote.co/remote-jobs/search/?search_keywords=${encodeURIComponent(keyword)}`, source: 'remoteco' });
     if (sources.remoteok) urls.push({ url: `https://remoteok.com/api?tag=${encodeURIComponent(keyword.replace(/\s+/g, '-'))}`, source: 'remoteok' });
-    if (sources.workingnomads) urls.push({ url: `https://www.workingnomads.com/jobs?category=&q=${encodeURIComponent(keyword)}`, source: 'workingnomads' });
+    if (sources.workingnomads) urls.push({ url: `https://www.workingnomads.com/api/exposed_jobs/`, source: 'workingnomads' });
     if (sources.remotive) urls.push({ url: `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(keyword)}`, source: 'remotive' });
 
     if (urls.length === 0) return [];
@@ -328,9 +328,14 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 
             if (source === 'remoteok') {
                 try {
-                    let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    let res = await gotScraping({ 
+                        url, 
+                        responseType: 'json', 
+                        throwHttpErrors: false,
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+                    });
                     if ((res.statusCode < 200 || res.statusCode >= 300) && process.env.SCRAPEDO_API_KEY) {
-                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&url=${encodeURIComponent(url)}`;
+                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
                         res = await gotScraping({ url: scrapeDoUrl, responseType: 'json', throwHttpErrors: false });
                     }
                     if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -362,7 +367,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                 try {
                     let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
                     if ((res.statusCode < 200 || res.statusCode >= 300) && process.env.SCRAPEDO_API_KEY) {
-                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&url=${encodeURIComponent(url)}`;
+                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
                         res = await gotScraping({ url: scrapeDoUrl, responseType: 'json', throwHttpErrors: false });
                     }
                     if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -386,6 +391,34 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     }
                 } catch (e: any) {
                     console.warn(`Error parsing remotive API: ${e.message}`);
+                    errorMsg = e.message;
+                }
+                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
+            }
+
+            if (source === 'workingnomads') {
+                try {
+                    let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        const data = res.body as any;
+                        if (Array.isArray(data)) {
+                            for (const job of data) {
+                                if (keyword && !job.title?.toLowerCase().includes(keyword.toLowerCase()) && !job.company_name?.toLowerCase().includes(keyword.toLowerCase())) continue;
+                                pageJobs.push({
+                                    title: job.title,
+                                    company: job.company_name,
+                                    location: job.location || 'Remote',
+                                    description: `Apply at: ${job.url}`,
+                                    url: job.url,
+                                    source: 'WorkingNomads'
+                                });
+                            }
+                        }
+                    } else {
+                        errorMsg = `HTTP Error: ${res.statusCode}`;
+                    }
+                } catch (e: any) {
+                    console.warn(`Error parsing workingnomads API: ${e.message}`);
                     errorMsg = e.message;
                 }
                 return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
@@ -494,42 +527,6 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             await new Promise(r => setTimeout(r, 500));
                         }
                     }
-                } else if (source === 'workingnomads') {
-                    $('.job, .job-desktop').each((_, el) => {
-                        const titleEl = $(el).find('h4, h2');
-                        const companyEl = $(el).find('.company-name, .company');
-                        const linkEl = $(el).find('a');
-                        const href = linkEl.attr('href') || '';
-                        pageJobs.push({
-                            title: titleEl.text().trim() || 'Unknown Role',
-                            company: companyEl.text().trim() || 'Working Nomads',
-                            location: 'Remote',
-                            description: `Apply at: ${href}`,
-                            url: href,
-                            source: 'WorkingNomads'
-                        });
-                    });
-
-                    const batchSize = 3;
-                    for (let i = 0; i < pageJobs.length; i += batchSize) {
-                        const batch = pageJobs.slice(i, i + batchSize);
-                        await Promise.all(batch.map(async (job) => {
-                            if (!job.url.startsWith('http')) return;
-                            try {
-                                const { $ } = await fetchPage(job.url, 1);
-                                if ($) {
-                                    const desc = $('#job-description, .job-description, .job-details-content').text().trim();
-                                    if (desc) {
-                                        const cleanDesc = desc.replace(/\n{3,}/g, '\n\n').trim();
-                                        job.description = cleanDesc + `\n\nApply at: ${job.url}`;
-                                    }
-                                }
-                            } catch(e) {}
-                        }));
-                        if (i + batchSize < pageJobs.length) {
-                            await new Promise(r => setTimeout(r, 500));
-                        }
-                    }
                 }
             } catch (e: any) {
                 console.warn(`Error parsing remote aggregator ${source}: ${e.message}`);
@@ -570,7 +567,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     data: {
                         scraperName: `${sourceDisplayNames[data.source] || data.source}${(data as any).isCached ? ' (Cached)' : ''}`,
                         targetUrl: data.url,
-                        status: data.error ? 'FAILURE' : (data.jobs.length > 0 ? 'SUCCESS' : 'FAILURE'),
+                        status: data.error ? 'FAILURE' : 'SUCCESS',
                         resultsCount: data.jobs.length,
                         usedFirecrawl: data.usedFirecrawl,
                         firecrawlSites: data.firecrawlSites,
