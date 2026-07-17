@@ -456,7 +456,7 @@ export default function SettingsPage() {
                                     type="number"
                                     value={settings.imapPort || ''}
                                     onChange={(e) => handleChange('imapPort', Number(e.target.value))}
-                                    placeholder={emailProvider === 'other' ? "993" : String(settings.imapPort)}
+                                    placeholder={emailProvider === 'other' ? "993" : (settings.imapPort ? String(settings.imapPort) : "")}
                                     disabled={emailProvider !== 'other'}
                                     style={{ background: emailProvider !== 'other' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
                                 />
