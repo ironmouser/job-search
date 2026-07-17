@@ -2,12 +2,37 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import SyncOverlay from './SyncOverlay';
 
 export default function AutoFetchJobDetails({ jobId }: { jobId: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<'fetching' | 'scoring' | 'error'>('fetching');
   const [retryCount, setRetryCount] = useState(0);
+  const [syncMessage, setSyncMessage] = useState('Connecting to job board...');
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (status === 'fetching') {
+        const messages = [
+            'Connecting to job board...',
+            'Bypassing bot protection...',
+            'Extracting full job description...',
+            'Reading page content...',
+            'Almost there...'
+        ];
+        let msgIndex = 0;
+        interval = setInterval(() => {
+            msgIndex = Math.min(msgIndex + 1, messages.length - 1);
+            setSyncMessage(messages[msgIndex]);
+        }, 4000);
+    } else if (status === 'scoring') {
+        setSyncMessage('Analyzing and scoring job fit...');
+    }
+    return () => {
+        if (interval) clearInterval(interval);
+    };
+  }, [status]);
 
   useEffect(() => {
     let isMounted = true;
@@ -60,11 +85,16 @@ export default function AutoFetchJobDetails({ jobId }: { jobId: string }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', gap: '1rem' }}>
-      <Loader2 className="animate-spin" size={32} color="var(--accent-primary)" />
-      <p style={{ margin: 0, fontSize: '1rem' }}>
-        {status === 'fetching' ? 'Fetching full job description...' : 'Analyzing and scoring job fit...'}
-      </p>
-    </div>
+    <>
+      <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+        Fetching full job description...
+      </div>
+      <SyncOverlay 
+        isSyncing={true} 
+        syncMessage={syncMessage} 
+        title="Fetching Details"
+        subtext="We are currently extracting the full job description.\nThis usually takes about 10-15 seconds."
+      />
+    </>
   );
 }
