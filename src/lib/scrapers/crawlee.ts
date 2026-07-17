@@ -586,18 +586,18 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 export async function scrapeRemotePOC(keyword: string) {
     const jobs: any[] = [];
     try {
-        const response = await got.post('https://remotepoc.com/jm-ajax/get_listings/', {
-            form: {
-                search_keywords: keyword,
-                per_page: 50,
-                orderby: 'featured',
-                order: 'DESC'
-            },
-            responseType: 'json',
-            timeout: { request: 15000 }
+        const params = new URLSearchParams();
+        params.append('search_keywords', keyword);
+        params.append('per_page', '50');
+        params.append('orderby', 'featured');
+        params.append('order', 'DESC');
+        
+        const response = await fetch('https://remotepoc.com/jm-ajax/get_listings/', {
+            method: 'POST',
+            body: params
         });
 
-        const body = response.body as any;
+        const body = await response.json();
         if (body && body.html) {
             const $ = cheerio.load(body.html);
             $('li.job_listing').each((i, el) => {
@@ -630,26 +630,30 @@ export async function scrapeRemotePOC(keyword: string) {
 export async function scrapeKforce(keyword: string) {
     const jobs: any[] = [];
     try {
-        const response = await got.post('https://kforcewebeast.search.windows.net/indexes/kforcewebjobentity/docs/search?api-version=2016-09-01', {
+        const response = await fetch('https://kforcewebeast.search.windows.net/indexes/kforcewebjobentity/docs/search?api-version=2016-09-01', {
+            method: 'POST',
             headers: {
                 'api-key': '1603E4DC4C87A8E41D6BBDE4EEA4EFB7',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             },
-            json: {
+            body: JSON.stringify({
                 count: true,
-                select: "Industry, Title, Id, PostDate, Responsibilities, Skills, City, State, Zip, SalaryMin, SalaryMax, SalaryText, ReferenceCode, TypeCode, VisaSponsorshipJob, ApplyUrl",
+                select: "Industry, Title, Id, PostDate, Responsibilities, Skills, City, State, Zip, SalaryMin, SalaryMax, SalaryText, ReferenceCode, TypeCode, VisaSponsorshipJob, ApplyUrl, Remote",
                 search: keyword,
                 top: 25
-            },
-            responseType: 'json',
-            timeout: { request: 15000 }
+            })
         });
 
-        const body = response.body as any;
+        const body = await response.json();
         if (body && body.value) {
             body.value.forEach((job: any) => {
                 let location = [job.City, job.State, job.Zip].filter(Boolean).join(', ');
-                if (!location) location = "Remote / US";
+                if (!location) location = "US";
+                if (job.Remote && job.Remote !== 'No') {
+                    location = `Remote (${location})`;
+                }
+                
                 let url = job.ApplyUrl;
                 if (!url && job.ReferenceCode) {
                     url = `https://www.kforce.com/jobs/${job.ReferenceCode}/`;
