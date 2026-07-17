@@ -102,6 +102,16 @@ export default function SettingsPage() {
 
     if (loading) return <div style={{ padding: '2rem' }}>Loading settings...</div>;
 
+    const providerDisplay = emailProvider === 'gmail' ? 'Gmail' : 
+                          emailProvider === 'outlook' ? 'Microsoft' : 
+                          emailProvider === 'yahoo' ? 'Yahoo' : 
+                          emailProvider === 'icloud' ? 'Apple ID' : 'Email';
+                          
+    const providerDomain = emailProvider === 'gmail' ? 'gmail.com' : 
+                         emailProvider === 'outlook' ? 'outlook.com' : 
+                         emailProvider === 'yahoo' ? 'yahoo.com' : 
+                         emailProvider === 'icloud' ? 'icloud.com' : 'example.com';
+
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '4rem', maxWidth: '800px' }}>
             <div style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -406,22 +416,24 @@ export default function SettingsPage() {
 
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Email Address</label>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{providerDisplay === 'Email' ? 'Email Address' : `${providerDisplay} Address`}</label>
                                 <input 
                                     type="email"
                                     value={settings.emailAddress || ''}
                                     onChange={(e) => handleChange('emailAddress', e.target.value)}
-                                    placeholder="john@example.com"
+                                    placeholder={`john@${providerDomain}`}
                                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                                 />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>App Password</label>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                    App Password <span style={{ fontSize: '0.75rem', color: 'var(--warning)', opacity: 0.8, marginLeft: '0.5rem' }}>(this is not your regular {providerDisplay} password)</span>
+                                </label>
                                 <input 
                                     type="password"
                                     value={settings.emailAppPassword || ''}
                                     onChange={(e) => handleChange('emailAppPassword', e.target.value)}
-                                    placeholder="Enter App Password"
+                                    placeholder={`Enter ${providerDisplay} App Password`}
                                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                                 />
                             </div>
@@ -433,8 +445,9 @@ export default function SettingsPage() {
                                     type="text"
                                     value={settings.imapHost || ''}
                                     onChange={(e) => handleChange('imapHost', e.target.value)}
-                                    placeholder="imap.example.com"
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                    placeholder={emailProvider === 'other' ? "imap.example.com" : settings.imapHost}
+                                    disabled={emailProvider !== 'other'}
+                                    style={{ background: emailProvider !== 'other' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
                                 />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '100px' }}>
@@ -443,8 +456,9 @@ export default function SettingsPage() {
                                     type="number"
                                     value={settings.imapPort || ''}
                                     onChange={(e) => handleChange('imapPort', Number(e.target.value))}
-                                    placeholder="993"
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                    placeholder={emailProvider === 'other' ? "993" : String(settings.imapPort)}
+                                    disabled={emailProvider !== 'other'}
+                                    style={{ background: emailProvider !== 'other' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
                                 />
                             </div>
                         </div>
