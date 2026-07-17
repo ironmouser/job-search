@@ -845,10 +845,9 @@ export async function scrapeLinkedIn(keyword: string, location: string = 'remote
         const url = `https://www.linkedin.com/jobs/search/?keywords=${query}&location=${loc}`;
         
         // Let's use our fetchPage which handles proxy fallbacks nicely
-        const html = await fetchPage(url, { proxy: true });
-        if (!html) return [];
+        const { $ } = await fetchPage(url, 1);
+        if (!$) return [];
 
-        const $ = cheerio.load(html);
         const jobs: any[] = [];
         
         $('.base-card').each((i, el) => {
