@@ -970,3 +970,259 @@ export async function scrapeZipRecruiter(keyword: string, location: string = 're
         return [];
     }
 }
+
+/**
+ * Scrapes international job boards: Job Bank (CA), Computrabajo, Bumeran, Workopolis, Workana, EURES.
+ * Falls back to scrape.do proxy since these sites require it.
+ */
+export async function scrapeInternational(keyword: string, sources: any) {
+    const jobs: any[] = [];
+
+    async function fetchViaProxy(url: string, useSuper = false): Promise<cheerio.CheerioAPI | null> {
+        try {
+            if (!process.env.SCRAPEDO_API_KEY) {
+                // No proxy — try direct fetch
+                const res = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
+                if (!res.ok) return null;
+                return cheerio.load(await res.text());
+            }
+            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}${useSuper ? '&super=true' : ''}&url=${encodeURIComponent(url)}`;
+            const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
+            if (!res.ok) return null;
+            return cheerio.load(await res.text());
+        } catch (e: any) {
+            console.warn(`fetchViaProxy error for ${url}: ${e.message}`);
+            return null;
+        }
+    }
+
+    async function logResult(scraperName: string, targetUrl: string, count: number, error?: string) {
+        try {
+            await prisma.scraperLog.create({
+                data: { scraperName, targetUrl, status: error ? 'FAILURE' : (count > 0 ? 'SUCCESS' : 'FAILURE'), resultsCount: count, usedFirecrawl: true, errorDetails: error || null }
+            });
+        } catch (e) { console.error('Failed to log scraper:', e); }
+    }
+
+    // -------------------------
+    // Job Bank (Canada)
+    // -------------------------
+    if (sources.jobbank) {
+        const url = `https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=${encodeURIComponent(keyword)}&sort=M`;
+        try {
+            const $ = await fetchViaProxy(url);
+            const pageJobs: any[] = [];
+            if ($) {
+                $('a[href*="jobposting"]').each((_, el) => {
+                    const href = $(el).attr('href') || '';
+                    if (!href.includes('/jobposting/')) return;
+                    const fullUrl = `https://www.jobbank.gc.ca${href.split(';')[0]}`;
+                    const rawText = $(el).text().replace(/\s+/g, ' ').trim();
+                    // Extract title (appears after source label like "Talent.com product manager")
+                    const titleMatch = rawText.match(/(?:Talent\.com|indeed\.com|Jobillico|Direct Apply|Glassdoor)?\s*(.{5,80?})\s*(?:July|June|May|April|March)/) 
+                        || rawText.match(/\b([A-Z][^\n]{5,60})\b/);
+                    const title = $(el).find('span:not([class*="badge"])').first().text().trim() || titleMatch?.[1]?.trim() || keyword;
+                    const company = $(el).find('[class*="company"], [class*="employer"]').text().trim() || 'Job Bank';
+                    const location = $(el).find('[class*="location"], [class*="city"]').text().trim() || 'Canada';
+                    if (fullUrl.includes('/jobposting/')) {
+                        pageJobs.push({ title: title || keyword, company, location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'JobBankCA' });
+                    }
+                });
+            }
+            // Deduplicate
+            const seen = new Set<string>();
+            for (const j of pageJobs) {
+                if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
+            }
+            await logResult('Job Bank CA', url, pageJobs.length);
+        } catch (e: any) {
+            await logResult('Job Bank CA', url, 0, e.message);
+        }
+    }
+
+    // -------------------------
+    // Computrabajo (Latin America)
+    // -------------------------
+    if (sources.computrabajo) {
+        const slug = keyword.toLowerCase().replace(/\s+/g, '-');
+        const url = `https://mx.computrabajo.com/trabajo-de-${slug}`;
+        try {
+            const $ = await fetchViaProxy(url, true);
+            const pageJobs: any[] = [];
+            if ($) {
+                $('a[href*="/ofertas-de-trabajo/"]').each((_, el) => {
+                    const href = $(el).attr('href') || '';
+                    if (!href.includes('/oferta-de-trabajo')) return;
+                    const fullUrl = href.startsWith('http') ? href : `https://mx.computrabajo.com${href.split('#')[0]}`;
+                    const container = $(el).closest('article, li, div[class*="box"]');
+                    const rawTitle = container.find('h2, h3, p strong, [class*="title"]').first().text().trim()
+                        || $(el).text().trim();
+                    const title = (rawTitle.indexOf('\n') > -1 ? rawTitle.substring(0, rawTitle.indexOf('\n')) : rawTitle).trim();
+                    const company = container.find('[class*="company"], [class*="empresa"]').text().trim() || 'Computrabajo';
+                    const location = container.find('[class*="location"], [class*="location"], [class*="ciudad"]').text().trim() || 'Mexico';
+                    if (title && title.length > 3) {
+                        pageJobs.push({ title, company, location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'Computrabajo' });
+                    }
+                });
+            }
+            const seen = new Set<string>();
+            for (const j of pageJobs) {
+                if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
+            }
+            await logResult('Computrabajo', url, pageJobs.length);
+        } catch (e: any) {
+            await logResult('Computrabajo', url, 0, e.message);
+        }
+    }
+
+    // -------------------------
+    // Bumeran (Argentina / Latin America)
+    // -------------------------
+    if (sources.bumeran) {
+        const url = `https://www.bumeran.com.ar/empleos.html?postulacion_trabajo=keyword:${encodeURIComponent(keyword)}`;
+        try {
+            const $ = await fetchViaProxy(url, true);
+            const pageJobs: any[] = [];
+            if ($) {
+                $('a[href*="/empleos/"]').each((_, el) => {
+                    const href = $(el).attr('href') || '';
+                    if (!href.match(/\/empleos\/.+-\d+\.html/)) return;
+                    const fullUrl = href.startsWith('http') ? href : `https://www.bumeran.com.ar${href}`;
+                    const container = $(el).closest('article, li, div');
+                    const title = container.find('h2, h3, [class*="title"]').first().text().trim() || $(el).text().trim();
+                    const company = container.find('[class*="company"], [class*="empresa"]').text().trim() || 'Bumeran';
+                    const location = container.find('[class*="location"], [class*="ciudad"]').text().trim() || 'Argentina';
+                    if (title && title.length > 3) {
+                        pageJobs.push({ title, company, location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'Bumeran' });
+                    }
+                });
+            }
+            const seen = new Set<string>();
+            for (const j of pageJobs) {
+                if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
+            }
+            await logResult('Bumeran', url, pageJobs.length);
+        } catch (e: any) {
+            await logResult('Bumeran', url, 0, e.message);
+        }
+    }
+
+    // -------------------------
+    // Workopolis (Canada) — uses scrape.do to bypass Cloudflare
+    // -------------------------
+    if (sources.workopolis) {
+        const url = `https://www.workopolis.com/jobsearch/jobs?k=${encodeURIComponent(keyword)}&l=Canada`;
+        try {
+            const $ = await fetchViaProxy(url, true);
+            const pageJobs: any[] = [];
+            if ($) {
+                $('a[href*="/job/"]').each((_, el) => {
+                    const href = $(el).attr('href') || '';
+                    if (!href.includes('/job/')) return;
+                    const fullUrl = href.startsWith('http') ? href : `https://www.workopolis.com${href}`;
+                    const container = $(el).closest('article, li, div[class*="result"]');
+                    const title = container.find('h2, h3, [class*="title"]').first().text().trim() || $(el).text().trim();
+                    const company = container.find('[class*="company"], [class*="employer"]').text().trim() || 'Workopolis';
+                    const location = container.find('[class*="location"]').text().trim() || 'Canada';
+                    if (title && title.length > 3) {
+                        pageJobs.push({ title, company, location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'Workopolis' });
+                    }
+                });
+            }
+            const seen = new Set<string>();
+            for (const j of pageJobs) {
+                if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
+            }
+            await logResult('Workopolis', url, pageJobs.length);
+        } catch (e: any) {
+            await logResult('Workopolis', url, 0, e.message);
+        }
+    }
+
+    // -------------------------
+    // Workana (Freelance / Remote, Latin America)
+    // -------------------------
+    if (sources.workana) {
+        const url = `https://www.workana.com/en/jobs?search=${encodeURIComponent(keyword)}`;
+        try {
+            const $ = await fetchViaProxy(url, true);
+            const pageJobs: any[] = [];
+            if ($) {
+                $('a[href*="/job/"]').each((_, el) => {
+                    const href = $(el).attr('href') || '';
+                    if (!href.match(/\/en\/job\//)) return;
+                    const fullUrl = href.startsWith('http') ? href : `https://www.workana.com${href}`;
+                    const container = $(el).closest('article, li, div[class*="project"]');
+                    const title = container.find('h2, h3, [class*="title"]').first().text().trim() || $(el).text().trim();
+                    const location = container.find('[class*="location"]').text().trim() || 'Remote';
+                    if (title && title.length > 3) {
+                        pageJobs.push({ title, company: 'Workana', location, description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'Workana' });
+                    }
+                });
+            }
+            const seen = new Set<string>();
+            for (const j of pageJobs) {
+                if (!seen.has(j.url)) { seen.add(j.url); jobs.push(j); }
+            }
+            await logResult('Workana', url, pageJobs.length);
+        } catch (e: any) {
+            await logResult('Workana', url, 0, e.message);
+        }
+    }
+
+    // -------------------------
+    // EURES (Europe — EU's official job portal)
+    // -------------------------
+    if (sources.eures) {
+        const url = `https://eures.ec.europa.eu/en/jobs?keywords=${encodeURIComponent(keyword)}&page=1`;
+        try {
+            // EURES uses a JSON API internally — try that first, fallback to HTML
+            let euresJobs: any[] = [];
+            try {
+                const apiUrl = `https://eures.ec.europa.eu/api/jv-search-service/jv/list/search?lang=en`;
+                const apiRes = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Origin': 'https://eures.ec.europa.eu', 'Referer': 'https://eures.ec.europa.eu/' },
+                    body: JSON.stringify({ keywords: [keyword], pageNum: 0, pageSize: 25 }),
+                    signal: AbortSignal.timeout(15000)
+                });
+                if (apiRes.ok) {
+                    const data = await apiRes.json();
+                    const listings = data?.data?.items || data?.items || [];
+                    for (const item of listings) {
+                        const jobUrl = `https://eures.ec.europa.eu/en/jobs/${item.id || item.jvId}`;
+                        euresJobs.push({
+                            title: item.title || item.jobTitle || keyword,
+                            company: item.employer?.name || item.companyName || 'EURES',
+                            location: item.location || item.city || 'Europe',
+                            description: (item.description || item.jobDescription || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() + `\n\nApply at: ${jobUrl}`,
+                            url: jobUrl,
+                            source: 'EURES'
+                        });
+                    }
+                }
+            } catch (_) {
+                // API unavailable — fall back to HTML scraping
+                const $ = await fetchViaProxy(url, true);
+                if ($) {
+                    $('a[href*="/jobs/"]').each((_, el) => {
+                        const href = $(el).attr('href') || '';
+                        if (!href.match(/\/jobs\/[a-z0-9-]{5,}/i)) return;
+                        const fullUrl = href.startsWith('http') ? href : `https://eures.ec.europa.eu${href}`;
+                        const container = $(el).closest('article, li, div');
+                        const title = container.find('h2, h3, [class*="title"]').first().text().trim() || $(el).text().trim();
+                        if (title && title.length > 3) {
+                            euresJobs.push({ title, company: 'EURES', location: 'Europe', description: `Apply at: ${fullUrl}`, url: fullUrl, source: 'EURES' });
+                        }
+                    });
+                }
+            }
+            jobs.push(...euresJobs);
+            await logResult('EURES', url, euresJobs.length);
+        } catch (e: any) {
+            await logResult('EURES', url, 0, e.message);
+        }
+    }
+
+    return jobs;
+}

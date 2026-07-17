@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/jobs';
-import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter } from '@/lib/scrapers/crawlee';
+import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational } from '@/lib/scrapers/crawlee';
 import { getUserSettings } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
@@ -142,6 +142,14 @@ export async function POST(request: Request) {
                     return [];
                 }));
             }
+        }
+
+        const INTERNATIONAL_SOURCE_KEYS = ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'];
+        if (isPro && INTERNATIONAL_SOURCE_KEYS.some(s => sources[s])) {
+            scrapePromises.push(scrapeInternational(keyword, sources).catch(e => {
+                console.error('International scrape failed', e);
+                return [];
+            }));
         }
 
         const results = await Promise.all(scrapePromises);
