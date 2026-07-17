@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X } from 'lucide-react';
+import { Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X } from 'lucide-react';
 import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadPdfButton from './DownloadPdfButton';
@@ -12,7 +12,12 @@ export default function CoverLetterAssetCard({
     initialRegensUsed,
     planTier,
     initialTone,
-    userName = 'My'
+    userName = 'My',
+    userLocation,
+    userPhone,
+    userEmail,
+    companyName,
+    companyLocation,
 }: {
     jobId: string;
     initialContent: string;
@@ -20,6 +25,11 @@ export default function CoverLetterAssetCard({
     planTier: string;
     initialTone: string;
     userName?: string;
+    userLocation?: string;
+    userPhone?: string;
+    userEmail?: string;
+    companyName?: string;
+    companyLocation?: string;
 }) {
     const [content, setContent] = useState(initialContent);
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
@@ -36,6 +46,7 @@ export default function CoverLetterAssetCard({
 
     const isPro = planTier === 'PRO';
     const regensLeft = 3 - regensUsed;
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const handleRegenerate = async (instruction: string) => {
         if (!isPro || regensLeft <= 0) return;
@@ -51,6 +62,7 @@ export default function CoverLetterAssetCard({
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to regenerate');
             setContent(data.newCoverLetter);
+            setEditContent(data.newCoverLetter);
             setRegensUsed(data.regensUsed);
         } catch (err: any) {
             setError(err.message);
@@ -103,6 +115,22 @@ export default function CoverLetterAssetCard({
         setError('');
     };
 
+    // Full letter text for copy/download (includes header)
+    const fullLetterText = [
+        userName && userName !== 'My' ? userName : '',
+        [userLocation, userPhone, userEmail].filter(Boolean).join('  |  '),
+        '',
+        today,
+        '',
+        'Recruiting Department',
+        companyName || '',
+        companyLocation || '',
+        '',
+        'Dear Recruiting Team,',
+        '',
+        content,
+    ].filter((line, i, arr) => !(line === '' && arr[i - 1] === '')).join('\n');
+
     return (
         <details className="glass-card" style={{ cursor: 'pointer' }}>
             <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
@@ -110,13 +138,15 @@ export default function CoverLetterAssetCard({
                     <CheckCircle size={20} /> Cover Letter
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <DownloadPdfButton markdownText={content || ''} filename={`CoverLetter_${userName}.pdf`} />
-                    <CopyToClipboardButton textToCopy={content || ''} />
+                    <DownloadPdfButton markdownText={fullLetterText} filename={`CoverLetter_${userName.replace(/\s+/g, '_')}.pdf`} />
+                    <CopyToClipboardButton textToCopy={fullLetterText} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
             </summary>
             <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+
+                {/* Tone + Edit Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
                     <select
                         value={tone}
                         onChange={(e) => setTone(e.target.value)}
@@ -154,12 +184,12 @@ export default function CoverLetterAssetCard({
                         {isSavingPref ? <Loader2 size={14} className="animate-spin" /> : <ThumbsUp size={14} />}
                         {savedPref ? 'Saved to Preferences' : 'Save as Preference'}
                     </button>
-                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                    <div style={{ flexGrow: 1 }} />
+
                     {!isEditing && (
-                        <button 
-                            onClick={() => setIsEditing(true)} 
+                        <button
+                            onClick={() => setIsEditing(true)}
                             className="btn-outline"
                             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                         >
@@ -168,40 +198,84 @@ export default function CoverLetterAssetCard({
                     )}
                 </div>
 
-                {isEditing ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
-                        <textarea 
-                            value={editContent} 
-                            onChange={(e) => setEditContent(e.target.value)} 
-                            style={{ 
-                                width: '100%', 
-                                minHeight: '300px', 
-                                padding: '1rem', 
-                                borderRadius: '8px', 
-                                border: '1px solid var(--border-glass)', 
-                                background: 'rgba(0,0,0,0.2)', 
-                                color: 'var(--text-primary)', 
-                                fontFamily: 'monospace',
-                                fontSize: '0.9rem',
-                                resize: 'vertical'
-                            }} 
-                        />
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                            <button onClick={cancelEdit} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <X size={16} /> Cancel
-                            </button>
-                            <button onClick={handleSaveEdit} disabled={isSaving} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Changes
-                            </button>
+                {/* Letter Document */}
+                <div style={{
+                    background: '#fff',
+                    color: '#1a1a1a',
+                    borderRadius: '6px',
+                    padding: '2.5rem 3rem',
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    fontSize: '0.95rem',
+                    lineHeight: 1.7,
+                    marginBottom: '1.5rem',
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                }}>
+                    {/* Header row: name left, contact right */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '2px solid #e0e0e0' }}>
+                        <div>
+                            {userName && userName !== 'My' && (
+                                <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.04em', color: '#1a1a1a', fontFamily: 'Arial, Helvetica, sans-serif', textTransform: 'uppercase' }}>
+                                    {userName}
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ textAlign: 'right', fontSize: '0.82rem', color: '#444', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                            {userLocation && <div>{userLocation}</div>}
+                            {userPhone && <div>{userPhone}</div>}
+                            {userEmail && <div style={{ color: '#0073aa' }}>{userEmail}</div>}
                         </div>
                     </div>
-                ) : (
-                    <div 
-                        className="markdown-body"
-                        style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.6 }}
-                        dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
-                    />
-                )}
+
+                    {/* Date + recipient block */}
+                    <div style={{ marginBottom: '1.5rem', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.88rem', color: '#333', lineHeight: 1.7 }}>
+                        <div style={{ marginBottom: '0.75rem' }}>{today}</div>
+                        <div>Recruiting Department</div>
+                        {companyName && <div>{companyName}</div>}
+                        {companyLocation && <div>{companyLocation}</div>}
+                    </div>
+
+                    {/* Salutation */}
+                    <div style={{ marginBottom: '1rem', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: '#1a1a1a' }}>
+                        Dear Recruiting Team,
+                    </div>
+
+                    {/* Letter body */}
+                    {isEditing ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    minHeight: '260px',
+                                    padding: '1rem',
+                                    borderRadius: '6px',
+                                    border: '1px solid #ccc',
+                                    background: '#f9f9f9',
+                                    color: '#1a1a1a',
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.9rem',
+                                    resize: 'vertical',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                <button onClick={cancelEdit} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <X size={16} /> Cancel
+                                </button>
+                                <button onClick={handleSaveEdit} disabled={isSaving} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div
+                            style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a' }}
+                            dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
+                        />
+                    )}
+                </div>
 
                 {error && (
                     <div style={{ padding: '1rem', background: 'rgba(255, 77, 77, 0.1)', color: 'var(--danger)', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '1rem' }}>
@@ -221,28 +295,28 @@ export default function CoverLetterAssetCard({
                         Regenerations left: {isPro ? regensLeft : 0} / 3
                     </span>
                     <div style={{ flexGrow: 1 }} />
-                    <button 
-                        onClick={() => handleRegenerate('different')} 
-                        disabled={isLoading || !isPro || regensLeft <= 0} 
-                        className="btn-outline" 
+                    <button
+                        onClick={() => handleRegenerate('different')}
+                        disabled={isLoading || !isPro || regensLeft <= 0}
+                        className="btn-outline"
                         title={!isPro ? "Pro account only" : ""}
                         style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                     >
                         {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Different
                     </button>
-                    <button 
-                        onClick={() => handleRegenerate('shorter')} 
-                        disabled={isLoading || !isPro || regensLeft <= 0} 
-                        className="btn-outline" 
+                    <button
+                        onClick={() => handleRegenerate('shorter')}
+                        disabled={isLoading || !isPro || regensLeft <= 0}
+                        className="btn-outline"
                         title={!isPro ? "Pro account only" : ""}
                         style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                     >
                         {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Minimize2 size={14} />} Shorter
                     </button>
-                    <button 
-                        onClick={() => handleRegenerate('longer')} 
-                        disabled={isLoading || !isPro || regensLeft <= 0} 
-                        className="btn-outline" 
+                    <button
+                        onClick={() => handleRegenerate('longer')}
+                        disabled={isLoading || !isPro || regensLeft <= 0}
+                        className="btn-outline"
                         title={!isPro ? "Pro account only" : ""}
                         style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                     >

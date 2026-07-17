@@ -43,6 +43,16 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
     }
   }
   const formattedUserName = userName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+
+  // Extract contact info from resume markdown header
+  let userLocation: string | undefined;
+  let userPhone: string | undefined;
+  const resumeText = preferences?.resumeMarkdown || '';
+  const phoneMatch = resumeText.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
+  if (phoneMatch) userPhone = phoneMatch[0];
+  // Look for city/state pattern like "San Francisco, CA" or "New York, NY 10001"
+  const locationMatch = resumeText.match(/[A-Z][a-zA-Z\s]+,\s*[A-Z]{2}(?:\s+\d{5})?/);
+  if (locationMatch) userLocation = locationMatch[0];
   
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -210,7 +220,12 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   initialRegensUsed={assets.coverLetterRegensUsed || 0} 
                   planTier={planTier} 
                   initialTone={preferences?.coverLetterTone || 'Confident and strategic'} 
-                  userName={formattedUserName}
+                  userName={userName}
+                  userLocation={userLocation}
+                  userPhone={userPhone}
+                  userEmail={user?.email || undefined}
+                  companyName={job.company}
+                  companyLocation={job.location || undefined}
                 />
                 
                 <ResumeAssetCard 

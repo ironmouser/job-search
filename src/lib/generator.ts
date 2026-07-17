@@ -42,7 +42,7 @@ CRITICAL GUARDRAILS:
 Return the result as a JSON object with EXACTLY these keys:
 {
   "tailored_resume": "Markdown string of the tailored resume",
-  "cover_letter": "Markdown string of the tailored cover letter (aim for around 150 words as a starting point)",
+  "cover_letter": "ONLY the body paragraphs of the cover letter (aim for ~150 words). NO title, NO 'Dear...' salutation, NO header block. Start directly with the opening paragraph.",
   "networking_message": "A short, 2-3 sentence LinkedIn connection request to the hiring manager or recruiter",
   "portfolio_recommendation": "A 1-2 sentence recommendation on which project from the resume to highlight in interviews"
 }`;
@@ -269,16 +269,17 @@ export async function regenerateCoverLetter(userId: string, jobId: string, jobTi
     else if (instruction === 'longer') instructionText = 'CRITICAL: Expand on the cover letter, adding more detail and depth from the resume.';
     else if (instruction === 'different') instructionText = 'CRITICAL: Take a completely different approach or angle.';
 
-    const systemPrompt = `You are an expert career strategist. Write a tailored cover letter for a specific job.
+    const systemPrompt = `You are an expert career strategist. Write a tailored cover letter body for a specific job.
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS.
 2. LENGTH: Aim for around 150 words as a starting point, unless instructed otherwise.
 3. TONE: ${finalTone}
 4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
 5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
-6. INSTRUCTION: ${instructionText || 'Write a compelling cover letter.'}
+6. INSTRUCTION: ${instructionText || 'Write a compelling cover letter body.'}
+7. OUTPUT FORMAT: Output ONLY the body paragraphs. Do NOT include a title (e.g. "Cover Letter"), do NOT include a salutation ("Dear..."), do NOT include a header block. Start directly with the opening paragraph of the letter body.
 
-Output ONLY the Markdown string of the cover letter in plain text. Do not wrap it in JSON.`;
+Output ONLY the cover letter body in plain text (no JSON wrapping).`;
 
     const userPrompt = `COMPANY: ${company}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
