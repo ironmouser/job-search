@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { normalizeAndSaveJobs } from '@/lib/apify';
+import { normalizeAndSaveJobs } from '@/lib/jobs';
 import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter } from '@/lib/scrapers/crawlee';
 import { getUserSettings } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';

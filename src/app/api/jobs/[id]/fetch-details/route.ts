@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { gotScraping } from 'got-scraping';
+import * as cheerio from 'cheerio';
 
 export async function POST(
     request: Request,
@@ -32,57 +34,74 @@ export async function POST(
             return NextResponse.json({ error: 'Job has no URL' }, { status: 400 });
         }
 
-        let scrapedData: any = null;
+        let description: string | null = null;
 
-        // 2. Try Firecrawl Primary
-        if (process.env.FIRECRAWL_API_KEY) {
-            console.log(`Attempting Firecrawl for ${job.url}...`);
+        // 2. Try direct fetch first, fallback to Scrape.do proxy
+        const fetchWithFallback = async (url: string): Promise<string | null> => {
+            // Direct attempt
             try {
-                const fcRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        url: job.url,
-                        formats: ['markdown'],
-                        onlyMainContent: true
-                    })
+                const res = await gotScraping({
+                    url,
+                    timeout: { request: 15000 },
+                    retry: { limit: 0 },
+                    throwHttpErrors: false,
                 });
-
-                if (fcRes.ok) {
-                    const fcData = await fcRes.json();
-                    if (fcData.success && fcData.data?.markdown) {
-                        scrapedData = { description: fcData.data.markdown };
-                        console.log("Successfully fetched via Firecrawl.");
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    const bodyStr = res.body.toString();
+                    if (!bodyStr.includes('Just a moment...') && !bodyStr.includes('cf-challenge-error-title')) {
+                        const $ = cheerio.load(bodyStr);
+                        const text = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').text().trim();
+                        if (text.length > 100) return text;
                     }
-                } else {
-                    console.warn(`Firecrawl failed with status: ${fcRes.status}`);
                 }
-            } catch (e) {
-                console.error("Firecrawl request error:", e);
+            } catch (e: any) {
+                console.warn(`Direct fetch failed for ${url}: ${e.message}`);
             }
-        }
 
-        if (!scrapedData || !scrapedData.description) {
-            return NextResponse.json({ error: 'Failed to scrape full details from Firecrawl (Upstream timeout or block)' }, { status: 502 });
+            // Scrape.do proxy fallback
+            if (process.env.SCRAPEDO_API_KEY) {
+                console.info(`Falling back to Scrape.do for ${url}`);
+                try {
+                    const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(url)}`;
+                    const sdRes = await gotScraping({
+                        url: scrapeDoUrl,
+                        timeout: { request: 30000 },
+                        retry: { limit: 0 },
+                        throwHttpErrors: false,
+                    });
+                    if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
+                        const $ = cheerio.load(sdRes.body);
+                        const text = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').text().trim();
+                        if (text.length > 100) return text;
+                        // fallback: return all body text
+                        return $('body').text().replace(/\n{3,}/g, '\n\n').trim();
+                    }
+                    console.warn(`Scrape.do fallback failed for ${url} (Status: ${sdRes.statusCode})`);
+                } catch (err: any) {
+                    console.warn(`Scrape.do fallback error for ${url}: ${err.message}`);
+                }
+            }
+
+            return null;
+        };
+
+        description = await fetchWithFallback(job.url);
+
+        if (!description) {
+            return NextResponse.json({ error: 'Failed to scrape full job details. The site may be blocking automated access.' }, { status: 502 });
         }
 
         const updatePayload: any = {
-            description: scrapedData.description
+            description: description + `\n\nApply at: ${job.url}`
         };
 
-        if (scrapedData.salary_range) updatePayload.salaryRange = scrapedData.salary_range;
-        if (scrapedData.location && job.location?.includes('Unknown')) updatePayload.location = scrapedData.location;
-
-        // 4. Update the job
+        // 3. Update the job
         await prisma.job.update({
             where: { id: jobId },
             data: updatePayload
         });
 
-        // 5. Update UserJob status to discovered to trigger rescoring
+        // 4. Update UserJob status to discovered to trigger rescoring
         await prisma.userJob.update({
             where: { userId_jobId: { userId, jobId } },
             data: { status: 'discovered' }

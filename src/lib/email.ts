@@ -1,7 +1,7 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { prisma } from './prisma';
-import { normalizeAndSaveJobs } from './apify';
+import { normalizeAndSaveJobs } from './jobs';
 import { extractJobsFromEmailText } from './scoring';
 import { decrypt } from './encryption';
 

@@ -1,5 +1,5 @@
-const { gotScraping } = require('got-scraping');
-const cheerio = require('cheerio');
+import { gotScraping } from 'got-scraping';
+import * as cheerio from 'cheerio';
 
 async function testRemoteOK() {
     console.log("Testing RemoteOK...");

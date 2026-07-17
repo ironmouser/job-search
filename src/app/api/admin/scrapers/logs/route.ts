@@ -24,14 +24,14 @@ export async function GET(request: Request) {
         });
 
         let totalJobsScraped = 0;
-        let firecrawlUses = 0;
+        let proxyUses = 0;
         let successfulRuns = 0;
         let totalRuns = recentStats.length;
 
         recentStats.forEach(log => {
             totalJobsScraped += log.resultsCount;
             if (log.usedFirecrawl) {
-                firecrawlUses += log.firecrawlSites.length || 1;
+                proxyUses += log.firecrawlSites?.length || 1;
             }
             if (log.status === 'SUCCESS') {
                 successfulRuns++;
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
             stats: {
                 totalJobsScraped24h: totalJobsScraped,
                 successRate24h: successRate,
-                firecrawlFallbacks24h: firecrawlUses,
+                proxyFallbacks24h: proxyUses,
                 totalRuns24h: totalRuns
             }
         });

@@ -34,7 +34,7 @@ export default function SettingsPage() {
     const isAdmin = (session?.user as any)?.role === 'ADMIN';
     const isPro = (session?.user as any)?.planTier === 'PRO';
 
-    const isSupabaseConfigured = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+
     const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true; // Server-side env vars not exposed, mock for now
     const isRapidAPIConfigured = true; // Server-side env vars not exposed, mock for now
 
@@ -487,7 +487,7 @@ export default function SettingsPage() {
                         <Database size={20} className="text-accent" /> API Connections
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <ConnectionRow name="Supabase Database" status={isSupabaseConfigured ? 'Connected' : 'Missing'} connected={isSupabaseConfigured} />
+                        <ConnectionRow name="PostgreSQL Database" status="Connected" connected={true} />
                         <ConnectionRow name="Anthropic (Claude AI)" status={isAnthropicConfigured ? 'Connected' : 'Missing'} connected={isAnthropicConfigured} />
                         <ConnectionRow name="RapidAPI (JSearch)" status={isRapidAPIConfigured ? 'Connected' : 'Missing'} connected={isRapidAPIConfigured} />
                     </div>

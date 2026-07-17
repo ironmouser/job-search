@@ -48,7 +48,7 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
         }
 
         if (needsFallback) {
-            // Fallback to Scrape.do or Firecrawl for any block or non-200 status
+            // Fallback to Scrape.do proxy for any block or non-200 status
             if (process.env.SCRAPEDO_API_KEY) {
                 console.info(`Falling back to Scrape.do for ${url}`);
                 try {
@@ -65,30 +65,6 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
                     console.warn(`Scrape.do fallback failed for ${url} (Status: ${sdRes.statusCode})`);
                 } catch (err: any) {
                     console.warn(`Scrape.do fallback error for ${url}: ${err.message}`);
-                }
-            }
-            
-            if (process.env.FIRECRAWL_API_KEY && !process.env.SCRAPEDO_API_KEY) {
-                console.info(`Falling back to Firecrawl for ${url}`);
-                try {
-                    const fcRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`
-                        },
-                        body: JSON.stringify({ url, formats: ['html'] })
-                    });
-                    
-                    if (fcRes.ok) {
-                        const fcData = await fcRes.json();
-                        if (fcData.success && fcData.data && fcData.data.html) {
-                            return { $: cheerio.load(fcData.data.html), usedFirecrawl: true };
-                        }
-                    }
-                    console.warn(`Firecrawl fallback failed for ${url}`);
-                } catch (fcErr: any) {
-                    console.warn(`Firecrawl fallback error for ${url}: ${fcErr.message}`);
                 }
             }
 
