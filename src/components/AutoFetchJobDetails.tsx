@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 
 export default function AutoFetchJobDetails({ jobId }: { jobId: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<'fetching' | 'scoring' | 'error'>('fetching');
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
     
     const fetchAndScore = async () => {
+      setStatus('fetching');
       try {
         // Fetch Details
         const fetchRes = await fetch(`/api/jobs/${jobId}/fetch-details`, { method: 'POST' });
@@ -40,12 +42,19 @@ export default function AutoFetchJobDetails({ jobId }: { jobId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [jobId, router]);
+  }, [jobId, router, retryCount]);
 
   if (status === 'error') {
     return (
-      <div style={{ color: 'var(--error)', padding: '1rem', textAlign: 'center' }}>
-        Failed to fetch job details. Please try again later.
+      <div style={{ color: 'var(--error)', padding: '1rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+        <p style={{ margin: 0 }}>Failed to fetch job details. The job board might be temporarily blocking our scraper.</p>
+        <button 
+            onClick={() => setRetryCount(c => c + 1)}
+            className="btn-outline"
+            style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: 'var(--error)', color: 'var(--error)' }}
+        >
+            <RefreshCw size={16} /> Try Again
+        </button>
       </div>
     );
   }

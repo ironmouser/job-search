@@ -74,7 +74,7 @@ export default function ResumeActions({ jobId, markdownText }: { jobId: string, 
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
             >
                 {isCopied ? <CheckCircle size={16} color="#10b981" /> : <Copy size={16} />}
-                {isCopied ? 'Copied Markdown' : 'Copy Text'}
+                <span>{isCopied ? 'Copied Markdown' : 'Copy Text'}</span>
             </button>
             <button 
                 onClick={handleDownload}
@@ -83,7 +83,7 @@ export default function ResumeActions({ jobId, markdownText }: { jobId: string, 
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
             >
                 <Download size={16} className={isDownloading ? "animate-pulse" : ""} />
-                {isDownloading ? 'Generating...' : 'Download PDF'}
+                <span>{isDownloading ? 'Generating...' : 'Download PDF'}</span>
             </button>
 
             {showToast && (

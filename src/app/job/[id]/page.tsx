@@ -33,6 +33,17 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   const planTier = user?.planTier || 'FREE';
   const preferences = user?.userPreferences;
   
+  let userName = 'My';
+  if (user?.name) {
+    userName = user.name;
+  } else if (preferences?.resumeMarkdown) {
+    const nameMatch = preferences.resumeMarkdown.match(/^#\s+([^\n]+)/);
+    if (nameMatch && nameMatch[1]) {
+      userName = nameMatch[1].trim();
+    }
+  }
+  const formattedUserName = userName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+  
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -200,6 +211,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   initialRegensUsed={assets.coverLetterRegensUsed || 0} 
                   planTier={planTier} 
                   initialTone={preferences?.coverLetterTone || 'Confident and strategic'} 
+                  userName={formattedUserName}
                 />
                 
                 <ResumeAssetCard 

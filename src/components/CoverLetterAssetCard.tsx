@@ -3,20 +3,22 @@
 import { useState } from 'react';
 import { Copy, Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown } from 'lucide-react';
 import CopyToClipboardButton from './CopyToClipboardButton';
-import DownloadTextButton from './DownloadTextButton';
+import DownloadPdfButton from './DownloadPdfButton';
 
 export default function CoverLetterAssetCard({
     jobId,
     initialContent,
     initialRegensUsed,
     planTier,
-    initialTone
+    initialTone,
+    userName = 'My'
 }: {
     jobId: string;
     initialContent: string;
     initialRegensUsed: number;
     planTier: string;
     initialTone: string;
+    userName?: string;
 }) {
     const [content, setContent] = useState(initialContent);
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
@@ -74,7 +76,7 @@ export default function CoverLetterAssetCard({
                     <CheckCircle size={20} /> Cover Letter
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <DownloadTextButton textToDownload={content || ''} filename={`CoverLetter_${jobId.slice(0,8)}.txt`} />
+                    <DownloadPdfButton markdownText={content || ''} filename={`CoverLetter_${userName}.pdf`} />
                     <CopyToClipboardButton textToCopy={content || ''} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
