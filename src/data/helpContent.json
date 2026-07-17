@@ -62,19 +62,22 @@
                     "target": "[data-tour='job-preferences']",
                     "title": "Job Discovery",
                     "content": "Set your role, location, and job sites you'd like to search.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/settings"
                 },
                 {
                     "target": "[data-tour='target-profile']",
                     "title": "Tell us what you're looking for",
                     "content": "Let us know what's important in your next role like goals, salary, and work environment.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/settings"
                 },
                 {
                     "target": "[data-tour='resume-upload']",
                     "title": "Resume",
                     "content": "Upload your latest resume so the agent can use it to apply for jobs.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/settings"
                 }
             ]
         },
