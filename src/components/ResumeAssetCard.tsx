@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown } from 'lucide-react';
+import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X } from 'lucide-react';
+import { marked } from 'marked';
 import ResumeActions from './ResumeActions';
 
 export default function ResumeAssetCard({
@@ -24,6 +25,11 @@ export default function ResumeAssetCard({
     const [isSavingPref, setIsSavingPref] = useState(false);
     const [savedPref, setSavedPref] = useState(false);
     const [error, setError] = useState('');
+    
+    // Edit state
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(initialContent);
+    const [isSaving, setIsSaving] = useState(false);
 
     const isPro = planTier === 'PRO';
     const regensLeft = 3 - regensUsed;
@@ -64,6 +70,34 @@ export default function ResumeAssetCard({
         } finally {
             setIsSavingPref(false);
         }
+    };
+
+    const handleSaveEdit = async () => {
+        setIsSaving(true);
+        setError('');
+        try {
+            const res = await fetch(`/api/job/${jobId}/assets`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tailoredResumeMarkdown: editContent }),
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to save edits');
+            }
+            setContent(editContent);
+            setIsEditing(false);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const cancelEdit = () => {
+        setEditContent(content);
+        setIsEditing(false);
+        setError('');
     };
 
     return (
@@ -109,9 +143,52 @@ export default function ResumeAssetCard({
                     </button>
                 </div>
 
-                <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                    {content}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                    {!isEditing && (
+                        <button 
+                            onClick={() => setIsEditing(true)} 
+                            className="btn-outline"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                        >
+                            <Edit2 size={14} /> Edit
+                        </button>
+                    )}
                 </div>
+
+                {isEditing ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+                        <textarea 
+                            value={editContent} 
+                            onChange={(e) => setEditContent(e.target.value)} 
+                            style={{ 
+                                width: '100%', 
+                                minHeight: '300px', 
+                                padding: '1rem', 
+                                borderRadius: '8px', 
+                                border: '1px solid var(--border-glass)', 
+                                background: 'rgba(0,0,0,0.2)', 
+                                color: 'var(--text-primary)', 
+                                fontFamily: 'monospace',
+                                fontSize: '0.9rem',
+                                resize: 'vertical'
+                            }} 
+                        />
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <button onClick={cancelEdit} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <X size={16} /> Cancel
+                            </button>
+                            <button onClick={handleSaveEdit} disabled={isSaving} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Changes
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div 
+                        className="markdown-body"
+                        style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.6 }}
+                        dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
+                    />
+                )}
                 
                 <ResumeActions jobId={jobId} markdownText={content} />
 
