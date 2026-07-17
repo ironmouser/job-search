@@ -50,7 +50,7 @@ export default function AutoFetchJobDetails({ jobId }: { jobId: string }) {
         setStatus('scoring');
 
         // Score Job
-        await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
+        await fetch('/api/score', { method: 'POST', body: JSON.stringify({ jobId }) });
 
         if (!isMounted) return;
         
