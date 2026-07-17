@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X } from 'lucide-react';
 import { marked } from 'marked';
 import ResumeActions from './ResumeActions';
@@ -21,6 +21,30 @@ export default function ResumeAssetCard({
     const [content, setContent] = useState(initialContent);
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
     const [customizationAmount, setCustomizationAmount] = useState(initialCustomization || 50);
+    const [selectedColor, setSelectedColor] = useState('#06af9e');
+
+    useEffect(() => {
+        const storedColor = localStorage.getItem('theme-selected-color');
+        if (storedColor) {
+            setSelectedColor(storedColor);
+        }
+
+        const handleGlobalColorChange = (e: Event) => {
+            const newColor = (e as CustomEvent).detail;
+            setSelectedColor(newColor);
+        };
+
+        window.addEventListener('theme-color-change', handleGlobalColorChange);
+        return () => {
+            window.removeEventListener('theme-color-change', handleGlobalColorChange);
+        };
+    }, []);
+
+    const handleColorChange = (color: string) => {
+        setSelectedColor(color);
+        localStorage.setItem('theme-selected-color', color);
+        window.dispatchEvent(new CustomEvent('theme-color-change', { detail: color }));
+    };
     const [isLoading, setIsLoading] = useState(false);
     const [isSavingPref, setIsSavingPref] = useState(false);
     const [savedPref, setSavedPref] = useState(false);
@@ -122,6 +146,29 @@ export default function ResumeAssetCard({
                         />
                     </div>
 
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {['black', '#0155a1', '#06af9e', '#1d90f7'].map((color) => (
+                            <button
+                                key={color}
+                                onClick={() => handleColorChange(color)}
+                                style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    background: color,
+                                    border: selectedColor === color ? '2px solid var(--accent-primary)' : '1px solid var(--border-glass)',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    outline: 'none',
+                                    boxShadow: selectedColor === color ? '0 0 4px var(--accent-primary)' : 'none',
+                                    transition: 'transform 0.1s ease',
+                                    transform: selectedColor === color ? 'scale(1.1)' : 'none'
+                                }}
+                                title={color}
+                            />
+                        ))}
+                    </div>
+
                     <button
                         onClick={savePreference}
                         disabled={isSavingPref || savedPref}
@@ -155,6 +202,20 @@ export default function ResumeAssetCard({
                     )}
                 </div>
 
+                <style dangerouslySetInnerHTML={{ __html: `
+                    .custom-resume-preview h1, 
+                    .custom-resume-preview h2, 
+                    .custom-resume-preview h3, 
+                    .custom-resume-preview h4, 
+                    .custom-resume-preview h5, 
+                    .custom-resume-preview h6 {
+                        color: ${selectedColor} !important;
+                    }
+                    .custom-resume-preview a {
+                        color: ${selectedColor} !important;
+                    }
+                `}} />
+
                 {isEditing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
                         <textarea 
@@ -184,13 +245,13 @@ export default function ResumeAssetCard({
                     </div>
                 ) : (
                     <div 
-                        className="markdown-body"
+                        className="markdown-body custom-resume-preview"
                         style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.6 }}
                         dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
                     />
                 )}
                 
-                <ResumeActions jobId={jobId} markdownText={content} />
+                <ResumeActions jobId={jobId} markdownText={content} selectedColor={selectedColor} />
 
                 {error && (
                     <div style={{ padding: '1rem', background: 'rgba(255, 77, 77, 0.1)', color: 'var(--danger)', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '1rem', marginTop: '1rem' }}>

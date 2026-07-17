@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Download, Copy, CheckCircle } from 'lucide-react';
 
-export default function ResumeActions({ jobId, markdownText }: { jobId: string, markdownText: string }) {
+export default function ResumeActions({ jobId, markdownText, selectedColor = "#06af9e" }: { jobId: string, markdownText: string, selectedColor?: string }) {
     const [isCopied, setIsCopied] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [showToast, setShowToast] = useState(false);
@@ -29,13 +29,14 @@ export default function ResumeActions({ jobId, markdownText }: { jobId: string, 
             const html = `
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">
                 <style>
-                    h1 { font-size: 24pt; font-weight: bold; margin-bottom: 5px; margin-top: 0; }
-                    h2 { font-size: 14pt; font-weight: bold; margin-top: 20px; margin-bottom: 20px; }
-                    h3 { font-size: 14pt; font-weight: bold; margin-top: 25px; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+                    h1 { font-size: 24pt; font-weight: bold; margin-bottom: 5px; margin-top: 0; color: ${selectedColor} !important; }
+                    h2 { font-size: 14pt; font-weight: bold; margin-top: 20px; margin-bottom: 20px; color: ${selectedColor} !important; }
+                    h3 { font-size: 14pt; font-weight: bold; margin-top: 25px; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: ${selectedColor} !important; }
                     p { margin: 8px 0; }
                     ul { margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }
                     li { margin-bottom: 4px; }
                     strong { font-weight: bold; }
+                    a { color: ${selectedColor} !important; }
                 </style>
                 ${htmlContent}
             </div>

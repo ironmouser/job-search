@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X } from 'lucide-react';
 import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
@@ -38,6 +38,24 @@ export default function CoverLetterAssetCard({
     const [isSavingPref, setIsSavingPref] = useState(false);
     const [savedPref, setSavedPref] = useState(false);
     const [error, setError] = useState('');
+    const [selectedColor, setSelectedColor] = useState('#06af9e');
+
+    useEffect(() => {
+        const storedColor = localStorage.getItem('theme-selected-color');
+        if (storedColor) {
+            setSelectedColor(storedColor);
+        }
+
+        const handleGlobalColorChange = (e: Event) => {
+            const newColor = (e as CustomEvent).detail;
+            setSelectedColor(newColor);
+        };
+
+        window.addEventListener('theme-color-change', handleGlobalColorChange);
+        return () => {
+            window.removeEventListener('theme-color-change', handleGlobalColorChange);
+        };
+    }, []);
     
     // Edit state
     const [isEditing, setIsEditing] = useState(false);
@@ -115,7 +133,60 @@ export default function CoverLetterAssetCard({
         setError('');
     };
 
-    // Full letter text for copy/download (includes header)
+    const nameParts = userName.split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
+    const letterBodyHtml = marked.parse(content || '') as string;
+
+    const customCoverLetterHtml = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">
+        <!-- Header: Name left, contact right -->
+        <table style="width: 100%; border-bottom: 2px solid #e0e0e0; padding-bottom: 12px; margin-bottom: 20px;">
+            <tr>
+                <td style="vertical-align: top;">
+                    ${userName && userName !== 'My' ? `
+                    <span style="font-size: 16pt; font-weight: bold; letter-spacing: 0.04em; font-family: Arial, sans-serif; text-transform: uppercase;">
+                        <span style="color: ${selectedColor};">${firstName}</span>
+                        ${lastName ? `<span style="color: #1a1a1a;"> ${lastName}</span>` : ''}
+                    </span>
+                    ` : ''}
+                </td>
+                <td style="text-align: right; vertical-align: top; font-size: 9pt; color: #444; line-height: 1.6; font-family: Arial, sans-serif;">
+                    ${userLocation ? `<div>${userLocation}</div>` : ''}
+                    ${userPhone ? `<div>${userPhone}</div>` : ''}
+                    ${userEmail ? `<div style="color: ${selectedColor}; text-decoration: none;">${userEmail}</div>` : ''}
+                </td>
+            </tr>
+        </table>
+
+        <!-- Date + recipient block -->
+        <div style="margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 9.5pt; color: #333; line-height: 1.6;">
+            <div style="margin-bottom: 10px;">${today}</div>
+            <div>Recruiting Department</div>
+            ${companyName ? `<div>${companyName}</div>` : ''}
+            ${companyLocation ? `<div>${companyLocation}</div>` : ''}
+        </div>
+
+        <!-- Salutation -->
+        <div style="margin-bottom: 15px; font-family: Arial, sans-serif; font-weight: bold; font-size: 10pt; color: #1a1a1a;">
+            Dear Recruiting Team,
+        </div>
+
+        <!-- Body -->
+        <div style="font-family: Georgia, serif; font-size: 10.5pt; line-height: 1.7; color: #1a1a1a;">
+            <style>
+                h1, h2, h3, h4, h5, h6 { color: ${selectedColor} !important; margin-top: 15px; margin-bottom: 10px; }
+                p { margin-bottom: 15px; }
+                ul { margin-bottom: 15px; padding-left: 20px; }
+                li { margin-bottom: 5px; }
+                a { color: ${selectedColor} !important; }
+            </style>
+            ${letterBodyHtml}
+        </div>
+    </div>
+    `;
+
+    // Full letter text for copy (includes header)
     const fullLetterText = [
         userName && userName !== 'My' ? userName : '',
         [userLocation, userPhone, userEmail].filter(Boolean).join('  |  '),
@@ -138,7 +209,7 @@ export default function CoverLetterAssetCard({
                     <CheckCircle size={20} /> Cover Letter
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <DownloadPdfButton markdownText={fullLetterText} filename={`CoverLetter_${userName.replace(/\s+/g, '_')}.pdf`} />
+                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${userName.replace(/\s+/g, '_')}.pdf`} />
                     <CopyToClipboardButton textToCopy={fullLetterText} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
@@ -216,14 +287,15 @@ export default function CoverLetterAssetCard({
                         <div>
                             {userName && userName !== 'My' && (
                                 <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.04em', color: '#1a1a1a', fontFamily: 'Arial, Helvetica, sans-serif', textTransform: 'uppercase' }}>
-                                    {userName}
+                                    <span style={{ color: selectedColor }}>{firstName}</span>
+                                    {lastName ? <span style={{ color: '#1a1a1a' }}> {lastName}</span> : null}
                                 </div>
                             )}
                         </div>
                         <div style={{ textAlign: 'right', fontSize: '0.82rem', color: '#444', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif' }}>
                             {userLocation && <div>{userLocation}</div>}
                             {userPhone && <div>{userPhone}</div>}
-                            {userEmail && <div style={{ color: '#0073aa' }}>{userEmail}</div>}
+                            {userEmail && <div style={{ color: selectedColor }}>{userEmail}</div>}
                         </div>
                     </div>
 
@@ -241,6 +313,20 @@ export default function CoverLetterAssetCard({
                     </div>
 
                     {/* Letter body */}
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        .custom-coverletter-preview h1, 
+                        .custom-coverletter-preview h2, 
+                        .custom-coverletter-preview h3, 
+                        .custom-coverletter-preview h4, 
+                        .custom-coverletter-preview h5, 
+                        .custom-coverletter-preview h6 {
+                            color: ${selectedColor} !important;
+                        }
+                        .custom-coverletter-preview a {
+                            color: ${selectedColor} !important;
+                        }
+                    `}} />
+
                     {isEditing ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <textarea
@@ -271,6 +357,7 @@ export default function CoverLetterAssetCard({
                         </div>
                     ) : (
                         <div
+                            className="custom-coverletter-preview"
                             style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a' }}
                             dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
                         />

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Download, CheckCircle, Loader2 } from 'lucide-react';
 
-export default function DownloadPdfButton({ markdownText, filename, label = "Download" }: { markdownText: string, filename: string, label?: string }) {
+export default function DownloadPdfButton({ markdownText, filename, label = "Download", html }: { markdownText?: string, filename: string, label?: string, html?: string }) {
     const [isDownloading, setIsDownloading] = useState(false);
     const [isDownloaded, setIsDownloaded] = useState(false);
 
@@ -13,9 +13,7 @@ export default function DownloadPdfButton({ markdownText, filename, label = "Dow
             const { marked } = await import('marked');
             const html2pdf = (await import('html2pdf.js')).default;
 
-            const htmlContent = await marked.parse(markdownText);
-
-            const html = `
+            const htmlContent = html || `
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">
                 <style>
                     h1 { font-size: 24pt; font-weight: bold; margin-bottom: 5px; margin-top: 0; }
@@ -26,7 +24,7 @@ export default function DownloadPdfButton({ markdownText, filename, label = "Dow
                     li { margin-bottom: 4px; }
                     strong { font-weight: bold; }
                 </style>
-                ${htmlContent}
+                ${await marked.parse(markdownText || '')}
             </div>
             `;
 
@@ -38,7 +36,7 @@ export default function DownloadPdfButton({ markdownText, filename, label = "Dow
                 jsPDF:        { unit: 'in' as const, format: 'letter', orientation: 'portrait' as const }
             };
 
-            await html2pdf().set(opt).from(html).save();
+            await html2pdf().set(opt).from(htmlContent).save();
             
             setIsDownloaded(true);
             setTimeout(() => setIsDownloaded(false), 2000);
