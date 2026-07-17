@@ -355,7 +355,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                         title: job.title,
                                         company: job.company_name,
                                         location: job.candidate_required_location || 'Remote',
-                                        description: `Apply at: ${job.url}`,
+                                        description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
                                         url: job.url,
                                         source: 'Remotive'
                                     });
@@ -384,7 +384,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                     title: job.title,
                                     company: job.company_name,
                                     location: job.location || 'Remote',
-                                    description: `Apply at: ${job.url}`,
+                                    description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
                                     url: job.url,
                                     source: 'WorkingNomads'
                                 });

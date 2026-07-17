@@ -175,7 +175,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Review Job Description</h2>
             </div>
             <div className="glass-card" data-tour="job-detail-description">
-              {!job.description ? (
+              {!job.description || (job.description.trim().startsWith('Apply at: http') && job.description.length < 150) ? (
                 <AutoFetchJobDetails jobId={job.id} />
               ) : (
                 <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95rem' }}>
