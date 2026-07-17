@@ -141,6 +141,8 @@ model GlobalSettings {
   remotecoIsPro         Boolean @default(false) @map("remoteco_is_pro")
   remoteokIsPro         Boolean @default(false) @map("remoteok_is_pro")
   workingnomadsIsPro    Boolean @default(false) @map("workingnomads_is_pro")
+  remotepocIsPro        Boolean @default(false) @map("remotepoc_is_pro")
+  kforceIsPro           Boolean @default(false) @map("kforce_is_pro")
   // Email Sync
   emailsSyncIsPro       Boolean @default(true) @map("emails_sync_is_pro")
   // AI Features

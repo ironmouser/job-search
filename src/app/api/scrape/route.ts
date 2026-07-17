@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/apify';
 import { scrapeJSearch } from '@/lib/jsearch';
-import { scrapeCustomPages, scrapeRemoteAggregators } from '@/lib/scrapers/crawlee';
+import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce } from '@/lib/scrapers/crawlee';
 import { getUserSettings } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
@@ -98,6 +98,24 @@ export async function POST(request: Request) {
                 console.error("Crawlee remote aggregators scrape failed", e);
                 return [];
             }));
+        }
+
+        if (sources.remotepoc) {
+            if (isPro || !globalSettings?.remotepocIsPro) {
+                scrapePromises.push(scrapeRemotePOC(keyword).catch(e => {
+                    console.error("Crawlee RemotePOC scrape failed", e);
+                    return [];
+                }));
+            }
+        }
+
+        if (sources.kforce) {
+            if (isPro || !globalSettings?.kforceIsPro) {
+                scrapePromises.push(scrapeKforce(keyword).catch(e => {
+                    console.error("Crawlee Kforce scrape failed", e);
+                    return [];
+                }));
+            }
         }
 
         const results = await Promise.all(scrapePromises);

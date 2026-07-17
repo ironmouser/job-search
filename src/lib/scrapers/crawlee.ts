@@ -6,6 +6,7 @@ import * as cheerio from 'cheerio';
  */
 
 import { gotScraping } from 'got-scraping';
+import got from 'got';
 import { prisma } from '../prisma';
 
 async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
@@ -434,6 +435,27 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             source: 'WWR'
                         });
                     });
+
+                    // Fetch actual job descriptions for WWR to avoid "Apply at: [URL]" only descriptions
+                    const batchSize = 3;
+                    for (let i = 0; i < pageJobs.length; i += batchSize) {
+                        const batch = pageJobs.slice(i, i + batchSize);
+                        await Promise.all(batch.map(async (job) => {
+                            try {
+                                const { $ } = await fetchPage(job.url, 1);
+                                if ($) {
+                                    const desc = $('.listing-container, #job-listing-show-container, .lis-container__job__content__description, .lis-container').text().trim();
+                                    if (desc) {
+                                        const cleanDesc = desc.replace(/\n{3,}/g, '\n\n').trim();
+                                        job.description = cleanDesc + `\n\nApply at: ${job.url}`;
+                                    }
+                                }
+                            } catch(e) {}
+                        }));
+                        if (i + batchSize < pageJobs.length) {
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+                    }
                 } else if (source === 'remoteco') {
                     $('a[href*="/job/"]').each((_, el) => {
                         const titleEl = $(el).find('p.font-weight-bold').length ? $(el).find('p.font-weight-bold') : $(el);
@@ -449,6 +471,26 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             source: 'Remote.co'
                         });
                     });
+
+                    const batchSize = 3;
+                    for (let i = 0; i < pageJobs.length; i += batchSize) {
+                        const batch = pageJobs.slice(i, i + batchSize);
+                        await Promise.all(batch.map(async (job) => {
+                            try {
+                                const { $ } = await fetchPage(job.url, 1);
+                                if ($) {
+                                    const desc = $('.job_description, .job-description, main').text().trim();
+                                    if (desc) {
+                                        const cleanDesc = desc.replace(/\n{3,}/g, '\n\n').trim();
+                                        job.description = cleanDesc + `\n\nApply at: ${job.url}`;
+                                    }
+                                }
+                            } catch(e) {}
+                        }));
+                        if (i + batchSize < pageJobs.length) {
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+                    }
                 } else if (source === 'workingnomads') {
                     $('.job, .job-desktop').each((_, el) => {
                         const titleEl = $(el).find('h4, h2');
@@ -457,13 +499,34 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                         const href = linkEl.attr('href') || '';
                         pageJobs.push({
                             title: titleEl.text().trim() || 'Unknown Role',
-                            company: companyEl.text().trim() || 'Working Nomads Company',
+                            company: companyEl.text().trim() || 'Working Nomads',
                             location: 'Remote',
                             description: `Apply at: ${href}`,
                             url: href,
                             source: 'WorkingNomads'
                         });
                     });
+
+                    const batchSize = 3;
+                    for (let i = 0; i < pageJobs.length; i += batchSize) {
+                        const batch = pageJobs.slice(i, i + batchSize);
+                        await Promise.all(batch.map(async (job) => {
+                            if (!job.url.startsWith('http')) return;
+                            try {
+                                const { $ } = await fetchPage(job.url, 1);
+                                if ($) {
+                                    const desc = $('#job-description, .job-description, .job-details-content').text().trim();
+                                    if (desc) {
+                                        const cleanDesc = desc.replace(/\n{3,}/g, '\n\n').trim();
+                                        job.description = cleanDesc + `\n\nApply at: ${job.url}`;
+                                    }
+                                }
+                            } catch(e) {}
+                        }));
+                        if (i + batchSize < pageJobs.length) {
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+                    }
                 }
             } catch (e: any) {
                 console.warn(`Error parsing remote aggregator ${source}: ${e.message}`);
@@ -518,4 +581,103 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     }
 
     return jobs;
+}
+
+export async function scrapeRemotePOC(keyword: string) {
+    const jobs: any[] = [];
+    try {
+        const response = await got.post('https://remotepoc.com/jm-ajax/get_listings/', {
+            form: {
+                search_keywords: keyword,
+                per_page: 50,
+                orderby: 'featured',
+                order: 'DESC'
+            },
+            responseType: 'json',
+            timeout: { request: 15000 }
+        });
+
+        const body = response.body as any;
+        if (body && body.html) {
+            const $ = cheerio.load(body.html);
+            $('li.job_listing').each((i, el) => {
+                const title = $(el).find('h3.job_listing-title').text().trim();
+                const company = $(el).find('.job_listing-company strong').text().trim();
+                const location = $(el).find('.job_listing-location').text().trim();
+                const url = $(el).find('a').attr('href');
+                if (title && url && title !== 'Unknown Role') {
+                    jobs.push({
+                        title,
+                        company: company || 'RemotePOC Company',
+                        location: location || 'Remote',
+                        url
+                    });
+                }
+            });
+        }
+    } catch (e) {
+        console.error("RemotePOC Scrape Error:", e);
+    }
+    
+    return [{
+        source: 'remotepoc',
+        url: 'https://remotepoc.com/jm-ajax/get_listings/',
+        jobs,
+        usedFirecrawl: false
+    }];
+}
+
+export async function scrapeKforce(keyword: string) {
+    const jobs: any[] = [];
+    try {
+        const response = await got.post('https://kforcewebeast.search.windows.net/indexes/kforcewebjobentity/docs/search?api-version=2016-09-01', {
+            headers: {
+                'api-key': '1603E4DC4C87A8E41D6BBDE4EEA4EFB7',
+                'Accept': 'application/json'
+            },
+            json: {
+                count: true,
+                select: "Industry, Title, Id, PostDate, Responsibilities, Skills, City, State, Zip, SalaryMin, SalaryMax, SalaryText, ReferenceCode, TypeCode, VisaSponsorshipJob, ApplyUrl",
+                search: keyword,
+                top: 25
+            },
+            responseType: 'json',
+            timeout: { request: 15000 }
+        });
+
+        const body = response.body as any;
+        if (body && body.value) {
+            body.value.forEach((job: any) => {
+                let location = [job.City, job.State, job.Zip].filter(Boolean).join(', ');
+                if (!location) location = "Remote / US";
+                let url = job.ApplyUrl;
+                if (!url && job.ReferenceCode) {
+                    url = `https://www.kforce.com/jobs/${job.ReferenceCode}/`;
+                } else if (!url) {
+                    url = `https://www.kforce.com/find-work/search-jobs/`;
+                }
+                
+                const salary = job.SalaryText || (job.SalaryMin ? `$${job.SalaryMin}-$${job.SalaryMax}` : undefined);
+                
+                if (job.Title && url && job.Title !== 'Unknown Role') {
+                    jobs.push({
+                        title: job.Title,
+                        company: "Kforce",
+                        location,
+                        url,
+                        salary
+                    });
+                }
+            });
+        }
+    } catch (e) {
+        console.error("Kforce Scrape Error:", e);
+    }
+
+    return [{
+        source: 'kforce',
+        url: 'https://www.kforce.com/find-work/search-jobs/',
+        jobs,
+        usedFirecrawl: false
+    }];
 }

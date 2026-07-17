@@ -184,7 +184,7 @@ export default function SettingsPage() {
                                 },
                                 {
                                     title: 'US / Remote Tech',
-                                    sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive']
+                                    sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'kforce']
                                 },
                                 {
                                     title: 'ATS Integrations',
@@ -226,7 +226,8 @@ export default function SettingsPage() {
                                                     />
                                                     <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                                         {source === 'jsearch' ? 'JSearch (Indeed, LinkedIn, Glassdoor, ZipRecruiter)' : 
-                                                         source === 'jobbank' ? 'Job Bank (CA)' : source}
+                                                         source === 'jobbank' ? 'Job Bank (CA)' : 
+                                                         source === 'remotepoc' ? 'RemotePOC' : source}
                                                         {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                     </span>
                                                 </label>
