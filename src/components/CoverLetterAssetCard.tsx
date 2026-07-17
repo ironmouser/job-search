@@ -6,6 +6,13 @@ import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadPdfButton from './DownloadPdfButton';
 
+const cleanContent = (text: string) => {
+    if (!text) return '';
+    return text
+        .replace(/^(?:#+\s*)?cover\s*letter\s*(?:\r?\n)+/i, '')
+        .trim();
+};
+
 export default function CoverLetterAssetCard({
     jobId,
     initialContent,
@@ -31,7 +38,7 @@ export default function CoverLetterAssetCard({
     companyName?: string;
     companyLocation?: string;
 }) {
-    const [content, setContent] = useState(initialContent);
+    const [content, setContent] = useState(cleanContent(initialContent));
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
     const [tone, setTone] = useState(initialTone || 'Confident and strategic');
     const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +66,7 @@ export default function CoverLetterAssetCard({
     
     // Edit state
     const [isEditing, setIsEditing] = useState(false);
-    const [editContent, setEditContent] = useState(initialContent);
+    const [editContent, setEditContent] = useState(cleanContent(initialContent));
     const [isSaving, setIsSaving] = useState(false);
 
     const isPro = planTier === 'PRO';
@@ -79,8 +86,8 @@ export default function CoverLetterAssetCard({
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to regenerate');
-            setContent(data.newCoverLetter);
-            setEditContent(data.newCoverLetter);
+            setContent(cleanContent(data.newCoverLetter));
+            setEditContent(cleanContent(data.newCoverLetter));
             setRegensUsed(data.regensUsed);
         } catch (err: any) {
             setError(err.message);
@@ -128,7 +135,7 @@ export default function CoverLetterAssetCard({
     };
 
     const cancelEdit = () => {
-        setEditContent(content);
+        setEditContent(cleanContent(content));
         setIsEditing(false);
         setError('');
     };
