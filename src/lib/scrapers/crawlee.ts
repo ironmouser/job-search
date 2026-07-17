@@ -640,14 +640,21 @@ export async function scrapeKforce(keyword: string) {
                     location = `Remote (${location})`;
                 }
                 
-                let url = job.ApplyUrl;
-                if (!url && job.ReferenceCode) {
-                    url = `https://www.kforce.com/jobs/${job.ReferenceCode}/`;
-                } else if (!url) {
-                    url = `https://www.kforce.com/find-work/search-jobs/`;
+                let url = `https://www.kforce.com/jobs/${job.ReferenceCode}/`;
+                if (!job.ReferenceCode) {
+                    url = job.ApplyUrl || `https://www.kforce.com/find-work/search-jobs/`;
                 }
                 
                 const salary = job.SalaryText || (job.SalaryMin ? `$${job.SalaryMin}-$${job.SalaryMax}` : undefined);
+                
+                let fullDescription = '';
+                if (job.Responsibilities) fullDescription += `Responsibilities:\n${job.Responsibilities}\n\n`;
+                if (job.Skills) fullDescription += `Requirements:\n${job.Skills}\n\n`;
+                if (fullDescription) {
+                    fullDescription = cheerio.load(fullDescription).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${url}`;
+                } else {
+                    fullDescription = `Apply at: ${url}`;
+                }
                 
                 if (job.Title && url && job.Title !== 'Unknown Role') {
                     jobs.push({
@@ -656,6 +663,7 @@ export async function scrapeKforce(keyword: string) {
                         location,
                         url,
                         salary,
+                        description: fullDescription,
                         source: 'kforce'
                     });
                 }
