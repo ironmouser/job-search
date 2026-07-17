@@ -14,7 +14,7 @@ interface UserRecord {
 }
 
 interface GlobalSettings {
-  jsearchIsPro: boolean;
+
   greenhouseIsPro: boolean;
   leverIsPro: boolean;
   ashbyIsPro: boolean;
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
 
   // Gates State
   const [settings, setSettings] = useState<GlobalSettings>({
-    jsearchIsPro: true,
+
     greenhouseIsPro: true,
     leverIsPro: false,
     ashbyIsPro: false,
@@ -152,7 +152,7 @@ export default function AdminDashboard() {
         .then(data => {
           if (data && !data.error) {
             setSettings({
-              jsearchIsPro: data.jsearchIsPro ?? true,
+
               greenhouseIsPro: data.greenhouseIsPro ?? true,
               leverIsPro: data.leverIsPro ?? false,
               ashbyIsPro: data.ashbyIsPro ?? false,
@@ -448,14 +448,6 @@ export default function AdminDashboard() {
                   <Cpu size={18} className="text-accent" /> Job Search Crawlers
                 </h4>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  {/* JSearch */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                    <div>
-                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>JSearch API</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>LinkedIn, Indeed, Glassdoor, ZipRecruiter</div>
-                    </div>
-                    <ToggleSwitch checked={settings.jsearchIsPro} onChange={() => setSettings({ ...settings, jsearchIsPro: !settings.jsearchIsPro })} />
-                  </div>
                   {/* Greenhouse */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>

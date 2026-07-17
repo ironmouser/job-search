@@ -36,7 +36,6 @@ export default function SettingsPage() {
 
 
     const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true; // Server-side env vars not exposed, mock for now
-    const isRapidAPIConfigured = true; // Server-side env vars not exposed, mock for now
 
     useEffect(() => {
         fetch('/api/settings', { cache: 'no-store' })
@@ -489,7 +488,6 @@ export default function SettingsPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <ConnectionRow name="PostgreSQL Database" status="Connected" connected={true} />
                         <ConnectionRow name="Anthropic (Claude AI)" status={isAnthropicConfigured ? 'Connected' : 'Missing'} connected={isAnthropicConfigured} />
-                        <ConnectionRow name="RapidAPI (JSearch)" status={isRapidAPIConfigured ? 'Connected' : 'Missing'} connected={isRapidAPIConfigured} />
                     </div>
                 </div>
                 )}

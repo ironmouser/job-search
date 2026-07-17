@@ -129,7 +129,7 @@ enum Role {
 model GlobalSettings {
   id                    String  @id @default("system")
   // Scrapers
-  jsearchIsPro          Boolean @default(true) @map("jsearch_is_pro")
+
   greenhouseIsPro       Boolean @default(true) @map("greenhouse_is_pro")
   leverIsPro            Boolean @default(false) @map("lever_is_pro")
   ashbyIsPro            Boolean @default(false) @map("ashby_is_pro")

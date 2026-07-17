@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const settings = await prisma.globalSettings.upsert({
       where: { id: 'system' },
       update: {
-        jsearchIsPro: data.jsearchIsPro,
+
         greenhouseIsPro: data.greenhouseIsPro,
         leverIsPro: data.leverIsPro,
         ashbyIsPro: data.ashbyIsPro,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       },
       create: {
         id: 'system',
-        jsearchIsPro: data.jsearchIsPro ?? true,
+
         greenhouseIsPro: data.greenhouseIsPro ?? true,
         leverIsPro: data.leverIsPro ?? false,
         ashbyIsPro: data.ashbyIsPro ?? false,

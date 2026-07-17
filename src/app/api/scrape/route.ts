@@ -31,14 +31,13 @@ export async function POST(request: Request) {
         let sources = settings.sources || { indeed: true, linkedin: true, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: true, monster: false, wellfound: false, remotepoc: true, kforce: true, himalayas: true };
         
         if (!isPro && globalSettings) {
-            if (globalSettings.jsearchIsPro) {
-                sources.indeed = false;
-                sources.linkedin = false;
-                sources.glassdoor = false;
-                sources.ziprecruiter = false;
-                sources.monster = false;
-                sources.wellfound = false;
-            }
+            // Standard job boards are Pro-only by default
+            sources.indeed = false;
+            sources.linkedin = false;
+            sources.glassdoor = false;
+            sources.ziprecruiter = false;
+            sources.monster = false;
+            sources.wellfound = false;
             if (globalSettings.greenhouseIsPro) sources.greenhouse = false;
             if (globalSettings.leverIsPro) sources.lever = false;
             if (globalSettings.ashbyIsPro) sources.ashby = false;
