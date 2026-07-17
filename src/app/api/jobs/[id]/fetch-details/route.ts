@@ -50,6 +50,7 @@ export async function POST(
                     const bodyStr = res.body.toString();
                     if (!bodyStr.includes('Just a moment...') && !bodyStr.includes('cf-challenge-error-title')) {
                         const $ = cheerio.load(bodyStr);
+                        $('script, style, noscript, nav, header, footer, iframe, svg').remove();
                         const text = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').text().trim();
                         if (text.length > 100) return text;
                     }
@@ -71,6 +72,7 @@ export async function POST(
                     });
                     if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
                         const $ = cheerio.load(sdRes.body);
+                        $('script, style, noscript, nav, header, footer, iframe, svg').remove();
                         const text = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').text().trim();
                         if (text.length > 100) return text;
                         // fallback: return all body text
