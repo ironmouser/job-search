@@ -144,7 +144,7 @@ export async function POST(request: Request) {
             }
         }
 
-        const INTERNATIONAL_SOURCE_KEYS = ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'];
+        const INTERNATIONAL_SOURCE_KEYS = ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank'];
         if (isPro && INTERNATIONAL_SOURCE_KEYS.some(s => sources[s])) {
             scrapePromises.push(scrapeInternational(keyword, sources).catch(e => {
                 console.error('International scrape failed', e);

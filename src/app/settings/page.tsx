@@ -217,7 +217,7 @@ export default function SettingsPage() {
                                 },
                                 {
                                     title: 'International Sources',
-                                    sources: ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana']
+                                    sources: ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank']
                                 }
                             ].map(group => (
                                 <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -251,7 +251,10 @@ export default function SettingsPage() {
                                                     />
                                                     <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                                         {source === 'jobbank' ? 'Job Bank (CA)' : 
-                                                         source === 'remotepoc' ? 'RemotePOC' : source}
+                                         source === 'remotepoc' ? 'RemotePOC' : 
+                                         source === 'arbeitsagentur' ? 'Arbeitsagentur (DE)' :
+                                         source === 'themuse' ? 'The Muse (Global)' :
+                                         source === 'computrabajo' ? 'Computrabajo (LATAM)' : source}
                                                         {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                     </span>
                                                 </label>
