@@ -178,7 +178,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 <AutoFetchJobDetails jobId={job.id} />
               ) : (
                 <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95rem' }}>
-                  {job.description}
+                  {job.description.replace(/(?:\r?\n){4,}/g, '\n\n\n')}
                 </div>
               )}
             </div>
