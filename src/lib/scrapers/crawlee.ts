@@ -619,6 +619,20 @@ export async function scrapeRemotePOC(keyword: string) {
         console.error("RemotePOC Scrape Error:", e);
     }
     
+    try {
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'RemotePOC',
+                url: 'https://remotepoc.com/jm-ajax/get_listings/',
+                status: 'SUCCESS',
+                resultsCount: jobs.length,
+                usedFirecrawl: false
+            }
+        });
+    } catch (logErr) {
+        console.error('Failed to log RemotePOC scraper', logErr);
+    }
+    
     return [{
         source: 'remotepoc',
         url: 'https://remotepoc.com/jm-ajax/get_listings/',
@@ -676,6 +690,20 @@ export async function scrapeKforce(keyword: string) {
         }
     } catch (e) {
         console.error("Kforce Scrape Error:", e);
+    }
+
+    try {
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Kforce',
+                url: 'https://www.kforce.com/find-work/search-jobs/',
+                status: 'SUCCESS',
+                resultsCount: jobs.length,
+                usedFirecrawl: false
+            }
+        });
+    } catch (logErr) {
+        console.error('Failed to log Kforce scraper', logErr);
     }
 
     return [{
