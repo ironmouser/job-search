@@ -81,6 +81,34 @@
                 }
             ]
         },
+        "refine_search": {
+            "name": "Refine Job Search",
+            "description": "Improve your automated job matching by refining keywords and goals.",
+            "roles": ["*"],
+            "autoStart": false,
+            "steps": [
+                {
+                    "target": "[data-tour='settings-menu']",
+                    "title": "Settings",
+                    "content": "Go to the setting page.",
+                    "placement": "right"
+                },
+                {
+                    "target": "[data-tour='job-preferences']",
+                    "title": "Keywords and Job Titles",
+                    "content": "Enter a keyword or job title for your job searches.",
+                    "placement": "bottom",
+                    "route": "/settings"
+                },
+                {
+                    "target": "[data-tour='target-profile']",
+                    "title": "Target Profile",
+                    "content": "Add information about your ideal job like goals, salary, and work environment.",
+                    "placement": "bottom",
+                    "route": "/settings"
+                }
+            ]
+        },
         "analytics": {
             "name": "Analytics Dashboard",
             "description": "Learn how to track your application metrics.",

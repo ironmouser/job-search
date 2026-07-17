@@ -35,19 +35,19 @@
         },
         {
             "id": "phase2",
-            "title": "Phase 2: Finding Jobs",
+            "title": "Phase 2: Refining your job search",
             "tasks": [
                 {
                     "id": "job_search",
-                    "title": "Search for Jobs",
-                    "description": "Find and save your first job.",
-                    "route": "/jobs/search",
-                    "tourId": "job_search",
+                    "title": "Refine Search",
+                    "description": "Improve your automated job matching by refining keywords and goals.",
+                    "route": "/settings",
+                    "tourId": "refine_search",
                     "roles": ["*"],
                     "steps": [
-                        "Go to the Job Search page.",
-                        "Enter a keyword or title.",
-                        "Review the results and click 'Save' on a job you like."
+                        "Go to the setting page.",
+                        "Enter a keyword or job title for your job searches.",
+                        "Add information about your ideal job like goals, salary, and work environment."
                     ]
                 }
             ]
