@@ -633,12 +633,7 @@ export async function scrapeRemotePOC(keyword: string) {
         console.error('Failed to log RemotePOC scraper', logErr);
     }
     
-    return [{
-        source: 'remotepoc',
-        url: 'https://remotepoc.com/jm-ajax/get_listings/',
-        jobs,
-        usedFirecrawl: false
-    }];
+    return jobs;
 }
 
 export async function scrapeKforce(keyword: string) {
@@ -706,10 +701,5 @@ export async function scrapeKforce(keyword: string) {
         console.error('Failed to log Kforce scraper', logErr);
     }
 
-    return [{
-        source: 'kforce',
-        url: 'https://www.kforce.com/find-work/search-jobs/',
-        jobs,
-        usedFirecrawl: false
-    }];
+    return jobs;
 }
