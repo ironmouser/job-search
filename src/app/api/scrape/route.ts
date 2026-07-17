@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/apify';
-import { scrapeJSearch } from '@/lib/jsearch';
-import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor } from '@/lib/scrapers/crawlee';
+import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter } from '@/lib/scrapers/crawlee';
 import { getUserSettings } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
@@ -29,11 +28,10 @@ export async function POST(request: Request) {
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const isPro = (session.user as any).planTier === 'PRO';
-        let sources = settings.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false, remotepoc: true, kforce: true, himalayas: true };
+        let sources = settings.sources || { indeed: true, linkedin: true, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: true, monster: false, wellfound: false, remotepoc: true, kforce: true, himalayas: true };
         
         if (!isPro && globalSettings) {
             if (globalSettings.jsearchIsPro) {
-                sources.jsearch = false;
                 sources.indeed = false;
                 sources.linkedin = false;
                 sources.glassdoor = false;
@@ -91,6 +89,20 @@ export async function POST(request: Request) {
             }));
         }
 
+        if (sources.linkedin) {
+            scrapePromises.push(scrapeLinkedIn(keyword, location).catch(e => {
+                console.error("LinkedIn scrape failed", e);
+                return [];
+            }));
+        }
+
+        if (sources.ziprecruiter) {
+            scrapePromises.push(scrapeZipRecruiter(keyword, location).catch(e => {
+                console.error("ZipRecruiter scrape failed", e);
+                return [];
+            }));
+        }
+
         const urlsToCrawl = customUrls.filter((url: string) => {
             if (url.includes('greenhouse.io') && sources.greenhouse) return true;
             if (url.includes('lever.co') && sources.lever) return true;
@@ -135,28 +147,6 @@ export async function POST(request: Request) {
 
         const results = await Promise.all(scrapePromises);
         let rawJobs = results.flat();
-
-        // JSearch Fallback
-        if (sources.jsearch || sources.indeed || sources.glassdoor || sources.linkedin || sources.ziprecruiter || sources.monster || sources.wellfound) {
-            const hasIndeedJobs = rawJobs.some(j => j.source?.toLowerCase().includes('indeed'));
-            const hasGlassdoorJobs = rawJobs.some(j => j.source?.toLowerCase().includes('glassdoor'));
-            
-            // Trigger fallback if they asked for a source we don't have native coverage for (like linkedin),
-            // OR if they asked for indeed/glassdoor and our native scrapers yielded 0 results (due to blocks/timeouts)
-            const needsIndeedFallback = sources.indeed && !hasIndeedJobs;
-            const needsGlassdoorFallback = sources.glassdoor && !hasGlassdoorJobs;
-            const needsOtherSources = sources.linkedin || sources.ziprecruiter || sources.monster || sources.wellfound;
-            
-            if (needsIndeedFallback || needsGlassdoorFallback || needsOtherSources || sources.jsearch) {
-                console.log("Triggering JSearch Fallback...");
-                try {
-                    const fallbackJobs = await scrapeJSearch(keyword, location);
-                    rawJobs = rawJobs.concat(fallbackJobs);
-                } catch(e) {
-                    console.error("JSearch Fallback failed", e);
-                }
-            }
-        }
 
         if (!rawJobs || rawJobs.length === 0) {
              return NextResponse.json({ message: 'No jobs found for the given criteria across active sources.' }, { status: 200 });

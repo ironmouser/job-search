@@ -837,3 +837,122 @@ export async function scrapeGlassdoor(keyword: string, location: string) {
     
     return jobs;
 }
+
+export async function scrapeLinkedIn(keyword: string, location: string = 'remote'): Promise<any[]> {
+    try {
+        const query = encodeURIComponent(keyword);
+        const loc = encodeURIComponent(location);
+        const url = `https://www.linkedin.com/jobs/search/?keywords=${query}&location=${loc}`;
+        
+        // Let's use our fetchPage which handles proxy fallbacks nicely
+        const html = await fetchPage(url, { proxy: true });
+        if (!html) return [];
+
+        const $ = cheerio.load(html);
+        const jobs: any[] = [];
+        
+        $('.base-card').each((i, el) => {
+            const title = $(el).find('.base-search-card__title').text().trim();
+            const company = $(el).find('.base-search-card__subtitle').text().trim();
+            const jobUrl = $(el).find('.base-card__full-link').attr('href');
+            const jobLoc = $(el).find('.job-search-card__location').text().trim();
+            
+            if (title && jobUrl) {
+                jobs.push({
+                    title,
+                    company: company || 'Unknown Company',
+                    location: jobLoc || location,
+                    url: jobUrl.split('?')[0],
+                    source: 'linkedin',
+                    type: 'Full-time'
+                });
+            }
+        });
+
+        // Log to database
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'LinkedIn (Native)',
+                targetUrl: url,
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                resultsCount: jobs.length,
+                usedFirecrawl: false
+            }
+        }).catch(console.error);
+
+        return jobs;
+    } catch (error) {
+        console.error("LinkedIn scrape error:", error);
+        return [];
+    }
+}
+
+export async function scrapeZipRecruiter(keyword: string, location: string = 'remote'): Promise<any[]> {
+    try {
+        const query = encodeURIComponent(keyword);
+        const loc = encodeURIComponent(location);
+        const url = `https://www.ziprecruiter.com/jobs-search?search=${query}&location=${loc}`;
+        
+        // super=true is required for ZipRecruiter on scrape.do
+        const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
+        const res = await fetch(proxyUrl);
+        const html = await res.text();
+        
+        const $ = cheerio.load(html);
+        const jobs: any[] = [];
+        
+        $('script[type="application/ld+json"]').each((i, el) => {
+            try {
+                const data = JSON.parse($(el).text());
+                const arr = Array.isArray(data) ? data : [data];
+                for (const item of arr) {
+                    if (item['@type'] === 'ItemList' && item.itemListElement) {
+                        for (const listEl of item.itemListElement) {
+                            if (listEl['@type'] === 'ListItem' && listEl.name && listEl.url) {
+                                // Attempt to parse company and location from ZipRecruiter URL
+                                // e.g. /c/Capital-One/Job/...-in-Mclean,VA
+                                let company = 'Unknown Company';
+                                let jobLoc = location;
+                                
+                                const companyMatch = listEl.url.match(/\/c\/([^\/]+)\//);
+                                if (companyMatch && companyMatch[1]) {
+                                    company = companyMatch[1].replace(/-/g, ' ');
+                                }
+                                
+                                const locMatch = listEl.url.match(/-in-([^?]+)/);
+                                if (locMatch && locMatch[1]) {
+                                    jobLoc = locMatch[1].replace(/-/g, ' ');
+                                }
+
+                                jobs.push({
+                                    title: listEl.name,
+                                    company,
+                                    location: jobLoc,
+                                    url: listEl.url,
+                                    source: 'ziprecruiter',
+                                    type: 'Full-time'
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
+        });
+
+        // Log to database
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'ZipRecruiter (Native)',
+                targetUrl: url,
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                resultsCount: jobs.length,
+                usedFirecrawl: false
+            }
+        }).catch(console.error);
+
+        return jobs;
+    } catch (error) {
+        console.error("ZipRecruiter scrape error:", error);
+        return [];
+    }
+}

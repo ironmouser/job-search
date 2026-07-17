@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { fetchSingleJobJSearch } from '@/lib/jsearch';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
@@ -66,18 +65,8 @@ export async function POST(
             }
         }
 
-        // 3. JSearch Backup
-        if (!scrapedData) {
-            console.log("Falling back to JSearch...");
-            try {
-                scrapedData = await fetchSingleJobJSearch(job.title, job.company);
-            } catch (e) {
-                console.error("JSearch fallback error:", e);
-            }
-        }
-
         if (!scrapedData || !scrapedData.description) {
-            return NextResponse.json({ error: 'Failed to scrape full details from both Firecrawl and JSearch (Upstream timeout or block)' }, { status: 502 });
+            return NextResponse.json({ error: 'Failed to scrape full details from Firecrawl (Upstream timeout or block)' }, { status: 502 });
         }
 
         const updatePayload: any = {
