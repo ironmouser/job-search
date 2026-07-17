@@ -11,6 +11,7 @@ import { prisma } from '../prisma';
 
 async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
     for (let attempt = 1; attempt <= retries; attempt++) {
+        let needsFallback = false;
         try {
             const res = await gotScraping({
                 url,
@@ -33,13 +34,20 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
                     pageTitle.includes('access denied')
                 ) {
                     console.warn(`Attempt ${attempt}: Cloudflare block detected on ${url} despite 200 OK`);
+                    needsFallback = true;
                 } else {
                     return { $, usedFirecrawl: false };
                 }
+            } else {
+                console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.statusCode})`);
+                needsFallback = true;
             }
+        } catch (e: any) {
+            console.warn(`Attempt ${attempt}: Error fetching ${url}: ${e.message}`);
+            needsFallback = true;
+        }
 
-            console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.statusCode})`);
-            
+        if (needsFallback) {
             // Fallback to Scrape.do or Firecrawl for any block or non-200 status
             if (process.env.SCRAPEDO_API_KEY) {
                 console.info(`Falling back to Scrape.do for ${url}`);
@@ -86,11 +94,6 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
 
             if (attempt === retries) return { $: null, usedFirecrawl: false };
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // simple backoff
-            continue;
-        } catch (e: any) {
-            console.warn(`Attempt ${attempt}: Error fetching ${url}: ${e.message}`);
-            if (attempt === retries) return { $: null, usedFirecrawl: false };
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
     }
     return { $: null, usedFirecrawl: false };
