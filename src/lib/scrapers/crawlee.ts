@@ -610,7 +610,8 @@ export async function scrapeRemotePOC(keyword: string) {
                         title,
                         company: company || 'RemotePOC Company',
                         location: location || 'Remote',
-                        url
+                        url,
+                        source: 'remotepoc'
                     });
                 }
             });
@@ -678,7 +679,8 @@ export async function scrapeKforce(keyword: string) {
                         company: "Kforce",
                         location,
                         url,
-                        salary
+                        salary,
+                        source: 'kforce'
                     });
                 }
             });
