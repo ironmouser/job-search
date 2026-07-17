@@ -141,8 +141,6 @@ export const HelpProvider: React.FC<HelpProviderProps> = ({ children }) => {
     const resetTourProgress = useCallback(() => {
         setSeenTours(new Set());
         localStorage.removeItem(TOUR_STORAGE_KEY);
-        setCompletedOnboardingTasks(new Set());
-        localStorage.removeItem(ONBOARDING_STORAGE_KEY);
     }, []);
 
     const getAvailableTours = useCallback((pageId: string) => {
