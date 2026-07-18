@@ -48,7 +48,7 @@ function LoginForm() {
 
   const handleTestSignIn = async () => {
     try {
-      await signIn("credentials", { callbackUrl: "/" });
+      await signIn("credentials", { callbackUrl: "/dashboard" });
     } catch (e) {
       console.error(e);
     }

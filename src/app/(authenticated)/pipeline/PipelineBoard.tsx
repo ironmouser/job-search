@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, MoreVertical } from 'lucide-react';
+import { ExternalLink, MoreVertical, MapPin } from 'lucide-react';
 
 type Job = {
     id: string;
@@ -50,13 +50,13 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                 <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '8px' }}>
                     <button 
                         onClick={() => setViewMode('kanban')}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'kanban' ? '#3695e3' : 'transparent', color: viewMode === 'kanban' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'kanban' ? 600 : 400 }}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'kanban' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'kanban' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'kanban' ? 600 : 400 }}
                     >
                         Kanban
                     </button>
                     <button 
                         onClick={() => setViewMode('table')}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'table' ? '#3695e3' : 'transparent', color: viewMode === 'table' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'table' ? 600 : 400 }}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'table' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'table' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'table' ? 600 : 400 }}
                     >
                         Table
                     </button>
@@ -84,7 +84,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '100px' }}>
                                 {jobs.filter(j => j.status === col.id).map(job => (
-                                    <div key={job.id} className="glass-card" style={{ padding: '1rem', position: 'relative' }}>
+                                    <div key={job.id} className="glass-card pipeline-card" style={{ padding: '1rem', position: 'relative' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{job.company}</h4>
                                             
@@ -112,7 +112,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                             </Link>
                                         </h3>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.75rem' }}>
-                                            {job.location && <span>📍 {job.location}</span>}
+                                            {job.location && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={14} /> {job.location}</span>}
                                         </div>
                                     </div>
                                 ))}

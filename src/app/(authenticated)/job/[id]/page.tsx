@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { ArrowLeft, CheckCircle, ChevronDown } from 'lucide-react';
+import { ArrowLeft, CheckCircle, ChevronDown, MapPin, DollarSign, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import AutofillButton from '@/components/AutofillButton';
@@ -21,7 +21,7 @@ import { calculateResumeSimilarity } from '@/lib/similarity';
 export default async function JobDetail({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect('/');
+    redirect('/dashboard');
   }
   const userId = session.user.id;
   const { id } = await params;
@@ -151,11 +151,11 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           <h4 className="job-company" style={{ fontSize: '1rem' }}>{job.company}</h4>
           <h1 className="page-title">{job.title}</h1>
           <div className="job-meta" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
-            <span>📍 {job.location || 'Remote'}</span>
-            <span>💰 {job.salaryRange || 'Unlisted'}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={16} /> {job.location || 'Remote'}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><DollarSign size={16} /> {job.salaryRange || 'Unlisted'}</span>
             {status === 'applied' || appliedAt ? (
               <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                ✓ Applied {appliedAt ? new Date(appliedAt).toLocaleDateString() : ''}
+                <CheckCircle size={14} /> Applied {appliedAt ? new Date(appliedAt).toLocaleDateString() : ''}
               </span>
             ) : (
               <span className={`badge badge-${status}`}>{status.replace('_', ' ')}</span>
@@ -303,7 +303,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   <p style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{scores.analysisNotes}</p>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: 'rgba(102, 252, 241, 0.05)', border: '1px dashed rgba(102, 252, 241, 0.3)', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>🔒 Available with Pro Plan</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Lock size={14} /> Available with Pro Plan</span>
                   </div>
                 )}
               </div>
@@ -316,7 +316,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               )}
               {planTier !== 'PRO' && (
                 <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: 'rgba(102, 252, 241, 0.05)', border: '1px dashed rgba(102, 252, 241, 0.3)', borderRadius: '8px' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>🔒 Portfolio Recommendation — Available with Pro Plan</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Lock size={14} /> Portfolio Recommendation — Available with Pro Plan</span>
                 </div>
               )}
             </div>

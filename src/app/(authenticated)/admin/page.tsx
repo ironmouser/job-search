@@ -108,7 +108,7 @@ export default function AdminDashboard() {
   // Redirect if not admin
   useEffect(() => {
     if (session && (session.user as any)?.role !== 'ADMIN') {
-      router.push('/');
+      router.push('/dashboard');
     }
   }, [session, router]);
 

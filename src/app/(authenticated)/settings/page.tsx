@@ -4,14 +4,124 @@ import { useState, useEffect } from 'react';
 import { Database, Key, Bot, Search, Layout, FileText, Save, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
+// Helper for deep equality check to detect dirty settings state
+const isDeepEqual = (a: any, b: any): boolean => {
+    if (a === b) return true;
+    if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
+    
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    
+    // Filter out keys that might be undefined or empty in one but missing in another
+    const activeKeysA = keysA.filter(k => a[k] !== undefined && a[k] !== '');
+    const activeKeysB = keysB.filter(k => b[k] !== undefined && b[k] !== '');
+
+    if (activeKeysA.length !== activeKeysB.length) return false;
+    
+    for (const key of activeKeysA) {
+        if (!activeKeysB.includes(key)) return false;
+        
+        const valA = a[key];
+        const valB = b[key];
+        
+        if (Array.isArray(valA) && Array.isArray(valB)) {
+            if (valA.length !== valB.length) return false;
+            for (let i = 0; i < valA.length; i++) {
+                if (valA[i] !== valB[i]) return false;
+            }
+            continue;
+        }
+        
+        if (typeof valA === 'object' && valA !== null && typeof valB === 'object' && valB !== null) {
+            if (!isDeepEqual(valA, valB)) return false;
+            continue;
+        }
+        
+        if (valA !== valB) return false;
+    }
+    return true;
+};
 
 export default function SettingsPage() {
+    const router = useRouter();
     const [settings, setSettings] = useState<any>({});
+    const [initialSettings, setInitialSettings] = useState<any>(null);
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [emailProvider, setEmailProvider] = useState<string>('gmail');
     const [testingEmail, setTestingEmail] = useState(false);
     const [emailTestResult, setEmailTestResult] = useState<{success?: boolean, error?: string} | null>(null);
+
+    // Unsaved changes navigation prompt state
+    const [showDialog, setShowDialog] = useState(false);
+    const [pendingHref, setPendingHref] = useState<string | null>(null);
+    
+    const isDirty = initialSettings && !isDeepEqual(initialSettings, settings);
+
+    // Handle standard browser page unload (e.g. closing tab, refreshing, manual URL typing)
+    useEffect(() => {
+        if (!isDirty) return;
+
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [isDirty]);
+
+    // Intercept client-side Link navigation
+    useEffect(() => {
+        if (!isDirty) return;
+
+        const handleAnchorClick = (e: MouseEvent) => {
+            // Handle only standard left click without modifiers
+            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                return;
+            }
+
+            let target = e.target as HTMLElement | null;
+            while (target && target.tagName !== 'A') {
+                target = target.parentElement;
+            }
+
+            if (target && target.tagName === 'A') {
+                const href = target.getAttribute('href');
+                
+                if (target.getAttribute('target') === '_blank' || target.hasAttribute('download')) {
+                    return;
+                }
+
+                // Relative internal link detection
+                if (href && (href.startsWith('/') || href.startsWith(window.location.origin))) {
+                    const parsedUrl = href.replace(window.location.origin, '');
+                    
+                    // Ignore clicks pointing to current page or anchor links
+                    if (parsedUrl === window.location.pathname || parsedUrl.startsWith('#')) {
+                        return;
+                    }
+
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    setPendingHref(href);
+                    setShowDialog(true);
+                }
+            }
+        };
+
+        // Capture phase to intercept Next.js Link click handler
+        document.addEventListener('click', handleAnchorClick, true);
+        return () => {
+            document.removeEventListener('click', handleAnchorClick, true);
+        };
+    }, [isDirty]);
 
     const handleProviderChange = (provider: string) => {
         setEmailProvider(provider);
@@ -42,6 +152,7 @@ export default function SettingsPage() {
             .then(res => res.json())
             .then(data => {
                 setSettings(data);
+                setInitialSettings(JSON.parse(JSON.stringify(data)));
                 setLoading(false);
             })
             .catch(() => setLoading(false));
@@ -51,23 +162,30 @@ export default function SettingsPage() {
         setSettings({ ...settings, [key]: value });
     };
 
-    const handleSave = async () => {
+    const handleSave = async (settingsOverride?: any, silent = false) => {
         setSaving(true);
         try {
-            const settingsToSave = { ...settings };
+            const settingsToSave = settingsOverride || { ...settings };
             if (settingsToSave.customCareerPages) {
                 settingsToSave.customCareerPages = settingsToSave.customCareerPages.filter((u: string) => u.trim() !== '');
             }
-            await fetch('/api/settings', {
+            const res = await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settingsToSave)
             });
-            alert('Settings saved successfully!');
+            if (!res.ok) throw new Error('Save failed');
+            
+            setInitialSettings(JSON.parse(JSON.stringify(settingsToSave)));
+            if (!silent) {
+                alert('Settings saved successfully!');
+            }
             // Dispatch event for theme update
             window.dispatchEvent(new Event('settingsUpdated'));
+            return true;
         } catch (e) {
             alert('Failed to save settings');
+            return false;
         } finally {
             setSaving(false);
         }
@@ -202,67 +320,141 @@ export default function SettingsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Scraper Sources</label>
                             
-                            {[
-                                {
-                                    title: 'Global Aggregators',
-                                    sources: ['indeed', 'glassdoor', 'linkedin', 'ziprecruiter']
-                                },
-                                {
-                                    title: 'US / Remote Tech',
-                                    sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'kforce']
-                                },
-                                {
-                                    title: 'ATS Integrations',
-                                    sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy']
-                                },
-                                {
-                                    title: 'International Sources',
-                                    sources: ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank']
-                                }
-                            ].map(group => (
-                                <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        {group.title}
-                                    </label>
-                                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                                        {group.sources.map(source => {
-                                            // Determine if this specific source requires PRO
-                                            let isProRequired = false;
-                                            
-                                            if (group.title === 'International Sources' || group.title === 'ATS Integrations') {
-                                                isProRequired = true;
-                                            } else if (settings.globalSettings && settings.globalSettings[`${source}IsPro`] !== undefined) {
-                                                isProRequired = settings.globalSettings[`${source}IsPro`];
-                                            }
-                                            
-                                            const isDisabled = isProRequired && !isPro;
-                                            
-                                            return (
-                                                <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={isDisabled ? false : (settings.sources?.[source] || false)}
-                                                        disabled={isDisabled}
-                                                        onChange={(e) => {
-                                                            const newSources = { ...settings.sources, [source]: e.target.checked };
-                                                            handleChange('sources', newSources);
-                                                        }}
-                                                        style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
-                                                    />
-                                                    <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                        {source === 'jobbank' ? 'Job Bank (CA)' : 
-                                         source === 'remotepoc' ? 'RemotePOC' : 
-                                         source === 'arbeitsagentur' ? 'Arbeitsagentur (DE)' :
-                                         source === 'themuse' ? 'The Muse (Global)' :
-                                         source === 'computrabajo' ? 'Computrabajo (LATAM)' : source}
-                                                        {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
-                                                    </span>
-                                                </label>
-                                            );
-                                        })}
+                            {isAdmin ? (
+                                [
+                                    {
+                                        title: 'Global Aggregators',
+                                        sources: ['indeed', 'glassdoor', 'linkedin', 'ziprecruiter']
+                                    },
+                                    {
+                                        title: 'US / Remote Tech',
+                                        sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'kforce']
+                                    },
+                                    {
+                                        title: 'ATS Integrations',
+                                        sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy']
+                                    },
+                                    {
+                                        title: 'International Sources',
+                                        sources: ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank']
+                                    }
+                                ].map(group => (
+                                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            {group.title}
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                            {group.sources.map(source => {
+                                                // Determine if this specific source requires PRO
+                                                let isProRequired = false;
+                                                
+                                                if (group.title === 'International Sources' || group.title === 'ATS Integrations') {
+                                                    isProRequired = true;
+                                                } else if (settings.globalSettings && settings.globalSettings[`${source}IsPro`] !== undefined) {
+                                                    isProRequired = settings.globalSettings[`${source}IsPro`];
+                                                }
+                                                
+                                                const isDisabled = isProRequired && !isPro;
+                                                
+                                                return (
+                                                    <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={isDisabled ? false : (settings.sources?.[source] || false)}
+                                                            disabled={isDisabled}
+                                                            onChange={(e) => {
+                                                                const newSources = { ...settings.sources, [source]: e.target.checked };
+                                                                handleChange('sources', newSources);
+                                                            }}
+                                                            style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                                                        />
+                                                        <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                            {source === 'jobbank' ? 'Job Bank (CA)' : 
+                                             source === 'remotepoc' ? 'RemotePOC' : 
+                                             source === 'arbeitsagentur' ? 'Arbeitsagentur (DE)' :
+                                             source === 'themuse' ? 'The Muse (Global)' :
+                                             source === 'computrabajo' ? 'Computrabajo (LATAM)' : source}
+                                                            {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                [
+                                    {
+                                        title: 'Global Job Boards',
+                                        items: [
+                                            { label: 'Free', sources: ['indeed', 'glassdoor', 'ziprecruiter'] },
+                                            { label: 'Premimum', sources: ['linkedin'], isPro: true }
+                                        ]
+                                    },
+                                    {
+                                        title: 'Remote & Tech Jobs',
+                                        items: [
+                                            { label: 'Free', sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'kforce'] },
+                                            { label: 'Premimum', sources: ['himalayas'], isPro: true }
+                                        ]
+                                    },
+                                    {
+                                        title: 'Company Career Sites',
+                                        items: [
+                                            { label: 'Premimum', sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'], isPro: true }
+                                        ]
+                                    },
+                                    {
+                                        title: 'International Job Boards',
+                                        items: [
+                                            { label: 'Global', sources: ['themuse'], isPro: true },
+                                            { label: 'Germany', sources: ['arbeitsagentur'], isPro: true },
+                                            { label: 'Latin America', sources: ['computrabajo'], isPro: true },
+                                            { label: 'Canada', sources: ['jobbank'], isPro: true }
+                                        ]
+                                    }
+                                ].map(group => (
+                                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            {group.title}
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                            {group.items.map(item => {
+                                                const isProRequired = item.isPro;
+                                                const isDisabled = isProRequired && !isPro;
+                                                // Determine if all mapped sources are active (if category has sources)
+                                                const isChecked = !isDisabled && (
+                                                    item.sources.length === 0 
+                                                        ? false 
+                                                        : item.sources.every(source => settings.sources?.[source] || false)
+                                                );
+
+                                                return (
+                                                    <label key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={isChecked}
+                                                            disabled={isDisabled}
+                                                            onChange={(e) => {
+                                                                const newSources = { ...settings.sources };
+                                                                item.sources.forEach(source => {
+                                                                    newSources[source] = e.target.checked;
+                                                                });
+                                                                handleChange('sources', newSources);
+                                                            }}
+                                                            style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                                                        />
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                            {item.label}
+                                                            {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: isPro ? 1 : 0.5 }}>
@@ -510,6 +702,125 @@ export default function SettingsPage() {
                 )}
 
             </div>
+
+            {/* Unsaved Changes Dialog Modal */}
+            {showDialog && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(11, 12, 16, 0.85)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 99999,
+                }}>
+                    <div className="glass-card" style={{
+                        maxWidth: '450px',
+                        width: '90%',
+                        padding: '2.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1.5rem',
+                        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+                        border: '1px solid var(--border-glass)',
+                        borderRadius: '16px',
+                        background: 'var(--bg-surface)',
+                    }}>
+                        <h2 style={{
+                            fontSize: '1.8rem',
+                            fontWeight: 600,
+                            margin: 0,
+                            background: 'linear-gradient(135deg, var(--accent-primary), #00ffcc)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            textAlign: 'center',
+                        }}>Unsaved Changes</h2>
+                        
+                        <p style={{
+                            fontSize: '0.95rem',
+                            color: 'var(--text-secondary)',
+                            lineHeight: '1.55',
+                            margin: 0,
+                            textAlign: 'center',
+                        }}>
+                            You have made changes to your settings. Would you like to save them before leaving this page?
+                        </p>
+                        
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem',
+                            marginTop: '0.5rem',
+                        }}>
+                            <button
+                                onClick={async () => {
+                                    if (pendingHref) {
+                                        const success = await handleSave(settings, true);
+                                        if (success) {
+                                            setShowDialog(false);
+                                            router.push(pendingHref);
+                                        }
+                                    }
+                                }}
+                                disabled={saving}
+                                className="btn-primary"
+                                style={{ width: '100%' }}
+                            >
+                                {saving ? 'Saving...' : 'Save & Continue'}
+                            </button>
+                            
+                            <button
+                                onClick={() => {
+                                    setShowDialog(false);
+                                    if (pendingHref) {
+                                        setSettings(initialSettings);
+                                        router.push(pendingHref);
+                                    }
+                                }}
+                                disabled={saving}
+                                className="btn-outline"
+                                style={{
+                                    width: '100%',
+                                    borderColor: 'var(--danger)',
+                                    color: 'var(--danger)',
+                                }}
+                                onMouseEnter={(e) => {
+                                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+                                }}
+                            >
+                                Discard Changes
+                            </button>
+                            
+                            <button
+                                onClick={() => {
+                                    setShowDialog(false);
+                                    setPendingHref(null);
+                                }}
+                                disabled={saving}
+                                className="btn-outline"
+                                style={{
+                                    width: '100%',
+                                    borderColor: 'var(--border-glass)',
+                                    color: 'var(--text-secondary)',
+                                }}
+                                onMouseEnter={(e) => {
+                                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--border-glass)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

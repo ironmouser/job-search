@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { submitJobFeedback } from '@/app/job/[id]/actions';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { submitJobFeedback } from '@/app/(authenticated)/job/[id]/actions';
 import { ThumbsUp, ThumbsDown, X } from 'lucide-react';
 
 const DISLIKE_REASONS = [
@@ -23,6 +24,18 @@ export default function FeedbackButtons({ jobId, initialFeedback }: { jobId: str
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [otherReason, setOtherReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 1024);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLike = async () => {
     setIsSubmitting(true);
@@ -38,56 +51,53 @@ export default function FeedbackButtons({ jobId, initialFeedback }: { jobId: str
 
   const submitDislike = async () => {
     setIsSubmitting(true);
-    const finalReasons = selectedReasons.map(r => 
-      r === "Other" && otherReason.trim() ? `Other: ${otherReason.trim()}` : r
-    );
+    const finalReasons = selectedReasons.includes("Other") && otherReason.trim()
+      ? [...selectedReasons.filter(r => r !== "Other"), `Other: ${otherReason.trim()}`]
+      : selectedReasons;
+
     await submitJobFeedback(jobId, 'dislike', finalReasons);
     setFeedback('dislike');
-    setShowModal(false);
     setIsSubmitting(false);
+    setShowModal(false);
   };
 
   const toggleReason = (reason: string) => {
     setSelectedReasons(prev => 
       prev.includes(reason) 
-        ? prev.filter(r => r !== reason)
+        ? prev.filter(r => r !== reason) 
         : [...prev, reason]
     );
   };
 
-  return (
-    <div style={{ position: 'relative', display: 'flex', gap: '0.5rem' }}>
-      <button 
-        onClick={handleLike} 
-        disabled={isSubmitting}
-        className="btn-outline" 
-        style={{ 
-          padding: '0.5rem', 
-          background: feedback === 'like' ? 'rgba(102, 252, 241, 0.1)' : 'transparent',
-          borderColor: feedback === 'like' ? 'var(--accent-primary)' : 'var(--border-glass)'
-        }}
-        title="Like this job"
-      >
-        <ThumbsUp size={18} color={feedback === 'like' ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-      </button>
+  const renderModal = () => {
+    if (!showModal) return null;
 
-      <button 
-        onClick={handleDislikeClick} 
-        disabled={isSubmitting}
-        className="btn-outline" 
-        style={{ 
-          padding: '0.5rem',
-          background: feedback === 'dislike' ? 'rgba(255, 99, 132, 0.1)' : 'transparent',
-          borderColor: feedback === 'dislike' ? 'var(--danger)' : 'var(--border-glass)'
-        }}
-        title="Dislike this job"
-      >
-        <ThumbsDown size={18} color={feedback === 'dislike' ? 'var(--danger)' : 'var(--text-secondary)'} />
-      </button>
-
-      {/* Dislike Modal */}
-      {showModal && (
-        <div style={{
+    const modalContent = (
+      <>
+        {isMobile && (
+          <div 
+            onClick={() => setShowModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.6)',
+              zIndex: 9999
+            }}
+          />
+        )}
+        <div style={isMobile ? {
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 'min(320px, 90vw)',
+          background: 'var(--bg-color)',
+          border: '1px solid var(--border-glass)',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          zIndex: 10000,
+          boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
+        } : {
           position: 'absolute',
           top: '100%',
           right: 0,
@@ -151,7 +161,57 @@ export default function FeedbackButtons({ jobId, initialFeedback }: { jobId: str
             {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
           </button>
         </div>
-      )}
+      </>
+    );
+
+    if (isMobile && mounted) {
+      return createPortal(modalContent, document.body);
+    }
+
+    return modalContent;
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
+      <button 
+        onClick={handleLike} 
+        disabled={isSubmitting || feedback === 'like'}
+        className="btn-outline" 
+        style={{ 
+          padding: '0.5rem', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          background: feedback === 'like' ? 'rgba(52, 211, 153, 0.1)' : 'transparent',
+          borderColor: feedback === 'like' ? 'var(--success)' : 'var(--border-glass)',
+          cursor: 'pointer',
+          borderRadius: '8px'
+        }}
+        title="Like this job"
+      >
+        <ThumbsUp size={18} color={feedback === 'like' ? 'var(--success)' : 'var(--text-secondary)'} />
+      </button>
+
+      <button 
+        onClick={handleDislikeClick} 
+        disabled={isSubmitting || feedback === 'dislike'}
+        className="btn-outline" 
+        style={{ 
+          padding: '0.5rem', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          background: feedback === 'dislike' ? 'rgba(255, 99, 132, 0.1)' : 'transparent',
+          borderColor: feedback === 'dislike' ? 'var(--danger)' : 'var(--border-glass)',
+          cursor: 'pointer',
+          borderRadius: '8px'
+        }}
+        title="Dislike this job"
+      >
+        <ThumbsDown size={18} color={feedback === 'dislike' ? 'var(--danger)' : 'var(--text-secondary)'} />
+      </button>
+
+      {renderModal()}
     </div>
   );
 }

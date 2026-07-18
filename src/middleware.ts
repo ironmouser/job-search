@@ -5,12 +5,14 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const isAuth = !!token;
-    const isAuthPage = req.nextUrl.pathname.startsWith('/api/auth');
-    const isApiRoute = req.nextUrl.pathname.startsWith('/api');
-    const isOnboardingPage = req.nextUrl.pathname.startsWith('/onboarding');
-    const isPublicAsset = req.nextUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
+    const pathname = req.nextUrl.pathname;
+    const isAuthPage = pathname.startsWith('/api/auth');
+    const isApiRoute = pathname.startsWith('/api');
+    const isOnboardingPage = pathname.startsWith('/onboarding');
+    const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
+    const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login';
 
-    if (isAuthPage || isPublicAsset) {
+    if (isAuthPage || isPublicAsset || isPublicPage) {
       return null;
     }
 
@@ -19,19 +21,24 @@ export default withAuth(
     }
 
     if (isAuth && token.isOnboarded && isOnboardingPage) {
-      return NextResponse.redirect(new URL('/', req.url));
+      return NextResponse.redirect(new URL('/dashboard', req.url));
     }
 
-    const isAdminRoute = req.nextUrl.pathname.startsWith('/admin') || req.nextUrl.pathname.startsWith('/api/admin');
+    const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
     if (isAdminRoute) {
       if (token?.role !== 'ADMIN') {
-        return NextResponse.redirect(new URL('/', req.url));
+        return NextResponse.redirect(new URL('/dashboard', req.url));
       }
     }
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token, req }) => {
+        const pathname = req.nextUrl.pathname;
+        const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login';
+        if (isPublicPage) return true;
+        return !!token;
+      },
     },
     pages: {
       signIn: '/login',

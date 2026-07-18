@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check } from 'lucide-react';
 import SyncButton from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter } from 'next/navigation';
@@ -362,34 +362,34 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'all' ? 'active' : ''}`}
           onClick={() => setActiveFilter('all')}
-          style={{ cursor: 'pointer', border: activeFilter === 'all' ? '1px solid var(--accent-primary)' : '' }}
+          style={{ cursor: 'pointer' }}
         >
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Discovered (All)</p>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>{totalDiscovered}</h2>
+          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Jobs Found</h4>
+          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalDiscovered}</h2>
         </div>
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'scored' ? 'active' : ''}`}
           onClick={() => setActiveFilter('scored')}
-          style={{ cursor: 'pointer', border: activeFilter === 'scored' ? '1px solid var(--accent-primary)' : '' }}
+          style={{ cursor: 'pointer' }}
         >
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Scored</p>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>{totalScored}</h2>
+          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Scored</h4>
+          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalScored}</h2>
         </div>
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'high_fit' ? 'active' : ''}`}
           onClick={() => setActiveFilter('high_fit')}
-          style={{ cursor: 'pointer', border: activeFilter === 'high_fit' ? '1px solid var(--accent-primary)' : '' }}
+          style={{ cursor: 'pointer' }}
         >
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>High Fit (&gt;80)</p>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--accent-primary)' }}>{highlyScored}</h2>
+          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Great Matches (&gt;80)</h4>
+          <h2 style={{ fontSize: '2.5rem', color: 'var(--accent-primary)', margin: 0, marginTop: '0.25rem' }}>{highlyScored}</h2>
         </div>
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'archived' ? 'active' : ''}`}
           onClick={() => setActiveFilter('archived')}
-          style={{ cursor: 'pointer', border: activeFilter === 'archived' ? '1px solid var(--accent-primary)' : '' }}
+          style={{ cursor: 'pointer' }}
         >
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Archived</p>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>{totalArchived}</h2>
+          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Archived</h4>
+          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalArchived}</h2>
         </div>
       </div>
 
@@ -527,7 +527,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   const rowStyle: any = {
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                     opacity: isDisliked ? 0.5 : 1,
-                    ...(isEmailJob ? { '--accent-primary': '#9041c3', '--accent-glow': 'rgba(144, 65, 195, 0.15)' } : {})
+                    ...(isEmailJob ? { '--accent-primary': '#0cc22d', '--accent-secondary': '#09a026', '--accent-glow': 'rgba(12, 194, 45, 0.15)' } : {})
                   };
                   
                   return (
@@ -542,7 +542,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                       </td>
                       <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase', fontSize: '0.85rem' }}>{job.company}</td>
                       <td style={{ padding: '1rem' }}>
-                        <Link href={`/job/${job.id}`} style={{ textDecoration: 'none', color: 'var(--text-primary)', fontWeight: 600, fontSize: '1.1rem' }}>
+                        <Link href={`/job/${job.id}`} className={isEmailJob ? 'email-job-title' : 'job-title'} style={{ textDecoration: 'none', fontWeight: 600, fontSize: '1.1rem' }}>
                           {job.title}
                         </Link>
                       </td>
@@ -551,7 +551,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                       <td style={{ padding: '1rem', textTransform: 'capitalize' }}>
                         {job.status === 'applied' || job.applied_at ? (
                           <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            ✓ Applied {job.applied_at ? new Date(job.applied_at).toLocaleDateString() : ''}
+                            <CheckCircle2 size={14} /> Applied {job.applied_at ? new Date(job.applied_at).toLocaleDateString() : ''}
                           </span>
                         ) : (
                           job.status.replace('_', ' ')
@@ -574,7 +574,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                              >
                                {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 
                                 fetchStatuses[job.id] === 'queued' ? 'Queued' : 
-                                fetchStatuses[job.id] === 'success' ? '✓ Fetched' : 
+                                fetchStatuses[job.id] === 'success' ? <><Check size={13} /> Fetched</> : 
                                 fetchStatuses[job.id] === 'error' ? 'Retry' : 'Fetch'}
                              </button>
                           )}
@@ -615,7 +615,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             const cardStyle: any = {
               opacity: isDisliked ? 0.5 : 1,
               boxShadow: isDisliked ? 'none' : undefined,
-              ...(isEmailJob ? { '--accent-primary': '#9041c3', '--accent-glow': 'rgba(144, 65, 195, 0.15)' } : {})
+              ...(isEmailJob ? { '--accent-primary': '#0cc22d', '--accent-secondary': '#09a026', '--accent-glow': 'rgba(12, 194, 45, 0.15)' } : {})
             };
             
             return (
@@ -625,7 +625,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                     <div className="job-company">
                       {job.company}
                     </div>
-                    <Link href={`/job/${job.id}`} style={{ textDecoration: 'none' }} className="job-title">
+                    <Link href={`/job/${job.id}`} style={{ textDecoration: 'none' }} className={isEmailJob ? 'email-job-title' : 'job-title'}>
                       <h3 style={{ cursor: 'pointer', margin: 0 }}>{job.title}</h3>
                     </Link>
                   </div>
@@ -637,17 +637,17 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                 </div>
                 
                 <div className="job-meta">
-                  <span className="job-meta-item">📍 {job.location || 'Remote'}</span>
-                  <span className="job-meta-item">💰 {job.salary_range || 'Unlisted'}</span>
+                  <span className="job-meta-item"><MapPin size={14} /> {job.location || 'Remote'}</span>
+                  <span className="job-meta-item"><DollarSign size={14} /> {job.salary_range || 'Unlisted'}</span>
                   <span className="job-meta-item" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    🕒 {new Date(job.created_at).toLocaleDateString()}
+                    <Clock size={13} /> {new Date(job.created_at).toLocaleDateString()}
                   </span>
                 </div>
                 
                 <div style={{ marginTop: 'auto', marginBottom: '1rem' }}>
                   {job.status === 'applied' || job.applied_at ? (
                     <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      ✓ Applied {job.applied_at ? new Date(job.applied_at).toLocaleDateString() : ''}
+                      <CheckCircle2 size={14} /> Applied {job.applied_at ? new Date(job.applied_at).toLocaleDateString() : ''}
                     </span>
                   ) : (
                     <span className={`badge badge-${job.status}`}>{job.status.replace('_', ' ')}</span>
@@ -670,7 +670,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                        >
                          {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 
                           fetchStatuses[job.id] === 'queued' ? 'Queued' : 
-                          fetchStatuses[job.id] === 'success' ? '✓ Fetched' : 
+                          fetchStatuses[job.id] === 'success' ? <><Check size={14} /> Fetched</> : 
                           fetchStatuses[job.id] === 'error' ? 'Failed - Retry' : 'Fetch Details'}
                        </button>
                     )}

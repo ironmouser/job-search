@@ -64,6 +64,7 @@ interface HelpContextType {
     completedOnboardingTasks: Set<string>;
     markOnboardingTaskComplete: (taskId: string) => void;
     getOnboardingProgress: () => { total: number; completed: number; percentage: number };
+    isOnboardingProgressLoaded: boolean;
 }
 
 const HelpContext = createContext<HelpContextType | undefined>(undefined);
@@ -91,6 +92,7 @@ export const HelpProvider: React.FC<HelpProviderProps> = ({ children }) => {
     const [isHelpPanelOpen, setIsHelpPanelOpen] = useState(false);
     const [completedOnboardingTasks, setCompletedOnboardingTasks] = useState<Set<string>>(new Set());
     const [helpPanelTab, setHelpPanelTab] = useState(0);
+    const [isOnboardingProgressLoaded, setIsOnboardingProgressLoaded] = useState(false);
     const onboardingTasks = onboardingTasksData as OnboardingData;
 
     useEffect(() => {
@@ -102,6 +104,8 @@ export const HelpProvider: React.FC<HelpProviderProps> = ({ children }) => {
             if (storedOnboarding) setCompletedOnboardingTasks(new Set(JSON.parse(storedOnboarding)));
         } catch (error) {
             console.error('[HelpContext] Error loading progress:', error);
+        } finally {
+            setIsOnboardingProgressLoaded(true);
         }
     }, []);
 
@@ -223,6 +227,7 @@ export const HelpProvider: React.FC<HelpProviderProps> = ({ children }) => {
                 getOnboardingProgress,
                 helpPanelTab,
                 setHelpPanelTab,
+                isOnboardingProgressLoaded,
             }}
         >
             {children}

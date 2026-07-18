@@ -5,11 +5,11 @@ import { useHelp } from '../../contexts/HelpContext';
 import { Rocket, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export default function OnboardingWidget() {
-    const { getOnboardingProgress, openHelpPanel } = useHelp();
+    const { getOnboardingProgress, openHelpPanel, isOnboardingProgressLoaded } = useHelp();
     const progress = getOnboardingProgress();
     const [overlayDismissed, setOverlayDismissed] = useState(false);
 
-    if (progress.percentage === 100) return null;
+    if (!isOnboardingProgressLoaded || progress.percentage === 100) return null;
 
     const handleContinue = () => {
         setOverlayDismissed(true);

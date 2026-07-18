@@ -38,9 +38,9 @@ export default function AnalyticsDashboard() {
         <p className="page-subtitle">Track your application funnel and conversion rates</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }} data-tour="analytics-stats">
-        <StatCard title="Total Found" value={funnel.discovered || 0} icon={<Filter size={24} color="#a78bfa" />} />
-        <StatCard title="Highly Scored" value={totalScored} icon={<Target size={24} color="#60a5fa" />} />
+      <div className="responsive-grid" style={{ marginBottom: '3rem' }} data-tour="analytics-stats">
+        <StatCard title="Jobs Found" value={funnel.discovered || 0} icon={<Filter size={24} color="#a78bfa" />} />
+        <StatCard title="Great Matches" value={totalScored} icon={<Target size={24} color="#60a5fa" />} />
         <StatCard title="Applications Sent" value={totalApplied} icon={<Send size={24} color="#34d399" />} />
         <StatCard title="Interviews" value={totalInterviews} icon={<Users size={24} color="#fbbf24" />} />
       </div>
@@ -70,7 +70,7 @@ export default function AnalyticsDashboard() {
         <div className="glass-card" data-tour="analytics-status">
           <h3 style={{ marginBottom: '1.5rem' }}>Pipeline Status</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <StatusRow label="Discovered (Unscored)" count={funnel.discovered || 0} color="var(--text-secondary)" />
+            <StatusRow label="Jobs Found (Unscored)" count={funnel.discovered || 0} color="var(--text-secondary)" />
             <StatusRow label="Scored (Waiting for Review)" count={funnel.scored || 0} color="#60a5fa" />
             <StatusRow label="Assets Generated (Ready to Apply)" count={funnel.asset_generated || 0} color="#a78bfa" />
             <StatusRow label="Applied (Waiting to hear back)" count={funnel.applied || 0} color="#34d399" />
@@ -86,12 +86,14 @@ export default function AnalyticsDashboard() {
 
 function StatCard({ title, value, icon }: { title: string, value: number, icon: React.ReactNode }) {
   return (
-    <div className="glass-card top-stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-      <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-        {icon}
+    <div className="glass-card top-stat-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {icon}
+        </div>
+        <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500, margin: 0 }}>{title}</h4>
       </div>
-      <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>{title}</h4>
-      <span style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{value}</span>
+      <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{value}</h2>
     </div>
   );
 }

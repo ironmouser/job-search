@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const SYNC_ANIMATIONS = [
   { id: "18485855", link: "https://tenor.com/view/o2-o2robot-o2ad-bubl-o2bubl-gif-18485855", text: "O2 O2robot GIF" },
@@ -22,8 +23,10 @@ export default function SyncOverlay({
   subtext?: React.ReactNode;
 }) {
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const script = document.createElement('script');
     script.src = "https://tenor.com/embed.js";
     script.async = true;
@@ -61,7 +64,9 @@ export default function SyncOverlay({
     };
   }, [isSyncing]);
 
-  return (
+  if (!isSyncing || !mounted) return null;
+
+  return createPortal(
     <div className={`sync-overlay-backdrop ${isSyncing ? 'active' : ''}`}>
       <div className="sync-overlay-content">
         <h2>{title}</h2>
@@ -95,6 +100,7 @@ export default function SyncOverlay({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

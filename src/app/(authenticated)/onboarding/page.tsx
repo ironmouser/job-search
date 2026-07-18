@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bot, Search, FileText, Target, CheckCircle, ChevronRight, ChevronLeft, Loader2, UploadCloud } from 'lucide-react';
+import { Bot, Search, FileText, Target, CheckCircle, ChevronRight, ChevronLeft, Loader2, UploadCloud, Flame, Star, Sparkles } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
 export default function OnboardingPage() {
@@ -346,9 +346,9 @@ ${goal}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', minHeight: '350px' }}>
                                 
                                 {([
-                                    { level: 'mustHave', title: '🔥 Must-Haves', desc: 'Dealbreakers', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
-                                    { level: 'important', title: '⭐ Important', desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
-                                    { level: 'niceToHave', title: '✨ Nice-to-Haves', desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
+                                    { level: 'mustHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Flame size={18} /> Must-Haves</span>, desc: 'Dealbreakers', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
+                                    { level: 'important', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Star size={18} /> Important</span>, desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
+                                    { level: 'niceToHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Sparkles size={18} /> Nice-to-Haves</span>, desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
                                 ] as const).map(bucket => (
                                     <div 
                                         key={bucket.level}

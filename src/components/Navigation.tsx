@@ -34,7 +34,7 @@ export default function Navigation() {
       
       <nav className={`nav-menu ${isOpen ? 'open' : ''}`}>
         <li className="nav-item">
-          <Link href="/" className={pathname === '/' ? 'active' : ''} onClick={closeMenu}>
+          <Link href="/dashboard" className={pathname === '/dashboard' ? 'active' : ''} onClick={closeMenu}>
             <LayoutDashboard size={20} />
             Dashboard
           </Link>
@@ -111,7 +111,7 @@ export default function Navigation() {
                   </div>
                 </Link>
                 {(session.user as any)?.planTier !== "PRO" && (
-                  <Link href="/pricing" className="btn-outline" style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', marginLeft: '0.5rem', textDecoration: 'none' }}>
+                  <Link href="/upgrade" className="btn-outline" style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', marginLeft: '0.5rem', textDecoration: 'none' }}>
                     Upgrade
                   </Link>
                 )}
