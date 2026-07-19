@@ -314,7 +314,6 @@ body.light-theme .nav-item a.active {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 0.24rem 0.42rem;
   background: color-mix(in srgb, var(--accent-primary) var(--card-tint-opacity), var(--bg-glass));
 }
 

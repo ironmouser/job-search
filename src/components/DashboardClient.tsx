@@ -582,6 +582,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                           <FeedbackButtons
                             jobId={job.id}
                             initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
+                            compact
                           />
                           <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
                             <Archive size={14} />
@@ -667,7 +668,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                          disabled={fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success'} 
                          className={`btn-outline ${fetchStatuses[job.id] === 'error' ? 'error' : ''}`} 
                          style={{ 
-                           padding: '0.4rem 0.8rem', 
+                           padding: '0.24rem 0.42rem', 
                            fontSize: '0.85rem',
                            borderColor: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : '',
                            color: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : ''
@@ -679,18 +680,19 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                           fetchStatuses[job.id] === 'error' ? 'Failed - Retry' : 'Fetch Details'}
                        </button>
                     )}
-                    <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
+                    <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
                       <Archive size={14} />
                     </button>
-                    <Link href={`/job/${job.id}`} className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+                    <Link href={`/job/${job.id}`} className="btn-primary" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
                       Details
                     </Link>
-                    <a href={job.url} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+                    <a href={job.url} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
                       Original <ExternalLink size={14} />
                     </a>
                     <FeedbackButtons
                       jobId={job.id}
                       initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
+                      compact
                     />
                   </div>
                   <div style={{ marginLeft: 'auto', marginRight: '-12px', marginBottom: '-36px' }}>

@@ -18,7 +18,7 @@ const DISLIKE_REASONS = [
   "Other"
 ];
 
-export default function FeedbackButtons({ jobId, initialFeedback }: { jobId: string, initialFeedback?: 'like' | 'dislike' | null }) {
+export default function FeedbackButtons({ jobId, initialFeedback, compact = false }: { jobId: string, initialFeedback?: 'like' | 'dislike' | null, compact?: boolean }) {
   const [feedback, setFeedback] = useState<'like' | 'dislike' | null>(initialFeedback || null);
   const [showModal, setShowModal] = useState(false);
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
@@ -178,7 +178,7 @@ export default function FeedbackButtons({ jobId, initialFeedback }: { jobId: str
         disabled={isSubmitting || feedback === 'like'}
         className="btn-outline" 
         style={{ 
-          padding: '0.5rem', 
+          padding: compact ? '0.24rem 0.42rem' : '0.5rem', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
@@ -197,7 +197,7 @@ export default function FeedbackButtons({ jobId, initialFeedback }: { jobId: str
         disabled={isSubmitting || feedback === 'dislike'}
         className="btn-outline" 
         style={{ 
-          padding: '0.5rem', 
+          padding: compact ? '0.24rem 0.42rem' : '0.5rem', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
