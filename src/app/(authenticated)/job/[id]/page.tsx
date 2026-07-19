@@ -152,7 +152,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           <h1 className="page-title">{job.title}</h1>
           <div className="job-meta" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={16} /> {job.location || 'Remote'}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><DollarSign size={16} /> {job.salaryRange || 'Unlisted'}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><DollarSign size={16} /> {job.salaryRange || 'Not Listed'}</span>
             {status === 'applied' || appliedAt ? (
               <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 <CheckCircle size={14} /> Applied {appliedAt ? new Date(appliedAt).toLocaleDateString() : ''}

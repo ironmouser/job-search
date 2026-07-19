@@ -213,6 +213,12 @@ body.light-theme .top-stat-card.active {
   padding: 2rem 1.5rem;
   display: flex;
   flex-direction: column;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+}
+
+.sidebar.minimized {
+  width: 80px;
+  padding: 2rem 1rem;
 }
 
 body.light-theme .sidebar {
@@ -272,6 +278,65 @@ body.light-theme .nav-item a:hover {
 body.light-theme .nav-item a.active {
   background: var(--accent-primary);
   color: #ffffff;
+}
+
+.help-btn, .logout-btn, .login-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 1rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.help-btn:hover, .logout-btn:hover, .login-btn:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--accent-primary);
+}
+
+body.light-theme .help-btn:hover, body.light-theme .logout-btn:hover, body.light-theme .login-btn:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent-primary);
+}
+
+.sidebar.minimized .help-btn, .sidebar.minimized .logout-btn, .sidebar.minimized .login-btn, .sidebar.minimized .nav-item a {
+  padding: 0.8rem 0;
+  justify-content: center;
+}
+
+.minimize-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.05);
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.minimize-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
+}
+
+body.light-theme .minimize-btn {
+  background: rgba(0,0,0,0.05);
+}
+
+body.light-theme .minimize-btn:hover {
+  background: rgba(0,0,0,0.1);
 }
 
 .page-title {

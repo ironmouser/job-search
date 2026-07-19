@@ -644,7 +644,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                 
                 <div className="job-meta">
                   <span className="job-meta-item"><MapPin size={14} /> {job.location || 'Remote'}</span>
-                  <span className="job-meta-item"><DollarSign size={14} /> {job.salary_range || 'Unlisted'}</span>
+                  <span className="job-meta-item"><DollarSign size={14} /> {job.salary_range || 'Not Listed'}</span>
                   <span className="job-meta-item" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     <Clock size={13} /> {new Date(job.created_at).toLocaleDateString()}
                   </span>

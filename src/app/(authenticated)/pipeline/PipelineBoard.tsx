@@ -158,7 +158,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                         </select>
                                     </td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.location || 'Remote'}</td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.salary_range || 'Unlisted'}</td>
+                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.salary_range || 'Not Listed'}</td>
                                 </tr>
                             ))}
                             {jobs.length === 0 && (
