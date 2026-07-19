@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check } from 'lucide-react';
+import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter } from 'next/navigation';
@@ -578,6 +579,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                                 fetchStatuses[job.id] === 'error' ? 'Retry' : 'Fetch'}
                              </button>
                           )}
+                          <FeedbackButtons
+                            jobId={job.id}
+                            initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
+                          />
                           <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
                             <Archive size={14} />
                           </button>
@@ -655,7 +660,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                 </div>
                 
                 <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-start', alignItems: 'center' }}>
                     {job.company?.includes('(Scraped via Email)') && (!job.description || job.description.length < 500) && (
                        <button 
                          onClick={() => handleQueueFetch({ id: job.id, title: job.title, company: job.company })} 
@@ -683,6 +688,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                     <a href={job.url} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
                       Original <ExternalLink size={14} />
                     </a>
+                    <FeedbackButtons
+                      jobId={job.id}
+                      initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
+                    />
                   </div>
                   <div style={{ marginLeft: 'auto', marginRight: '-12px', marginBottom: '-36px' }}>
                     <input 
