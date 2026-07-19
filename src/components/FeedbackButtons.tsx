@@ -24,17 +24,10 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [otherReason, setOtherReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 1024);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const handleLike = async () => {
@@ -74,18 +67,16 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
 
     const modalContent = (
       <>
-        {isMobile && (
-          <div 
-            onClick={() => setShowModal(false)}
-            style={{
-              position: 'fixed',
-              top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)',
-              zIndex: 9999
-            }}
-          />
-        )}
-        <div style={isMobile ? {
+        <div 
+          onClick={() => setShowModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.6)',
+            zIndex: 9999
+          }}
+        />
+        <div style={{
           position: 'fixed',
           top: '50%',
           left: '50%',
@@ -97,18 +88,6 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
           padding: '1.5rem',
           zIndex: 10000,
           boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
-        } : {
-          position: 'absolute',
-          top: '100%',
-          right: 0,
-          marginTop: '0.5rem',
-          width: '300px',
-          background: 'var(--bg-color)',
-          border: '1px solid var(--border-glass)',
-          borderRadius: '8px',
-          padding: '1rem',
-          zIndex: 50,
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h4 style={{ margin: 0 }}>Why is this a bad fit?</h4>
@@ -164,7 +143,7 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
       </>
     );
 
-    if (isMobile && mounted) {
+    if (mounted) {
       return createPortal(modalContent, document.body);
     }
 
