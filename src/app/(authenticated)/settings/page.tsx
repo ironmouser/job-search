@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Database, Key, Bot, Search, Layout, FileText, Save, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -57,6 +58,11 @@ export default function SettingsPage() {
     // Unsaved changes navigation prompt state
     const [showDialog, setShowDialog] = useState(false);
     const [pendingHref, setPendingHref] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     
     const isDirty = initialSettings && !isDeepEqual(initialSettings, settings);
 
@@ -704,7 +710,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Unsaved Changes Dialog Modal */}
-            {showDialog && (
+            {mounted && showDialog && createPortal(
                 <div style={{
                     position: 'fixed',
                     top: 0, left: 0, right: 0, bottom: 0,
@@ -819,7 +825,8 @@ export default function SettingsPage() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
