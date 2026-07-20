@@ -182,10 +182,10 @@ export default function CoverLetterAssetCard({
         <!-- Body -->
         <div style="font-family: Georgia, serif; font-size: 10.5pt; line-height: 1.7; color: #1a1a1a;">
             <style>
-                h1, h2, h3, h4, h5, h6 { color: ${selectedColor} !important; margin-top: 15px; margin-bottom: 10px; }
-                p { margin-bottom: 15px; }
+                h1, h2, h3, h4, h5, h6 { color: ${selectedColor} !important; margin-top: 15px; margin-bottom: 10px; page-break-inside: avoid; break-inside: avoid; }
+                p { margin-bottom: 15px; page-break-inside: avoid; break-inside: avoid; }
                 ul { margin-bottom: 15px; padding-left: 20px; }
-                li { margin-bottom: 5px; }
+                li { margin-bottom: 5px; page-break-inside: avoid; break-inside: avoid; }
                 a { color: ${selectedColor} !important; }
             </style>
             ${letterBodyHtml}
