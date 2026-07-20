@@ -785,6 +785,12 @@ body.light-theme .sync-overlay-content {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.tenor-gif-embed > a {
+  display: none !important;
 }
 
 @keyframes slideUp {

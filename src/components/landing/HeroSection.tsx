@@ -45,15 +45,15 @@ export default function HeroSection() {
         </div>
       </div>
 
-      <div style={{ position: 'relative', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
+      <div style={{ position: 'relative', maxWidth: '350px', margin: '0 auto', width: '100%' }}>
         {/* Glow behind */}
         <div style={{ 
           position: 'absolute', top: '10%', left: '10%', right: '10%', bottom: '10%', 
-          background: '#06af9e', filter: 'blur(80px)', opacity: 0.2, zIndex: 0 
+          background: '#06af9e', filter: 'blur(56px)', opacity: 0.2, zIndex: 0 
         }} />
         <div style={{ 
           position: 'absolute', top: '20%', left: '0%', right: '20%', bottom: '0%', 
-          background: 'var(--accent-primary)', filter: 'blur(80px)', opacity: 0.3, zIndex: 0 
+          background: 'var(--accent-primary)', filter: 'blur(56px)', opacity: 0.3, zIndex: 0 
         }} />
         
         {/* Dashboard Mockup */}
@@ -61,34 +61,34 @@ export default function HeroSection() {
           position: 'relative',
           zIndex: 1,
           background: 'linear-gradient(145deg, #1e3a8a 0%, #0f172a 100%)',
-          borderRadius: '24px',
-          padding: '2rem',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          borderRadius: '16px',
+          padding: '1.4rem',
+          boxShadow: '0 17px 35px -8px rgba(0, 0, 0, 0.5)',
           border: '1px solid rgba(255,255,255,0.1)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div style={{ fontSize: '1.25rem', color: '#fff', fontWeight: 600 }}>Dashboard</div>
-            <div style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.3)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '10px', height: '10px', background: 'rgba(255,255,255,0.3)', borderRadius: '1px' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.05rem' }}>
+            <div style={{ fontSize: '0.875rem', color: '#fff', fontWeight: 600 }}>Dashboard</div>
+            <div style={{ width: '14px', height: '14px', border: '1.5px solid rgba(255,255,255,0.3)', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '7px', height: '7px', background: 'rgba(255,255,255,0.3)', borderRadius: '1px' }} />
             </div>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div style={{ background: '#2563eb', padding: '1.5rem', borderRadius: '12px' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>47</div>
-              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>Jobs Found</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
+            <div style={{ background: '#2563eb', padding: '1.05rem', borderRadius: '8px' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>47</div>
+              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.63rem', marginTop: '0.35rem', fontWeight: 500 }}>Jobs Found</div>
             </div>
-            <div style={{ background: '#06af9e', padding: '1.5rem', borderRadius: '12px' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>12</div>
-              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>Great Matches</div>
+            <div style={{ background: '#06af9e', padding: '1.05rem', borderRadius: '8px' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>12</div>
+              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.63rem', marginTop: '0.35rem', fontWeight: 500 }}>Great Matches</div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>28</div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>Scored</div>
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '1.05rem', borderRadius: '8px' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>28</div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.63rem', marginTop: '0.35rem', fontWeight: 500 }}>Scored</div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '1.5rem', borderRadius: '12px' }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>2</div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 500 }}>Archived</div>
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '1.05rem', borderRadius: '8px' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>2</div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.63rem', marginTop: '0.35rem', fontWeight: 500 }}>Archived</div>
             </div>
           </div>
         </div>

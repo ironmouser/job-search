@@ -7,9 +7,19 @@ export default function PublicLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <PublicNav />
-      <main style={{ flex: 1 }}>
+    <div 
+      style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        backgroundImage: 'url(/background.png)',
+        backgroundSize: 'auto',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'top right'
+      }}
+    >
+      <PublicNav style={{ background: 'transparent' }} />
+      <main style={{ flex: 1, background: 'transparent' }}>
         {children}
       </main>
       <PublicFooter />

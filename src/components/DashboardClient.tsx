@@ -165,16 +165,27 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     setSyncMessage('Syncing Emails...');
     try {
       const res = await fetch('/api/sync/email', { method: 'POST' });
-      if (res.ok) {
+      const data = await res.json().catch(() => ({ error: 'Failed to parse response' }));
+
+      if (res.ok && data.success) {
         // Also score the new jobs
         setSyncMessage('Scoring Opportunities...');
         await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
         router.refresh();
       } else {
-        console.error('Failed to sync emails');
+        const errorMsg = data.error || 'Failed to sync emails';
+        console.error('Failed to sync emails:', errorMsg);
+        alert(errorMsg);
+        if (errorMsg.toLowerCase().includes('credential') || 
+            errorMsg.toLowerCase().includes('password') || 
+            errorMsg.toLowerCase().includes('setting') ||
+            errorMsg.toLowerCase().includes('authentication')) {
+          setShowConfigModal(true);
+        }
       }
     } catch (e) {
       console.error(e);
+      alert('An unexpected error occurred while syncing emails.');
     } finally {
       setIsEmailSyncing(false);
       setIsSyncing(false);

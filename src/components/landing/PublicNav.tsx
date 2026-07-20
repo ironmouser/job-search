@@ -4,14 +4,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 
-export default function PublicNav() {
+export default function PublicNav({ style }: { style?: React.CSSProperties }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
 
   return (
-    <nav className="public-nav">
+    <nav className="public-nav" style={{ background: 'transparent', ...style }}>
       <div className="public-nav-header">
         <Link href="/" style={{ textDecoration: 'none' }} onClick={closeMenu}>
           <h2 className="page-title" style={{ fontSize: '1.5rem', margin: 0, color: '#06af9e' }}>Job Agent HQ</h2>

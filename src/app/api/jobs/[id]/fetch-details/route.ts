@@ -37,6 +37,35 @@ export async function POST(
         let description: string | null = null;
 
         // 2. Try direct fetch first, fallback to Scrape.do proxy
+        const formatWithGemini = async (html: string): Promise<string> => {
+            if (!process.env.GEMINI_API_KEY) {
+                return cheerio.load(html).text().replace(/\n{3,}/g, '\n\n').trim();
+            }
+            try {
+                const { GoogleGenerativeAI } = await import('@google/generative-ai');
+                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
+                const prompt = `When formatting a scraped job description.
+DO NOT rewrite or summarize.
+Only:
+- preserve all information
+- fix spacing
+- restore headings
+- restore bullet lists
+- restore paragraphs
+- remove duplicated whitespace
+- do not add or remove content
+
+Format this job description into Markdown:
+${html}`;
+                const result = await model.generateContent(prompt);
+                return result.response.text().trim();
+            } catch (e: any) {
+                console.warn('Gemini formatting failed, falling back to text:', e.message);
+                return cheerio.load(html).text().replace(/\n{3,}/g, '\n\n').trim();
+            }
+        };
+
         const fetchWithFallback = async (url: string): Promise<string | null> => {
             // Direct attempt
             try {
@@ -51,8 +80,8 @@ export async function POST(
                     if (!bodyStr.includes('Just a moment...') && !bodyStr.includes('cf-challenge-error-title')) {
                         const $ = cheerio.load(bodyStr);
                         $('script, style, noscript, nav, header, footer, iframe, svg').remove();
-                        const text = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').text().trim();
-                        if (text.length > 100) return text;
+                        const htmlStr = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').html() || $('body').html() || '';
+                        if (htmlStr.length > 100) return await formatWithGemini(htmlStr);
                     }
                 }
             } catch (e: any) {
@@ -73,10 +102,8 @@ export async function POST(
                     if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
                         const $ = cheerio.load(sdRes.body);
                         $('script, style, noscript, nav, header, footer, iframe, svg').remove();
-                        const text = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').text().trim();
-                        if (text.length > 100) return text;
-                        // fallback: return all body text
-                        return $('body').text().replace(/\n{3,}/g, '\n\n').trim();
+                        const htmlStr = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').html() || $('body').html() || '';
+                        if (htmlStr.length > 100) return await formatWithGemini(htmlStr);
                     }
                     console.warn(`Scrape.do fallback failed for ${url} (Status: ${sdRes.statusCode})`);
                 } catch (err: any) {

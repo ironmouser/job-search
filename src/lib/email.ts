@@ -146,6 +146,10 @@ ${uniqueUrls.join('\n')}
     console.error('IMAP sync failed:', err);
     throw err;
   } finally {
-    await client.logout();
+    try {
+      await client.logout();
+    } catch (e) {
+      // Ignore logout error if connection was not established
+    }
   }
 }

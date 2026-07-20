@@ -21,9 +21,21 @@ export async function POST() {
     return NextResponse.json({ success: true, count: newJobsCount });
   } catch (error: any) {
     console.error('Error syncing emails:', error);
+
+    let clientMessage = error.message || 'Failed to sync emails';
+    if (clientMessage.includes('AUTHENTICATIONFAILED') || clientMessage.includes('Invalid credentials')) {
+      clientMessage = 'IMAP authentication failed. Please check your email address and App Password in Settings.';
+    }
+
+    const isUserError = clientMessage.includes('credentials') || 
+                        clientMessage.includes('authentication') || 
+                        clientMessage.includes('configured') || 
+                        clientMessage.includes('IMAP') ||
+                        clientMessage.includes('Settings');
+
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to sync emails' },
-      { status: 500 }
+      { success: false, error: clientMessage },
+      { status: isUserError ? 400 : 500 }
     );
   }
 }
