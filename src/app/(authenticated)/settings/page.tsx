@@ -171,7 +171,8 @@ export default function SettingsPage() {
     const handleSave = async (settingsOverride?: any, silent = false) => {
         setSaving(true);
         try {
-            const settingsToSave = settingsOverride || { ...settings };
+            const isOverride = settingsOverride && typeof settingsOverride === 'object' && !('nativeEvent' in settingsOverride) && !('target' in settingsOverride);
+            const settingsToSave = isOverride ? { ...settingsOverride } : { ...settings };
             if (settingsToSave.customCareerPages) {
                 settingsToSave.customCareerPages = settingsToSave.customCareerPages.filter((u: string) => u.trim() !== '');
             }
@@ -182,7 +183,12 @@ export default function SettingsPage() {
             });
             if (!res.ok) throw new Error('Save failed');
             
-            setInitialSettings(JSON.parse(JSON.stringify(settingsToSave)));
+            const savedState = JSON.parse(JSON.stringify(settingsToSave));
+            if (savedState.emailAppPassword && savedState.emailAppPassword !== '********') {
+                savedState.emailAppPassword = '********';
+            }
+            setSettings(savedState);
+            setInitialSettings(JSON.parse(JSON.stringify(savedState)));
             if (!silent) {
                 alert('Settings saved successfully!');
             }
@@ -244,7 +250,7 @@ export default function SettingsPage() {
                     <p className="page-subtitle">Manage your connections and AI agent preferences</p>
                 </div>
                 <button 
-                    onClick={handleSave} 
+                    onClick={() => handleSave()} 
                     disabled={saving}
                     className="btn-primary" 
                     style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
