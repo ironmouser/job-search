@@ -9,7 +9,6 @@ export default function FAQ() {
     { q: "Will employers know?", a: "No. The resumes and cover letters are generated in your own voice and formatted professionally using standard industry templates." },
     { q: "How does Auto Apply work?", a: "For supported job boards, our agent can navigate the application form and automatically fill in your details, resume, and answers to common screening questions." },
     { q: "Can I review applications first?", a: "Absolutely. You can set the agent to draft applications and wait for your manual approval before submitting." },
-    { q: "Which job sites are supported?", a: "We currently support major platforms including LinkedIn, Indeed, Glassdoor, and standard Workday/Greenhouse/Lever portals." },
     { q: "Can I disable Auto Apply?", a: "Yes, you have full control over the automation settings and can pause or disable auto-apply at any time." }
   ];
 
