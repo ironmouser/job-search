@@ -13,8 +13,12 @@ export default function PublicNav({ style }: { style?: React.CSSProperties }) {
   return (
     <nav className="public-nav" style={{ background: 'transparent', ...style }}>
       <div className="public-nav-header">
-        <Link href="/" style={{ textDecoration: 'none' }} onClick={closeMenu}>
-          <h2 className="page-title" style={{ fontSize: '1.5rem', margin: 0, color: '#06af9e' }}>Job Agent HQ</h2>
+        <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }} onClick={closeMenu}>
+          <img 
+            src="/logo.png" 
+            alt="Job Agent HQ" 
+            style={{ height: '28px', width: 'auto', display: 'block' }} 
+          />
         </Link>
         
         <button className="public-nav-burger" onClick={toggleMenu} aria-label="Toggle navigation">

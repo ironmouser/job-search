@@ -55,18 +55,20 @@ function LoginForm() {
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh", position: "relative", overflow: "hidden", padding: "2rem" }}>
-      
-      <div style={{ zIndex: 10, textAlign: "center", marginBottom: "2rem" }}>
-        <h2 className="page-title" style={{ fontSize: "2.5rem", color: "#fff" }}>
-          Job Agent HQ
-        </h2>
-        <p className="page-subtitle" style={{ marginTop: "0.5rem" }}>
-          Sign in to your account or create a new one
-        </p>
-      </div>
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh", position: "relative", overflow: "hidden", padding: "2rem", backgroundColor: "#D2DCE3" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", marginTop: "-200px" }}>
+        <div style={{ zIndex: 10, textAlign: "center", marginBottom: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <img 
+            src="/full-logo.png" 
+            alt="Job Agent HQ" 
+            style={{ height: "200px", width: "auto", display: "block", marginBottom: "0.5rem" }} 
+          />
+          <p className="page-subtitle" style={{ marginTop: "0.5rem" }}>
+            Sign in to your account or create a new one
+          </p>
+        </div>
 
-      <div className="glass-card" style={{ width: "100%", maxWidth: "420px", position: "relative", zIndex: 10 }}>
+        <div className="glass-card" style={{ width: "100%", maxWidth: "420px", position: "relative", zIndex: 10 }}>
         {isVerifyView ? (
           <div style={{ textAlign: "center", animation: "fadeIn 0.5s ease" }}>
             <div style={{ margin: "0 auto 1.5rem", display: "flex", alignItems: "center", justifyContent: "center", width: "64px", height: "64px", borderRadius: "50%", background: "rgba(54, 149, 227, 0.15)" }}>
@@ -177,6 +179,7 @@ function LoginForm() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

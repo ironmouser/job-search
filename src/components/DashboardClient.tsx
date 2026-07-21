@@ -351,7 +351,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           <h1 className="page-title">Mission Control</h1>
           <p className="page-subtitle">Your central hub for opportunity management</p>
         </div>
-        <div className="header-actions" style={{ display: 'flex', gap: '1rem' }}>
+        <div className="header-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <button 
             onClick={handleEmailSync} 
             disabled={isEmailSyncing || isSyncing}

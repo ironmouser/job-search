@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, Hexagon } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useHelp } from '@/contexts/HelpContext';
 
@@ -34,11 +34,19 @@ export default function Navigation() {
     <aside className={`sidebar ${isMinimized ? 'minimized' : ''}`}>
       <div className="mobile-nav-header">
         <div className="sidebar-logo">
-          <div className="logo-icon">
-            <Hexagon size={24} fill="currentColor" />
+          <div className="logo-icon" style={{ background: 'transparent', padding: 0 }}>
+            <img 
+              src="/icon-logo.png" 
+              alt="Job Agent Icon" 
+              style={{ width: '32px', height: '32px', objectFit: 'contain', display: 'block' }} 
+            />
           </div>
           <div className="sidebar-logo-text">
-            <h2 className="page-title" style={{ fontSize: '1.25rem', marginBottom: 0, whiteSpace: 'nowrap' }}>Job Agent</h2>
+            <img 
+              src="/logo.png" 
+              alt="Job Agent HQ" 
+              style={{ height: '28px', width: 'auto', display: 'block' }} 
+            />
           </div>
         </div>
         <div className="header-actions">
