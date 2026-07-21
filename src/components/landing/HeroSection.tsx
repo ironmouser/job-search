@@ -5,7 +5,7 @@ export default function HeroSection() {
   return (
     <section style={{ 
       padding: '6rem 2rem 4rem', 
-      maxWidth: '1400px',
+      maxWidth: '1280px',
       margin: '0 auto',
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
