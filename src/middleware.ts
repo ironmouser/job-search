@@ -36,7 +36,8 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const pathname = req.nextUrl.pathname;
         const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login';
-        if (isPublicPage) return true;
+        const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
+        if (isPublicPage || isPublicAsset) return true;
         return !!token;
       },
     },
