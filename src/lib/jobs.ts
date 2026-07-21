@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { getUserSettings } from './settings';
+import { reformatJobDescriptionWithGemini } from './formatter';
 
 export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     if (!rawJobs || rawJobs.length === 0) return [];
@@ -29,13 +30,18 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
 
       let job = await prisma.job.findUnique({ where: { url: jobData.url } });
       if (!job) {
+          let formattedDesc = jobData.description;
+          if (formattedDesc && formattedDesc.length > 50 && !formattedDesc.includes('## ')) {
+              formattedDesc = await reformatJobDescriptionWithGemini(formattedDesc);
+          }
+
           job = await prisma.job.create({
               data: {
                   title: jobData.title,
                   company: jobData.company,
                   location: jobData.location,
                   salaryRange: jobData.salaryRange,
-                  description: jobData.description,
+                  description: formattedDesc,
                   url: jobData.url,
                   source: jobData.source,
               }

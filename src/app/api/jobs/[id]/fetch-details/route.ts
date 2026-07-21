@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { gotScraping } from 'got-scraping';
 import * as cheerio from 'cheerio';
+import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 
 export async function POST(
     request: Request,
@@ -38,32 +39,7 @@ export async function POST(
 
         // 2. Try direct fetch first, fallback to Scrape.do proxy
         const formatWithGemini = async (html: string): Promise<string> => {
-            if (!process.env.GEMINI_API_KEY) {
-                return cheerio.load(html).text().replace(/\n{3,}/g, '\n\n').trim();
-            }
-            try {
-                const { GoogleGenerativeAI } = await import('@google/generative-ai');
-                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
-                const prompt = `When formatting a scraped job description.
-DO NOT rewrite or summarize.
-Only:
-- preserve all information
-- fix spacing
-- restore headings
-- restore bullet lists
-- restore paragraphs
-- remove duplicated whitespace
-- do not add or remove content
-
-Format this job description into Markdown:
-${html}`;
-                const result = await model.generateContent(prompt);
-                return result.response.text().trim();
-            } catch (e: any) {
-                console.warn('Gemini formatting failed, falling back to text:', e.message);
-                return cheerio.load(html).text().replace(/\n{3,}/g, '\n\n').trim();
-            }
+            return await reformatJobDescriptionWithGemini(html);
         };
 
         const fetchWithFallback = async (url: string): Promise<string | null> => {

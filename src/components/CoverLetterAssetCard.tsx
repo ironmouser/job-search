@@ -10,6 +10,7 @@ const cleanContent = (text: string) => {
     if (!text) return '';
     return text
         .replace(/^(?:#+\s*)?cover\s*letter\s*(?:\r?\n)+/i, '')
+        .replace(/(?:\r?\n)+(?:sincerely|best regards|regards|thank you|thanks),?[\s\S]*$/i, '')
         .trim();
 };
 
@@ -180,7 +181,7 @@ export default function CoverLetterAssetCard({
         </div>
 
         <!-- Body -->
-        <div style="font-family: Georgia, serif; font-size: 10.5pt; line-height: 1.7; color: #1a1a1a;">
+        <div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.7; color: #1a1a1a;">
             <style>
                 h1, h2, h3, h4, h5, h6 { color: ${selectedColor} !important; margin-top: 15px; margin-bottom: 10px; page-break-inside: avoid; break-inside: avoid; }
                 p { margin-bottom: 15px; page-break-inside: avoid; break-inside: avoid; }
@@ -189,6 +190,11 @@ export default function CoverLetterAssetCard({
                 a { color: ${selectedColor} !important; }
             </style>
             ${letterBodyHtml}
+            <div style="margin-top: 30px;">
+                Sincerely,<br />
+                ${userName && userName !== 'My' ? userName : ''}<br />
+                ${userPhone || ''}
+            </div>
         </div>
     </div>
     `;
@@ -207,6 +213,11 @@ export default function CoverLetterAssetCard({
         'Dear Recruiting Team,',
         '',
         content,
+        '',
+        '',
+        'Sincerely,',
+        userName && userName !== 'My' ? userName : '',
+        userPhone || '',
     ].filter((line, i, arr) => !(line === '' && arr[i - 1] === '')).join('\n');
 
     return (
@@ -282,7 +293,7 @@ export default function CoverLetterAssetCard({
                     color: '#1a1a1a',
                     borderRadius: '6px',
                     padding: '2.5rem 3rem',
-                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    fontFamily: 'Arial, Helvetica, sans-serif',
                     fontSize: '0.95rem',
                     lineHeight: 1.7,
                     marginBottom: '1.5rem',
@@ -363,11 +374,18 @@ export default function CoverLetterAssetCard({
                             </div>
                         </div>
                     ) : (
-                        <div
-                            className="custom-coverletter-preview"
-                            style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a' }}
-                            dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
-                        />
+                        <div>
+                            <div
+                                className="custom-coverletter-preview"
+                                style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a' }}
+                                dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
+                            />
+                            <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a', marginTop: '2rem' }}>
+                                Sincerely,<br />
+                                {userName && userName !== 'My' ? userName : ''}<br />
+                                {userPhone || ''}
+                            </div>
+                        </div>
                     )}
                 </div>
 

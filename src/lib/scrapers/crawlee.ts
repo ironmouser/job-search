@@ -8,6 +8,7 @@ import * as cheerio from 'cheerio';
 import { gotScraping } from 'got-scraping';
 import got from 'got';
 import { prisma } from '../prisma';
+import { reformatJobDescriptionWithGemini } from '../formatter';
 
 async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -633,25 +634,34 @@ export async function scrapeKforce(keyword: string) {
 
         const body = await response.json();
         if (body && body.value) {
-            body.value.forEach((job: any) => {
+            for (const job of body.value) {
                 let location = [job.City, job.State, job.Zip].filter(Boolean).join(', ');
                 if (!location) location = "US";
                 if (job.Remote && job.Remote !== 'No') {
                     location = `Remote (${location})`;
                 }
                 
-                let url = `https://www.kforce.com/jobs/${job.ReferenceCode}/`;
-                if (!job.ReferenceCode) {
-                    url = job.ApplyUrl || `https://www.kforce.com/find-work/search-jobs/`;
+                let url = `https://www.kforce.com/find-work/search-jobs/`;
+                if (job.Id) {
+                    const encodedId = Buffer.from(job.Id).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                    url = `https://www.kforce.com/find-work/search-jobs/#/detail/${encodedId}`;
+                } else if (job.ReferenceCode) {
+                    url = `https://www.kforce.com/jobs/${job.ReferenceCode}/`;
+                } else if (job.ApplyUrl) {
+                    url = job.ApplyUrl;
                 }
                 
                 const salary = job.SalaryText || (job.SalaryMin ? `$${job.SalaryMin}-$${job.SalaryMax}` : undefined);
                 
+                let rawParts: string[] = [];
+                if (job.Responsibilities) rawParts.push(`## Responsibilities\n${job.Responsibilities}`);
+                if (job.Skills) rawParts.push(`## Requirements\n${job.Skills}`);
+
                 let fullDescription = '';
-                if (job.Responsibilities) fullDescription += `Responsibilities:\n${job.Responsibilities}\n\n`;
-                if (job.Skills) fullDescription += `Requirements:\n${job.Skills}\n\n`;
-                if (fullDescription) {
-                    fullDescription = cheerio.load(fullDescription).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${url}`;
+                if (rawParts.length > 0) {
+                    const rawCombined = rawParts.join('\n\n');
+                    const formatted = await reformatJobDescriptionWithGemini(rawCombined);
+                    fullDescription = `${formatted}\n\nApply at: ${url}`;
                 } else {
                     fullDescription = `Apply at: ${url}`;
                 }
@@ -667,7 +677,7 @@ export async function scrapeKforce(keyword: string) {
                         source: 'kforce'
                     });
                 }
-            });
+            }
         }
     } catch (e) {
         console.error("Kforce Scrape Error:", e);

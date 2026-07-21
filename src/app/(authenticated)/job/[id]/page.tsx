@@ -17,6 +17,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
 import { calculateResumeSimilarity } from '@/lib/similarity';
+import { marked } from 'marked';
 
 export default async function JobDetail({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -187,9 +188,11 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               {!job.description || (job.description.trim().startsWith('Apply at: http') && job.description.length < 150) ? (
                 <AutoFetchJobDetails jobId={job.id} />
               ) : (
-                <div style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.95rem' }}>
-                  {job.description.replace(/(?:[ \t\u00A0]*\r?\n){4,}[ \t\u00A0]*/g, '\n\n\n')}
-                </div>
+                <div 
+                  className="job-description-content"
+                  style={{ color: 'var(--text-secondary)', wordBreak: 'break-word', fontSize: '0.95rem', lineHeight: '1.6' }}
+                  dangerouslySetInnerHTML={{ __html: marked.parse(job.description || '') as string }}
+                />
               )}
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '1.5rem' }}>

@@ -1042,3 +1042,39 @@ body.light-theme .sync-overlay-content {
     background-image: none !important;
   }
 }
+
+/* Job Description Rendered Markdown */
+.job-description-content h1,
+.job-description-content h2,
+.job-description-content h3,
+.job-description-content h4 {
+  color: var(--text-primary, #fff);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+.job-description-content h1 { font-size: 1.3rem; }
+.job-description-content h2 { font-size: 1.15rem; }
+.job-description-content h3 { font-size: 1.05rem; }
+
+.job-description-content p {
+  margin-bottom: 0.85rem;
+  line-height: 1.6;
+}
+
+.job-description-content ul,
+.job-description-content ol {
+  margin-top: 0.4rem;
+  margin-bottom: 0.85rem;
+  padding-left: 1.5rem;
+}
+
+.job-description-content li {
+  margin-bottom: 0.35rem;
+  line-height: 1.5;
+}
+
+.job-description-content strong {
+  color: var(--text-primary, #fff);
+  font-weight: 600;
+}

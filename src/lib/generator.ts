@@ -42,7 +42,7 @@ CRITICAL GUARDRAILS:
 Return the result as a JSON object with EXACTLY these keys:
 {
   "tailored_resume": "Markdown string of the tailored resume",
-  "cover_letter": "ONLY the body paragraphs of the cover letter (aim for ~150 words). NO title, NO 'Dear...' salutation, NO header block. Start directly with the opening paragraph.",
+  "cover_letter": "ONLY the body paragraphs of the cover letter (aim for ~150 words). NO title, NO 'Dear...' salutation, NO header block, NO sign-off or signature (e.g. Sincerely). Start directly with the opening paragraph.",
   "networking_message": "A short, 2-3 sentence LinkedIn connection request to the hiring manager or recruiter",
   "portfolio_recommendation": "A 1-2 sentence recommendation on which project from the resume to highlight in interviews"
 }`;
@@ -277,7 +277,7 @@ CRITICAL GUARDRAILS:
 4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
 5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
 6. INSTRUCTION: ${instructionText || 'Write a compelling cover letter body.'}
-7. OUTPUT FORMAT: Output ONLY the body paragraphs. Do NOT include a title (e.g. "Cover Letter"), do NOT include a salutation ("Dear..."), do NOT include a header block. Start directly with the opening paragraph of the letter body.
+7. OUTPUT FORMAT: Output ONLY the body paragraphs. Do NOT include a title (e.g. "Cover Letter"), do NOT include a salutation ("Dear..."), do NOT include a header block, do NOT include a sign-off (e.g. "Sincerely,") or signature block. Start directly with the opening paragraph of the letter body.
 
 Output ONLY the cover letter body in plain text (no JSON wrapping).`;
 
