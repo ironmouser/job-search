@@ -18,11 +18,7 @@ export default function EmotionalHook() {
       <div style={{ 
         maxWidth: '900px',
         margin: '0 auto',
-        padding: '3.5rem 3rem',
         background: '#10192E',
-        borderRadius: '24px',
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
         position: 'relative',
         zIndex: 1
       }}>
