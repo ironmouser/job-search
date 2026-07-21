@@ -45,7 +45,7 @@ export default function HeroSection() {
         </div>
       </div>
 
-      <div style={{ position: 'relative', maxWidth: '350px', margin: '0 auto', width: '100%' }}>
+      <div className="hero-dashboard-wrapper">
         {/* Glow behind */}
         <div style={{ 
           position: 'absolute', top: '10%', left: '10%', right: '10%', bottom: '10%', 

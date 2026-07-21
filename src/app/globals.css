@@ -895,3 +895,17 @@ body.light-theme .sync-overlay-content {
     width: 100%;
   }
 }
+
+.hero-dashboard-wrapper {
+  position: relative;
+  max-width: 350px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (min-width: 992px) {
+  .hero-dashboard-wrapper {
+    margin: 0 auto 0 0;
+  }
+}
+
