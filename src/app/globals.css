@@ -909,3 +909,20 @@ body.light-theme .sync-overlay-content {
   }
 }
 
+.public-layout-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-image: url(/background.png);
+  background-size: auto;
+  background-repeat: no-repeat;
+  background-position: top right;
+}
+
+@media (max-width: 942px) {
+  .public-layout-container {
+    background-image: none !important;
+  }
+}
+
+
