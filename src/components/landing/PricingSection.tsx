@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function PricingSection() {
   return (
-    <section id="pricing" style={{ padding: '6rem 2rem', background: 'var(--bg-glass)' }}>
+    <section id="pricing" style={{ padding: '6rem var(--section-px)', background: 'var(--bg-glass)' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
           <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', marginBottom: '1rem' }}>Pricing</h2>

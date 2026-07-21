@@ -25,7 +25,7 @@ export default function HowItWorks() {
   ];
 
   return (
-    <section id="how-it-works" style={{ padding: '6rem 2rem', background: 'var(--bg-glass)' }}>
+    <section id="how-it-works" style={{ padding: '6rem var(--section-px)', background: 'var(--bg-glass)' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '4rem', alignItems: 'center' }}>

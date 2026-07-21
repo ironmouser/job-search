@@ -9,7 +9,7 @@ const slides = [
     placeholder: 'Dashboard UI — Jobs Found, Great Matches, Scored, Archived',
     accent: '#2563eb',
     mockup: (
-      <div style={{ padding: '2rem', width: '100%' }}>
+      <div style={{ padding: '2rem var(--section-px)', width: '100%' }}>
         <div style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>AI Dashboard</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
           <div style={{ background: '#2563eb', padding: '1.25rem', borderRadius: '10px' }}>
@@ -37,7 +37,7 @@ const slides = [
     placeholder: 'Kanban Board — Application pipeline',
     accent: '#7c3aed',
     mockup: (
-      <div style={{ padding: '2rem', width: '100%' }}>
+      <div style={{ padding: '2rem var(--section-px)', width: '100%' }}>
         <div style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>Application Pipeline</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
           {['Scored', 'Assets Ready', 'Applied', 'Interviewing'].map((col) => (
@@ -60,7 +60,7 @@ const slides = [
     placeholder: 'Resume Generator — AI tailored resumes',
     accent: '#06af9e',
     mockup: (
-      <div style={{ padding: '2rem', width: '100%' }}>
+      <div style={{ padding: '2rem var(--section-px)', width: '100%' }}>
         <div style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>AI Resume Generator</div>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '1rem' }}>
@@ -83,7 +83,7 @@ const slides = [
     placeholder: 'Job Detail — Full description, score, and actions',
     accent: '#f59e0b',
     mockup: (
-      <div style={{ padding: '2rem', width: '100%' }}>
+      <div style={{ padding: '2rem var(--section-px)', width: '100%' }}>
         <div style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>Job Detail</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <div>
@@ -135,7 +135,7 @@ export default function ProductShowcase() {
       .slide-in-left  { animation: slideInLeft  0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
     `}</style>
     <section style={{ padding: '6rem 0', overflow: 'hidden' }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem', position: 'relative' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 var(--section-px)', position: 'relative' }}>
         <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', marginBottom: '2.5rem', textAlign: 'center' }}>See it in Action</h2>
 
         {/* Tab Navigation */}

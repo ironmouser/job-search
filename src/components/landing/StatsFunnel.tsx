@@ -9,7 +9,7 @@ export default function StatsFunnel() {
   ];
 
   return (
-    <div style={{ flex: 1, padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div style={{ flex: 1, padding: '4rem var(--section-px)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <h3 style={{ fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '3rem', textAlign: 'center' }}>
         Statistics Funnel
       </h3>

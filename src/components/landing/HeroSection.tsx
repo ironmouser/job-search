@@ -4,7 +4,7 @@ import { Star, PlayCircle } from 'lucide-react';
 export default function HeroSection() {
   return (
     <section style={{ 
-      padding: '6rem 2rem 4rem', 
+      padding: '6rem var(--section-px) 4rem', 
       maxWidth: '1280px',
       margin: '0 auto',
       display: 'grid',

@@ -12,7 +12,7 @@ export default function EmotionalHook() {
   return (
     <section style={{ 
       position: 'relative',
-      padding: '5rem 2rem',
+      padding: '5rem var(--section-px)',
       background: '#10192E'
     }}>
       <div style={{ 

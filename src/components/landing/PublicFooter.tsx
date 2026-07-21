@@ -4,7 +4,7 @@ export default function PublicFooter() {
   return (
     <footer style={{ 
       borderTop: '1px solid var(--border-glass)',
-      padding: '4rem 2rem',
+      padding: '4rem var(--section-px)',
       marginTop: '4rem',
       textAlign: 'center'
     }}>
