@@ -13,7 +13,7 @@ export default function StoryFeatures() {
   ];
 
   return (
-    <div style={{ padding: '4rem var(--section-px)', flex: 1 }}>
+    <div style={{ padding: '4rem var(--section-px)', flex: '1 1 350px' }}>
       <h3 style={{ fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '2rem' }}>
         Meet Your AI Job Agent
       </h3>

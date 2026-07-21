@@ -27,11 +27,11 @@ export default function Comparison() {
           boxShadow: 'rgba(0, 0, 0, 0.3) 0px 5px 10px -2px'
         }}>
           {/* Header Row */}
-          <div style={{ background: 'var(--bg-surface)', padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-glass)' }}>
-            <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: 0 }}>Traditional</h3>
+          <div style={{ background: 'var(--bg-surface)', padding: '1rem var(--section-px)', borderBottom: '1px solid var(--border-glass)' }}>
+            <h3 style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', color: 'var(--text-primary)', margin: 0 }}>Traditional</h3>
           </div>
-          <div style={{ background: '#06af9e', padding: '1.5rem 2rem', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
-            <h3 style={{ fontSize: '1.25rem', color: '#fff', margin: 0, fontWeight: 600 }}>Your AI Agent</h3>
+          <div style={{ background: '#06af9e', padding: '1rem var(--section-px)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+            <h3 style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', color: '#fff', margin: 0, fontWeight: 600 }}>Your AI Agent</h3>
           </div>
 
           {/* Data Rows */}
@@ -40,21 +40,21 @@ export default function Comparison() {
               {/* Traditional Side */}
               <div style={{ 
                 background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent', 
-                padding: '1.5rem 2rem', 
+                padding: '1rem var(--section-px)', 
                 borderBottom: idx === comparisons.length - 1 ? 'none' : '1px solid var(--border-glass)',
-                display: 'flex', alignItems: 'center', gap: '1rem',
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
                 color: 'var(--text-secondary)'
               }}>
                 <X size={20} color="var(--danger)" opacity={0.5} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: '1.05rem' }}>{item.old}</span>
+                <span style={{ fontSize: 'clamp(0.85rem, 3.5vw, 1.05rem)' }}>{item.old}</span>
               </div>
 
               {/* AI Agent Side */}
               <div style={{ 
                 background: '#06af9e', 
-                padding: '1.5rem 2rem', 
+                padding: '1rem var(--section-px)', 
                 borderBottom: idx === comparisons.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.2)',
-                display: 'flex', alignItems: 'center', gap: '1rem',
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
                 color: '#fff'
               }}>
                 <div style={{
@@ -70,7 +70,7 @@ export default function Comparison() {
                 }}>
                   <Check size={14} color="#10b981" strokeWidth={3} />
                 </div>
-                <span style={{ fontSize: '1.05rem', fontWeight: 500 }}>{item.new}</span>
+                <span style={{ fontSize: 'clamp(0.85rem, 3.5vw, 1.05rem)', fontWeight: 500 }}>{item.new}</span>
               </div>
             </div>
           ))}
