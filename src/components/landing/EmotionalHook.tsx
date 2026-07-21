@@ -12,21 +12,21 @@ export default function EmotionalHook() {
   return (
     <section style={{ 
       position: 'relative',
-      padding: '4rem 2rem 8rem',
-      background: 'linear-gradient(to bottom, transparent 50%, var(--bg-glass) 50%)'
+      padding: '5rem 2rem',
+      background: '#10192E'
     }}>
       <div style={{ 
         maxWidth: '900px',
         margin: '0 auto',
         padding: '3.5rem 3rem',
-        background: '#ffffff',
+        background: '#10192E',
         borderRadius: '24px',
-        boxShadow: 'inset 8px 8px 20px rgba(0, 0, 0, 0.08), inset -8px -8px 20px rgba(255, 255, 255, 0.6)',
-        border: '1px solid rgba(0, 0, 0, 0.05)',
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
         position: 'relative',
         zIndex: 1
       }}>
-        <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 2.5rem)', color: '#0f172a', textAlign: 'center', marginBottom: '2.5rem', fontWeight: 700 }}>
+        <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 2.5rem)', color: '#ffffff', textAlign: 'center', marginBottom: '2.5rem', fontWeight: 700 }}>
           Wake Up to New Opportunities
         </h2>
 
@@ -34,7 +34,7 @@ export default function EmotionalHook() {
           {tasks.map((task, idx) => (
             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <Check size={20} color="#10b981" strokeWidth={3} style={{ flexShrink: 0 }} />
-              <span style={{ color: '#334155', fontSize: '1.1rem', fontWeight: 500 }}>{task}</span>
+              <span style={{ color: '#e2e8f0', fontSize: '1.1rem', fontWeight: 500 }}>{task}</span>
             </div>
           ))}
         </div>
