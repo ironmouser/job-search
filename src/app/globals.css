@@ -21,7 +21,7 @@
 }
 
 body.light-theme {
-  --bg-color: #f8fafc;
+  --bg-color: #ffffff;
   --bg-surface: #ffffff;
   --bg-glass: #ffffff;
   --border-glass: rgba(0, 0, 0, 0.05);
