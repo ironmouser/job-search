@@ -8,7 +8,7 @@ export default function HeroSection() {
       maxWidth: '1280px',
       margin: '0 auto',
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))',
       gap: '4rem',
       alignItems: 'start'
     }}>

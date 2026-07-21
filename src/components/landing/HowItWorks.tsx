@@ -28,7 +28,7 @@ export default function HowItWorks() {
     <section id="how-it-works" style={{ padding: '6rem 2rem', background: 'var(--bg-glass)' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '4rem', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '4rem', alignItems: 'center' }}>
           
           {/* Left Column: Timeline */}
           <div>
