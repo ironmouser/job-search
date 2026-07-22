@@ -1,8 +1,8 @@
-'use client';
-
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AutoApplyStatus, ATSPlatform, ConfidenceResult } from '@/lib/auto-apply/types';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
+
 
 interface AutoApplyButtonProps {
   jobId: string;
@@ -30,11 +30,17 @@ export function AutoApplyButton({
   onSessionStarted,
 }: AutoApplyButtonProps) {
   const [showModal, setShowModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [detection, setDetection] = useState<{ platform: ATSPlatform; confidence: number; automationSupported: boolean } | null>(null);
   const [confidenceResult, setConfidenceResult] = useState<ConfidenceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [simulationMode, setSimulationMode] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
 
   const isActive = currentStatus && ACTIVE_STATUSES.has(currentStatus as AutoApplyStatus);
   const isDisabled = !hasAssets || !!isActive;
@@ -125,15 +131,15 @@ export function AutoApplyButton({
         {!hasAssets && <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>(generate assets first)</span>}
       </button>
 
-      {showModal && (
+      {mounted && showModal && createPortal(
         <div
           className="modal-overlay"
           onClick={(e) => e.target === e.currentTarget && setShowModal(false)}
           style={{
-            position: 'fixed', inset: 0,
+            position: 'fixed',
+            inset: 0,
             background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 1000,
+            zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -211,8 +217,10 @@ export function AutoApplyButton({
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
+
 }
