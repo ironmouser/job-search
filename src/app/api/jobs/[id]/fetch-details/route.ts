@@ -41,21 +41,22 @@ export async function POST(
             const $ = cheerio.load(rawHtml);
 
             // 1. Try extracting from JSON-LD schema (schema.org/JobPosting)
-            let jsonLdDesc: string | null = null;
+            let jsonLdDesc = '';
             $('script[type="application/ld+json"]').each((_, el) => {
                 try {
                     const data = JSON.parse($(el).html() || '');
-                    if (data.description) {
+                    if (typeof data.description === 'string') {
                         jsonLdDesc = data.description;
                     } else if (data['@graph'] && Array.isArray(data['@graph'])) {
-                        const item = data['@graph'].find((g: any) => g.description);
+                        const item = data['@graph'].find((g: any) => typeof g?.description === 'string');
                         if (item?.description) jsonLdDesc = item.description;
                     }
                 } catch {}
             });
 
-            if (jsonLdDesc && jsonLdDesc.trim().length > 100) {
-                return await reformatJobDescriptionWithGemini(jsonLdDesc.trim());
+            const cleanDesc = jsonLdDesc.trim();
+            if (cleanDesc.length > 100) {
+                return await reformatJobDescriptionWithGemini(cleanDesc);
             }
 
             // 2. Remove script/style noise and search DOM
