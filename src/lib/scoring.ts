@@ -107,7 +107,26 @@ Return a JSON object strictly matching this schema:
 }
 `;
 
-    const result = await model.generateContent(prompt);
+    // Helper function for exponential backoff on 429 Rate Limit
+    const generateWithRetry = async (promptText: string, maxRetries = 3) => {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                return await model.generateContent(promptText);
+            } catch (err: any) {
+                const isRateLimit = err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('Quota exceeded');
+                if (isRateLimit && attempt < maxRetries - 1) {
+                    const delayMs = (attempt + 1) * 3000;
+                    console.warn(`[Gemini Rate Limit] Retrying attempt ${attempt + 1} in ${delayMs / 1000}s...`);
+                    await new Promise(r => setTimeout(r, delayMs));
+                } else {
+                    throw err;
+                }
+            }
+        }
+        throw new Error('Gemini API call failed after max retries');
+    };
+
+    const result = await generateWithRetry(prompt);
     const responseText = result.response.text();
     
     try {

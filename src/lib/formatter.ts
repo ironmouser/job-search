@@ -35,7 +35,7 @@ Only:
 Format this job description into Markdown:
 ${trimmedRaw}`;
 
-        const modelsToTry = ['gemini-1.5-flash-8b', 'gemini-1.5-flash', 'gemini-3.1-flash-lite'];
+        const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-2.0-flash'];
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
         for (const modelName of modelsToTry) {
@@ -47,7 +47,7 @@ ${trimmedRaw}`;
                     return text.trim();
                 }
             } catch (err: any) {
-                console.warn(`Gemini model ${modelName} formatting failed:`, err?.message || err);
+                // Silently move to fallback if rate limited or unavailable
             }
         }
     }
