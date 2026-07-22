@@ -36,9 +36,9 @@ services:
       resources:
         limits:
           memory: 2G
-          cpus: '1.5'
         reservations:
           memory: 512M
+
 
     # Shared memory for Chromium (required to avoid crashes)
     shm_size: '1gb'
