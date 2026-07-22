@@ -30,39 +30,40 @@ const DETECTION_RULES: DetectionRule[] = [
     platform: ATSPlatform.GREENHOUSE,
     automationSupported: false,
     hostnamePatterns: [/^boards\.greenhouse\.io$/i, /\.greenhouse\.io$/i],
-    urlKeywords: ['greenhouse.io'],
+    urlKeywords: ['greenhouse.io', 'greenhouse', 'gh_jid'],
   },
   {
     platform: ATSPlatform.LEVER,
     automationSupported: false,
     hostnamePatterns: [/^jobs\.lever\.co$/i, /\.lever\.co$/i],
-    urlKeywords: ['lever.co'],
+    urlKeywords: ['lever.co', '/lever/'],
   },
   {
     platform: ATSPlatform.ASHBY,
     automationSupported: false,
     hostnamePatterns: [/^jobs\.ashbyhq\.com$/i, /\.ashbyhq\.com$/i],
-    urlKeywords: ['ashbyhq.com'],
+    urlKeywords: ['ashbyhq.com', 'ashbyhq', '/ashby/'],
   },
   {
     platform: ATSPlatform.SMARTRECRUITERS,
     automationSupported: false,
     hostnamePatterns: [/\.smartrecruiters\.com$/i, /^careers\.smartrecruiters\.com$/i],
-    urlKeywords: ['smartrecruiters.com'],
+    urlKeywords: ['smartrecruiters.com', 'smartrecruiters'],
   },
   {
     platform: ATSPlatform.TALEO,
     automationSupported: false,
-    hostnamePatterns: [/\.taleo\.net$/i],
-    urlKeywords: ['taleo.net'],
+    hostnamePatterns: [/\.taleo\.net$/i, /\.taleo\.com$/i],
+    urlKeywords: ['taleo.net', 'taleo'],
   },
   {
     platform: ATSPlatform.ICIMS,
     automationSupported: false,
     hostnamePatterns: [/\.icims\.com$/i, /^careers-\w+\.icims\.com$/i],
-    urlKeywords: ['icims.com'],
+    urlKeywords: ['icims.com', 'icims'],
   },
 ];
+
 
 export function detectATSFromUrl(jobUrl: string): ATSDetectionResult {
   try {
