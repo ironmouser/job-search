@@ -150,8 +150,10 @@ model GlobalSettings {
   aiOpportunityScoringIsPro Boolean @default(true) @map("ai_opportunity_scoring_is_pro")
   aiAssetGenerationIsPro    Boolean @default(true) @map("ai_asset_generation_is_pro")
   aiQaHelperIsPro           Boolean @default(true) @map("ai_qa_helper_is_pro")
+  autoApplyIsPro            Boolean @default(true) @map("auto_apply_is_pro")
 
   @@map("global_settings")
+
 }
 
 model User {
