@@ -273,7 +273,7 @@ export async function scrapeCustomPages(urls: string[]) {
 
 export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     const urls: { url: string; source: string }[] = [];
-    if (sources.weworkremotely) urls.push({ url: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keyword)}`, source: 'weworkremotely' });
+
     if (sources.remoteco) urls.push({ url: `https://remote.co/remote-jobs/search/?search_keywords=${encodeURIComponent(keyword)}`, source: 'remoteco' });
     if (sources.remoteok) urls.push({ url: `https://remoteok.com/api?tag=${encodeURIComponent(keyword.replace(/\s+/g, '-'))}`, source: 'remoteok' });
     if (sources.workingnomads) urls.push({ url: `https://www.workingnomads.com/api/exposed_jobs/`, source: 'workingnomads' });
@@ -509,79 +509,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     return { source, jobs: [], usedFirecrawl, firecrawlSites: sourceFcSites, error: 'Failed to fetch page', url };
                 }
 
-                if (source === 'weworkremotely') {
-                    $('li:not(.view-all) > a[href*="/remote-jobs/"]').each((_, el) => {
-                        const titleEl = $(el).find('.new-listing__header__title__text').length > 0 
-                            ? $(el).find('.new-listing__header__title__text') 
-                            : $(el).find('.title');
-                        const companyEl = $(el).find('.new-listing__company-name').length > 0 
-                            ? $(el).find('.new-listing__company-name') 
-                            : $(el).find('.company');
-                        const href = $(el).attr('href') || '';
-                        
-                        if (!href.includes('/remote-jobs/')) return;
-                        
-                        const fullUrl = href.startsWith('http') ? href : `https://weworkremotely.com${href}`;
-                        
-                        let salaryText = '';
-                        let locationText = 'Remote';
-                        $(el).find('.new-listing__categories__category, .region').each((_, cat) => {
-                            const text = $(cat).text().trim();
-                            if (text.includes('$') || text.includes('€') || text.includes('£')) {
-                                salaryText = text;
-                            } else if (!text.toLowerCase().includes('time') && !text.toLowerCase().includes('contract') && !text.toLowerCase().includes('boosted') && !text.toLowerCase().includes('top 100')) {
-                                locationText = text;
-                            }
-                        });
-
-                        const title = titleEl.text().trim();
-                        if (!title) return; // Skip non-job links (like marketing/nav links)
-
-                        pageJobs.push({
-                            title: title,
-                            company: companyEl.text().trim() || 'We Work Remotely',
-                            location: locationText || 'Remote',
-                            description: `Apply at: ${fullUrl}${salaryText ? '\nSalary: ' + salaryText : ''}`,
-                            salary_range: salaryText || null,
-                            url: fullUrl,
-                            source: 'WWR'
-                        });
-                    });
-
-                    // Fetch actual job descriptions for WWR to avoid "Apply at: [URL]" only descriptions
-                    const batchSize = 3;
-                    for (let i = 0; i < pageJobs.length; i += batchSize) {
-                        const batch = pageJobs.slice(i, i + batchSize);
-                        await Promise.all(batch.map(async (job) => {
-                            try {
-                                const { $ } = await fetchPage(job.url, 1);
-                                if ($) {
-                                    const desc = $('.listing-container, #job-listing-show-container, .lis-container__job__content__description, .lis-container').text().trim();
-                                    
-                                    // Extract outbound apply link
-                                    let applyLink = $('#job-cta-alt').attr('href') || $('#job-cta-alt-2').attr('href');
-                                    if (!applyLink) {
-                                        applyLink = $('a').filter((_, el) => {
-                                            const txt = $(el).text().trim().toLowerCase();
-                                            return txt.includes('apply for this position') || txt.includes('apply now') || txt === 'apply';
-                                        }).first().attr('href');
-                                    }
-                                    if (applyLink && (applyLink.startsWith('http') || applyLink.startsWith('mailto:'))) {
-                                        job.url = applyLink;
-                                    }
-
-                                    if (desc) {
-                                        const cleanDesc = desc.replace(/\n{3,}/g, '\n\n').trim();
-                                        job.description = cleanDesc + `\n\nApply at: ${job.url}`;
-                                    }
-                                }
-                            } catch(e) {}
-                        }));
-                        if (i + batchSize < pageJobs.length) {
-                            await new Promise(r => setTimeout(r, 500));
-                        }
-                    }
-                } else if (source === 'remoteco') {
+                if (source === 'remoteco') {
                     $('a[href*="/job/"]').each((_, el) => {
                         const titleEl = $(el).find('p.font-weight-bold').length ? $(el).find('p.font-weight-bold') : $(el);
                         const companyEl = $(el).find('p.m-0').length ? $(el).find('p.m-0') : $(el);
@@ -680,7 +608,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     );
 
     const sourceDisplayNames: Record<string, string> = {
-        weworkremotely: 'WeWorkRemotely',
+
         remoteco: 'Remote.co',
         remoteok: 'RemoteOK',
         workingnomads: 'WorkingNomads',

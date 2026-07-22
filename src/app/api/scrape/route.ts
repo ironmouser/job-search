@@ -45,7 +45,6 @@ export async function POST(request: Request) {
             if (globalSettings.smartrecruitersIsPro) sources.smartrecruiters = false;
             if (globalSettings.breezyIsPro) sources.breezy = false;
             if (globalSettings.remotiveIsPro) sources.remotive = false;
-            if (globalSettings.weworkremotelyIsPro) sources.weworkremotely = false;
             if (globalSettings.remotecoIsPro) sources.remoteco = false;
             if (globalSettings.remoteokIsPro) sources.remoteok = false;
             if (globalSettings.workingnomadsIsPro) sources.workingnomads = false;
@@ -124,7 +123,7 @@ export async function POST(request: Request) {
             }));
         }
 
-        if (sources.weworkremotely || sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.jobspresso || sources.justremote) {
+        if (sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.jobspresso || sources.justremote) {
             scrapePromises.push(scrapeRemoteAggregators(keyword, sources).catch(e => {
                 console.error("Crawlee remote aggregators scrape failed", e);
                 return [];

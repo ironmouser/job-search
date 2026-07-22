@@ -22,7 +22,7 @@ interface GlobalSettings {
   smartrecruitersIsPro: boolean;
   breezyIsPro: boolean;
   remotiveIsPro: boolean;
-  weworkremotelyIsPro: boolean;
+
   remotecoIsPro: boolean;
   remoteokIsPro: boolean;
   workingnomadsIsPro: boolean;
@@ -94,7 +94,7 @@ export default function AdminDashboard() {
     smartrecruitersIsPro: true,
     breezyIsPro: true,
     remotiveIsPro: true,
-    weworkremotelyIsPro: false,
+
     remotecoIsPro: false,
     remoteokIsPro: false,
     workingnomadsIsPro: false,
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
               smartrecruitersIsPro: data.smartrecruitersIsPro ?? true,
               breezyIsPro: data.breezyIsPro ?? true,
               remotiveIsPro: data.remotiveIsPro ?? true,
-              weworkremotelyIsPro: data.weworkremotelyIsPro ?? false,
+
               remotecoIsPro: data.remotecoIsPro ?? false,
               remoteokIsPro: data.remoteokIsPro ?? false,
               workingnomadsIsPro: data.workingnomadsIsPro ?? false,
@@ -522,14 +522,7 @@ export default function AdminDashboard() {
                     </div>
                     <ToggleSwitch checked={settings.ashbyIsPro} onChange={() => setSettings({ ...settings, ashbyIsPro: !settings.ashbyIsPro })} />
                   </div>
-                  {/* WeWorkRemotely */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                    <div>
-                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>WeWorkRemotely</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>WWR Remote Aggregator</div>
-                    </div>
-                    <ToggleSwitch checked={settings.weworkremotelyIsPro} onChange={() => setSettings({ ...settings, weworkremotelyIsPro: !settings.weworkremotelyIsPro })} />
-                  </div>
+
                   {/* Remote.co */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                     <div>
