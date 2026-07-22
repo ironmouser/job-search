@@ -1,5 +1,3 @@
-import { FileText, Search, Edit3, Send, LayoutGrid } from 'lucide-react';
-
 export default function HowItWorks() {
   const steps = [
     {
@@ -61,60 +59,13 @@ export default function HowItWorks() {
             </div>
           </div>
 
-          {/* Right Column: Illustrations */}
-          <div style={{ position: 'relative', minHeight: '500px', width: '100%', display: 'flex', alignItems: 'center' }}>
-            
-            {/* Card 1: Resume / Profile */}
-            <div className="glass-card" style={{ 
-              position: 'absolute', top: '5%', right: '5%', width: '70%', padding: '1.5rem', zIndex: 1,
-              transform: 'rotate(2deg)'
-            }}>
-              <div style={{ width: '40%', height: '12px', background: 'var(--border-glass)', borderRadius: '4px', marginBottom: '1.5rem' }} />
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-primary)', opacity: 0.5 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ width: '60%', height: '10px', background: 'var(--border-glass)', borderRadius: '4px', marginBottom: '0.75rem' }} />
-                  <div style={{ width: '90%', height: '8px', background: 'var(--border-glass)', borderRadius: '4px', marginBottom: '0.5rem' }} />
-                  <div style={{ width: '80%', height: '8px', background: 'var(--border-glass)', borderRadius: '4px' }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: AI / Kanban */}
-            <div className="glass-card" style={{ 
-              position: 'absolute', top: '35%', left: '0', width: '85%', padding: '1.5rem', zIndex: 2, 
-              border: '1px solid var(--accent-primary)', 
-              boxShadow: '0 15px 35px rgba(37,99,235,0.15)' 
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                <div style={{ width: '30%', height: '12px', background: 'var(--accent-primary)', borderRadius: '4px' }} />
-                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'var(--border-glass)' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                {[1,2,3].map(i => (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '6px', padding: '0.75rem' }}>
-                    <div style={{ width: '60%', height: '8px', background: 'var(--text-secondary)', opacity: 0.5, borderRadius: '2px', marginBottom: '0.75rem' }} />
-                    <div style={{ width: '100%', height: '30px', background: 'var(--border-glass)', borderRadius: '4px', marginBottom: '0.5rem' }} />
-                    <div style={{ width: '100%', height: '30px', background: 'var(--border-glass)', borderRadius: '4px' }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Card 3: Status / Apply */}
-            <div className="glass-card" style={{ 
-              position: 'absolute', bottom: '10%', right: '10%', width: '60%', padding: '1.5rem', zIndex: 3,
-              transform: 'rotate(-2deg)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                <div style={{ width: '50%', height: '12px', background: 'var(--border-glass)', borderRadius: '4px' }} />
-                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#10b981' }} />
-              </div>
-              <div style={{ width: '100%', height: '8px', background: 'var(--border-glass)', borderRadius: '4px', marginBottom: '0.5rem' }} />
-              <div style={{ width: '80%', height: '8px', background: 'var(--border-glass)', borderRadius: '4px', marginBottom: '1rem' }} />
-              <div style={{ width: '100%', height: '40px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '6px' }} />
-            </div>
-
+          {/* Right Column: Layers Illustration */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+            <img 
+              src="/layers.png" 
+              alt="How it works workflow diagram" 
+              style={{ width: '100%', height: 'auto', maxHeight: '550px', objectFit: 'contain' }} 
+            />
           </div>
         </div>
       </div>

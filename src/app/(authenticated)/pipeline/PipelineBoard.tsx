@@ -20,6 +20,13 @@ const COLUMNS = [
     { id: 'rejected', label: 'Rejected', color: '#ef4444' },
 ];
 
+const STATUS_COLORS: Record<string, string> = {
+    applied: '#0045ff1c',
+    interviewing: '#fcf49b78',
+    offer: '#01e96e47',
+    rejected: '#ff000029',
+};
+
 export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
     const [jobs, setJobs] = useState<Job[]>(initialJobs);
     const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
@@ -84,7 +91,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '100px' }}>
                                 {jobs.filter(j => j.status === col.id).map(job => (
-                                    <div key={job.id} className="glass-card pipeline-card" style={{ padding: '1rem', position: 'relative' }}>
+                                    <div key={job.id} className="glass-card pipeline-card" style={{ padding: '1rem', position: 'relative', background: STATUS_COLORS[job.status?.toLowerCase()] || STATUS_COLORS[col.id] }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{job.company}</h4>
                                             
@@ -141,7 +148,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                             {job.title}
                                         </Link>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '1rem', background: STATUS_COLORS[job.status?.toLowerCase()] }}>
                                         <select 
                                             value={job.status} 
                                             onChange={(e) => updateJobStatus(job.id, e.target.value)}
