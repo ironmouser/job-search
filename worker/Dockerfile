@@ -1,8 +1,7 @@
 # ─── Base image: Debian slim with Node.js 22 ───────────────────────────────
 FROM node:22-slim
 
-# Install Playwright system dependencies for Chromium
-# This installs all required OS-level packages
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -12,26 +11,32 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy package files and install Node dependencies first (layer cache)
-COPY package*.json ./
-RUN npm ci --omit=dev
+# Copy package files and tsconfig
+COPY package*.json tsconfig.json ./
 
-# Install Playwright browsers (Chromium only) + all OS dependencies
+# Install dependencies (including devDependencies for TypeScript compilation)
+RUN npm ci
+
+# Copy source code and compile TypeScript to dist/
+COPY src/ ./src/
+RUN npm run build
+
+# Install Playwright browsers (Chromium only) + OS-level browser dependencies
 RUN npx playwright install --with-deps chromium
 
-# Copy compiled TypeScript output
-COPY dist/ ./dist/
+# Prune devDependencies to keep runtime lean
+RUN npm prune --omit=dev
 
-# Non-root user for security
-RUN useradd -ms /bin/bash worker
+# Create non-root user for security
+RUN useradd -ms /bin/bash worker && chown -R worker:worker /app
 USER worker
 
 # Environment
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/worker/.cache/ms-playwright
 
-# Health check — worker exposes a minimal HTTP health endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+# Health check — worker exposes a minimal HTTP health endpoint on port 3001
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 
 # Start the worker polling process
