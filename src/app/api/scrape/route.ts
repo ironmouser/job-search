@@ -123,7 +123,7 @@ export async function POST(request: Request) {
             }));
         }
 
-        if (sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.jobspresso || sources.justremote) {
+        if (sources.weworkremotely || sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.jobspresso || sources.justremote) {
             scrapePromises.push(scrapeRemoteAggregators(keyword, sources).catch(e => {
                 console.error("Crawlee remote aggregators scrape failed", e);
                 return [];

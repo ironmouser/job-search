@@ -274,6 +274,7 @@ export async function scrapeCustomPages(urls: string[]) {
 export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     const urls: { url: string; source: string }[] = [];
 
+    if (sources.weworkremotely) urls.push({ url: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keyword)}`, source: 'weworkremotely' });
     if (sources.remoteco) urls.push({ url: `https://remote.co/remote-jobs/search/?search_keywords=${encodeURIComponent(keyword)}`, source: 'remoteco' });
     if (sources.remoteok) urls.push({ url: `https://remoteok.com/api?tag=${encodeURIComponent(keyword.replace(/\s+/g, '-'))}`, source: 'remoteok' });
     if (sources.workingnomads) urls.push({ url: `https://www.workingnomads.com/api/exposed_jobs/`, source: 'workingnomads' });
@@ -509,7 +510,49 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     return { source, jobs: [], usedFirecrawl, firecrawlSites: sourceFcSites, error: 'Failed to fetch page', url };
                 }
 
-                if (source === 'remoteco') {
+                if (source === 'weworkremotely') {
+                    $('li:not(.view-all) > a[href*="/remote-jobs/"]').each((_, el) => {
+                        const href = $(el).attr('href') || '';
+                        const text = $(el).text().toLowerCase();
+                        // Paywall filter: skip subscriber-only / locked listings
+                        const isLocked = href.includes('/pro/') || href.includes('/subscribe') || text.includes('unlock') || $(el).find('.pro-tag, .paid-only, .subscriber-only').length > 0;
+                        if (isLocked) return;
+
+                        const titleEl = $(el).find('.new-listing__header__title__text').length > 0 
+                            ? $(el).find('.new-listing__header__title__text') 
+                            : $(el).find('.title');
+                        const companyEl = $(el).find('.new-listing__company-name').length > 0 
+                            ? $(el).find('.new-listing__company-name') 
+                            : $(el).find('.company');
+                        
+                        if (!href.includes('/remote-jobs/')) return;
+                        const fullUrl = href.startsWith('http') ? href : `https://weworkremotely.com${href}`;
+
+                        let salaryText = '';
+                        let locationText = 'Remote';
+                        $(el).find('.new-listing__categories__category, .region').each((_, cat) => {
+                            const t = $(cat).text().trim();
+                            if (t.includes('$') || t.includes('€') || t.includes('£')) {
+                                salaryText = t;
+                            } else if (!t.toLowerCase().includes('time') && !t.toLowerCase().includes('contract') && !t.toLowerCase().includes('boosted') && !t.toLowerCase().includes('top 100')) {
+                                locationText = t;
+                            }
+                        });
+
+                        const title = titleEl.text().trim();
+                        if (!title) return;
+
+                        pageJobs.push({
+                            title: title,
+                            company: companyEl.text().trim() || 'We Work Remotely',
+                            location: locationText || 'Remote',
+                            description: `Apply at: ${fullUrl}${salaryText ? '\nSalary: ' + salaryText : ''}`,
+                            salary_range: salaryText || null,
+                            url: fullUrl,
+                            source: 'WWR'
+                        });
+                    });
+                } else if (source === 'remoteco') {
                     $('a[href*="/job/"]').each((_, el) => {
                         const titleEl = $(el).find('p.font-weight-bold').length ? $(el).find('p.font-weight-bold') : $(el);
                         const companyEl = $(el).find('p.m-0').length ? $(el).find('p.m-0') : $(el);
@@ -572,9 +615,14 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     });
                 } else if (source === 'justremote') {
                     $('a[href*="/remote-jobs/"]').each((_, el) => {
+                        const href = $(el).attr('href') || '';
+                        const text = $(el).text().toLowerCase();
+                        // Paywall filter: skip subscriber-only Power Search listings
+                        const isLocked = href.includes('/power-search/') || href.includes('/subscribe') || text.includes('unlock') || $(el).hasClass('power-search') || $(el).find('.power-search-tag, [class*="locked"], [class*="pro"]').length > 0;
+                        if (isLocked) return;
+
                         const title = $(el).find('h3').text().trim();
                         if (!title) return;
-                        const href = $(el).attr('href') || '';
                         const fullUrl = href.startsWith('http') ? href : `https://justremote.co${href}`;
                         pageJobs.push({
                             title: title,
@@ -608,7 +656,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     );
 
     const sourceDisplayNames: Record<string, string> = {
-
+        weworkremotely: 'WeWorkRemotely',
         remoteco: 'Remote.co',
         remoteok: 'RemoteOK',
         workingnomads: 'WorkingNomads',
