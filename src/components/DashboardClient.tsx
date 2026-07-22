@@ -6,7 +6,7 @@ import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import OnboardingWidget from '@/components/common/OnboardingWidget';
 
 import SyncOverlay from './SyncOverlay';
@@ -39,9 +39,34 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
 
+  const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const scoringInProgress = useRef(new Set<string>());
+  const isPageInitialized = useRef(false);
+
+  // Restore page number from URL or sessionStorage on mount
+  useEffect(() => {
+    const urlPage = searchParams?.get('page');
+    const savedPage = urlPage || (typeof window !== 'undefined' ? sessionStorage.getItem('dashboard_page') : null);
+    if (savedPage) {
+      const pageNum = parseInt(savedPage, 10);
+      if (!isNaN(pageNum) && pageNum > 0) {
+        setCurrentPage(pageNum);
+      }
+    }
+    isPageInitialized.current = true;
+  }, [searchParams]);
+
+  const changePage = (newPage: number) => {
+    setCurrentPage(newPage);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('dashboard_page', newPage.toString());
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', newPage.toString());
+      window.history.replaceState(null, '', `?${params.toString()}`);
+    }
+  };
 
   const toggleJobCheck = (id: string) => {
     setCheckedJobs(prev => {
@@ -310,7 +335,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   }, [jobs, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    if (isPageInitialized.current) {
+      changePage(1);
+    }
   }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate]);
 
   const totalPages = Math.ceil(filteredAndSortedJobs.length / itemsPerPage);
@@ -756,7 +783,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             className="btn-outline" 
             disabled={currentPage === 1}
             onClick={() => {
-              setCurrentPage(p => Math.max(1, p - 1));
+              changePage(Math.max(1, currentPage - 1));
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           >
@@ -769,7 +796,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             className="btn-outline" 
             disabled={currentPage === totalPages}
             onClick={() => {
-              setCurrentPage(p => Math.min(totalPages, p + 1));
+              changePage(Math.min(totalPages, currentPage + 1));
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           >
