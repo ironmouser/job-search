@@ -11,12 +11,19 @@ import OnboardingWidget from '@/components/common/OnboardingWidget';
 
 import SyncOverlay from './SyncOverlay';
 
+const getConfidenceBadge = (score?: number) => {
+    if (score === undefined) return null;
+    if (score >= 70) return <span title="High Automation Confidence" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>High Auto</span>;
+    if (score >= 40) return <span title="Medium Automation Confidence" style={{ color: '#fbbf24', background: 'rgba(251, 191, 36, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Med Auto</span>;
+    return null;
+};
+
 export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
-  const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote'>('newest');
+  const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote' | 'auto_apply'>('newest');
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
   const [startDate, setStartDate] = useState<string>('');
@@ -289,6 +296,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         const isRemoteB = (b.location || '').toLowerCase().includes('remote') ? 1 : 0;
         return isRemoteB - isRemoteA;
       }
+      if (sortOption === 'auto_apply') {
+        const confA = a.automation_confidence || 0;
+        const confB = b.automation_confidence || 0;
+        // If confidence is the same, fallback to score or newest
+        if (confB !== confA) return confB - confA;
+      }
       // default 'newest' (relying on initial order from server or created_at)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
@@ -481,6 +494,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               <option value="score">Score (High to Low)</option>
               <option value="salary">Salary (High to Low)</option>
               <option value="remote">Remote First</option>
+              <option value="auto_apply">Auto Apply Confidence</option>
             </select>
           </div>
           
@@ -552,7 +566,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                           style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                         />
                       </td>
-                      <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase', fontSize: '0.85rem' }}>{job.company}</td>
+                      <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                          <span>{job.company}</span>
+                          {getConfidenceBadge(job.automation_confidence)}
+                        </div>
+                      </td>
                       <td style={{ padding: '1rem' }}>
                         <Link href={`/job/${job.id}`} className={isEmailJob ? 'email-job-title' : 'job-title'} style={{ textDecoration: 'none', fontWeight: 600, fontSize: '1.1rem' }}>
                           {job.title}
@@ -639,8 +658,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               <div key={job.id} className="glass-card job-card" style={cardStyle}>
                 <div className="job-header">
                   <div>
-                    <div className="job-company">
+                    <div className="job-company" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {job.company}
+                      {getConfidenceBadge(job.automation_confidence)}
                     </div>
                     <Link href={`/job/${job.id}`} style={{ textDecoration: 'none' }} className={isEmailJob ? 'email-job-title' : 'job-title'}>
                       <h3 style={{ cursor: 'pointer', margin: 0 }}>{job.title}</h3>

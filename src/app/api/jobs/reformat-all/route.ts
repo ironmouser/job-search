@@ -20,7 +20,7 @@ export async function POST() {
         let updatedCount = 0;
         for (const job of jobs) {
             const rawDesc = job.description || '';
-            if (rawDesc.length > 50 && (!rawDesc.includes('## ') || job.source === 'kforce')) {
+            if (rawDesc.length > 50 && (!rawDesc.includes('## '))) {
                 let contentToFormat = rawDesc;
                 let applySuffix = '';
                 const applyMatch = rawDesc.match(/(\n\nApply at: https?:\/\/\S+)$/);

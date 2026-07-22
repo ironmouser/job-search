@@ -278,6 +278,12 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     if (sources.remoteok) urls.push({ url: `https://remoteok.com/api?tag=${encodeURIComponent(keyword.replace(/\s+/g, '-'))}`, source: 'remoteok' });
     if (sources.workingnomads) urls.push({ url: `https://www.workingnomads.com/api/exposed_jobs/`, source: 'workingnomads' });
     if (sources.remotive) urls.push({ url: `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(keyword)}`, source: 'remotive' });
+    if (sources.arbeitnow) urls.push({ url: `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(keyword)}`, source: 'arbeitnow' });
+    if (sources.himalayas) urls.push({ url: `https://himalayas.app/jobs/api?limit=100`, source: 'himalayas' });
+    if (sources.jobspresso) urls.push({ url: `https://jobspresso.co/remote-work/?search_keywords=${encodeURIComponent(keyword)}`, source: 'jobspresso' });
+    if (sources.justremote) urls.push({ url: `https://justremote.co/remote-jobs?q=${encodeURIComponent(keyword)}`, source: 'justremote' });
+    if (sources.ycombinator) urls.push({ url: `https://www.workatastartup.com/companies?query=${encodeURIComponent(keyword)}`, source: 'ycombinator' });
+    // Note: Otta omitted from this batch due to requiring GraphQL reverse-engineering.
 
     if (urls.length === 0) return [];
 
@@ -401,6 +407,99 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                 return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
             }
 
+            if (source === 'arbeitnow') {
+                try {
+                    let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        const data = (res.body as any).data;
+                        if (Array.isArray(data)) {
+                            for (const job of data) {
+                                pageJobs.push({
+                                    title: job.title,
+                                    company: job.company_name,
+                                    location: job.location || 'Remote',
+                                    description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
+                                    url: job.url,
+                                    source: 'Arbeitnow'
+                                });
+                            }
+                        }
+                    } else {
+                        errorMsg = `HTTP Error: ${res.statusCode}`;
+                    }
+                } catch (e: any) {
+                    console.warn(`Error parsing arbeitnow API: ${e.message}`);
+                    errorMsg = e.message;
+                }
+                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
+            }
+
+            if (source === 'himalayas') {
+                try {
+                    let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        const data = (res.body as any).jobs;
+                        if (Array.isArray(data)) {
+                            for (const job of data) {
+                                if (keyword && !job.title?.toLowerCase().includes(keyword.toLowerCase()) && !job.companyName?.toLowerCase().includes(keyword.toLowerCase())) continue;
+                                pageJobs.push({
+                                    title: job.title,
+                                    company: job.companyName,
+                                    location: 'Remote', // Himalayas is primarily remote
+                                    description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.applicationLink || job.guid}`) : `Apply at: ${job.applicationLink || job.guid}`,
+                                    url: job.applicationLink || job.guid,
+                                    source: 'Himalayas'
+                                });
+                            }
+                        }
+                    } else {
+                        errorMsg = `HTTP Error: ${res.statusCode}`;
+                    }
+                } catch (e: any) {
+                    console.warn(`Error parsing himalayas API: ${e.message}`);
+                    errorMsg = e.message;
+                }
+                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
+            }
+
+            if (source === 'ycombinator') {
+                try {
+                    let res = await gotScraping({ url, throwHttpErrors: false });
+                    if ((res.statusCode < 200 || res.statusCode >= 300) && process.env.SCRAPEDO_API_KEY) {
+                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
+                        res = await gotScraping({ url: scrapeDoUrl, throwHttpErrors: false });
+                    }
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        const html = res.body as string;
+                        const $ = cheerio.load(html);
+                        const dataPage = $('div[data-page]').attr('data-page');
+                        if (dataPage) {
+                            const data = JSON.parse(dataPage);
+                            const ycJobs = data.props.jobs || [];
+                            for (const job of ycJobs) {
+                                pageJobs.push({
+                                    title: job.title,
+                                    company: job.companyName,
+                                    location: job.location || 'Remote',
+                                    description: `Role Type: ${job.roleType || 'N/A'}\nSalary: ${job.salary || 'N/A'}\n\nApply at: ${job.applyUrl}`,
+                                    salary_range: job.salary || null,
+                                    url: job.applyUrl,
+                                    source: 'YCombinator'
+                                });
+                            }
+                        } else {
+                            errorMsg = "Could not find YC data prop.";
+                        }
+                    } else {
+                        errorMsg = `HTTP Error: ${res.statusCode}`;
+                    }
+                } catch (e: any) {
+                    console.warn(`Error parsing YC: ${e.message}`);
+                    errorMsg = e.message;
+                }
+                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
+            }
+
             try {
                 const { $: cheerio$, usedFirecrawl } = await fetchPage(url);
                 if (usedFirecrawl) sourceFcSites.push(url);
@@ -458,6 +557,19 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                 const { $ } = await fetchPage(job.url, 1);
                                 if ($) {
                                     const desc = $('.listing-container, #job-listing-show-container, .lis-container__job__content__description, .lis-container').text().trim();
+                                    
+                                    // Extract outbound apply link
+                                    let applyLink = $('#job-cta-alt').attr('href') || $('#job-cta-alt-2').attr('href');
+                                    if (!applyLink) {
+                                        applyLink = $('a').filter((_, el) => {
+                                            const txt = $(el).text().trim().toLowerCase();
+                                            return txt.includes('apply for this position') || txt.includes('apply now') || txt === 'apply';
+                                        }).first().attr('href');
+                                    }
+                                    if (applyLink && (applyLink.startsWith('http') || applyLink.startsWith('mailto:'))) {
+                                        job.url = applyLink;
+                                    }
+
                                     if (desc) {
                                         const cleanDesc = desc.replace(/\n{3,}/g, '\n\n').trim();
                                         job.description = cleanDesc + `\n\nApply at: ${job.url}`;
@@ -493,6 +605,19 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                 const { $ } = await fetchPage(job.url, 1);
                                 if ($) {
                                     const desc = $('.job_description, .job-description, main').text().trim();
+                                    
+                                    // Extract outbound apply link
+                                    let applyLink = $('.apply_btn').attr('href') || $('.job_description a.btn, .job-description a.btn').first().attr('href');
+                                    if (!applyLink) {
+                                        applyLink = $('a').filter((_, el) => {
+                                            const txt = $(el).text().trim().toLowerCase();
+                                            return txt.includes('apply for this position') || txt.includes('apply now') || txt === 'apply';
+                                        }).first().attr('href');
+                                    }
+                                    if (applyLink && (applyLink.startsWith('http') || applyLink.startsWith('mailto:'))) {
+                                        job.url = applyLink;
+                                    }
+
                                     if (desc) {
                                         const cleanDesc = desc.replace(/\n{3,}/g, '\n\n').trim();
                                         job.description = cleanDesc + `\n\nApply at: ${job.url}`;
@@ -504,6 +629,34 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             await new Promise(r => setTimeout(r, 500));
                         }
                     }
+                } else if (source === 'jobspresso') {
+                    $('li.job_listing').each((_, el) => {
+                        const href = $(el).find('a').attr('href');
+                        if (!href) return;
+                        pageJobs.push({
+                            title: $(el).find('.position h3').text().trim() || 'Unknown Role',
+                            company: $(el).find('.company strong').text().trim() || 'Jobspresso',
+                            location: $(el).find('.location').text().trim() || 'Remote',
+                            description: `Apply at: ${href}`,
+                            url: href,
+                            source: 'Jobspresso'
+                        });
+                    });
+                } else if (source === 'justremote') {
+                    $('a[href*="/remote-jobs/"]').each((_, el) => {
+                        const title = $(el).find('h3').text().trim();
+                        if (!title) return;
+                        const href = $(el).attr('href') || '';
+                        const fullUrl = href.startsWith('http') ? href : `https://justremote.co${href}`;
+                        pageJobs.push({
+                            title: title,
+                            company: 'JustRemote',
+                            location: 'Remote',
+                            description: `Apply at: ${fullUrl}`,
+                            url: fullUrl,
+                            source: 'JustRemote'
+                        });
+                    });
                 }
             } catch (e: any) {
                 console.warn(`Error parsing remote aggregator ${source}: ${e.message}`);
@@ -531,7 +684,12 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
         remoteco: 'Remote.co',
         remoteok: 'RemoteOK',
         workingnomads: 'WorkingNomads',
-        remotive: 'Remotive'
+        remotive: 'Remotive',
+        arbeitnow: 'Arbeitnow',
+        himalayas: 'Himalayas',
+        jobspresso: 'Jobspresso',
+        justremote: 'JustRemote',
+        ycombinator: 'YCombinator'
     };
 
     for (const result of results) {
@@ -614,91 +772,6 @@ export async function scrapeRemotePOC(keyword: string) {
     return jobs;
 }
 
-export async function scrapeKforce(keyword: string) {
-    const jobs: any[] = [];
-    try {
-        const response = await fetch('https://kforcewebeast.search.windows.net/indexes/kforcewebjobentity/docs/search?api-version=2016-09-01', {
-            method: 'POST',
-            headers: {
-                'api-key': '1603E4DC4C87A8E41D6BBDE4EEA4EFB7',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                count: true,
-                select: "Industry, Title, Id, PostDate, Responsibilities, Skills, City, State, Zip, SalaryMin, SalaryMax, SalaryText, ReferenceCode, TypeCode, VisaSponsorshipJob, ApplyUrl, Remote",
-                search: keyword,
-                top: 25
-            })
-        });
-
-        const body = await response.json();
-        if (body && body.value) {
-            for (const job of body.value) {
-                let location = [job.City, job.State, job.Zip].filter(Boolean).join(', ');
-                if (!location) location = "US";
-                if (job.Remote && job.Remote !== 'No') {
-                    location = `Remote (${location})`;
-                }
-                
-                let url = `https://www.kforce.com/find-work/search-jobs/`;
-                if (job.Id) {
-                    const encodedId = Buffer.from(job.Id).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-                    url = `https://www.kforce.com/find-work/search-jobs/#/detail/${encodedId}`;
-                } else if (job.ReferenceCode) {
-                    url = `https://www.kforce.com/jobs/${job.ReferenceCode}/`;
-                } else if (job.ApplyUrl) {
-                    url = job.ApplyUrl;
-                }
-                
-                const salary = job.SalaryText || (job.SalaryMin ? `$${job.SalaryMin}-$${job.SalaryMax}` : undefined);
-                
-                let rawParts: string[] = [];
-                if (job.Responsibilities) rawParts.push(`## Responsibilities\n${job.Responsibilities}`);
-                if (job.Skills) rawParts.push(`## Requirements\n${job.Skills}`);
-
-                let fullDescription = '';
-                if (rawParts.length > 0) {
-                    const rawCombined = rawParts.join('\n\n');
-                    const formatted = await reformatJobDescriptionWithGemini(rawCombined);
-                    fullDescription = `${formatted}\n\nApply at: ${url}`;
-                } else {
-                    fullDescription = `Apply at: ${url}`;
-                }
-                
-                if (job.Title && url && job.Title !== 'Unknown Role') {
-                    jobs.push({
-                        title: job.Title,
-                        company: "Kforce",
-                        location,
-                        url,
-                        salary,
-                        description: fullDescription,
-                        source: 'kforce'
-                    });
-                }
-            }
-        }
-    } catch (e) {
-        console.error("Kforce Scrape Error:", e);
-    }
-
-    try {
-        await prisma.scraperLog.create({
-            data: {
-                scraperName: 'Kforce',
-                targetUrl: 'https://www.kforce.com/find-work/search-jobs/',
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
-                resultsCount: jobs.length,
-                usedFirecrawl: false
-            }
-        });
-    } catch (logErr) {
-        console.error('Failed to log Kforce scraper', logErr);
-    }
-
-    return jobs;
-}
 
 export async function scrapeHimalayas(keyword: string) {
     const jobs: any[] = [];

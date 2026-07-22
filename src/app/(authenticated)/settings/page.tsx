@@ -340,7 +340,7 @@ export default function SettingsPage() {
                                     },
                                     {
                                         title: 'US / Remote Tech',
-                                        sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'kforce']
+                                        sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc']
                                     },
                                     {
                                         title: 'ATS Integrations',
@@ -406,7 +406,7 @@ export default function SettingsPage() {
                                     {
                                         title: 'Remote & Tech Jobs',
                                         items: [
-                                            { label: 'Free', sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'kforce'] },
+                                            { label: 'Free', sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc'] },
                                             { label: 'Premimum', sources: ['himalayas'], isPro: true }
                                         ]
                                     },

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/jobs';
-import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeKforce, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational } from '@/lib/scrapers/crawlee';
+import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational } from '@/lib/scrapers/crawlee';
 import { getUserSettings } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const isPro = (session.user as any).planTier === 'PRO';
-        let sources = settings.sources || { indeed: true, linkedin: true, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: true, monster: false, wellfound: false, remotepoc: true, kforce: true, himalayas: true };
+        let sources = settings.sources || { indeed: true, linkedin: true, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: true, monster: false, wellfound: false, remotepoc: true, himalayas: true, arbeitnow: true, ycombinator: true, otta: true, jobspresso: true, justremote: true };
         
         if (!isPro && globalSettings) {
             // Standard job boards are Pro-only by default
@@ -49,7 +49,12 @@ export async function POST(request: Request) {
             if (globalSettings.remotecoIsPro) sources.remoteco = false;
             if (globalSettings.remoteokIsPro) sources.remoteok = false;
             if (globalSettings.workingnomadsIsPro) sources.workingnomads = false;
-            // assume himalayas is pro as well unless specified
+            if (globalSettings.arbeitnowIsPro) sources.arbeitnow = false;
+            if (globalSettings.ycombinatorIsPro) sources.ycombinator = false;
+            if (globalSettings.himalayasIsPro) sources.himalayas = false;
+            if (globalSettings.ottaIsPro) sources.otta = false;
+            if (globalSettings.jobspressoIsPro) sources.jobspresso = false;
+            if (globalSettings.justremoteIsPro) sources.justremote = false;
         }
 
         const INTERNATIONAL_SOURCES = ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'];
@@ -119,7 +124,7 @@ export async function POST(request: Request) {
             }));
         }
 
-        if (sources.weworkremotely || sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive) {
+        if (sources.weworkremotely || sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.jobspresso || sources.justremote) {
             scrapePromises.push(scrapeRemoteAggregators(keyword, sources).catch(e => {
                 console.error("Crawlee remote aggregators scrape failed", e);
                 return [];
@@ -135,14 +140,6 @@ export async function POST(request: Request) {
             }
         }
 
-        if (sources.kforce) {
-            if (isPro || !globalSettings?.kforceIsPro) {
-                scrapePromises.push(scrapeKforce(keyword).catch(e => {
-                    console.error("Crawlee Kforce scrape failed", e);
-                    return [];
-                }));
-            }
-        }
 
         const INTERNATIONAL_SOURCE_KEYS = ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank'];
         if (isPro && INTERNATIONAL_SOURCE_KEYS.some(s => sources[s])) {

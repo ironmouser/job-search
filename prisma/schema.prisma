@@ -143,7 +143,12 @@ model GlobalSettings {
   remoteokIsPro         Boolean @default(false) @map("remoteok_is_pro")
   workingnomadsIsPro    Boolean @default(false) @map("workingnomads_is_pro")
   remotepocIsPro        Boolean @default(false) @map("remotepoc_is_pro")
-  kforceIsPro           Boolean @default(false) @map("kforce_is_pro")
+  arbeitnowIsPro        Boolean @default(false) @map("arbeitnow_is_pro")
+  ycombinatorIsPro      Boolean @default(false) @map("ycombinator_is_pro")
+  himalayasIsPro        Boolean @default(true) @map("himalayas_is_pro")
+  ottaIsPro             Boolean @default(true) @map("otta_is_pro")
+  jobspressoIsPro       Boolean @default(true) @map("jobspresso_is_pro")
+  justremoteIsPro       Boolean @default(true) @map("justremote_is_pro")
   // Email Sync
   emailsSyncIsPro       Boolean @default(true) @map("emails_sync_is_pro")
   // AI Features

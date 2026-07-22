@@ -26,6 +26,12 @@ interface GlobalSettings {
   remotecoIsPro: boolean;
   remoteokIsPro: boolean;
   workingnomadsIsPro: boolean;
+  arbeitnowIsPro: boolean;
+  ycombinatorIsPro: boolean;
+  himalayasIsPro: boolean;
+  ottaIsPro: boolean;
+  jobspressoIsPro: boolean;
+  justremoteIsPro: boolean;
   emailsSyncIsPro: boolean;
   aiOpportunityScoringIsPro: boolean;
   aiAssetGenerationIsPro: boolean;
@@ -92,6 +98,12 @@ export default function AdminDashboard() {
     remotecoIsPro: false,
     remoteokIsPro: false,
     workingnomadsIsPro: false,
+    arbeitnowIsPro: false,
+    ycombinatorIsPro: false,
+    himalayasIsPro: true,
+    ottaIsPro: true,
+    jobspressoIsPro: true,
+    justremoteIsPro: true,
     emailsSyncIsPro: true,
     aiOpportunityScoringIsPro: true,
     aiAssetGenerationIsPro: true,
@@ -164,6 +176,12 @@ export default function AdminDashboard() {
               remotecoIsPro: data.remotecoIsPro ?? false,
               remoteokIsPro: data.remoteokIsPro ?? false,
               workingnomadsIsPro: data.workingnomadsIsPro ?? false,
+              arbeitnowIsPro: data.arbeitnowIsPro ?? false,
+              ycombinatorIsPro: data.ycombinatorIsPro ?? false,
+              himalayasIsPro: data.himalayasIsPro ?? true,
+              ottaIsPro: data.ottaIsPro ?? true,
+              jobspressoIsPro: data.jobspressoIsPro ?? true,
+              justremoteIsPro: data.justremoteIsPro ?? true,
               emailsSyncIsPro: data.emailsSyncIsPro ?? true,
               aiOpportunityScoringIsPro: data.aiOpportunityScoringIsPro ?? true,
               aiAssetGenerationIsPro: data.aiAssetGenerationIsPro ?? true,
@@ -535,6 +553,54 @@ export default function AdminDashboard() {
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>WorkingNomads aggregator</div>
                     </div>
                     <ToggleSwitch checked={settings.workingnomadsIsPro} onChange={() => setSettings({ ...settings, workingnomadsIsPro: !settings.workingnomadsIsPro })} />
+                  </div>
+                  {/* Arbeitnow */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Arbeitnow</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Arbeitnow aggregator</div>
+                    </div>
+                    <ToggleSwitch checked={settings.arbeitnowIsPro} onChange={() => setSettings({ ...settings, arbeitnowIsPro: !settings.arbeitnowIsPro })} />
+                  </div>
+                  {/* Y Combinator */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Y Combinator</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Work at a Startup scraping</div>
+                    </div>
+                    <ToggleSwitch checked={settings.ycombinatorIsPro} onChange={() => setSettings({ ...settings, ycombinatorIsPro: !settings.ycombinatorIsPro })} />
+                  </div>
+                  {/* Himalayas */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Himalayas</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Himalayas aggregator</div>
+                    </div>
+                    <ToggleSwitch checked={settings.himalayasIsPro} onChange={() => setSettings({ ...settings, himalayasIsPro: !settings.himalayasIsPro })} />
+                  </div>
+                  {/* Otta */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Otta</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Otta tech jobs scraping</div>
+                    </div>
+                    <ToggleSwitch checked={settings.ottaIsPro} onChange={() => setSettings({ ...settings, ottaIsPro: !settings.ottaIsPro })} />
+                  </div>
+                  {/* Jobspresso */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Jobspresso</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Jobspresso aggregator</div>
+                    </div>
+                    <ToggleSwitch checked={settings.jobspressoIsPro} onChange={() => setSettings({ ...settings, jobspressoIsPro: !settings.jobspressoIsPro })} />
+                  </div>
+                  {/* JustRemote */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>JustRemote</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>JustRemote aggregator</div>
+                    </div>
+                    <ToggleSwitch checked={settings.justremoteIsPro} onChange={() => setSettings({ ...settings, justremoteIsPro: !settings.justremoteIsPro })} />
                   </div>
                 </div>
               </div>

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from '@/lib/prisma';
 import DashboardClient from '@/components/DashboardClient';
+import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 
 export const revalidate = 0;
 
@@ -63,7 +64,8 @@ export default async function Dashboard() {
       applied_at: uj.appliedAt,
 
       opportunity_scores: j.opportunityScores.map((s: any) => ({ total_score: s.totalScore })),
-      job_feedback: j.jobFeedbacks.map((f: any) => ({ feedback_type: f.feedbackType }))
+      job_feedback: j.jobFeedbacks.map((f: any) => ({ feedback_type: f.feedbackType })),
+      automation_confidence: detectATSFromUrl(j.url).confidence
     };
   }).filter(j => {
     if (j.is_archived) return true;

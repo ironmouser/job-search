@@ -13,7 +13,7 @@ export async function POST(request: Request) {
         const data = await request.json();
         
         // Ensure sources format
-        const sources = data.sources || { indeed: true, linkedin: true, greenhouse: true, lever: true, ashby: true, glassdoor: true, ziprecruiter: true, monster: true, wellfound: true, workable: true, smartrecruiters: true, breezy: true, weworkremotely: true, remoteco: true, remoteok: true, workingnomads: true, remotive: true, remotepoc: true, kforce: true };
+        const sources = data.sources || { indeed: true, linkedin: true, greenhouse: true, lever: true, ashby: true, glassdoor: true, ziprecruiter: true, monster: true, wellfound: true, workable: true, smartrecruiters: true, breezy: true, weworkremotely: true, remoteco: true, remoteok: true, workingnomads: true, remotive: true, remotepoc: true };
 
         // 1. Create or Update User Preferences
         await prisma.userPreferences.upsert({

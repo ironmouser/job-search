@@ -17,7 +17,7 @@ async function main() {
     const jobs = await prisma.job.findMany({
         where: {
             OR: [
-                { source: 'kforce' },
+                { source: 'remotepoc' },
                 { description: { not: '' } }
             ]
         }
@@ -28,7 +28,7 @@ async function main() {
     let updatedCount = 0;
     for (const job of jobs) {
         const rawDesc = job.description || '';
-        if (rawDesc.length > 50 && (!rawDesc.includes('## ') || rawDesc.includes('  ') || job.source === 'kforce')) {
+        if (rawDesc.length > 50 && (!rawDesc.includes('## ') || rawDesc.includes('  '))) {
             console.log(`Reformatting job ID ${job.id} - ${job.title} (${job.source})...`);
             
             let contentToFormat = rawDesc;
