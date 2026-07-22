@@ -93,7 +93,7 @@ export default function AutoFetchJobDetails({ jobId }: { jobId: string }) {
         isSyncing={true} 
         syncMessage={syncMessage} 
         title="Fetching Details"
-        subtext="We are currently extracting the full job description.\nThis usually takes about 10-15 seconds."
+        subtext={`We are currently extracting the full job description.\nThis usually takes about 10-15 seconds.`}
       />
     </>
   );

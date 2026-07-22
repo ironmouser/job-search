@@ -38,7 +38,7 @@ export default function SyncOverlay({
         <h2>{title}</h2>
         <p className="sync-overlay-text">{syncMessage}</p>
         <div className="sync-overlay-subtext" style={{ whiteSpace: 'pre-line' }}>
-          {subtext}
+          {typeof subtext === 'string' ? subtext.replace(/\\n/g, '\n') : subtext}
         </div>
 
       </div>
