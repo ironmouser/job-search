@@ -66,11 +66,11 @@ export const pluginRegistry = new PluginRegistry();
 // Import each plugin here. The plugin constructors call pluginRegistry.register()
 // on instantiation, keeping the core code free of platform-specific logic.
 
-import './workday';
-import './greenhouse';
-import './lever';
-import './ashby';
-import './smartrecruiters';
-import './taleo';
-import './icims';
-import './generic-fallback';
+import './plugins/workday';
+import './plugins/greenhouse';
+import './plugins/lever';
+import './plugins/ashby';
+import './plugins/smartrecruiters';
+import './plugins/taleo';
+import './plugins/icims';
+import './plugins/generic-fallback';
