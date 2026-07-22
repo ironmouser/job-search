@@ -29,6 +29,7 @@ model Job {
   opportunityScores OpportunityScore[]
   applicationAssets ApplicationAsset[]
   jobFeedbacks      JobFeedback[]
+  autoApplySessions AutoApplySession[]
 
   @@map("jobs")
 }
@@ -173,11 +174,13 @@ model User {
   accounts      Account[]
   sessions      Session[]
   
-  userPreferences UserPreferences?
-  userJobs        UserJob[]
-  scores          OpportunityScore[]
-  assets          ApplicationAsset[]
-  feedbacks       JobFeedback[]
+  userPreferences      UserPreferences?
+  userJobs             UserJob[]
+  scores               OpportunityScore[]
+  assets               ApplicationAsset[]
+  feedbacks            JobFeedback[]
+  autoApplySessions    AutoApplySession[]
+  interventionRequests InterventionRequest[]
 }
 
 model Account {
@@ -270,4 +273,106 @@ model ScrapeCache {
   @@unique([source, keyword, location])
   @@index([expiresAt])
   @@map("scrape_cache")
+}
+
+// ─── Auto Apply Models ──────────────────────────────────────────────────────
+
+model AutoApplySession {
+  id                   String    @id @default(uuid()) @db.Uuid
+  userId               String    @map("user_id")
+  jobId                String    @map("job_id") @db.Uuid
+  status               String    @default("queued")   // AutoApplyStatus enum value
+  atsPlatform          String?   @map("ats_platform")  // ATSPlatform enum value
+  atsConfidence        Int?      @map("ats_confidence")
+  automationConfidence Int?      @map("automation_confidence")
+  simulationMode       Boolean   @default(true) @map("simulation_mode")
+
+  // Failure tracking
+  failureReason        String?   @map("failure_reason")
+  failureDetails       String?   @map("failure_details") @db.Text
+  retryCount           Int       @default(0) @map("retry_count")
+  maxRetries           Int       @default(3) @map("max_retries")
+
+  // Browser session metadata (viewport, userAgent, etc.)
+  browserSessionId     String?   @map("browser_session_id")
+  browserMetadata      Json?     @map("browser_metadata")
+
+  // Workflow state
+  currentStep          String?   @map("current_step")
+  stepsCompleted       Int       @default(0) @map("steps_completed")
+  stepsTotal           Int?      @map("steps_total")
+
+  // Which worker instance is handling this
+  workerId             String?   @map("worker_id")
+
+  // Timestamps
+  startedAt            DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt          DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job           Job                   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  executionLogs ExecutionLog[]
+  interventions InterventionRequest[]
+
+  @@index([userId, status])
+  @@index([jobId])
+  @@index([status, createdAt])   // Used by worker queue polling
+  @@index([createdAt(sort: Desc)])
+  @@map("auto_apply_sessions")
+}
+
+model ExecutionLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  sessionId      String   @map("session_id") @db.Uuid
+  timestamp      DateTime @default(now()) @db.Timestamptz(6)
+  level          String   // 'info' | 'warn' | 'error' | 'debug'
+  step           String   // Standardized step key e.g. 'browser_launched'
+  message        String
+  metadata       Json?    // Non-PII structured data
+  durationMs     Int?     @map("duration_ms")
+  screenshotPath String?  @map("screenshot_path")
+
+  session AutoApplySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, timestamp])
+  @@map("execution_logs")
+}
+
+model InterventionRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  sessionId     String    @map("session_id") @db.Uuid
+  userId        String    @map("user_id")
+  jobId         String    @map("job_id") @db.Uuid
+  reason        String    // InterventionReason enum value
+  description   String
+  screenshotUrl String?   @map("screenshot_url")
+  pageUrl       String?   @map("page_url")
+  resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolution    String?   // 'completed' | 'skipped' | 'cancelled'
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session AutoApplySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, resolvedAt])
+  @@index([sessionId])
+  @@map("intervention_requests")
+}
+
+model ATSPlatformProfile {
+  id                  String   @id @default(uuid()) @db.Uuid
+  platform            String   @unique  // ATSPlatform enum value
+  displayName         String   @map("display_name")
+  automationSupported Boolean  @default(false) @map("automation_supported")
+  detectionSignatures Json     @default("{}") @map("detection_signatures")
+  successRate         Float    @default(0) @map("success_rate")    // Rolling average
+  totalAttempts       Int      @default(0) @map("total_attempts")
+  totalSuccesses      Int      @default(0) @map("total_successes")
+  notes               String?
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("ats_platform_profiles")
 }

@@ -1,0 +1,26 @@
+{
+  "name": "auto-apply-worker",
+  "version": "1.0.0",
+  "description": "Auto Apply automation worker — runs Playwright on DigitalOcean, executes ATS form automation, communicates with Railway via HTTPS API.",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node --esm src/index.ts",
+    "health": "node -e \"fetch('http://localhost:3001/health').then(r=>r.json()).then(console.log)\""
+  },
+  "dependencies": {
+    "playwright": "^1.50.0",
+    "dotenv": "^17.0.0"
+  },
+
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

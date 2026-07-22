@@ -13,6 +13,7 @@ import NetworkingAssetCard from '@/components/NetworkingAssetCard';
 import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
 import ResumeAssetCard from '@/components/ResumeAssetCard';
 import AutoFetchJobDetails from '@/components/AutoFetchJobDetails';
+import { AutoApplyPanel } from '@/components/AutoApplyPanel';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
@@ -269,10 +270,29 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             </div>
           </section>
 
-          {/* Step 4: Application Q&A */}
+          {/* Step 4: Auto Apply */}
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
+              <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Auto Apply</h2>
+            </div>
+            <div className="glass-card" style={{ padding: '1.5rem' }}>
+              <p style={{ color: 'var(--text-secondary)', margin: '0 0 1rem 0', maxWidth: '600px', lineHeight: 1.5 }}>
+                Let the automation worker fill out and submit this application for you. 
+                Run in simulation mode first to validate the workflow without submitting.
+              </p>
+              <AutoApplyPanel
+                jobId={job.id}
+                jobUrl={job.url}
+                hasAssets={!!(assets?.tailoredResumeMarkdown && assets?.coverLetterMarkdown)}
+              />
+            </div>
+          </section>
+
+          {/* Step 5: Application Q&A */}
           <section style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>5</div>
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Application Q&A</h2>
             </div>
             <ApplicationQA jobId={job.id} planTier={planTier} initialQaUsed={assets?.qaGenerationsUsed || 0} />

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  auto-apply-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auto-apply-worker
+    restart: unless-stopped
+
+    environment:
+      # URL of the Railway application (no trailing slash)
+      - RAILWAY_API_URL=${RAILWAY_API_URL}
+      # Shared secret — must match WORKER_API_KEY on Railway
+      - WORKER_API_KEY=${WORKER_API_KEY}
+      # Unique identifier for this worker instance
+      - WORKER_ID=${WORKER_ID:-worker-1}
+      # How often to poll for queued sessions (milliseconds)
+      - POLL_INTERVAL_MS=${POLL_INTERVAL_MS:-5000}
+      # How often to send heartbeat to Railway (milliseconds)
+      - HEARTBEAT_INTERVAL_MS=${HEARTBEAT_INTERVAL_MS:-30000}
+      # Safety switch — when true, worker never submits applications
+      - SIMULATION_MODE_ONLY=${SIMULATION_MODE_ONLY:-true}
+      # Log level: debug | info | warn | error
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+    # Health check uses the worker's internal HTTP health endpoint
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    # Resource limits — browser automation is memory-hungry
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+        reservations:
+          memory: 512M
+
+    # Shared memory for Chromium (required to avoid crashes)
+    shm_size: '1gb'
+
+    # Future: scale with:
+    #   docker compose up --scale auto-apply-worker=3
+    # Requires a queue system to prevent double-pickup (already handled by
+    # the atomic status update in the Railway queue/poll endpoint)
