@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { AutoApplyButton } from './AutoApplyButton';
 import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
+import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
 
@@ -52,6 +53,7 @@ const POLL_INTERVAL = 3000;
 export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps) {
   const [session, setSession] = useState<SessionData | null>(null);
   const [showLogs, setShowLogs] = useState(false);
+  const [bgConfidence, setBgConfidence] = useState<{ platform: string; confidence: number } | null>(null);
 
   const isActive = session ? ACTIVE_STATUSES.has(session.status as AutoApplyStatus) : false;
 
@@ -68,6 +70,49 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
     fetchStatus();
   }, [fetchStatus]);
 
+  // Background confidence calculation
+  useEffect(() => {
+    if (!jobUrl) return;
+    let isMounted = true;
+
+    fetch('/api/auto-apply/detect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobUrl }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!isMounted) return;
+        return fetch('/api/auto-apply/confidence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            platform: d.platform,
+            requiresLogin: false,
+            hasResumeUpload: true,
+            hasCoverLetterUpload: true,
+            hasCaptcha: false,
+            hasAssessments: false,
+            hasDynamicQuestionnaire: false,
+            hasWorkAuthQuestions: true,
+            hasSalaryQuestions: false,
+            previousSuccessRate: 0,
+          }),
+        })
+          .then((r) => r.json())
+          .then((conf) => {
+            if (isMounted) {
+              setBgConfidence({ platform: d.platform, confidence: conf.confidence });
+            }
+          });
+      })
+      .catch(() => null);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [jobUrl]);
+
   // Poll while active
   useEffect(() => {
     if (!isActive) return;
@@ -81,13 +126,21 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
     <div className="auto-apply-section">
       {/* Header row */}
       <div className="auto-apply-row">
-        <span className="auto-apply-label">
+        <span className="auto-apply-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           🤖 Auto Apply
           {session && (
             <AutoApplyStatusBadge
               status={session.status}
               failureReason={session.failureReason ?? undefined}
             />
+          )}
+          {bgConfidence && !session && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <AutoApplyConfidenceBadge confidence={bgConfidence.confidence} showLabel />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                ({bgConfidence.platform !== 'unknown' ? bgConfidence.platform.charAt(0).toUpperCase() + bgConfidence.platform.slice(1) : 'Custom Form'})
+              </span>
+            </span>
           )}
           {session?.simulationMode && session.status !== AutoApplyStatus.QUEUED && (
             <span
