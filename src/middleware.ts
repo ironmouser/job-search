@@ -12,7 +12,9 @@ export default withAuth(
     const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
     const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login';
 
-    if (isAuthPage || isPublicAsset || isPublicPage) {
+    const isWorkerApi = pathname.startsWith('/api/worker');
+
+    if (isAuthPage || isPublicAsset || isPublicPage || isWorkerApi) {
       return null;
     }
 
