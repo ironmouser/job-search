@@ -38,3 +38,7 @@ export async function POST(request: NextRequest) {
     serverTime: new Date().toISOString(),
   });
 }
+
+export async function GET(request: NextRequest) {
+  return POST(request);
+}

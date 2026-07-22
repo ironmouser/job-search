@@ -21,19 +21,21 @@ RUN npm ci
 COPY src/ ./src/
 RUN npm run build
 
+# Environment for Playwright browser cache location
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 # Install Playwright browsers (Chromium only) + OS-level browser dependencies
-RUN npx playwright install --with-deps chromium
+RUN npx playwright install --with-deps chromium && chmod -R 777 /ms-playwright
 
 # Prune devDependencies to keep runtime lean
 RUN npm prune --omit=dev
 
 # Create non-root user for security
-RUN useradd -ms /bin/bash worker && chown -R worker:worker /app
+RUN useradd -ms /bin/bash worker && chown -R worker:worker /app /ms-playwright
 USER worker
 
 # Environment
 ENV NODE_ENV=production
-ENV PLAYWRIGHT_BROWSERS_PATH=/home/worker/.cache/ms-playwright
 
 # Health check — worker exposes a minimal HTTP health endpoint on port 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
