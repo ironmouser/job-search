@@ -37,9 +37,35 @@ export async function POST(
 
         let description: string | null = null;
 
-        // 2. Try direct fetch first, fallback to Scrape.do proxy
-        const formatWithGemini = async (html: string): Promise<string> => {
-            return await reformatJobDescriptionWithGemini(html);
+        const extractContent = async (rawHtml: string): Promise<string | null> => {
+            const $ = cheerio.load(rawHtml);
+
+            // 1. Try extracting from JSON-LD schema (schema.org/JobPosting)
+            let jsonLdDesc: string | null = null;
+            $('script[type="application/ld+json"]').each((_, el) => {
+                try {
+                    const data = JSON.parse($(el).html() || '');
+                    if (data.description) {
+                        jsonLdDesc = data.description;
+                    } else if (data['@graph'] && Array.isArray(data['@graph'])) {
+                        const item = data['@graph'].find((g: any) => g.description);
+                        if (item?.description) jsonLdDesc = item.description;
+                    }
+                } catch {}
+            });
+
+            if (jsonLdDesc && jsonLdDesc.trim().length > 100) {
+                return await reformatJobDescriptionWithGemini(jsonLdDesc.trim());
+            }
+
+            // 2. Remove script/style noise and search DOM
+            $('script, style, noscript, nav, header, footer, iframe, svg').remove();
+            const htmlStr = $('main, article, .job-description, .job_description, #job-description, [class*="description"], [id*="description"]').html() || $('body').html() || '';
+            if (htmlStr.trim().length > 100) {
+                return await reformatJobDescriptionWithGemini(htmlStr.trim());
+            }
+
+            return null;
         };
 
         const fetchWithFallback = async (url: string): Promise<string | null> => {
@@ -54,10 +80,8 @@ export async function POST(
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     const bodyStr = res.body.toString();
                     if (!bodyStr.includes('Just a moment...') && !bodyStr.includes('cf-challenge-error-title')) {
-                        const $ = cheerio.load(bodyStr);
-                        $('script, style, noscript, nav, header, footer, iframe, svg').remove();
-                        const htmlStr = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').html() || $('body').html() || '';
-                        if (htmlStr.length > 100) return await formatWithGemini(htmlStr);
+                        const extracted = await extractContent(bodyStr);
+                        if (extracted) return extracted;
                     }
                 }
             } catch (e: any) {
@@ -76,10 +100,8 @@ export async function POST(
                         throwHttpErrors: false,
                     });
                     if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
-                        const $ = cheerio.load(sdRes.body);
-                        $('script, style, noscript, nav, header, footer, iframe, svg').remove();
-                        const htmlStr = $('main, article, .job-description, #job-description, [class*="description"], [id*="description"]').html() || $('body').html() || '';
-                        if (htmlStr.length > 100) return await formatWithGemini(htmlStr);
+                        const extracted = await extractContent(sdRes.body);
+                        if (extracted) return extracted;
                     }
                     console.warn(`Scrape.do fallback failed for ${url} (Status: ${sdRes.statusCode})`);
                 } catch (err: any) {
