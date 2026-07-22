@@ -37,7 +37,8 @@ export default withAuth(
         const pathname = req.nextUrl.pathname;
         const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login';
         const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
-        if (isPublicPage || isPublicAsset) return true;
+        const isWorkerApi = pathname.startsWith('/api/worker');
+        if (isPublicPage || isPublicAsset || isWorkerApi) return true;
         return !!token;
       },
     },
@@ -53,10 +54,11 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - api/auth (API routes for authentication)
      * - api/webhooks (Stripe and other webhooks)
+     * - api/worker (DigitalOcean worker endpoints)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      */
-    '/((?!api/auth|api/webhooks|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!api/auth|api/webhooks|api/worker|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 }
