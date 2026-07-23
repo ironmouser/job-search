@@ -462,16 +462,28 @@ export default function CoverLetterAssetCard({
                                 />
                             </div>
 
-                            {/* Sign-off edit */}
-                            <div>
-                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Sign-off</label>
-                                <input
-                                    type="text"
-                                    value={editSignOff}
-                                    onChange={(e) => setEditSignOff(e.target.value)}
-                                    placeholder="Sincerely,"
-                                    style={inlineInputStyle}
-                                />
+                            {/* Sign-off & Signature Name edit */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Sign-off</label>
+                                    <input
+                                        type="text"
+                                        value={editSignOff}
+                                        onChange={(e) => setEditSignOff(e.target.value)}
+                                        placeholder="Sincerely,"
+                                        style={inlineInputStyle}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Signature Name</label>
+                                    <input
+                                        type="text"
+                                        value={editSenderName}
+                                        onChange={(e) => setEditSenderName(e.target.value)}
+                                        placeholder="Your Name"
+                                        style={inlineInputStyle}
+                                    />
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
