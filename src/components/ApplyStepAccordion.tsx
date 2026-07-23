@@ -207,8 +207,8 @@ export function ApplyStepAccordion({
               <div>
                 <h4 style={{ margin: '0 0 0.5rem 0', color: '#ef4444' }}>Direct Link Required</h4>
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                  The current URL doesn't look like it supports Auto Apply (it might be a job board like Indeed or LinkedIn). 
-                  Try finding the company's direct career page and pasting the URL above to see if we can automate it!
+                  The current URL doesn't look like it supports Auto Apply (the application might be nested behind the apply button on a job board like Indeed or LinkedIn). 
+                  Try navigating to the company's direct career page and pasting the URL above to see if we can automate it!
                 </p>
                 <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.6 }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Detected Score:</span>
