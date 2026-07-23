@@ -9,18 +9,7 @@ import { scoreJob } from '@/lib/scoring';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-function cleanJobUrl(rawUrl: string): string {
-  try {
-    const parsed = new URL(rawUrl.trim());
-    // Strip common tracking query params
-    const trackingParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref', 'trackingid', 'trackingId', 'gh_src', 'src', 'trk'];
-    trackingParams.forEach(param => parsed.searchParams.delete(param));
-    return parsed.toString();
-  } catch {
-    return rawUrl.trim();
-  }
-}
-
+import { cleanJobUrl } from '@/lib/urlUtils';
 async function extractJobMetadataWithGemini(rawText: string) {
   if (!process.env.GEMINI_API_KEY || !rawText || rawText.trim().length === 0) {
     return null;

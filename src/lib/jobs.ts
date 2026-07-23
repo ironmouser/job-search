@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { getUserSettings } from './settings';
 import { reformatJobDescriptionWithGemini } from './formatter';
+import { cleanJobUrl } from './urlUtils';
 
 export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     if (!rawJobs || rawJobs.length === 0) return [];
@@ -25,10 +26,11 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     const processedUrls: string[] = [];
 
     for (const jobData of normalizedJobs) {
-      if (processedUrls.includes(jobData.url)) continue;
-      processedUrls.push(jobData.url);
+      const cleanedUrl = cleanJobUrl(jobData.url);
+      if (processedUrls.includes(cleanedUrl)) continue;
+      processedUrls.push(cleanedUrl);
 
-      let job = await prisma.job.findUnique({ where: { url: jobData.url } });
+      let job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
       if (!job) {
           let formattedDesc = jobData.description;
           if (formattedDesc && formattedDesc.length > 50 && !formattedDesc.includes('## ')) {
@@ -42,7 +44,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
                   location: jobData.location,
                   salaryRange: jobData.salaryRange,
                   description: formattedDesc,
-                  url: jobData.url,
+                  url: cleanedUrl,
                   source: jobData.source,
               }
           });
