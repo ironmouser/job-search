@@ -13,28 +13,35 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         
         const userId = session.user.id;
         const { id } = await context.params;
-        const { status, applied_at } = await request.json();
+        const { status, applied_at, applicationUrl } = await request.json();
 
-        if (!status) {
-            return NextResponse.json({ error: 'Status is required' }, { status: 400 });
+        if (applicationUrl) {
+            await prisma.job.update({
+                where: { id },
+                data: { applicationUrl }
+            });
         }
 
-        const updateData: any = { status };
-        if (applied_at) {
-            const headerStore = await headers();
-            const forwardedFor = headerStore.get('x-forwarded-for');
-            const ipAddress = forwardedFor ? forwardedFor.split(',')[0] : 'unknown';
-            
-            updateData.appliedAt = new Date(applied_at);
-            updateData.ipAddress = ipAddress;
+        if (status) {
+            const updateData: any = { status };
+            if (applied_at) {
+                const headerStore = await headers();
+                const forwardedFor = headerStore.get('x-forwarded-for');
+                const ipAddress = forwardedFor ? forwardedFor.split(',')[0] : 'unknown';
+                
+                updateData.appliedAt = new Date(applied_at);
+                updateData.ipAddress = ipAddress;
+            }
+
+            const data = await prisma.userJob.update({
+                where: { userId_jobId: { userId, jobId: id } },
+                data: updateData
+            });
+
+            return NextResponse.json(data);
         }
 
-        const data = await prisma.userJob.update({
-            where: { userId_jobId: { userId, jobId: id } },
-            data: updateData
-        });
-
-        return NextResponse.json(data);
+        return NextResponse.json({ success: true });
     } catch (e: any) {
         console.error('Failed to update job status:', e);
         return NextResponse.json({ error: e.message }, { status: 500 });

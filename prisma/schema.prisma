@@ -19,6 +19,7 @@ model Job {
   description      String?
   requirements     String?
   url              String    @unique
+  applicationUrl   String?   @map("application_url")
   source           String?
   status           String    @default("discovered")
   appliedAt        DateTime? @map("applied_at") @db.Timestamptz(6)
