@@ -662,13 +662,13 @@ body.light-theme .minimize-btn:hover {
 }
 
 .btn-auto-apply:disabled {
-  background-color: var(--bg-glass) !important;
-  color: var(--text-secondary) !important;
+  background-color: rgba(100, 116, 139, 0.12) !important;
+  color: #475569 !important;
   box-shadow: none !important;
   cursor: not-allowed;
   transform: none;
-  border: 1px solid var(--border-glass) !important;
-  opacity: 0.6;
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+  opacity: 0.95;
 }
 
 /* ─── Auto Apply Log Viewer ──────────────────────────────────────────── */

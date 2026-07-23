@@ -130,7 +130,7 @@ export function AutoApplyButton({
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
       >
         <Bot size={16} /> Auto Apply
-        {!hasAssets && <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>(generate assets first)</span>}
+        {!hasAssets && <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginLeft: '0.25rem' }}>(generate assets first)</span>}
       </button>
 
       {mounted && showModal && createPortal(

@@ -134,7 +134,7 @@ export function ApplyStepAccordion({
         style={{
           width: '100%',
           padding: '1rem 2rem',
-          background: isExpanded ? 'rgba(0, 0, 0, 0.02)' : 'transparent',
+          background: '#2663eb22',
           border: 'none',
           display: 'flex',
           justifyContent: 'space-between',
@@ -147,7 +147,7 @@ export function ApplyStepAccordion({
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>
           <Sparkles size={16} color="var(--accent-primary)" />
-          Automate with AI
+          Auto apply with AI
           {!isPro && (
             <span style={{ fontSize: '0.7rem', background: 'var(--accent-primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '0.5rem' }}>PRO</span>
           )}
@@ -219,9 +219,12 @@ export function ApplyStepAccordion({
           ) : (
             <div>
               {confidenceData && (
-                <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Automation Confidence:</span>
                   <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    ({confidenceData.platform !== 'unknown' ? confidenceData.platform.charAt(0).toUpperCase() + confidenceData.platform.slice(1) : 'Custom Form'})
+                  </span>
                 </div>
               )}
               <AutoApplyPanel

@@ -135,14 +135,6 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
               failureReason={session.failureReason ?? undefined}
             />
           )}
-          {bgConfidence && !session && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-              <AutoApplyConfidenceBadge confidence={bgConfidence.confidence} showLabel />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                ({bgConfidence.platform !== 'unknown' ? bgConfidence.platform.charAt(0).toUpperCase() + bgConfidence.platform.slice(1) : 'Custom Form'})
-              </span>
-            </span>
-          )}
           {session?.simulationMode && session.status !== AutoApplyStatus.QUEUED && (
             <span
               style={{ fontSize: '0.65rem', color: '#8b5cf6', border: '1px solid #8b5cf6', borderRadius: '9999px', padding: '0 0.35rem' }}
