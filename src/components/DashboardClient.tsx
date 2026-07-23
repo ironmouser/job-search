@@ -638,11 +638,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   const isViewed = !!(job.is_viewed || job.isViewed);
                   
                   const rowStyle: any = {
-                    borderBottom: isViewed ? '1px solid #2663EB' : '1px solid rgba(255,255,255,0.05)',
+                    borderBottom: '1px solid rgba(255,255,255,0.05)',
                     opacity: isDisliked ? 0.5 : 1,
-                    ...(isViewed ? {
-                      borderLeft: '3px solid #2663EB'
-                    } : {}),
                     ...(isUserAdded ? {
                       '--accent-primary': '#a855f7',
                       '--accent-secondary': '#9333ea',
@@ -657,7 +654,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   
                   return (
                     <tr key={job.id} style={rowStyle}>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '1rem', borderLeft: isViewed ? '4px solid #2663EB' : '4px solid transparent' }}>
                         <input 
                           type="checkbox" 
                           checked={checkedJobs.has(job.id)} 
