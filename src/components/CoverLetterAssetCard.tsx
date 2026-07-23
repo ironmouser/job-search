@@ -40,6 +40,12 @@ export default function CoverLetterAssetCard({
     companyName?: string;
     companyLocation?: string;
 }) {
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const initialCompany = cleanCompanyName(companyName);
+    const initialLoc = cleanCompanyLocation(companyLocation);
+    const initialSenderName = userName && userName !== 'My' ? userName : '';
+    const initialSenderContact = [userLocation, userPhone, userEmail].filter(Boolean).join('  |  ');
+
     const [content, setContent] = useState(cleanContent(initialContent));
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
     const [tone, setTone] = useState(initialTone || 'Confident and strategic');
@@ -48,6 +54,16 @@ export default function CoverLetterAssetCard({
     const [savedPref, setSavedPref] = useState(false);
     const [error, setError] = useState('');
     const [selectedColor, setSelectedColor] = useState('#06af9e');
+
+    // Document header & footer fields
+    const [headerDate, setHeaderDate] = useState(today);
+    const [recipientDept, setRecipientDept] = useState('Recruiting Department');
+    const [customCompany, setCustomCompany] = useState(initialCompany);
+    const [customLocation, setCustomLocation] = useState(initialLoc || '');
+    const [salutation, setSalutation] = useState('Dear Recruiting Team,');
+    const [signOff, setSignOff] = useState('Sincerely,');
+    const [senderName, setSenderName] = useState(initialSenderName);
+    const [senderContact, setSenderContact] = useState(initialSenderContact);
 
     useEffect(() => {
         const storedColor = localStorage.getItem('theme-selected-color');
@@ -66,14 +82,34 @@ export default function CoverLetterAssetCard({
         };
     }, []);
     
-    // Edit state
+    // Edit states
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(cleanContent(initialContent));
+    const [editHeaderDate, setEditHeaderDate] = useState(headerDate);
+    const [editRecipientDept, setEditRecipientDept] = useState(recipientDept);
+    const [editCompanyName, setEditCompanyName] = useState(customCompany);
+    const [editCompanyLocation, setEditCompanyLocation] = useState(customLocation);
+    const [editSalutation, setEditSalutation] = useState(salutation);
+    const [editSignOff, setEditSignOff] = useState(signOff);
+    const [editSenderName, setEditSenderName] = useState(senderName);
+    const [editSenderContact, setEditSenderContact] = useState(senderContact);
     const [isSaving, setIsSaving] = useState(false);
 
     const isPro = planTier === 'PRO';
     const regensLeft = 3 - regensUsed;
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const startEditing = () => {
+        setEditContent(cleanContent(content));
+        setEditHeaderDate(headerDate);
+        setEditRecipientDept(recipientDept);
+        setEditCompanyName(customCompany);
+        setEditCompanyLocation(customLocation);
+        setEditSalutation(salutation);
+        setEditSignOff(signOff);
+        setEditSenderName(senderName);
+        setEditSenderContact(senderContact);
+        setIsEditing(true);
+    };
 
     const handleRegenerate = async (instruction: string) => {
         if (!isPro || regensLeft <= 0) return;
@@ -88,8 +124,9 @@ export default function CoverLetterAssetCard({
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to regenerate');
-            setContent(cleanContent(data.newCoverLetter));
-            setEditContent(cleanContent(data.newCoverLetter));
+            const cleanedNewContent = cleanContent(data.newCoverLetter);
+            setContent(cleanedNewContent);
+            setEditContent(cleanedNewContent);
             setRegensUsed(data.regensUsed);
         } catch (err: any) {
             setError(err.message);
@@ -128,6 +165,14 @@ export default function CoverLetterAssetCard({
                 throw new Error(data.error || 'Failed to save edits');
             }
             setContent(editContent);
+            setHeaderDate(editHeaderDate);
+            setRecipientDept(editRecipientDept);
+            setCustomCompany(editCompanyName);
+            setCustomLocation(editCompanyLocation);
+            setSalutation(editSalutation);
+            setSignOff(editSignOff);
+            setSenderName(editSenderName);
+            setSenderContact(editSenderContact);
             setIsEditing(false);
         } catch (err: any) {
             setError(err.message);
@@ -142,13 +187,10 @@ export default function CoverLetterAssetCard({
         setError('');
     };
 
-    const nameParts = userName.split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.slice(1).join(' ');
+    const nameParts = (senderName || '').split(' ');
+    const senderFirstName = nameParts[0] || '';
+    const senderLastName = nameParts.slice(1).join(' ') || '';
     const letterBodyHtml = marked.parse(content || '') as string;
-
-    const displayCompany = cleanCompanyName(companyName);
-    const displayLocation = cleanCompanyLocation(companyLocation);
 
     const customCoverLetterHtml = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">
@@ -156,33 +198,33 @@ export default function CoverLetterAssetCard({
         <table style="width: 100%; border-bottom: 2px solid #e0e0e0; padding-bottom: 12px; margin-bottom: 20px;">
             <tr>
                 <td style="vertical-align: top;">
-                    ${userName && userName !== 'My' ? `
+                    ${senderName ? `
                     <span style="font-size: 16pt; font-weight: bold; letter-spacing: 0.04em; font-family: Arial, sans-serif; text-transform: uppercase;">
-                        <span style="color: ${selectedColor};">${firstName}</span>
-                        ${lastName ? `<span style="color: #1a1a1a;"> ${lastName}</span>` : ''}
+                        <span style="color: ${selectedColor};">${senderFirstName}</span>
+                        ${senderLastName ? `<span style="color: #1a1a1a;"> ${senderLastName}</span>` : ''}
                     </span>
                     ` : ''}
                 </td>
                 <td style="text-align: right; vertical-align: top; font-size: 9pt; color: #444; line-height: 1.6; font-family: Arial, sans-serif;">
-                    ${userLocation ? `<div>${userLocation}</div>` : ''}
-                    ${userPhone ? `<div>${userPhone}</div>` : ''}
-                    ${userEmail ? `<div style="color: ${selectedColor}; text-decoration: none;">${userEmail}</div>` : ''}
+                    ${senderContact ? `<div>${senderContact}</div>` : ''}
                 </td>
             </tr>
         </table>
 
         <!-- Date + recipient block -->
         <div style="margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 9.5pt; color: #333; line-height: 1.6;">
-            <div style="margin-bottom: 10px;">${today}</div>
-            <div>Recruiting Department</div>
-            ${displayCompany ? `<div>${displayCompany}</div>` : ''}
-            ${displayLocation ? `<div>${displayLocation}</div>` : ''}
+            ${headerDate ? `<div style="margin-bottom: 10px;">${headerDate}</div>` : ''}
+            ${recipientDept ? `<div>${recipientDept}</div>` : ''}
+            ${customCompany ? `<div>${customCompany}</div>` : ''}
+            ${customLocation ? `<div>${customLocation}</div>` : ''}
         </div>
 
         <!-- Salutation -->
+        ${salutation ? `
         <div style="margin-bottom: 15px; font-family: Arial, sans-serif; font-weight: bold; font-size: 10pt; color: #1a1a1a;">
-            Dear Recruiting Team,
+            ${salutation}
         </div>
+        ` : ''}
 
         <!-- Body -->
         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.7; color: #1a1a1a;">
@@ -195,9 +237,8 @@ export default function CoverLetterAssetCard({
             </style>
             ${letterBodyHtml}
             <div style="margin-top: 30px;">
-                Sincerely,<br />
-                ${userName && userName !== 'My' ? userName : ''}<br />
-                ${userPhone || ''}
+                ${signOff ? `${signOff}<br />` : ''}
+                ${senderName ? `${senderName}<br />` : ''}
             </div>
         </div>
     </div>
@@ -205,24 +246,35 @@ export default function CoverLetterAssetCard({
 
     // Full letter text for copy (includes header)
     const fullLetterText = [
-        userName && userName !== 'My' ? userName : '',
-        [userLocation, userPhone, userEmail].filter(Boolean).join('  |  '),
+        senderName || '',
+        senderContact || '',
         '',
-        today,
+        headerDate || '',
         '',
-        'Recruiting Department',
-        displayCompany || '',
-        displayLocation || '',
+        recipientDept || '',
+        customCompany || '',
+        customLocation || '',
         '',
-        'Dear Recruiting Team,',
+        salutation || '',
         '',
         content,
         '',
         '',
-        'Sincerely,',
-        userName && userName !== 'My' ? userName : '',
-        userPhone || '',
-    ].filter((line, i, arr) => !(line === '' && arr[i - 1] === '')).join('\n');
+        signOff || '',
+        senderName || '',
+    ].filter((line, i, arr) => line !== '' || (i > 0 && arr[i - 1] !== '')).join('\n');
+
+    const inlineInputStyle: React.CSSProperties = {
+        background: '#f4f4f5',
+        border: '1px solid #d4d4d8',
+        borderRadius: '4px',
+        padding: '0.35rem 0.6rem',
+        fontSize: '0.88rem',
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        color: '#1a1a1a',
+        width: '100%',
+        boxSizing: 'border-box',
+    };
 
     return (
         <details className="glass-card" style={{ cursor: 'pointer' }}>
@@ -231,7 +283,7 @@ export default function CoverLetterAssetCard({
                     <CheckCircle size={20} /> Cover Letter
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${userName.replace(/\s+/g, '_')}.pdf`} />
+                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.pdf`} />
                     <CopyToClipboardButton textToCopy={fullLetterText} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
@@ -282,16 +334,16 @@ export default function CoverLetterAssetCard({
 
                     {!isEditing && (
                         <button
-                            onClick={() => setIsEditing(true)}
+                            onClick={startEditing}
                             className="btn-outline"
                             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                         >
-                            <Edit2 size={14} /> Edit
+                            <Edit2 size={14} /> Edit Cover Letter
                         </button>
                     )}
                 </div>
 
-                {/* Letter Document */}
+                {/* Letter Document Paper */}
                 <div style={{
                     background: '#fff',
                     color: '#1a1a1a',
@@ -304,71 +356,125 @@ export default function CoverLetterAssetCard({
                     boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
                     border: '1px solid rgba(0,0,0,0.08)',
                 }}>
-                    {/* Header row: name left, contact right */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '2px solid #e0e0e0' }}>
-                        <div>
-                            {userName && userName !== 'My' && (
-                                <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.04em', color: '#1a1a1a', fontFamily: 'Arial, Helvetica, sans-serif', textTransform: 'uppercase' }}>
-                                    <span style={{ color: selectedColor }}>{firstName}</span>
-                                    {lastName ? <span style={{ color: '#1a1a1a' }}> {lastName}</span> : null}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{ textAlign: 'right', fontSize: '0.82rem', color: '#444', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-                            {userLocation && <div>{userLocation}</div>}
-                            {userPhone && <div>{userPhone}</div>}
-                            {userEmail && <div style={{ color: selectedColor }}>{userEmail}</div>}
-                        </div>
-                    </div>
-
-                    {/* Date + recipient block */}
-                    <div style={{ marginBottom: '1.5rem', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.88rem', color: '#333', lineHeight: 1.7 }}>
-                        <div style={{ marginBottom: '0.75rem' }}>{today}</div>
-                        <div>Recruiting Department</div>
-                        {displayCompany ? <div>{displayCompany}</div> : null}
-                        {displayLocation ? <div>{displayLocation}</div> : null}
-                    </div>
-
-                    {/* Salutation */}
-                    <div style={{ marginBottom: '1rem', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: '#1a1a1a' }}>
-                        Dear Recruiting Team,
-                    </div>
-
-                    {/* Letter body */}
-                    <style dangerouslySetInnerHTML={{ __html: `
-                        .custom-coverletter-preview h1, 
-                        .custom-coverletter-preview h2, 
-                        .custom-coverletter-preview h3, 
-                        .custom-coverletter-preview h4, 
-                        .custom-coverletter-preview h5, 
-                        .custom-coverletter-preview h6 {
-                            color: ${selectedColor} !important;
-                        }
-                        .custom-coverletter-preview a {
-                            color: ${selectedColor} !important;
-                        }
-                    `}} />
 
                     {isEditing ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <textarea
-                                value={editContent}
-                                onChange={(e) => setEditContent(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    minHeight: '260px',
-                                    padding: '1rem',
-                                    borderRadius: '6px',
-                                    border: '1px solid #ccc',
-                                    background: '#f9f9f9',
-                                    color: '#1a1a1a',
-                                    fontFamily: 'monospace',
-                                    fontSize: '0.9rem',
-                                    resize: 'vertical',
-                                    boxSizing: 'border-box',
-                                }}
-                            />
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        /* EDIT MODE */
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {/* Header row edit */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', paddingBottom: '1.25rem', borderBottom: '2px solid #e0e0e0' }}>
+                                <div style={{ flex: '1 1 200px' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Sender Name</label>
+                                    <input
+                                        type="text"
+                                        value={editSenderName}
+                                        onChange={(e) => setEditSenderName(e.target.value)}
+                                        placeholder="Your Name"
+                                        style={inlineInputStyle}
+                                    />
+                                </div>
+                                <div style={{ flex: '1 1 200px', textAlign: 'right' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Contact Info</label>
+                                    <input
+                                        type="text"
+                                        value={editSenderContact}
+                                        onChange={(e) => setEditSenderContact(e.target.value)}
+                                        placeholder="Location | Phone | Email"
+                                        style={{ ...inlineInputStyle, textAlign: 'right' }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Recipient block edit */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Date</label>
+                                    <input
+                                        type="text"
+                                        value={editHeaderDate}
+                                        onChange={(e) => setEditHeaderDate(e.target.value)}
+                                        placeholder="Date"
+                                        style={inlineInputStyle}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Department</label>
+                                    <input
+                                        type="text"
+                                        value={editRecipientDept}
+                                        onChange={(e) => setEditRecipientDept(e.target.value)}
+                                        placeholder="Recruiting Department"
+                                        style={inlineInputStyle}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Company Name</label>
+                                    <input
+                                        type="text"
+                                        value={editCompanyName}
+                                        onChange={(e) => setEditCompanyName(e.target.value)}
+                                        placeholder="Company Name"
+                                        style={inlineInputStyle}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Company Location</label>
+                                    <input
+                                        type="text"
+                                        value={editCompanyLocation}
+                                        onChange={(e) => setEditCompanyLocation(e.target.value)}
+                                        placeholder="City, State (leave blank if remote)"
+                                        style={inlineInputStyle}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Salutation edit */}
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Salutation</label>
+                                <input
+                                    type="text"
+                                    value={editSalutation}
+                                    onChange={(e) => setEditSalutation(e.target.value)}
+                                    placeholder="Dear Hiring Team,"
+                                    style={inlineInputStyle}
+                                />
+                            </div>
+
+                            {/* Body edit */}
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Letter Body</label>
+                                <textarea
+                                    value={editContent}
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        minHeight: '260px',
+                                        padding: '1rem',
+                                        borderRadius: '6px',
+                                        border: '1px solid #ccc',
+                                        background: '#f9f9f9',
+                                        color: '#1a1a1a',
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.9rem',
+                                        resize: 'vertical',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                            </div>
+
+                            {/* Sign-off edit */}
+                            <div>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Sign-off</label>
+                                <input
+                                    type="text"
+                                    value={editSignOff}
+                                    onChange={(e) => setEditSignOff(e.target.value)}
+                                    placeholder="Sincerely,"
+                                    style={inlineInputStyle}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                                 <button onClick={cancelEdit} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     <X size={16} /> Cancel
                                 </button>
@@ -378,16 +484,63 @@ export default function CoverLetterAssetCard({
                             </div>
                         </div>
                     ) : (
+                        /* VIEW MODE */
                         <div>
+                            {/* Header row: name left, contact right */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '2px solid #e0e0e0' }}>
+                                <div>
+                                    {senderName && (
+                                        <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.04em', color: '#1a1a1a', fontFamily: 'Arial, Helvetica, sans-serif', textTransform: 'uppercase' }}>
+                                            <span style={{ color: selectedColor }}>{senderFirstName}</span>
+                                            {senderLastName ? <span style={{ color: '#1a1a1a' }}> {senderLastName}</span> : null}
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ textAlign: 'right', fontSize: '0.82rem', color: '#444', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                                    {senderContact && <div>{senderContact}</div>}
+                                </div>
+                            </div>
+
+                            {/* Date + recipient block */}
+                            <div style={{ marginBottom: '1.5rem', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.88rem', color: '#333', lineHeight: 1.7 }}>
+                                {headerDate && <div style={{ marginBottom: '0.75rem' }}>{headerDate}</div>}
+                                {recipientDept && <div>{recipientDept}</div>}
+                                {customCompany && <div>{customCompany}</div>}
+                                {customLocation && <div>{customLocation}</div>}
+                            </div>
+
+                            {/* Salutation */}
+                            {salutation && (
+                                <div style={{ marginBottom: '1rem', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: '#1a1a1a' }}>
+                                    {salutation}
+                                </div>
+                            )}
+
+                            {/* Letter body */}
+                            <style dangerouslySetInnerHTML={{ __html: `
+                                .custom-coverletter-preview h1, 
+                                .custom-coverletter-preview h2, 
+                                .custom-coverletter-preview h3, 
+                                .custom-coverletter-preview h4, 
+                                .custom-coverletter-preview h5, 
+                                .custom-coverletter-preview h6 {
+                                    color: ${selectedColor} !important;
+                                }
+                                .custom-coverletter-preview a {
+                                    color: ${selectedColor} !important;
+                                }
+                            `}} />
+
                             <div
                                 className="custom-coverletter-preview"
                                 style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a' }}
                                 dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
                             />
+
+                            {/* Footer */}
                             <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a', marginTop: '2rem' }}>
-                                Sincerely,<br />
-                                {userName && userName !== 'My' ? userName : ''}<br />
-                                {userPhone || ''}
+                                {signOff && <div>{signOff}</div>}
+                                {senderName && <div>{senderName}</div>}
                             </div>
                         </div>
                     )}
