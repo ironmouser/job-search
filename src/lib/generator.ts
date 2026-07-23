@@ -70,11 +70,14 @@ ${baseResume}
     });
 
     console.log("ANTHROPIC RAW RESPONSE:", JSON.stringify(response, null, 2));
-    const responseText = (response as any).content?.[0]?.text || '';
+    let responseText = (response as any).content?.[0]?.text || '';
     
     if (!responseText) {
         throw new Error(`Anthropic response missing text content: ${JSON.stringify(response)}`);
     }
+
+    // Force-sanitize any em-dashes that the model hallucinates despite prompt instructions
+    responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
 
     // Extract just the JSON object from the response using regex to ignore conversational text
     const match = responseText.match(/\{[\s\S]*\}/);
@@ -207,11 +210,13 @@ ${question}
         ],
     });
 
-    const responseText = (response as any).content?.[0]?.text || '';
+    let responseText = (response as any).content?.[0]?.text || '';
     
     if (!responseText) {
         throw new Error(`Anthropic response missing text content: ${JSON.stringify(response)}`);
     }
+
+    responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
 
     return responseText.trim();
 }
@@ -251,7 +256,9 @@ Output ONLY the Markdown string of the tailored resume in plain text. Do not wra
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
     });
-    return ((response as any).content?.[0]?.text || '').trim();
+    let responseText = ((response as any).content?.[0]?.text || '').trim();
+    responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
+    return responseText;
 }
 
 export async function regenerateCoverLetter(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
@@ -289,7 +296,9 @@ Output ONLY the cover letter body in plain text (no JSON wrapping).`;
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
     });
-    return ((response as any).content?.[0]?.text || '').trim();
+    let responseText = ((response as any).content?.[0]?.text || '').trim();
+    responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
+    return responseText;
 }
 
 export async function regenerateNetworkingMessage(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
@@ -325,5 +334,7 @@ Output ONLY the text of the networking message. Do not wrap it in JSON.`;
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
     });
-    return ((response as any).content?.[0]?.text || '').trim();
+    let responseText = ((response as any).content?.[0]?.text || '').trim();
+    responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
+    return responseText;
 }

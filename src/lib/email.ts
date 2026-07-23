@@ -77,11 +77,33 @@ export async function fetchEmailsAndExtractJobs(userId: string) {
         const parsed = await simpleParser(source);
         const text = parsed.text || '';
         const html = parsed.html || '';
+        const subject = parsed.subject || '';
 
-        // Extract raw URLs just in case mailparser missed them in .text
+        // Filter out emails from personal/free domains to avoid scammers
+        const fromAddress = parsed.from?.value?.[0]?.address?.toLowerCase() || '';
+        const personalDomains = ['@gmail.com', '@yahoo.com', '@outlook.com', '@hotmail.com', '@aol.com', '@icloud.com'];
+        if (personalDomains.some(domain => fromAddress.endsWith(domain))) {
+             continue;
+        }
+
+        // Pre-filter: Check if the email likely contains a job
+        const emailContent = `${subject} ${text}`.toLowerCase();
+        const jobKeywords = ['job', 'role', 'opportunity', 'career', 'hiring', 'engineer', 'developer', 'position', 'application', 'manager', 'director', 'interview'];
+        const looksLikeJobEmail = jobKeywords.some(keyword => emailContent.includes(keyword));
+
+        if (!looksLikeJobEmail) continue;
+
+        // Extract all unique URLs from HTML
         const urlRegex = /(https?:\/\/[^\s<"']+)/g;
         const matches = html.match(urlRegex) || [];
-        const uniqueUrls = Array.from(new Set(matches)).filter(u => JOB_BOARDS.some(b => u.toLowerCase().includes(b)));
+        
+        // Filter out media/assets and obvious non-job links
+        const uniqueUrls = Array.from(new Set(matches)).filter(u => {
+             const lower = u.toLowerCase();
+             if (lower.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf)$/i)) return false;
+             if (lower.includes('unsubscribe') || lower.includes('preferences') || lower.includes('notifications') || lower.includes('privacy')) return false;
+             return true;
+        });
 
         if (!text && uniqueUrls.length === 0) continue;
 
