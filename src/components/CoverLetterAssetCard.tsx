@@ -5,6 +5,7 @@ import { Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, Chevro
 import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadPdfButton from './DownloadPdfButton';
+import { cleanCompanyName, cleanCompanyLocation } from '@/lib/cleaners';
 
 const cleanContent = (text: string) => {
     if (!text) return '';
@@ -146,6 +147,9 @@ export default function CoverLetterAssetCard({
     const lastName = nameParts.slice(1).join(' ');
     const letterBodyHtml = marked.parse(content || '') as string;
 
+    const displayCompany = cleanCompanyName(companyName);
+    const displayLocation = cleanCompanyLocation(companyLocation);
+
     const customCoverLetterHtml = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">
         <!-- Header: Name left, contact right -->
@@ -171,8 +175,8 @@ export default function CoverLetterAssetCard({
         <div style="margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 9.5pt; color: #333; line-height: 1.6;">
             <div style="margin-bottom: 10px;">${today}</div>
             <div>Recruiting Department</div>
-            ${companyName ? `<div>${companyName}</div>` : ''}
-            ${companyLocation ? `<div>${companyLocation}</div>` : ''}
+            ${displayCompany ? `<div>${displayCompany}</div>` : ''}
+            ${displayLocation ? `<div>${displayLocation}</div>` : ''}
         </div>
 
         <!-- Salutation -->
@@ -207,8 +211,8 @@ export default function CoverLetterAssetCard({
         today,
         '',
         'Recruiting Department',
-        companyName || '',
-        companyLocation || '',
+        displayCompany || '',
+        displayLocation || '',
         '',
         'Dear Recruiting Team,',
         '',
@@ -321,8 +325,8 @@ export default function CoverLetterAssetCard({
                     <div style={{ marginBottom: '1.5rem', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.88rem', color: '#333', lineHeight: 1.7 }}>
                         <div style={{ marginBottom: '0.75rem' }}>{today}</div>
                         <div>Recruiting Department</div>
-                        {companyName && <div>{companyName}</div>}
-                        {companyLocation && <div>{companyLocation}</div>}
+                        {displayCompany ? <div>{displayCompany}</div> : null}
+                        {displayLocation ? <div>{displayLocation}</div> : null}
                     </div>
 
                     {/* Salutation */}

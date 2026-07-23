@@ -10,6 +10,7 @@ import CopyToClipboardButton from '@/components/CopyToClipboardButton';
 import BackToTopButton from '@/components/BackToTopButton';
 import GenerateAssetsButton from '@/components/GenerateAssetsButton';
 import NetworkingAssetCard from '@/components/NetworkingAssetCard';
+import { cleanCompanyName } from '@/lib/cleaners';
 import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
 import ResumeAssetCard from '@/components/ResumeAssetCard';
 import AutoFetchJobDetails from '@/components/AutoFetchJobDetails';
@@ -150,7 +151,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
 
       <div className="flex-stack-mobile" style={{ marginBottom: '3rem' }}>
         <div>
-          <h4 className="job-company" style={{ fontSize: '1rem' }}>{job.company}</h4>
+          <h4 className="job-company" style={{ fontSize: '1rem' }}>{cleanCompanyName(job.company)}</h4>
           <h1 className="page-title">{job.title}</h1>
           <div className="job-meta" style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={16} /> {job.location || 'Remote'}</span>
@@ -228,7 +229,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   userLocation={userLocation}
                   userPhone={userPhone}
                   userEmail={user?.email || undefined}
-                  companyName={job.company}
+                  companyName={cleanCompanyName(job.company)}
                   companyLocation={job.location || undefined}
                 />
                 
@@ -266,7 +267,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   Ready to apply? Click the "Apply to Job" button to open the job application on the company's career page.
                 </p>
               </div>
-              <AutofillButton jobId={job.id} jobUrl={job.url} jobTitle={job.title} jobCompany={job.company} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
+              <AutofillButton jobId={job.id} jobUrl={job.url} jobTitle={job.title} jobCompany={cleanCompanyName(job.company)} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
             </div>
           </section>
 

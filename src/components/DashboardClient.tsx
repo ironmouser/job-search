@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check } from 'lucide-react';
+import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
@@ -308,9 +309,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
     // 0. Apply Source Filter (Email vs Scraped)
     if (sourceFilter === 'email') {
-      result = result.filter(j => j.company?.includes('(Scraped via Email)'));
+      result = result.filter(j => j.company?.includes('(Scraped via Email)') || j.source?.toLowerCase().includes('email'));
     } else if (sourceFilter === 'scraped') {
-      result = result.filter(j => !j.company?.includes('(Scraped via Email)'));
+      result = result.filter(j => !j.company?.includes('(Scraped via Email)') && !j.source?.toLowerCase().includes('email'));
     }
 
     // Apply Date Range Filter
@@ -628,7 +629,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               {currentJobs.map(job => {
                   const score = job.opportunity_scores?.[0]?.total_score;
                   const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
-                  const isEmailJob = job.company?.includes('(Scraped via Email)');
+                  const isEmailJob = job.company?.includes('(Scraped via Email)') || job.source?.toLowerCase().includes('email');
                   const isUserAdded = job.unlockedBySubmission === true;
                   
                   // job_feedback is a 1-to-1 relation, so it's an object or null, not an array.
@@ -664,7 +665,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                       </td>
                       <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase', fontSize: '0.85rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                          <span>{job.company}</span>
+                          <span>{cleanCompanyName(job.company)}</span>
                           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             {getConfidenceBadge(job.automation_confidence)}
                             {isUserAdded && (
@@ -744,7 +745,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           {currentJobs.map((job) => {
             const score = job.opportunity_scores?.[0]?.total_score;
             const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
-            const isEmailJob = job.company?.includes('(Scraped via Email)');
+            const isEmailJob = job.company?.includes('(Scraped via Email)') || job.source?.toLowerCase().includes('email');
             const isUserAdded = job.unlockedBySubmission === true;
             
             const feedbackObj = Array.isArray(job.job_feedback) ? job.job_feedback[0] : job.job_feedback;
@@ -779,7 +780,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                 <div className="job-header">
                   <div>
                     <div className="job-company" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {job.company}
+                      {cleanCompanyName(job.company)}
                       {getConfidenceBadge(job.automation_confidence)}
                       {isUserAdded && (
                         <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>

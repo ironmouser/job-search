@@ -3,6 +3,7 @@ import { prisma } from './prisma';
 import fs from 'fs';
 import path from 'path';
 import { getUserSettings } from './settings';
+import { cleanCompanyName } from './cleaners';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -12,6 +13,8 @@ export async function generateAssetsForJob(userId: string, jobId: string, jobTit
     if (!process.env.ANTHROPIC_API_KEY) {
         throw new Error('ANTHROPIC_API_KEY is missing.');
     }
+
+    const cleanCompany = cleanCompanyName(company);
 
     const settings = await getUserSettings(userId);
     const driftPercentage = settings.resumeCustomizationMaxPercentage || 25;
@@ -48,7 +51,7 @@ Return the result as a JSON object with EXACTLY these keys:
 }`;
 
     const userPrompt = `
-COMPANY: ${company}
+COMPANY: ${cleanCompany}
 JOB TITLE: ${jobTitle}
 
 JOB DESCRIPTION:
@@ -134,6 +137,8 @@ export async function generateApplicationAnswer(
         throw new Error('ANTHROPIC_API_KEY is missing.');
     }
 
+    const cleanCompany = cleanCompanyName(company);
+
     const settings = await getUserSettings(userId);
     const finalTone = tone || 'Confident and strategic';
     const profile = settings.profile || 'No profile specified.';
@@ -182,7 +187,7 @@ CRITICAL GUARDRAILS:
 Output ONLY the answer to the question in plain text. Do not wrap it in JSON. Do not include any introductory or conversational text.`;
 
     const userPrompt = `
-COMPANY: ${company}
+COMPANY: ${cleanCompany}
 JOB TITLE: ${jobTitle}
 
 JOB DESCRIPTION:
@@ -248,7 +253,8 @@ CRITICAL GUARDRAILS:
 
 Output ONLY the Markdown string of the tailored resume in plain text. Do not wrap it in JSON or Markdown blocks like \`\`\`markdown.`;
 
-    const userPrompt = `COMPANY: ${company}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    const cleanCompany = cleanCompanyName(company);
+    const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
     const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
@@ -288,7 +294,8 @@ CRITICAL GUARDRAILS:
 
 Output ONLY the cover letter body in plain text (no JSON wrapping).`;
 
-    const userPrompt = `COMPANY: ${company}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    const cleanCompany = cleanCompanyName(company);
+    const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
     const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
@@ -326,7 +333,8 @@ CRITICAL GUARDRAILS:
 
 Output ONLY the text of the networking message. Do not wrap it in JSON.`;
 
-    const userPrompt = `COMPANY: ${company}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    const cleanCompany = cleanCompanyName(company);
+    const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
     const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',

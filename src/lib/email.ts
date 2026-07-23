@@ -2,6 +2,7 @@ import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { prisma } from './prisma';
 import { normalizeAndSaveJobs } from './jobs';
+import { cleanCompanyName } from './cleaners';
 import { extractJobsFromEmailText } from './scoring';
 import { decrypt } from './encryption';
 
@@ -132,7 +133,7 @@ ${uniqueUrls.join('\n')}
              
              rawJobs.push({
                 title: jobTitle,
-                company: (job.company || 'Unknown Company') + ' (Scraped via Email)',
+                company: cleanCompanyName(job.company) || 'Unknown Company',
                 location: job.location || 'Remote/Unknown',
                 salary_range: null,
                 description: job.description || `Found via email link: ${job.url}`,
