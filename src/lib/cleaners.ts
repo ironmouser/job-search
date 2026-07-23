@@ -4,12 +4,12 @@
  */
 export function cleanCompanyName(company?: string | null): string {
   if (!company) return '';
-  return company
-    .replace(/\s*\([^)]*scraped[^)]*\)/gi, '')
-    .replace(/\s*\([^)]*email[^)]*\)/gi, '')
-    .replace(/\s*\(via Email\)/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  let cleaned = company.trim();
+  // Remove all parenthetical notes (e.g. "(Scraped via Email)", "(Remote)", "(US)")
+  cleaned = cleaned.replace(/\s*\([^)]*\)/g, '');
+  // Remove trailing metadata separated by dashes or pipes (e.g. " - Remote", " | Careers")
+  cleaned = cleaned.replace(/\s*[\-\|–—]\s*(remote|scraped|email|careers|jobs|hiring|via).*$/gi, '');
+  return cleaned.replace(/\s+/g, ' ').trim();
 }
 
 /**
