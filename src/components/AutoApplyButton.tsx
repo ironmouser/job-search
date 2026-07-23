@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoApplyStatus, ATSPlatform, ConfidenceResult } from '@/lib/auto-apply/types';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
+import { Bot, Square, X, AlertTriangle, Clock, Play, Send } from 'lucide-react';
 
 
 interface AutoApplyButtonProps {
@@ -109,11 +110,11 @@ export function AutoApplyButton({
     return (
       <button
         className="btn-auto-apply"
-        style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
         onClick={handleCancel}
         id={`auto-apply-cancel-${jobId}`}
       >
-        ⏹ Cancel Auto Apply
+        <Square size={14} /> Cancel Auto Apply
       </button>
     );
   }
@@ -126,8 +127,9 @@ export function AutoApplyButton({
         onClick={() => setShowModal(true)}
         id={`auto-apply-btn-${jobId}`}
         title={!hasAssets ? 'Generate resume and cover letter first' : 'Start Auto Apply'}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
       >
-        🤖 Auto Apply
+        <Bot size={16} /> Auto Apply
         {!hasAssets && <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>(generate assets first)</span>}
       </button>
 
@@ -152,8 +154,13 @@ export function AutoApplyButton({
             id="auto-apply-modal"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>🤖 Auto Apply Pre-Flight</h3>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: 'var(--text-muted)' }}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Bot size={20} color="var(--accent-primary, #4f46e5)" />
+                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Auto Apply Pre-Flight</h3>
+              </div>
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                <X size={18} />
+              </button>
             </div>
 
             {loading ? (
@@ -163,10 +170,12 @@ export function AutoApplyButton({
                 {/* ATS Detection */}
                 <div style={{ background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Platform Detected</span>
-                  <span style={{ fontWeight: 700, textTransform: 'capitalize' }}>
+                  <span style={{ fontWeight: 700, textTransform: 'capitalize', display: 'inline-flex', alignItems: 'center' }}>
                     {detection?.platform ?? 'Unknown'}
                     {!detection?.automationSupported && (
-                      <span style={{ fontSize: '0.7rem', color: '#fbbf24', marginLeft: '0.5rem' }}>⚠ Limited support</span>
+                      <span style={{ fontSize: '0.7rem', color: '#fbbf24', marginLeft: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                        <AlertTriangle size={12} /> Limited support
+                      </span>
                     )}
                   </span>
                 </div>
@@ -179,7 +188,9 @@ export function AutoApplyButton({
                       <AutoApplyConfidenceBadge confidence={confidenceResult.confidence} />
                     </div>
                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{confidenceResult.explanation}</p>
-                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>⏱ Est. time: {confidenceResult.estimatedCompletionTime}</p>
+                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <Clock size={13} /> Est. time: {confidenceResult.estimatedCompletionTime}
+                    </p>
                   </div>
                 )}
 
@@ -208,10 +219,10 @@ export function AutoApplyButton({
                     className="btn-primary"
                     onClick={handleStart}
                     disabled={starting}
-                    style={{ flex: 2 }}
+                    style={{ flex: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
                     id="auto-apply-start-btn"
                   >
-                    {starting ? 'Starting…' : simulationMode ? '▶ Run Simulation' : '🚀 Submit Application'}
+                    {starting ? 'Starting…' : simulationMode ? <><Play size={14} /> Run Simulation</> : <><Send size={14} /> Submit Application</>}
                   </button>
                 </div>
               </>

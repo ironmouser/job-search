@@ -220,6 +220,7 @@ details[open] summary .accordion-chevron {
 
 /* Custom Top Stat Cards */
 .top-stat-card {
+  padding: 1rem !important;
   background-color: rgba(0, 0, 0, 0.2) !important;
   border: none !important;
   box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.5), inset -1px -1px 2px rgba(255, 255, 255, 0.05) !important;
@@ -245,7 +246,7 @@ body.light-theme .top-stat-card.active {
 }
 
 .sidebar {
-  width: 260px;
+  width: 270px;
   background: var(--bg-surface);
   border-right: 1px solid var(--border-glass);
   padding: 2rem 1.5rem;

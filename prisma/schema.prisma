@@ -259,6 +259,8 @@ model UserJob {
   appliedAt  DateTime? @map("applied_at") @db.Timestamptz(6)
   ipAddress  String?   @map("ip_address")
   isArchived Boolean   @default(false) @map("is_archived")
+  isPrivate Boolean   @default(false) @map("is_private")
+  unlockedBySubmission Boolean @default(false) @map("unlocked_by_submission")
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)

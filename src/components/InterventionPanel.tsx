@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AlertTriangle, Check, ShieldAlert, Smartphone, HelpCircle, FileText, Paperclip, Key, ClipboardList } from 'lucide-react';
 
 interface InterventionPanelProps {
   interventionId: string;
@@ -12,15 +13,28 @@ interface InterventionPanelProps {
 }
 
 const REASON_LABELS: Record<string, string> = {
-  captcha:              '🔐 CAPTCHA Required',
-  mfa_required:         '📱 Two-Factor Authentication',
-  unknown_question:     '❓ Unknown Question',
-  unexpected_page:      '⚠ Unexpected Page',
-  resume_rejected:      '📄 Resume Rejected',
-  attachment_missing:   '📎 Attachment Missing',
-  login_required:       '🔑 Login Required',
-  assessment_required:  '📝 Assessment Required',
+  captcha:              'CAPTCHA Required',
+  mfa_required:         'Two-Factor Authentication',
+  unknown_question:     'Unknown Question',
+  unexpected_page:      'Unexpected Page',
+  resume_rejected:      'Resume Rejected',
+  attachment_missing:   'Attachment Missing',
+  login_required:       'Login Required',
+  assessment_required:  'Assessment Required',
 };
+
+function getReasonIcon(reason: string) {
+  switch (reason) {
+    case 'captcha': return <ShieldAlert size={16} color="#fbbf24" />;
+    case 'mfa_required': return <Smartphone size={16} color="#fbbf24" />;
+    case 'unknown_question': return <HelpCircle size={16} color="#fbbf24" />;
+    case 'resume_rejected': return <FileText size={16} color="#fbbf24" />;
+    case 'attachment_missing': return <Paperclip size={16} color="#fbbf24" />;
+    case 'login_required': return <Key size={16} color="#fbbf24" />;
+    case 'assessment_required': return <ClipboardList size={16} color="#fbbf24" />;
+    default: return <AlertTriangle size={16} color="#fbbf24" />;
+  }
+}
 
 export function InterventionPanel({
   interventionId,
@@ -62,7 +76,7 @@ export function InterventionPanel({
       id={`intervention-panel-${interventionId}`}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span style={{ fontSize: '1rem' }}>⚠</span>
+        {getReasonIcon(reason)}
         <span style={{ fontWeight: 700, color: '#fbbf24' }}>
           {REASON_LABELS[reason] ?? reason}
         </span>
@@ -101,10 +115,10 @@ export function InterventionPanel({
           className="btn-primary"
           onClick={() => resolve('completed')}
           disabled={resolving}
-          style={{ flex: 2 }}
+          style={{ flex: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
           id={`intervention-resolve-${interventionId}`}
         >
-          {resolving && resolution === 'completed' ? 'Resuming…' : '✓ I Fixed It — Resume'}
+          {resolving && resolution === 'completed' ? 'Resuming…' : <><Check size={14} /> I Fixed It — Resume</>}
         </button>
         <button
           className="btn-outline"

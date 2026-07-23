@@ -86,7 +86,7 @@ export default function AnalyticsDashboard() {
 
 function StatCard({ title, value, icon }: { title: string, value: number, icon: React.ReactNode }) {
   return (
-    <div className="glass-card top-stat-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+    <div className="glass-card top-stat-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {icon}

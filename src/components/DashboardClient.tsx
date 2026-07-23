@@ -8,6 +8,7 @@ import SyncButton from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter, useSearchParams } from 'next/navigation';
 import OnboardingWidget from '@/components/common/OnboardingWidget';
+import AddJobUrlBar from '@/components/AddJobUrlBar';
 
 import SyncOverlay from './SyncOverlay';
 
@@ -20,6 +21,12 @@ const getConfidenceBadge = (score?: number) => {
 
 export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean }) {
   const router = useRouter();
+  const [jobList, setJobList] = useState<any[]>(jobs || []);
+
+  useEffect(() => {
+    setJobList(jobs || []);
+  }, [jobs]);
+
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
@@ -176,11 +183,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     });
   };
 
-  const unarchivedJobs = jobs?.filter(j => !j.is_archived) || [];
+  const unarchivedJobs = jobList?.filter(j => !j.is_archived) || [];
   const totalDiscovered = unarchivedJobs.length;
   const totalScored = unarchivedJobs.filter(j => j.status !== 'discovered').length;
   const highlyScored = unarchivedJobs.filter(j => j.opportunity_scores?.[0]?.total_score >= 80).length;
-  const totalArchived = jobs?.filter(j => j.is_archived).length || 0;
+  const totalArchived = jobList?.filter(j => j.is_archived).length || 0;
 
   const handleEmailSync = async () => {
     if (userPlanTier !== 'PRO') {
@@ -239,7 +246,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   // Extract unique locations for the filter dropdown
   const uniqueLocations = useMemo(() => {
     const locs = new Set<string>();
-    jobs?.forEach(j => {
+    jobList?.forEach(j => {
       if (!j.location) return;
       const locLower = j.location.toLowerCase();
       if (locLower.includes('remote')) {
@@ -252,7 +259,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       }
     });
     return Array.from(locs).sort();
-  }, [jobs]);
+  }, [jobList]);
 
   // Helper to extract max salary for sorting
   const extractMaxSalary = (salaryStr: string | null) => {
@@ -264,7 +271,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   };
 
   const filteredAndSortedJobs = useMemo(() => {
-    let result = [...(jobs || [])];
+    let result = [...(jobList || [])];
 
     // 0. Apply Source Filter (Email vs Scraped)
     if (sourceFilter === 'email') {
@@ -332,7 +339,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     });
 
     return result;
-  }, [jobs, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate]);
+  }, [jobList, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate]);
 
   useEffect(() => {
     if (isPageInitialized.current) {
@@ -414,7 +421,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'all' ? 'active' : ''}`}
           onClick={() => setActiveFilter('all')}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', padding: '1rem' }}
         >
           <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Jobs Found</h4>
           <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalDiscovered}</h2>
@@ -422,7 +429,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'scored' ? 'active' : ''}`}
           onClick={() => setActiveFilter('scored')}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', padding: '1rem' }}
         >
           <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Scored</h4>
           <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalScored}</h2>
@@ -430,7 +437,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'high_fit' ? 'active' : ''}`}
           onClick={() => setActiveFilter('high_fit')}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', padding: '1rem' }}
         >
           <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Great Matches (&gt;80)</h4>
           <h2 style={{ fontSize: '2.5rem', color: 'var(--accent-primary)', margin: 0, marginTop: '0.25rem' }}>{highlyScored}</h2>
@@ -438,12 +445,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'archived' ? 'active' : ''}`}
           onClick={() => setActiveFilter('archived')}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', padding: '1rem' }}
         >
           <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Archived</h4>
           <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalArchived}</h2>
         </div>
       </div>
+
+      <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -571,6 +580,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   const score = job.opportunity_scores?.[0]?.total_score;
                   const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
                   const isEmailJob = job.company?.includes('(Scraped via Email)');
+                  const isUserAdded = job.unlockedBySubmission === true;
                   
                   // job_feedback is a 1-to-1 relation, so it's an object or null, not an array.
                   // Sometimes Supabase might return it as an array if queried dynamically, so we handle both just in case.
@@ -580,7 +590,16 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   const rowStyle: any = {
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                     opacity: isDisliked ? 0.5 : 1,
-                    ...(isEmailJob ? { '--accent-primary': '#0cc22d', '--accent-secondary': '#09a026', '--accent-glow': 'rgba(12, 194, 45, 0.15)' } : {})
+                    ...(isUserAdded ? {
+                      '--accent-primary': '#a855f7',
+                      '--accent-secondary': '#9333ea',
+                      '--accent-glow': 'rgba(168, 85, 247, 0.15)',
+                      background: 'rgba(168, 85, 247, 0.04)'
+                    } : isEmailJob ? {
+                      '--accent-primary': '#0cc22d',
+                      '--accent-secondary': '#09a026',
+                      '--accent-glow': 'rgba(12, 194, 45, 0.15)'
+                    } : {})
                   };
                   
                   return (
@@ -596,7 +615,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                       <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--accent-primary)', textTransform: 'uppercase', fontSize: '0.85rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                           <span>{job.company}</span>
-                          {getConfidenceBadge(job.automation_confidence)}
+                          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {getConfidenceBadge(job.automation_confidence)}
+                            {isUserAdded && (
+                              <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
@@ -671,6 +695,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             const score = job.opportunity_scores?.[0]?.total_score;
             const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
             const isEmailJob = job.company?.includes('(Scraped via Email)');
+            const isUserAdded = job.unlockedBySubmission === true;
             
             const feedbackObj = Array.isArray(job.job_feedback) ? job.job_feedback[0] : job.job_feedback;
             const isDisliked = feedbackObj?.feedback_type === 'dislike';
@@ -678,7 +703,17 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             const cardStyle: any = {
               opacity: isDisliked ? 0.5 : 1,
               boxShadow: isDisliked ? 'none' : undefined,
-              ...(isEmailJob ? { '--accent-primary': '#0cc22d', '--accent-secondary': '#09a026', '--accent-glow': 'rgba(12, 194, 45, 0.15)' } : {})
+              ...(isUserAdded ? {
+                '--accent-primary': '#a855f7',
+                '--accent-secondary': '#9333ea',
+                '--accent-glow': 'rgba(168, 85, 247, 0.15)',
+                border: '1px solid rgba(168, 85, 247, 0.35)',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)'
+              } : isEmailJob ? {
+                '--accent-primary': '#0cc22d',
+                '--accent-secondary': '#09a026',
+                '--accent-glow': 'rgba(12, 194, 45, 0.15)'
+              } : {})
             };
             
             return (
@@ -688,6 +723,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                     <div className="job-company" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {job.company}
                       {getConfidenceBadge(job.automation_confidence)}
+                      {isUserAdded && (
+                        <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>
+                      )}
                     </div>
                     <Link href={`/job/${job.id}`} style={{ textDecoration: 'none' }} className={isEmailJob ? 'email-job-title' : 'job-title'}>
                       <h3 style={{ cursor: 'pointer', margin: 0 }}>{job.title}</h3>

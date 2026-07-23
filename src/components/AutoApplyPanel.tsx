@@ -7,6 +7,7 @@ import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
+import { Bot, Building2, Clock } from 'lucide-react';
 
 interface AutoApplyPanelProps {
   jobId: string;
@@ -126,8 +127,8 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
     <div className="auto-apply-section">
       {/* Header row */}
       <div className="auto-apply-row">
-        <span className="auto-apply-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          🤖 Auto Apply
+        <span className="auto-apply-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <Bot size={16} /> Auto Apply
           {session && (
             <AutoApplyStatusBadge
               status={session.status}
@@ -164,10 +165,14 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
       {session && !isActive && session.status !== AutoApplyStatus.QUEUED && (
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {session.atsPlatform && session.atsPlatform !== 'unknown' && (
-            <span>🏢 {session.atsPlatform.charAt(0).toUpperCase() + session.atsPlatform.slice(1)}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Building2 size={13} /> {session.atsPlatform.charAt(0).toUpperCase() + session.atsPlatform.slice(1)}
+            </span>
           )}
           {session.completedAt && (
-            <span>⏱ {new Date(session.completedAt).toLocaleString()}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Clock size={13} /> {new Date(session.completedAt).toLocaleString()}
+            </span>
           )}
           {session.failureDetails && (
             <span style={{ color: '#ef4444' }} title={session.failureDetails}>

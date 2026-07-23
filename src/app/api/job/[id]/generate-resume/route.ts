@@ -11,11 +11,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-        if (!user || user.planTier !== 'PRO') {
-            return NextResponse.json({ error: 'Pro account required.' }, { status: 403 });
-        }
-
         const { id: jobId } = await context.params;
         const body = await request.json();
         const { instruction, customizationAmount } = body;
@@ -26,6 +21,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         });
 
         if (!userJob) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+
+        const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+        const isPro = user?.planTier === 'PRO';
+        const isUnlocked = userJob.unlockedBySubmission;
+
+        if (!isPro && !isUnlocked) {
+            return NextResponse.json({ error: 'Pro account required.' }, { status: 403 });
+        }
 
         let asset = userJob.job.applicationAssets[0];
         if (!asset) return NextResponse.json({ error: 'Assets not generated yet' }, { status: 400 });
