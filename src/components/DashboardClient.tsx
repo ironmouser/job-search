@@ -749,21 +749,26 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             const isDisliked = feedbackObj?.feedback_type === 'dislike';
             const isViewed = !!(job.is_viewed || job.isViewed);
             
+            let cardBorder: string | undefined = undefined;
+            if (isViewed) {
+              cardBorder = '1px solid #2663EB';
+            } else if (isUserAdded) {
+              cardBorder = '1px solid rgba(168, 85, 247, 0.35)';
+            }
+
             const cardStyle: any = {
               opacity: isDisliked ? 0.5 : 1,
               boxShadow: isDisliked ? 'none' : undefined,
-              border: isViewed ? '1px solid #2663EB' : undefined,
+              ...(cardBorder ? { border: cardBorder } : {}),
               ...(isUserAdded ? {
                 '--accent-primary': '#a855f7',
                 '--accent-secondary': '#9333ea',
                 '--accent-glow': 'rgba(168, 85, 247, 0.15)',
-                border: isViewed ? '1px solid #2663EB' : '1px solid rgba(168, 85, 247, 0.35)',
                 background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)'
               } : isEmailJob ? {
                 '--accent-primary': '#0cc22d',
                 '--accent-secondary': '#09a026',
-                '--accent-glow': 'rgba(12, 194, 45, 0.15)',
-                border: isViewed ? '1px solid #2663EB' : undefined
+                '--accent-glow': 'rgba(12, 194, 45, 0.15)'
               } : {})
             };
             
