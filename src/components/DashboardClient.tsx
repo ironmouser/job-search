@@ -96,6 +96,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     }
   };
 
+  const handleMarkViewed = (jobId: string) => {
+    fetch(`/api/jobs/${jobId}/viewed`, { method: 'POST' }).catch(() => {});
+    setJobList(prev => prev.map(j => j.id === jobId ? { ...j, is_viewed: true, isViewed: true } : j));
+  };
+
   const toggleJobCheck = (id: string) => {
     setCheckedJobs(prev => {
       const next = new Set(prev);
@@ -672,7 +677,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                         </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
-                        <Link href={`/job/${job.id}`} className={isEmailJob ? 'email-job-title' : 'job-title'} style={{ textDecoration: 'none', fontWeight: 600, fontSize: '1.1rem' }}>
+                        <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className={isEmailJob ? 'email-job-title' : 'job-title'} style={{ textDecoration: 'none', fontWeight: 600, fontSize: '1.1rem' }}>
                           {job.title}
                         </Link>
                       </td>
@@ -716,10 +721,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                           <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
                             <Archive size={14} />
                           </button>
-                          <Link href={`/job/${job.id}`} className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>
+                          <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>
                             Details
                           </Link>
-                          <a href={job.url} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} title="Original">
+                          <a href={job.url} target="_blank" rel="noreferrer" onClick={() => handleMarkViewed(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} title="Original">
                             <ExternalLink size={14} />
                           </a>
                         </div>
@@ -783,7 +788,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                         <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>
                       )}
                     </div>
-                    <Link href={`/job/${job.id}`} style={{ textDecoration: 'none' }} className={isEmailJob ? 'email-job-title' : 'job-title'}>
+                    <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} style={{ textDecoration: 'none' }} className={isEmailJob ? 'email-job-title' : 'job-title'}>
                       <h3 style={{ cursor: 'pointer', margin: 0 }}>{job.title}</h3>
                     </Link>
                   </div>
@@ -835,10 +840,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                     <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
                       <Archive size={14} />
                     </button>
-                    <Link href={`/job/${job.id}`} className="btn-primary" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
+                    <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className="btn-primary" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
                       Details
                     </Link>
-                    <a href={job.url} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
+                    <a href={job.url} target="_blank" rel="noreferrer" onClick={() => handleMarkViewed(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
                       Original <ExternalLink size={14} />
                     </a>
                     <FeedbackButtons
