@@ -15,6 +15,7 @@ import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
 import ResumeAssetCard from '@/components/ResumeAssetCard';
 import AutoFetchJobDetails from '@/components/AutoFetchJobDetails';
 import { AutoApplyPanel } from '@/components/AutoApplyPanel';
+import { ApplyStepAccordion } from '@/components/ApplyStepAccordion';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
@@ -254,46 +255,28 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             )}
           </section>
 
-          {/* Step 3: Apply */}
+          {/* Step 3: Apply & Auto Apply */}
           <section>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>3</div>
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Apply</h2>
             </div>
-            <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', padding: '2rem' }}>
-              <div>
-                <h3 style={{ margin: '0 0 0.5rem 0' }}>Apply to Job</h3>
-                <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>
-                  Ready to apply? Click the "Apply to Job" button to open the job application on the company's career page.
-                </p>
-              </div>
-              <AutofillButton jobId={job.id} jobUrl={job.url} jobTitle={job.title} jobCompany={cleanCompanyName(job.company)} isPro={planTier === 'PRO'} appliesThisWeek={appliesThisWeek} />
-            </div>
+            <ApplyStepAccordion
+              jobId={job.id}
+              initialUrl={job.url}
+              applicationUrl={(job as any).applicationUrl}
+              jobTitle={job.title}
+              jobCompany={cleanCompanyName(job.company)}
+              isPro={planTier === 'PRO'}
+              appliesThisWeek={appliesThisWeek}
+              hasAssets={!!(assets?.tailoredResumeMarkdown && assets?.coverLetterMarkdown)}
+            />
           </section>
 
-          {/* Step 4: Auto Apply */}
-          <section>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#d39e00', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
-              <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Auto Apply</h2>
-            </div>
-            <div className="glass-card" style={{ padding: '1.5rem' }}>
-              <p style={{ color: 'var(--text-secondary)', margin: '0 0 1rem 0', maxWidth: '600px', lineHeight: 1.5 }}>
-                Let the automation worker fill out and submit this application for you. 
-                Run in simulation mode first to validate the workflow without submitting.
-              </p>
-              <AutoApplyPanel
-                jobId={job.id}
-                jobUrl={job.url}
-                hasAssets={!!(assets?.tailoredResumeMarkdown && assets?.coverLetterMarkdown)}
-              />
-            </div>
-          </section>
-
-          {/* Step 5: Application Q&A */}
+          {/* Step 4: Application Q&A */}
           <section style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>5</div>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Application Q&A</h2>
             </div>
             <ApplicationQA jobId={job.id} planTier={planTier} initialQaUsed={assets?.qaGenerationsUsed || 0} />
