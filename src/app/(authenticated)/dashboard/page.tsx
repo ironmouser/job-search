@@ -60,6 +60,7 @@ export default async function Dashboard() {
       
       status: uj.status,
       is_archived: uj.isArchived,
+      is_viewed: j.isViewed || false,
       created_at: uj.createdAt,
       applied_at: uj.appliedAt,
       unlockedBySubmission: uj.unlockedBySubmission || j.addedById === userId,

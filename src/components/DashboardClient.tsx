@@ -48,11 +48,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
   const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [itemsPerPage, setItemsPerPage] = useState<number>(20);
   const scoringInProgress = useRef(new Set<string>());
   const isPageInitialized = useRef(false);
 
-  // Restore page number from URL or sessionStorage on mount
+  // Restore page number and items per page from URL, sessionStorage, or localStorage on mount
   useEffect(() => {
     const urlPage = searchParams?.get('page');
     const savedPage = urlPage || (typeof window !== 'undefined' ? sessionStorage.getItem('dashboard_page') : null);
@@ -60,6 +60,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       const pageNum = parseInt(savedPage, 10);
       if (!isNaN(pageNum) && pageNum > 0) {
         setCurrentPage(pageNum);
+      }
+    }
+
+    const urlLimit = searchParams?.get('limit') || searchParams?.get('perPage');
+    if (urlLimit) {
+      const limitNum = parseInt(urlLimit, 10);
+      if (!isNaN(limitNum) && limitNum > 0) {
+        setItemsPerPage(limitNum);
       }
     }
     isPageInitialized.current = true;
@@ -71,6 +79,19 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       sessionStorage.setItem('dashboard_page', newPage.toString());
       const params = new URLSearchParams(window.location.search);
       params.set('page', newPage.toString());
+      params.set('limit', itemsPerPage.toString());
+      window.history.replaceState(null, '', `?${params.toString()}`);
+    }
+  };
+
+  const changeItemsPerPage = (newLimit: number) => {
+    setItemsPerPage(newLimit);
+    setCurrentPage(1);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('dashboard_page', '1');
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', '1');
+      params.set('limit', newLimit.toString());
       window.history.replaceState(null, '', `?${params.toString()}`);
     }
   };
@@ -108,6 +129,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         if (state.sourceFilter) setSourceFilter(state.sourceFilter);
         if (state.startDate !== undefined) setStartDate(state.startDate);
         if (state.endDate !== undefined) setEndDate(state.endDate);
+        if (state.itemsPerPage && !searchParams?.get('limit') && !searchParams?.get('perPage')) {
+          const limitNum = parseInt(state.itemsPerPage, 10);
+          if (!isNaN(limitNum) && limitNum > 0) {
+            setItemsPerPage(limitNum);
+          }
+        }
       } catch (e) {
         console.error('Failed to parse dashboard state from local storage', e);
       }
@@ -124,9 +151,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       locationFilter,
       sourceFilter,
       startDate,
-      endDate
+      endDate,
+      itemsPerPage
     }));
-  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, isLoaded]);
+  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, itemsPerPage, isLoaded]);
 
   const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
     if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
@@ -345,10 +373,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     if (isPageInitialized.current) {
       changePage(1);
     }
-  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate]);
+  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, itemsPerPage]);
 
-  const totalPages = Math.ceil(filteredAndSortedJobs.length / itemsPerPage);
-  const currentJobs = filteredAndSortedJobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredAndSortedJobs.length);
+  const currentJobs = filteredAndSortedJobs.slice(startIndex, endIndex);
 
   useEffect(() => {
     const unscoredCurrentJobs = currentJobs.filter(j => j.status === 'discovered' && !scoringInProgress.current.has(j.id));
@@ -533,6 +563,20 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               <option value="auto_apply">Auto Apply Confidence</option>
             </select>
           </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Per page:</span>
+            <select 
+              value={itemsPerPage} 
+              onChange={(e) => changeItemsPerPage(Number(e.target.value))}
+              style={{ background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-glass)', padding: '0.4rem', borderRadius: '4px' }}
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
           
           <div style={{ display: 'flex', border: '1px solid var(--border-glass)', borderRadius: '4px', overflow: 'hidden' }}>
             <button 
@@ -586,10 +630,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   // Sometimes Supabase might return it as an array if queried dynamically, so we handle both just in case.
                   const feedbackObj = Array.isArray(job.job_feedback) ? job.job_feedback[0] : job.job_feedback;
                   const isDisliked = feedbackObj?.feedback_type === 'dislike';
+                  const isViewed = !!(job.is_viewed || job.isViewed);
                   
                   const rowStyle: any = {
-                    borderBottom: '1px solid rgba(255,255,255,0.05)',
+                    borderBottom: isViewed ? '1px solid #2663EB' : '1px solid rgba(255,255,255,0.05)',
                     opacity: isDisliked ? 0.5 : 1,
+                    ...(isViewed ? {
+                      borderLeft: '3px solid #2663EB'
+                    } : {}),
                     ...(isUserAdded ? {
                       '--accent-primary': '#a855f7',
                       '--accent-secondary': '#9333ea',
@@ -699,20 +747,23 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             
             const feedbackObj = Array.isArray(job.job_feedback) ? job.job_feedback[0] : job.job_feedback;
             const isDisliked = feedbackObj?.feedback_type === 'dislike';
+            const isViewed = !!(job.is_viewed || job.isViewed);
             
             const cardStyle: any = {
               opacity: isDisliked ? 0.5 : 1,
               boxShadow: isDisliked ? 'none' : undefined,
+              border: isViewed ? '1px solid #2663EB' : undefined,
               ...(isUserAdded ? {
                 '--accent-primary': '#a855f7',
                 '--accent-secondary': '#9333ea',
                 '--accent-glow': 'rgba(168, 85, 247, 0.15)',
-                border: '1px solid rgba(168, 85, 247, 0.35)',
+                border: isViewed ? '1px solid #2663EB' : '1px solid rgba(168, 85, 247, 0.35)',
                 background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)'
               } : isEmailJob ? {
                 '--accent-primary': '#0cc22d',
                 '--accent-secondary': '#09a026',
-                '--accent-glow': 'rgba(12, 194, 45, 0.15)'
+                '--accent-glow': 'rgba(12, 194, 45, 0.15)',
+                border: isViewed ? '1px solid #2663EB' : undefined
               } : {})
             };
             
@@ -815,31 +866,71 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '2rem', marginBottom: '2rem', alignItems: 'center' }}>
-          <button 
-            className="btn-outline" 
-            disabled={currentPage === 1}
-            onClick={() => {
-              changePage(Math.max(1, currentPage - 1));
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          >
-            Previous
-          </button>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Page {currentPage} of {totalPages}
-          </span>
-          <button 
-            className="btn-outline" 
-            disabled={currentPage === totalPages}
-            onClick={() => {
-              changePage(Math.min(totalPages, currentPage + 1));
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          >
-            Next
-          </button>
+      {filteredAndSortedJobs.length > 0 && (
+        <div 
+          style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: '1rem', 
+            marginTop: '2rem', 
+            marginBottom: '2rem', 
+            padding: '1rem', 
+            background: 'rgba(255, 255, 255, 0.03)', 
+            borderRadius: '8px', 
+            border: '1px solid var(--border-glass)' 
+          }}
+        >
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            Showing <strong style={{ color: 'var(--text-primary)' }}>{filteredAndSortedJobs.length > 0 ? startIndex + 1 : 0}–{endIndex}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{filteredAndSortedJobs.length}</strong> jobs
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Per page:</span>
+              <select 
+                value={itemsPerPage} 
+                onChange={(e) => changeItemsPerPage(Number(e.target.value))}
+                style={{ background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-glass)', padding: '0.4rem', borderRadius: '4px' }}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <button 
+                  className="btn-outline" 
+                  disabled={currentPage === 1}
+                  onClick={() => {
+                    changePage(Math.max(1, currentPage - 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
+                >
+                  Previous
+                </button>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', minWidth: '80px', textAlign: 'center' }}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  className="btn-outline" 
+                  disabled={currentPage === totalPages}
+                  onClick={() => {
+                    changePage(Math.min(totalPages, currentPage + 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
       <SyncOverlay 
