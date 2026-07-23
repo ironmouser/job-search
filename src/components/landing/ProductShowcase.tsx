@@ -8,100 +8,25 @@ const slides = [
     label: 'Dashboard',
     placeholder: 'Dashboard UI — Jobs Found, Great Matches, Scored, Archived',
     accent: '#2563eb',
-    mockup: (
-      <div style={{ padding: '2rem var(--section-px)', width: '100%' }}>
-        <div style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>AI Dashboard</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div style={{ background: '#2563eb', padding: '1.25rem', borderRadius: '10px' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fff' }}>47</div>
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.8rem' }}>Jobs Found</div>
-          </div>
-          <div style={{ background: '#06af9e', padding: '1.25rem', borderRadius: '10px' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fff' }}>12</div>
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.8rem' }}>Great Matches</div>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.15)', padding: '1.25rem', borderRadius: '10px' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fff' }}>8</div>
-            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>Applied</div>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.15)', padding: '1.25rem', borderRadius: '10px' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fff' }}>3</div>
-            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>Waiting for Review</div>
-          </div>
-        </div>
-      </div>
-    ),
+    image: '/dashboard.png',
   },
   {
     label: 'Kanban Board',
     placeholder: 'Kanban Board — Application pipeline',
     accent: '#7c3aed',
-    mockup: (
-      <div style={{ padding: '2rem var(--section-px)', width: '100%' }}>
-        <div style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>Application Pipeline</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-          {['Scored', 'Assets Ready', 'Applied', 'Interviewing'].map((col) => (
-            <div key={col}>
-              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem', fontWeight: 600 }}>{col}</div>
-              {[1, 2].map(i => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.1)', padding: '0.6rem', borderRadius: '6px', marginBottom: '0.5rem' }}>
-                  <div style={{ width: '80%', height: '6px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px', marginBottom: '0.4rem' }} />
-                  <div style={{ width: '55%', height: '5px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px' }} />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
+    image: '/pipeline.png',
   },
   {
     label: 'Resume Generator',
     placeholder: 'Resume Generator — AI tailored resumes',
     accent: '#06af9e',
-    mockup: (
-      <div style={{ padding: '2rem var(--section-px)', width: '100%' }}>
-        <div style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>AI Resume Generator</div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '1rem' }}>
-            {[90, 70, 85, 60, 75].map((w, i) => (
-              <div key={i} style={{ height: '6px', width: `${w}%`, background: 'rgba(255,255,255,0.3)', borderRadius: '2px', marginBottom: '0.6rem' }} />
-            ))}
-          </div>
-          <div style={{ flex: 1, background: 'rgba(6,175,158,0.2)', border: '1px solid rgba(6,175,158,0.4)', borderRadius: '8px', padding: '1rem' }}>
-            <div style={{ fontSize: '0.7rem', color: '#06af9e', fontWeight: 600, marginBottom: '0.75rem' }}>AI Tailored</div>
-            {[95, 80, 90, 70, 85].map((w, i) => (
-              <div key={i} style={{ height: '6px', width: `${w}%`, background: '#06af9e', opacity: 0.6, borderRadius: '2px', marginBottom: '0.6rem' }} />
-            ))}
-          </div>
-        </div>
-      </div>
-    ),
+    image: '/resume.png',
   },
   {
     label: 'Job Detail',
     placeholder: 'Job Detail — Full description, score, and actions',
     accent: '#f59e0b',
-    mockup: (
-      <div style={{ padding: '2rem var(--section-px)', width: '100%' }}>
-        <div style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 600, color: '#fff', opacity: 0.9 }}>Job Detail</div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <div>
-            <div style={{ width: '140px', height: '10px', background: 'rgba(255,255,255,0.4)', borderRadius: '3px', marginBottom: '0.4rem' }} />
-            <div style={{ width: '90px', height: '7px', background: 'rgba(255,255,255,0.2)', borderRadius: '3px' }} />
-          </div>
-          <div style={{ background: '#f59e0b', color: '#000', fontWeight: 700, fontSize: '1.2rem', padding: '0.4rem 0.75rem', borderRadius: '8px' }}>92</div>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          {['Apply', 'Generate Resume', 'Cover Letter'].map(btn => (
-            <div key={btn} style={{ background: 'rgba(255,255,255,0.1)', padding: '0.35rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)' }}>{btn}</div>
-          ))}
-        </div>
-        {[100, 85, 70, 90, 65, 80].map((w, i) => (
-          <div key={i} style={{ height: '5px', width: `${w}%`, background: 'rgba(255,255,255,0.15)', borderRadius: '2px', marginBottom: '0.5rem' }} />
-        ))}
-      </div>
-    ),
+    image: '/Job.png',
   },
 ];
 
@@ -171,22 +96,22 @@ export default function ProductShowcase() {
           </button>
 
           {/* Left Peek */}
-          <div style={{ flex: '0 0 auto', width: '280px', opacity: 0.45, transform: 'scale(0.88)', transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)', pointerEvents: 'none', borderRadius: '16px', overflow: 'hidden', background: `linear-gradient(145deg, ${getSlide(-1).accent}55 0%, #0f172a 100%)`, minHeight: '280px', display: 'flex', alignItems: 'center' }}>
-            {getSlide(-1).mockup}
+          <div style={{ flex: '0 0 auto', width: '280px', opacity: 0.45, transform: 'scale(0.88)', transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)', pointerEvents: 'none', borderRadius: '10px', overflow: 'hidden', minHeight: '280px', display: 'flex', alignItems: 'center' }}>
+            <img src={getSlide(-1).image} alt={getSlide(-1).label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
           </div>
 
           {/* Active Slide */}
           <div
             key={animKey}
             className={direction === 'right' ? 'slide-in-right' : 'slide-in-left'}
-            style={{ flex: '0 0 auto', width: 'min(640px, 80vw)', borderRadius: '20px', overflow: 'hidden', boxShadow: `0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px ${slides[activeIdx].accent}44`, background: `linear-gradient(145deg, ${slides[activeIdx].accent}88 0%, #0f172a 100%)`, transition: 'box-shadow 0.4s ease, background 0.4s ease', minHeight: '320px', display: 'flex', alignItems: 'center' }}
+            style={{ flex: '0 0 auto', width: 'min(640px, 80vw)', borderRadius: '10px', overflow: 'hidden', boxShadow: `0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px ${slides[activeIdx].accent}44`, transition: 'box-shadow 0.4s ease, background 0.4s ease', display: 'flex', alignItems: 'center' }}
           >
-            {slides[activeIdx].mockup}
+            <img src={slides[activeIdx].image} alt={slides[activeIdx].label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
           </div>
 
           {/* Right Peek */}
-          <div style={{ flex: '0 0 auto', width: '280px', opacity: 0.45, transform: 'scale(0.88)', transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)', pointerEvents: 'none', borderRadius: '16px', overflow: 'hidden', background: `linear-gradient(145deg, ${getSlide(1).accent}55 0%, #0f172a 100%)`, minHeight: '280px', display: 'flex', alignItems: 'center' }}>
-            {getSlide(1).mockup}
+          <div style={{ flex: '0 0 auto', width: '280px', opacity: 0.45, transform: 'scale(0.88)', transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)', pointerEvents: 'none', borderRadius: '10px', overflow: 'hidden', minHeight: '280px', display: 'flex', alignItems: 'center' }}>
+            <img src={getSlide(1).image} alt={getSlide(1).label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
           </div>
 
           {/* Next Arrow */}
