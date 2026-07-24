@@ -59,12 +59,12 @@ export async function checkAiSafeguard(estimatedCostUsd: number, modelName: stri
 export async function logAiCost(model: string, inputTokens: number, outputTokens: number, userId?: string) {
     let costUsd = 0;
 
-    // Approximate Pricing (as of 2024/2025)
-    if (model.includes('gemini-1.5-flash-8b') || model.includes('gemini-2.5-flash-lite')) {
+    // Approximate Pricing (as of 2024/2025/2026)
+    if (model.includes('gemini-1.5-flash-8b') || model.includes('gemini-2.5-flash-lite') || model.includes('gemini-3.1-flash-lite')) {
         costUsd = (inputTokens / 1_000_000) * 0.075 + (outputTokens / 1_000_000) * 0.30;
-    } else if (model.includes('gemini-1.5-flash') || model.includes('gemini-2.5-flash')) {
+    } else if (model.includes('gemini-1.5-flash') || model.includes('gemini-2.5-flash') || model.includes('gemini-3.1-flash')) {
         costUsd = (inputTokens / 1_000_000) * 0.075 + (outputTokens / 1_000_000) * 0.30;
-    } else if (model.includes('gemini-1.5-pro')) {
+    } else if (model.includes('gemini-1.5-pro') || model.includes('gemini-3.1-pro')) {
         costUsd = (inputTokens / 1_000_000) * 1.25 + (outputTokens / 1_000_000) * 5.00;
     } else if (model.includes('claude-3-5-sonnet')) {
         costUsd = (inputTokens / 1_000_000) * 3.00 + (outputTokens / 1_000_000) * 15.00;
