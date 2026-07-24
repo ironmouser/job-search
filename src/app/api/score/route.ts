@@ -54,11 +54,16 @@ export async function POST(request: Request) {
                 return NextResponse.json({ message: 'No unscored jobs found for provided IDs.' }, { status: 200 });
             }
 
-            console.log(`Found ${unscoredUserJobs.length} specific unscored jobs. Scoring...`);
+            // Skip jobs without a meaningful description
+            const scorableJobs = unscoredUserJobs.filter(uj => uj.job.description && uj.job.description.trim().length > 50);
+            if (scorableJobs.length === 0) {
+                return NextResponse.json({ message: 'No jobs with descriptions to score.' }, { status: 200 });
+            }
+
+            console.log(`Found ${scorableJobs.length} specific unscored jobs with descriptions. Scoring...`);
             
             const results = [];
-            for (let i = 0; i < unscoredUserJobs.length; i++) {
-                const uj = unscoredUserJobs[i];
+            for (const uj of scorableJobs) {
                 const job = uj.job;
                 try {
                     const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
@@ -66,9 +71,6 @@ export async function POST(request: Request) {
                 } catch (e: any) {
                     console.error(`Error scoring job ${job.id}:`, e.message);
                     results.push({ jobId: job.id, error: e.message });
-                }
-                if (i < unscoredUserJobs.length - 1) {
-                    await new Promise(r => setTimeout(r, 2000));
                 }
             }
 

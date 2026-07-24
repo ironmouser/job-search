@@ -405,49 +405,57 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
   useEffect(() => {
     const isUnscored = (j: any) => (!j.opportunity_scores || j.opportunity_scores.length === 0);
+    const hasDescription = (j: any) => !!(j.description && j.description.trim().length > 50);
 
-    const unscoredCurrentJobs = currentJobs.filter(j => isUnscored(j) && !scoringInProgress.current.has(j.id));
-    const otherUnscoredJobs = filteredAndSortedJobs.filter(j => isUnscored(j) && !currentJobs.find(cj => cj.id === j.id) && !scoringInProgress.current.has(j.id));
+    const unscoredCurrentJobs = currentJobs.filter(j => isUnscored(j) && hasDescription(j) && !scoringInProgress.current.has(j.id));
+    const otherUnscoredJobs = filteredAndSortedJobs.filter(j => isUnscored(j) && hasDescription(j) && !currentJobs.find(cj => cj.id === j.id) && !scoringInProgress.current.has(j.id));
 
-    if (unscoredCurrentJobs.length > 0) {
-      const chunk = unscoredCurrentJobs.slice(0, 3);
-      chunk.forEach(j => scoringInProgress.current.add(j.id));
-      
-      const scoreCurrent = async () => {
-        try {
-          const res = await fetch('/api/score', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
-          });
-          if (!res.ok) throw new Error(`Status ${res.status}`);
-          router.refresh();
-        } catch (e) {
-          console.error('Failed to score current jobs:', e);
-          chunk.forEach(j => scoringInProgress.current.delete(j.id));
-        }
-      };
-      scoreCurrent();
-    } else if (otherUnscoredJobs.length > 0) {
-      const chunk = otherUnscoredJobs.slice(0, 3);
-      chunk.forEach(j => scoringInProgress.current.add(j.id));
+    if (unscoredCurrentJobs.length === 0 && otherUnscoredJobs.length === 0) return;
 
-      const scoreBackground = async () => {
-        try {
-          const res = await fetch('/api/score', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
-          });
-          if (!res.ok) throw new Error(`Status ${res.status}`);
-          router.refresh();
-        } catch (e) {
-          console.error('Failed to background score jobs:', e);
-          chunk.forEach(j => scoringInProgress.current.delete(j.id));
-        }
-      };
-      scoreBackground();
-    }
+    // Debounce: wait 500ms before firing to avoid overlapping calls on rapid re-renders
+    const timer = setTimeout(() => {
+      if (unscoredCurrentJobs.length > 0) {
+        const chunk = unscoredCurrentJobs.slice(0, 3);
+        chunk.forEach(j => scoringInProgress.current.add(j.id));
+        
+        const scoreCurrent = async () => {
+          try {
+            const res = await fetch('/api/score', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
+            });
+            if (!res.ok) throw new Error(`Status ${res.status}`);
+            router.refresh();
+          } catch (e) {
+            console.error('Failed to score current jobs:', e);
+            chunk.forEach(j => scoringInProgress.current.delete(j.id));
+          }
+        };
+        scoreCurrent();
+      } else if (otherUnscoredJobs.length > 0) {
+        const chunk = otherUnscoredJobs.slice(0, 3);
+        chunk.forEach(j => scoringInProgress.current.add(j.id));
+
+        const scoreBackground = async () => {
+          try {
+            const res = await fetch('/api/score', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
+            });
+            if (!res.ok) throw new Error(`Status ${res.status}`);
+            router.refresh();
+          } catch (e) {
+            console.error('Failed to background score jobs:', e);
+            chunk.forEach(j => scoringInProgress.current.delete(j.id));
+          }
+        };
+        scoreBackground();
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [currentJobs, filteredAndSortedJobs, router]);
 
   return (
