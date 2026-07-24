@@ -16,7 +16,7 @@ async function extractJobMetadataWithGemini(rawText: string) {
   }
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
     const prompt = `Extract job details from the following web page content. Return strictly valid JSON with no markdown wrapping.
 JSON Structure:
 {
