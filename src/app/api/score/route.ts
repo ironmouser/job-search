@@ -55,7 +55,8 @@ export async function POST(request: Request) {
             console.log(`Found ${unscoredUserJobs.length} specific unscored jobs. Scoring...`);
             
             const results = [];
-            for (const uj of unscoredUserJobs) {
+            for (let i = 0; i < unscoredUserJobs.length; i++) {
+                const uj = unscoredUserJobs[i];
                 const job = uj.job;
                 try {
                     const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
@@ -63,6 +64,9 @@ export async function POST(request: Request) {
                 } catch (e: any) {
                     console.error(`Error scoring job ${job.id}:`, e.message);
                     results.push({ jobId: job.id, error: e.message });
+                }
+                if (i < unscoredUserJobs.length - 1) {
+                    await new Promise(r => setTimeout(r, 2000));
                 }
             }
 

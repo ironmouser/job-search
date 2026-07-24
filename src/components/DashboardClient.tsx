@@ -404,29 +404,34 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const currentJobs = filteredAndSortedJobs.slice(startIndex, endIndex);
 
   useEffect(() => {
-    const unscoredCurrentJobs = currentJobs.filter(j => j.status === 'discovered' && !scoringInProgress.current.has(j.id));
-    const otherUnscoredJobs = filteredAndSortedJobs.filter(j => j.status === 'discovered' && !currentJobs.find(cj => cj.id === j.id) && !scoringInProgress.current.has(j.id));
+    const isUnscored = (j: any) => (!j.opportunity_scores || j.opportunity_scores.length === 0);
+
+    const unscoredCurrentJobs = currentJobs.filter(j => isUnscored(j) && !scoringInProgress.current.has(j.id));
+    const otherUnscoredJobs = filteredAndSortedJobs.filter(j => isUnscored(j) && !currentJobs.find(cj => cj.id === j.id) && !scoringInProgress.current.has(j.id));
 
     if (unscoredCurrentJobs.length > 0) {
-      unscoredCurrentJobs.forEach(j => scoringInProgress.current.add(j.id));
+      const chunk = unscoredCurrentJobs.slice(0, 3);
+      chunk.forEach(j => scoringInProgress.current.add(j.id));
+      
       const scoreCurrent = async () => {
         try {
           await fetch('/api/score', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobIds: unscoredCurrentJobs.map(j => j.id) })
+            body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
           });
           router.refresh();
         } catch (e) {
           console.error('Failed to score current jobs:', e);
+          chunk.forEach(j => scoringInProgress.current.delete(j.id));
         }
       };
       scoreCurrent();
     } else if (otherUnscoredJobs.length > 0) {
+      const chunk = otherUnscoredJobs.slice(0, 3);
+      chunk.forEach(j => scoringInProgress.current.add(j.id));
+
       const scoreBackground = async () => {
-        const chunk = otherUnscoredJobs.slice(0, 5);
-        chunk.forEach(j => scoringInProgress.current.add(j.id));
-        
         try {
           await fetch('/api/score', {
             method: 'POST',
@@ -436,6 +441,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           router.refresh();
         } catch (e) {
           console.error('Failed to background score jobs:', e);
+          chunk.forEach(j => scoringInProgress.current.delete(j.id));
         }
       };
       scoreBackground();
