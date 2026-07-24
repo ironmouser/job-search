@@ -75,7 +75,7 @@ export async function scoreJob(userId: string, jobId: string, jobTitle: string, 
     }
 
     const model = genAI.getGenerativeModel({ 
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-3.1-pro',
         generationConfig: {
             responseMimeType: "application/json",
         }

@@ -425,7 +425,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
             });
-            if (!res.ok) throw new Error(`Status ${res.status}`);
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              throw new Error(`Status ${res.status}: ${JSON.stringify(errorData)}`);
+            }
             router.refresh();
           } catch (e) {
             console.error('Failed to score current jobs:', e);
@@ -444,7 +447,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
             });
-            if (!res.ok) throw new Error(`Status ${res.status}`);
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              throw new Error(`Status ${res.status}: ${errorData.message || JSON.stringify(errorData)}`);
+            }
             router.refresh();
           } catch (e) {
             console.error('Failed to background score jobs:', e);

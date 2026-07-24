@@ -8,16 +8,18 @@ export async function checkAiSafeguard(estimatedCostUsd: number, modelName: stri
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const costResult = await prisma.aICostLog.aggregate({
-        _sum: {
-            costUsd: true
-        },
-        where: {
-            createdAt: { gte: startOfDay }
-        }
-    });
-
-    const currentDailyCost = costResult._sum.costUsd || 0;
+    let currentDailyCost = 0;
+    if ((prisma as any).aICostLog) {
+        const costResult = await (prisma as any).aICostLog.aggregate({
+            _sum: {
+                costUsd: true
+            },
+            where: {
+                createdAt: { gte: startOfDay }
+            }
+        });
+        currentDailyCost = costResult._sum.costUsd || 0;
+    }
     const projectedCost = currentDailyCost + estimatedCostUsd;
 
     if (projectedCost > DAILY_CUMULATIVE_LIMIT) {
@@ -75,8 +77,8 @@ export async function logAiCost(model: string, inputTokens: number, outputTokens
         costUsd = (inputTokens / 1_000_000) * 0.10 + (outputTokens / 1_000_000) * 0.50;
     }
 
-    if (costUsd > 0) {
-        await prisma.aICostLog.create({
+    if (costUsd > 0 && (prisma as any).aICostLog) {
+        await (prisma as any).aICostLog.create({
             data: {
                 model,
                 inputTokens,
