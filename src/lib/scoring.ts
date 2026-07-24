@@ -1,13 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { prisma } from './prisma';
-import { checkAiSafeguard, logAiCost, estimateTokens } from './ai-safeguard';
 import { getUserSettings } from './settings';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+import { callDeepSeek } from './deepseek';
 
 export async function scoreJob(userId: string, jobId: string, jobTitle: string, jobDescription: string) {
-    if (!process.env.GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY is missing.');
+    if (!process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY) {
+        throw new Error('DEEPSEEK_API_KEY or GEMINI_API_KEY is missing.');
     }
 
     const settings = await getUserSettings(userId);
@@ -74,15 +71,7 @@ export async function scoreJob(userId: string, jobId: string, jobTitle: string, 
         });
     }
 
-    const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.0-flash',
-        generationConfig: {
-            responseMimeType: "application/json",
-        }
-    });
-
-    const prompt = `
-You are an expert career coach AI evaluating a job opportunity for a candidate.
+    const prompt = `You are an expert career coach AI evaluating a job opportunity for a candidate.
 Evaluate the following Job Description based on these specific criteria and provide a score out of 100 for each category based on how well it aligns with the candidate's preferences.
 
 CANDIDATE PROFILE & CRITERIA:
@@ -105,46 +94,14 @@ Return a JSON object strictly matching this schema:
   "tech_stack_score": number (0-100),
   "analysis_notes": "A short 2-3 sentence summary of why this score was given.",
   "extracted_salary": "String extracting the salary range if mentioned in the text (e.g. $100k-$150k), otherwise return null"
-}
-`;
+}`;
 
-    // Helper function for exponential backoff on 429 Rate Limit
-    const generateWithRetry = async (promptText: string, maxRetries = 3) => {
-        // 1. Calculate Estimated Tokens and Check Safeguard
-        const estimatedTokens = estimateTokens(promptText);
-        const estimatedCost = (estimatedTokens / 1_000_000) * 0.075 + (1000 / 1_000_000) * 0.30;
-        await checkAiSafeguard(estimatedCost, 'gemini-2.0-flash', userId);
-
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-            try {
-                const result = await model.generateContent(promptText);
-                
-                // 2. Log Actual Cost
-                const usage = result.response.usageMetadata;
-                if (usage) {
-                    await logAiCost('gemini-2.0-flash', usage.promptTokenCount, usage.candidatesTokenCount, userId);
-                } else {
-                    // Fallback to estimate if metadata missing
-                    await logAiCost('gemini-2.0-flash', estimatedTokens, estimateTokens(result.response.text()), userId);
-                }
-                
-                return result;
-            } catch (err: any) {
-                const isRateLimit = err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('Quota exceeded');
-                if (isRateLimit && attempt < maxRetries - 1) {
-                    const delayMs = (attempt + 1) * 3000;
-                    console.warn(`[Gemini Rate Limit] Retrying attempt ${attempt + 1} in ${delayMs / 1000}s...`);
-                    await new Promise(r => setTimeout(r, delayMs));
-                } else {
-                    throw err;
-                }
-            }
-        }
-        throw new Error('Gemini API call failed after max retries');
-    };
-
-    const result = await generateWithRetry(prompt);
-    const responseText = result.response.text();
+    const responseText = await callDeepSeek({
+        model: 'deepseek-v4-flash',
+        jsonMode: true,
+        messages: [{ role: 'user', content: prompt }],
+        userId
+    });
     
     try {
         const scores = JSON.parse(responseText);
@@ -203,23 +160,15 @@ Return a JSON object strictly matching this schema:
         return { ...data, total_score: totalScore };
 
     } catch (e: any) {
-        console.error('Failed to parse or save Gemini response', e);
+        console.error('Failed to parse or save DeepSeek response', e);
         throw new Error('Failed to parse or save job score: ' + e.message);
     }
 }
 
 export async function extractJobsFromEmailText(emailText: string) {
-    if (!process.env.GEMINI_API_KEY) return [];
+    if (!process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY) return [];
 
-    const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.0-flash-lite',
-        generationConfig: {
-            responseMimeType: "application/json",
-        }
-    });
-
-    const prompt = `
-You are a highly accurate data extraction AI.
+    const prompt = `You are a highly accurate data extraction AI.
 Extract all job postings mentioned in the following email text.
 
 Return a JSON array of objects strictly matching this schema:
@@ -235,15 +184,18 @@ Return a JSON array of objects strictly matching this schema:
 If there are no jobs, return an empty array [].
 
 EMAIL TEXT:
-${emailText.substring(0, 30000)}
-`;
+${emailText.substring(0, 30000)}`;
 
     try {
-        const result = await model.generateContent(prompt);
-        const jobs = JSON.parse(result.response.text());
+        const responseText = await callDeepSeek({
+            model: 'deepseek-v4-flash',
+            jsonMode: true,
+            messages: [{ role: 'user', content: prompt }]
+        });
+        const jobs = JSON.parse(responseText);
         return Array.isArray(jobs) ? jobs : [];
     } catch (e) {
-        console.error("Gemini job extraction failed:", e);
+        console.error("DeepSeek job extraction failed:", e);
         return [];
     }
 }

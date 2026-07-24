@@ -7,16 +7,13 @@ import * as cheerio from 'cheerio';
 import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { callDeepSeek } from '@/lib/deepseek';
 
-import { cleanJobUrl } from '@/lib/urlUtils';
 async function extractJobMetadataWithGemini(rawText: string) {
-  if (!process.env.GEMINI_API_KEY || !rawText || rawText.trim().length === 0) {
+  if (!process.env.DEEPSEEK_API_KEY || !rawText || rawText.trim().length === 0) {
     return null;
   }
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const prompt = `Extract job details from the following web page content. Return strictly valid JSON with no markdown wrapping.
 JSON Structure:
 {
@@ -30,11 +27,16 @@ JSON Structure:
 Web Page Content:
 ${rawText.slice(0, 15000)}`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(text);
+    const text = await callDeepSeek({
+      model: 'deepseek-v4-flash',
+      jsonMode: true,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanJson);
   } catch (err) {
-    console.warn('Gemini metadata extraction failed:', err);
+    console.warn('DeepSeek metadata extraction failed:', err);
     return null;
   }
 }

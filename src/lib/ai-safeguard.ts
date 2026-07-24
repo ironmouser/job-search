@@ -72,6 +72,10 @@ export async function logAiCost(model: string, inputTokens: number, outputTokens
         costUsd = (inputTokens / 1_000_000) * 3.00 + (outputTokens / 1_000_000) * 15.00;
     } else if (model.includes('claude-haiku')) {
         costUsd = (inputTokens / 1_000_000) * 0.25 + (outputTokens / 1_000_000) * 1.25;
+    } else if (model.includes('deepseek-v4-flash') || model.includes('deepseek-chat') || model.includes('deepseek-v3')) {
+        costUsd = (inputTokens / 1_000_000) * 0.14 + (outputTokens / 1_000_000) * 0.28;
+    } else if (model.includes('deepseek-v4-pro') || model.includes('deepseek-reasoner')) {
+        costUsd = (inputTokens / 1_000_000) * 0.55 + (outputTokens / 1_000_000) * 2.19;
     } else {
         // Fallback generic cost
         costUsd = (inputTokens / 1_000_000) * 0.10 + (outputTokens / 1_000_000) * 0.50;

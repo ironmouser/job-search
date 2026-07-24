@@ -1,6 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as cheerio from 'cheerio';
 import dns from 'dns';
+import { callDeepSeek } from './deepseek';
 
 // Fix Node.js IPv6 dual-stack fetch issues on macOS / local environments
 try {
@@ -8,7 +8,7 @@ try {
 } catch {}
 
 /**
- * Reformats raw scraped job description HTML/text into clean Markdown using Gemini 1.5 Flash 8b.
+ * Reformats raw scraped job description HTML/text into clean Markdown using DeepSeek V4.
  * Strictly preserves all original information, restoring headings, bullet lists, paragraphs,
  * and fixing spacing/duplicated whitespace without adding or removing content.
  */
@@ -19,8 +19,7 @@ export async function reformatJobDescriptionWithGemini(rawContent: string): Prom
 
     const trimmedRaw = rawContent.trim();
 
-    // If Gemini key is available, attempt Gemini formatting
-    if (process.env.GEMINI_API_KEY) {
+    if (process.env.DEEPSEEK_API_KEY) {
         const prompt = `When formatting a scraped job description.
 DO NOT rewrite or summarize.
 Only:
@@ -35,20 +34,16 @@ Only:
 Format this job description into Markdown:
 ${trimmedRaw}`;
 
-        const modelsToTry = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-        for (const modelName of modelsToTry) {
-            try {
-                const model = genAI.getGenerativeModel({ model: modelName });
-                const result = await model.generateContent(prompt);
-                const text = result.response.text();
-                if (text && text.trim().length > 0) {
-                    return text.trim();
-                }
-            } catch (err: any) {
-                // Silently move to fallback if rate limited or unavailable
+        try {
+            const formatted = await callDeepSeek({
+                model: 'deepseek-v4-flash',
+                messages: [{ role: 'user', content: prompt }]
+            });
+            if (formatted && formatted.trim().length > 0) {
+                return formatted.trim();
             }
+        } catch (err: any) {
+            console.warn('DeepSeek formatting failed, falling back to html cleanup:', err.message);
         }
     }
 
@@ -57,7 +52,7 @@ ${trimmedRaw}`;
 }
 
 /**
- * Fallback HTML cleanup if Gemini API key is missing or calls fail.
+ * Fallback HTML cleanup if API key is missing or calls fail.
  */
 export function fallbackHtmlCleanup(htmlOrText: string): string {
     if (!htmlOrText) return '';

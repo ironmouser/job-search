@@ -1,42 +1,63 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { prisma } from './prisma';
 import fs from 'fs';
 import path from 'path';
 import { getUserSettings } from './settings';
 import { cleanCompanyName } from './cleaners';
+import { callDeepSeek } from './deepseek';
+import Anthropic from '@anthropic-ai/sdk';
 import { checkAiSafeguard, logAiCost, estimateTokens } from './ai-safeguard';
 
 const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY || '',
+    apiKey: process.env.ANTHROPIC_API_KEY || 'dummy_key',
 });
 
-async function callAnthropicSafeguarded(params: any, userId?: string) {
-    const promptText = (params.system || '') + JSON.stringify(params.messages);
-    const estimatedTokens = estimateTokens(promptText);
-    const estimatedCost = (estimatedTokens / 1_000_000) * 0.25 + (params.max_tokens / 1_000_000) * 1.25;
-    
-    await checkAiSafeguard(estimatedCost, params.model, userId);
-    
-    const response = await anthropic.messages.create(params);
-    
-    const usage = response.usage;
-    if (usage) {
-        await logAiCost(params.model, usage.input_tokens, usage.output_tokens, userId);
-    } else {
-        const outText = (response as any).content?.[0]?.text || '';
-        await logAiCost(params.model, estimatedTokens, estimateTokens(outText), userId);
+async function callAiService(params: {
+    system: string;
+    userPrompt: string;
+    maxTokens?: number;
+    jsonMode?: boolean;
+    userId?: string;
+}): Promise<string> {
+    if (process.env.DEEPSEEK_API_KEY) {
+        return await callDeepSeek({
+            model: 'deepseek-v4-pro',
+            jsonMode: params.jsonMode,
+            maxTokens: params.maxTokens || 4096,
+            userId: params.userId,
+            messages: [
+                { role: 'system', content: params.system },
+                { role: 'user', content: params.userPrompt }
+            ]
+        });
     }
-    
-    return response;
+
+    if (process.env.ANTHROPIC_API_KEY) {
+        const promptText = params.system + params.userPrompt;
+        const estimatedTokens = estimateTokens(promptText);
+        const estimatedCost = (estimatedTokens / 1_000_000) * 0.25 + ((params.maxTokens || 2048) / 1_000_000) * 1.25;
+
+        await checkAiSafeguard(estimatedCost, 'claude-haiku-4-5-20251001', params.userId);
+
+        const response = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: params.maxTokens || 4096,
+            system: params.system,
+            messages: [{ role: 'user', content: params.userPrompt }]
+        });
+
+        const usage = response.usage;
+        if (usage) {
+            await logAiCost('claude-haiku-4-5-20251001', usage.input_tokens, usage.output_tokens, params.userId);
+        }
+
+        return (response as any).content?.[0]?.text || '';
+    }
+
+    throw new Error('Neither DEEPSEEK_API_KEY nor ANTHROPIC_API_KEY is configured.');
 }
 
 export async function generateAssetsForJob(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-        throw new Error('ANTHROPIC_API_KEY is missing.');
-    }
-
     const cleanCompany = cleanCompanyName(company);
-
     const settings = await getUserSettings(userId);
     const driftPercentage = settings.resumeCustomizationMaxPercentage || 25;
     const tone = settings.aiStrictness || 'Standard';
@@ -84,36 +105,25 @@ ${baseResume}
 
     console.log(`Generating assets for ${company} - ${jobTitle}...`);
 
-    const response = await callAnthropicSafeguarded({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
+    let responseText = await callAiService({
         system: systemPrompt,
-        messages: [
-            { role: 'user', content: userPrompt }
-        ],
+        userPrompt: userPrompt,
+        maxTokens: 4096,
+        jsonMode: true,
+        userId: userId
     });
 
-    console.log("ANTHROPIC RAW RESPONSE:", JSON.stringify(response, null, 2));
-    let responseText = (response as any).content?.[0]?.text || '';
-    
-    if (!responseText) {
-        throw new Error(`Anthropic response missing text content: ${JSON.stringify(response)}`);
-    }
-
-    // Force-sanitize any em-dashes that the model hallucinates despite prompt instructions
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
 
-    // Extract just the JSON object from the response using regex to ignore conversational text
     const match = responseText.match(/\{[\s\S]*\}/);
     if (!match) {
-        throw new Error('No JSON object found in the Claude response.');
+        throw new Error('No JSON object found in the AI response.');
     }
     const jsonString = match[0];
 
     try {
         const assets = JSON.parse(jsonString);
 
-        // Save to Prisma using upsert to avoid conflicts on retries
         const data = await prisma.applicationAsset.upsert({
             where: { userId_jobId: { userId, jobId } },
             update: {
@@ -132,7 +142,6 @@ ${baseResume}
             }
         });
 
-        // Update UserJob status instead of global Job status
         await prisma.userJob.update({
             where: { userId_jobId: { userId, jobId } },
             data: { status: 'asset_generated' }
@@ -140,7 +149,7 @@ ${baseResume}
 
         return data;
     } catch (e: any) {
-        console.error('Failed to parse or save Claude response', e);
+        console.error('Failed to parse or save AI response', e);
         throw new Error('Failed to parse or save generated assets: ' + e.message);
     }
 }
@@ -154,18 +163,12 @@ export async function generateApplicationAnswer(
     tone?: string,
     instruction?: string
 ) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-        throw new Error('ANTHROPIC_API_KEY is missing.');
-    }
-
     const cleanCompany = cleanCompanyName(company);
-
     const settings = await getUserSettings(userId);
     const finalTone = tone || 'Confident and strategic';
     const profile = settings.profile || 'No profile specified.';
     const qaExamples: { question: string, answer: string }[] = (settings as any).qaExamples || [];
 
-    // Read the base resume
     let baseResume = settings.resumeMarkdown || '';
     if (!baseResume) {
         const resumePath = path.join(process.cwd(), 'src/lib/base_resume.md');
@@ -225,30 +228,18 @@ QUESTION TO ANSWER:
 ${question}
 `;
 
-    console.log(`Generating answer for question: "${question.substring(0, 30)}..." at ${company} (Tone: ${finalTone}, Instruction: ${instruction || 'none'})...`);
-
-    const response = await callAnthropicSafeguarded({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
+    let responseText = await callAiService({
         system: systemPrompt,
-        messages: [
-            { role: 'user', content: userPrompt }
-        ],
+        userPrompt: userPrompt,
+        maxTokens: 2048,
+        userId: userId
     });
 
-    let responseText = (response as any).content?.[0]?.text || '';
-    
-    if (!responseText) {
-        throw new Error(`Anthropic response missing text content: ${JSON.stringify(response)}`);
-    }
-
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
-
     return responseText.trim();
 }
 
 export async function regenerateResume(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, customizationAmount?: number) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is missing.');
     const settings = await getUserSettings(userId);
     const driftPercentage = customizationAmount !== undefined ? customizationAmount : (settings.resumeCustomizationMaxPercentage || 25);
     
@@ -277,19 +268,17 @@ Output ONLY the Markdown string of the tailored resume in plain text. Do not wra
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
-    const response = await callAnthropicSafeguarded({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
+    let responseText = await callAiService({
         system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        userPrompt: userPrompt,
+        maxTokens: 4096,
+        userId: userId
     });
-    let responseText = ((response as any).content?.[0]?.text || '').trim();
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
-    return responseText;
+    return responseText.trim();
 }
 
 export async function regenerateCoverLetter(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is missing.');
     const settings = await getUserSettings(userId);
     const finalTone = tone || 'Confident and strategic';
     
@@ -318,19 +307,17 @@ Output ONLY the cover letter body in plain text (no JSON wrapping).`;
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
-    const response = await callAnthropicSafeguarded({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
+    let responseText = await callAiService({
         system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        userPrompt: userPrompt,
+        maxTokens: 4096,
+        userId: userId
     });
-    let responseText = ((response as any).content?.[0]?.text || '').trim();
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
-    return responseText;
+    return responseText.trim();
 }
 
 export async function regenerateNetworkingMessage(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is missing.');
     const settings = await getUserSettings(userId);
     const finalTone = tone || 'Confident and strategic';
     
@@ -357,13 +344,12 @@ Output ONLY the text of the networking message. Do not wrap it in JSON.`;
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
-    const response = await callAnthropicSafeguarded({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
+    let responseText = await callAiService({
         system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        userPrompt: userPrompt,
+        maxTokens: 1024,
+        userId: userId
     });
-    let responseText = ((response as any).content?.[0]?.text || '').trim();
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
-    return responseText;
+    return responseText.trim();
 }
