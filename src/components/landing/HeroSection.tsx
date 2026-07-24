@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getAssetUrl } from '@/lib/assets';
 
 export default function HeroSection() {
   return (
@@ -39,7 +40,7 @@ export default function HeroSection() {
             Get Started Free
           </Link>
           <img 
-            src="/lil-bot.png" 
+            src={getAssetUrl('/lil-bot.png')} 
             alt="Job Agent Bot" 
             style={{ height: '195px', width: 'auto', objectFit: 'contain', margin: '-1.5rem 0' }} 
           />

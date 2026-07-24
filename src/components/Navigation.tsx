@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useHelp } from '@/contexts/HelpContext';
+import { getAssetUrl } from '@/lib/assets';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -36,14 +37,14 @@ export default function Navigation() {
         <div className="sidebar-logo">
           <div className="logo-icon" style={{ background: 'transparent', padding: 0 }}>
             <img 
-              src="/icon-logo.png" 
+              src={getAssetUrl('/icon-logo.png')} 
               alt="Job Agent Icon" 
               style={{ width: '32px', height: '32px', objectFit: 'contain', display: 'block' }} 
             />
           </div>
           <div className="sidebar-logo-text">
             <img 
-              src="/logo.png" 
+              src={getAssetUrl('/logo.png')} 
               alt="Job Agent HQ" 
               style={{ height: '28px', width: 'auto', display: 'block' }} 
             />

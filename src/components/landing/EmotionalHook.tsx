@@ -1,6 +1,9 @@
 import { Check } from 'lucide-react';
+import { getAssetUrl } from '@/lib/assets';
 
 export default function EmotionalHook() {
+  const guyBgUrl = getAssetUrl('/guy.png');
+
   const tasks = [
     "Searches thousands of jobs",
     "Scores every opportunity",
@@ -16,7 +19,7 @@ export default function EmotionalHook() {
           position: relative;
           padding: 5rem var(--section-px);
           background-color: #10192E;
-          background-image: url(/guy.png);
+          background-image: url(${guyBgUrl});
           background-repeat: no-repeat;
           background-size: contain;
           background-position: top left;

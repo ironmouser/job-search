@@ -1,6 +1,9 @@
 import { Check, X } from 'lucide-react';
+import { getAssetUrl } from '@/lib/assets';
 
 export default function Comparison() {
+  const robotBgUrl = getAssetUrl('/light-robot.png');
+
   const comparisons = [
     { old: "Search manually", new: "AI searches continuously" },
     { old: "Read every description", new: "AI scores every job" },
@@ -16,7 +19,7 @@ export default function Comparison() {
         .comparison-child-div {
           max-width: 1050px;
           margin: 0 auto;
-          background-image: url('/light-robot.png');
+          background-image: url('${robotBgUrl}');
           background-repeat: no-repeat;
           background-position: right bottom;
           background-size: 380px auto;

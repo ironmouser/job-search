@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { getAssetUrl } from '@/lib/assets';
 
 const slides = [
   {
@@ -97,7 +98,7 @@ export default function ProductShowcase() {
 
           {/* Left Peek */}
           <div style={{ flex: '0 0 auto', width: '280px', opacity: 0.45, transform: 'scale(0.88)', transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)', pointerEvents: 'none', borderRadius: '10px', overflow: 'hidden', minHeight: '280px', display: 'flex', alignItems: 'center' }}>
-            <img src={getSlide(-1).image} alt={getSlide(-1).label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
+            <img src={getAssetUrl(getSlide(-1).image)} alt={getSlide(-1).label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
           </div>
 
           {/* Active Slide */}
@@ -106,12 +107,12 @@ export default function ProductShowcase() {
             className={direction === 'right' ? 'slide-in-right' : 'slide-in-left'}
             style={{ flex: '0 0 auto', width: 'min(640px, 80vw)', borderRadius: '10px', overflow: 'hidden', boxShadow: `0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px ${slides[activeIdx].accent}44`, transition: 'box-shadow 0.4s ease, background 0.4s ease', display: 'flex', alignItems: 'center' }}
           >
-            <img src={slides[activeIdx].image} alt={slides[activeIdx].label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
+            <img src={getAssetUrl(slides[activeIdx].image)} alt={slides[activeIdx].label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
           </div>
 
           {/* Right Peek */}
           <div style={{ flex: '0 0 auto', width: '280px', opacity: 0.45, transform: 'scale(0.88)', transition: 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)', pointerEvents: 'none', borderRadius: '10px', overflow: 'hidden', minHeight: '280px', display: 'flex', alignItems: 'center' }}>
-            <img src={getSlide(1).image} alt={getSlide(1).label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
+            <img src={getAssetUrl(getSlide(1).image)} alt={getSlide(1).label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
           </div>
 
           {/* Next Arrow */}

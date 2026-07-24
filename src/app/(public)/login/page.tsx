@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Mail, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
+import { getAssetUrl } from "@/lib/assets";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -59,7 +60,7 @@ function LoginForm() {
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", marginTop: "-200px" }}>
         <div style={{ zIndex: 10, textAlign: "center", marginBottom: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <img 
-            src="/full-logo.png" 
+            src={getAssetUrl('/full-logo.png')} 
             alt="Job Agent HQ" 
             style={{ height: "200px", width: "auto", display: "block", marginBottom: "0.5rem" }} 
           />

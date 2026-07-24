@@ -1,3 +1,5 @@
+import { getAssetUrl } from '@/lib/assets';
+
 export default function HowItWorks() {
   const steps = [
     {
@@ -62,7 +64,7 @@ export default function HowItWorks() {
           {/* Right Column: Layers Illustration */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
             <img 
-              src="/layers.png" 
+              src={getAssetUrl('/layers.png')} 
               alt="How it works workflow diagram" 
               style={{ width: '100%', height: 'auto', objectFit: 'contain' }} 
             />

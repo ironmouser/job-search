@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
+import { getAssetUrl } from '@/lib/assets';
 
 export default function PublicNav({ style }: { style?: React.CSSProperties }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,7 +16,7 @@ export default function PublicNav({ style }: { style?: React.CSSProperties }) {
       <div className="public-nav-header">
         <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }} onClick={closeMenu}>
           <img 
-            src="/logo.png" 
+            src={getAssetUrl('/logo.png')} 
             alt="Job Agent HQ" 
             style={{ height: '28px', width: 'auto', display: 'block' }} 
           />
