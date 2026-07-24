@@ -64,7 +64,7 @@ export default function HowItWorks() {
             <img 
               src="/layers.png" 
               alt="How it works workflow diagram" 
-              style={{ width: '100%', height: 'auto', maxHeight: '550px', objectFit: 'contain' }} 
+              style={{ width: '100%', height: 'auto', objectFit: 'contain' }} 
             />
           </div>
         </div>

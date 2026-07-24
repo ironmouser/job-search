@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Star, PlayCircle } from 'lucide-react';
 
 export default function HeroSection() {
   return (
@@ -28,20 +27,22 @@ export default function HeroSection() {
         <p style={{ 
           fontSize: '1.15rem',
           color: 'var(--text-secondary)',
-          marginBottom: '2.5rem',
+          marginBottom: '1rem',
           lineHeight: 1.6,
           maxWidth: '500px'
         }}>
           Your personal AI job search agent discovers jobs, tailors your resume, writes cover letters, and can automatically complete online application forms using the information and documents you've approved.
         </p>
 
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
           <Link href="/login" className="btn-primary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', fontWeight: 600, borderRadius: '8px' }}>
             Get Started Free
           </Link>
-          <button className="btn-outline" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', fontWeight: 600, borderRadius: '8px', background: '#fff', border: '1px solid rgba(0,0,0,0.08)', color: 'var(--text-primary)', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-            Watch Demo
-          </button>
+          <img 
+            src="/lil-bot.png" 
+            alt="Job Agent Bot" 
+            style={{ height: '195px', width: 'auto', objectFit: 'contain', margin: '-1.5rem 0' }} 
+          />
         </div>
       </div>
 

@@ -11,27 +11,108 @@ export default function Comparison() {
   ];
 
   return (
-    <section id="features" style={{ padding: '6rem var(--section-px)', background: '#ffffff' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', marginBottom: '1rem' }}>Why It's Different</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Stop applying like it's 2015.</p>
+    <section id="features" style={{ padding: '6rem var(--section-px)', background: '#f8fafc' }}>
+      <style>{`
+        .comparison-child-div {
+          max-width: 1050px;
+          margin: 0 auto;
+          background-image: url('/light-robot.png');
+          background-repeat: no-repeat;
+          background-position: right bottom;
+          background-size: 380px auto;
+          min-height: 520px;
+        }
+
+        .comparison-card {
+          max-width: 660px;
+          width: 100%;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+          border: 1px solid rgba(0, 0, 0, 0.06);
+          background: #ffffff;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .comparison-header {
+          max-width: 660px;
+          width: 100%;
+          text-align: center;
+          margin-bottom: 3.5rem;
+        }
+
+        @media (max-width: 960px) {
+          .comparison-child-div {
+            background-position: right -20px bottom;
+            background-size: 300px auto;
+          }
+          .comparison-card,
+          .comparison-header {
+            max-width: 500px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .comparison-child-div {
+            background-image: none;
+            min-height: auto;
+          }
+          .comparison-card,
+          .comparison-header {
+            max-width: 100%;
+          }
+        }
+      `}</style>
+
+      <div className="comparison-child-div">
+        {/* Title Header */}
+        <div className="comparison-header">
+          <h2 style={{ 
+            fontSize: '2.5rem', 
+            fontWeight: 700, 
+            color: '#0f172a', 
+            marginBottom: '0.75rem',
+            letterSpacing: '-0.02em'
+          }}>
+            Why It's Different
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '1.1rem', margin: 0 }}>
+            Stop applying like it's 2015.
+          </p>
         </div>
 
-        <div style={{ 
-          borderRadius: '16px', 
-          overflow: 'hidden', 
-          border: '1px solid var(--border-glass)',
-          display: 'grid', 
-          gridTemplateColumns: '1fr 1.2fr',
-          boxShadow: 'rgba(0, 0, 0, 0.3) 0px 5px 10px -2px'
-        }}>
+        {/* Comparison Card */}
+        <div className="comparison-card">
           {/* Header Row */}
-          <div style={{ background: 'var(--bg-surface)', padding: '1rem var(--section-px)', borderBottom: '1px solid var(--border-glass)' }}>
-            <h3 style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', color: 'var(--text-primary)', margin: 0 }}>Traditional</h3>
+          <div style={{ 
+            background: '#ffffff', 
+            padding: '1.2rem 1.5rem', 
+            borderBottom: '1px solid #f1f5f9' 
+          }}>
+            <h3 style={{ 
+              fontSize: '1.15rem', 
+              color: '#0f172a', 
+              margin: 0, 
+              fontWeight: 700 
+            }}>
+              Traditional
+            </h3>
           </div>
-          <div style={{ background: '#06af9e', padding: '1rem var(--section-px)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
-            <h3 style={{ fontSize: 'clamp(1rem, 4vw, 1.25rem)', color: '#fff', margin: 0, fontWeight: 600 }}>Your AI Agent</h3>
+
+          <div style={{ 
+            background: '#06af9e', 
+            padding: '1.2rem 1.5rem', 
+            borderBottom: '1px solid rgba(255,255,255,0.2)' 
+          }}>
+            <h3 style={{ 
+              fontSize: '1.15rem', 
+              color: '#ffffff', 
+              margin: 0, 
+              fontWeight: 700 
+            }}>
+              Your AI Agent
+            </h3>
           </div>
 
           {/* Data Rows */}
@@ -39,38 +120,41 @@ export default function Comparison() {
             <div style={{ display: 'contents' }} key={idx}>
               {/* Traditional Side */}
               <div style={{ 
-                background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent', 
-                padding: '1rem var(--section-px)', 
-                borderBottom: idx === comparisons.length - 1 ? 'none' : '1px solid var(--border-glass)',
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                color: 'var(--text-secondary)'
+                background: '#ffffff', 
+                padding: '1rem 1.25rem', 
+                borderBottom: idx === comparisons.length - 1 ? 'none' : '1px solid #f1f5f9',
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem',
+                color: '#475569'
               }}>
-                <X size={20} color="var(--danger)" opacity={0.5} style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: 'clamp(0.85rem, 3.5vw, 1.05rem)' }}>{item.old}</span>
+                <X size={16} color="#f87171" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.95rem', fontWeight: 400 }}>{item.old}</span>
               </div>
 
               {/* AI Agent Side */}
               <div style={{ 
                 background: '#06af9e', 
-                padding: '1rem var(--section-px)', 
+                padding: '1rem 1.25rem', 
                 borderBottom: idx === comparisons.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.2)',
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                color: '#fff'
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem',
+                color: '#ffffff'
               }}>
                 <div style={{
-                  width: '24px',
-                  height: '24px',
+                  width: '20px',
+                  height: '20px',
                   borderRadius: '50%',
-                  background: '#fff',
+                  background: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                   flexShrink: 0
                 }}>
-                  <Check size={14} color="#10b981" strokeWidth={3} />
+                  <Check size={13} color="#06af9e" strokeWidth={3} />
                 </div>
-                <span style={{ fontSize: 'clamp(0.85rem, 3.5vw, 1.05rem)', fontWeight: 500 }}>{item.new}</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{item.new}</span>
               </div>
             </div>
           ))}
@@ -79,3 +163,4 @@ export default function Comparison() {
     </section>
   );
 }
+
