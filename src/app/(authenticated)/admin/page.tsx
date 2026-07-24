@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail } from "lucide-react";
+import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail, AlertTriangle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -78,11 +78,16 @@ export default function AdminDashboard() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'gates' | 'scrapers'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'gates' | 'scrapers' | 'alerts'>('users');
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+
+  // System Alerts State
+  const [systemAlerts, setSystemAlerts] = useState<any[]>([]);
+  const [dailyCost, setDailyCost] = useState<number>(0);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
 
   // Gates State
   const [settings, setSettings] = useState<GlobalSettings>({
@@ -135,6 +140,23 @@ export default function AdminDashboard() {
         })
         .catch(console.error)
         .finally(() => setLoadingUsers(false));
+    }
+  }, [activeTab, session]);
+
+  // Fetch System Alerts
+  useEffect(() => {
+    if (activeTab === 'alerts' && session && (session.user as any)?.role === 'ADMIN') {
+      setLoadingAlerts(true);
+      fetch('/api/admin/alerts')
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            setSystemAlerts(data.alerts || []);
+            setDailyCost(data.dailyCost || 0);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingAlerts(false));
     }
   }, [activeTab, session]);
 
@@ -279,6 +301,18 @@ export default function AdminDashboard() {
           <Users size={16} /> User Directory
         </button>
         <button
+          onClick={() => setActiveTab('alerts')}
+          className={activeTab === 'alerts' ? 'btn-primary' : 'btn-outline'}
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+        >
+          <AlertTriangle size={16} /> System Alerts
+          {systemAlerts.length > 0 && (
+            <span style={{ background: "var(--accent-color)", color: "white", padding: "0.1rem 0.4rem", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
+              {systemAlerts.length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab('gates')}
           className={activeTab === 'gates' ? 'btn-primary' : 'btn-outline'}
           style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
@@ -397,6 +431,73 @@ export default function AdminDashboard() {
           )}
         </div>
       )}
+
+      {activeTab === 'alerts' && (
+        <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ fontSize: "1.25rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <AlertTriangle size={20} className="text-accent" /> Action Required Alerts
+            </h3>
+            <div style={{ background: "rgba(255, 60, 60, 0.1)", border: "1px solid rgba(255, 60, 60, 0.2)", padding: "0.5rem 1rem", borderRadius: "8px", color: "var(--text-primary)" }}>
+              Today's AI Cost: <strong>${dailyCost.toFixed(4)}</strong> / $5.00
+            </div>
+          </div>
+          
+          {loadingAlerts ? (
+            <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>Loading alerts...</div>
+          ) : systemAlerts.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)", background: "rgba(0,0,0,0.1)", borderRadius: "12px" }}>
+              <Check size={48} style={{ margin: "0 auto 1rem", opacity: 0.5, color: "#4caf50" }} />
+              <p>All clear! No active system alerts.</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {systemAlerts.map(alert => (
+                <div key={alert.id} style={{ padding: "1.5rem", border: "1px solid rgba(255,60,60,0.3)", background: "rgba(255,60,60,0.05)", borderRadius: "12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                        <span style={{ background: "#ff3b30", color: "#fff", fontSize: "0.75rem", padding: "0.2rem 0.5rem", borderRadius: "4px", fontWeight: "bold" }}>
+                          {alert.type}
+                        </span>
+                        <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                          {new Date(alert.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p style={{ fontWeight: 500, fontSize: "1.1rem", marginBottom: "1rem" }}>{alert.message}</p>
+                      
+                      {alert.metadata && (
+                        <pre style={{ background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "8px", fontSize: "0.85rem", overflowX: "auto" }}>
+                          {JSON.stringify(alert.metadata, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                    
+                    <button 
+                      className="btn-primary" 
+                      onClick={async () => {
+                        try {
+                          await fetch('/api/admin/alerts', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ alertId: alert.id })
+                          });
+                          setSystemAlerts(systemAlerts.filter(a => a.id !== alert.id));
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'gates' && (
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
           {/* Main settings description */}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, MoreVertical, MapPin } from 'lucide-react';
+import { ExternalLink, MoreVertical, MapPin, Trash2 } from 'lucide-react';
 
 type Job = {
     id: string;
@@ -51,6 +51,24 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
         }
     };
 
+    const deleteJob = async (jobId: string) => {
+        if (!confirm('Are you sure you want to delete this job from your pipeline?')) return;
+        const previousJobs = [...jobs];
+        setJobs(jobs.filter(j => j.id !== jobId));
+
+        try {
+            const res = await fetch(`/api/jobs/${jobId}`, {
+                method: 'DELETE'
+            });
+
+            if (!res.ok) throw new Error('Failed to delete job');
+        } catch (e) {
+            console.error(e);
+            alert('Failed to delete job.');
+            setJobs(previousJobs);
+        }
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
@@ -95,23 +113,41 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{job.company}</h4>
                                             
-                                            {/* Status Dropdown */}
-                                            <select 
-                                                data-tour="pipeline-status-dropdown"
-                                                value={job.status} 
-                                                onChange={(e) => updateJobStatus(job.id, e.target.value)}
-                                                style={{ 
-                                                    background: 'transparent', 
-                                                    border: '1px solid var(--border-glass)', 
-                                                    color: 'var(--text-primary)', 
-                                                    borderRadius: '4px',
-                                                    fontSize: '0.8rem',
-                                                    padding: '0.1rem 0.3rem',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                {COLUMNS.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>{c.label}</option>)}
-                                            </select>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                {/* Status Dropdown */}
+                                                <select 
+                                                    data-tour="pipeline-status-dropdown"
+                                                    value={job.status} 
+                                                    onChange={(e) => updateJobStatus(job.id, e.target.value)}
+                                                    style={{ 
+                                                        background: 'transparent', 
+                                                        border: '1px solid var(--border-glass)', 
+                                                        color: 'var(--text-primary)', 
+                                                        borderRadius: '4px',
+                                                        fontSize: '0.8rem',
+                                                        padding: '0.1rem 0.3rem',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    {COLUMNS.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>{c.label}</option>)}
+                                                </select>
+
+                                                <button 
+                                                    onClick={() => deleteJob(job.id)}
+                                                    title="Delete job"
+                                                    style={{ 
+                                                        background: 'transparent', 
+                                                        border: 'none', 
+                                                        color: 'var(--danger)', 
+                                                        cursor: 'pointer',
+                                                        padding: '0.2rem',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </div>
                                         <h3 style={{ margin: '0.5rem 0' }}>
                                             <Link href={`/job/${job.id}`} className="job-title" style={{ textDecoration: 'none' }}>
@@ -137,6 +173,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Status</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Location</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Salary</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -166,11 +203,21 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                     </td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.location || 'Remote'}</td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.salary_range || 'Not Listed'}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <button 
+                                            onClick={() => deleteJob(job.id)}
+                                            className="btn-outline"
+                                            style={{ padding: '0.3rem 0.5rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                                            title="Delete job"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                             {jobs.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No jobs in pipeline.</td>
+                                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No jobs in pipeline.</td>
                                 </tr>
                             )}
                         </tbody>

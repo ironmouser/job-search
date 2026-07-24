@@ -386,3 +386,27 @@ model ATSPlatformProfile {
 
   @@map("ats_platform_profiles")
 }
+
+model SystemAlert {
+  id          String   @id @default(uuid()) @db.Uuid
+  type        String   // e.g., 'HIGH_COST_BLOCKED'
+  message     String
+  metadata    Json?    // Store cost estimates, model type, user ID
+  isResolved  Boolean  @default(false) @map("is_resolved")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("system_alerts")
+}
+
+model AICostLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @map("user_id")
+  model       String
+  inputTokens Int      @map("input_tokens")
+  outputTokens Int     @map("output_tokens")
+  costUsd     Float    @map("cost_usd")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("ai_cost_logs")
+}

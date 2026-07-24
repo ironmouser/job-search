@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { Save, FileText, Upload, Clipboard } from 'lucide-react';
+import { Save, FileText, Upload, Clipboard, Target } from 'lucide-react';
 
 export default function AssetsPage() {
     const [content, setContent] = useState('');
+    const [profile, setProfile] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -12,11 +13,21 @@ export default function AssetsPage() {
         fetch('/api/assets/base')
             .then(res => res.json())
             .then(data => {
-                if (data.content) setContent(data.content);
+                if (data.content !== undefined) setContent(data.content);
+                if (data.profile !== undefined) setProfile(data.profile);
                 setLoading(false);
             })
             .catch(console.error);
     }, []);
+
+    useEffect(() => {
+        if (!loading && typeof window !== 'undefined' && window.location.hash === '#target-profile') {
+            const el = document.getElementById('target-profile');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    }, [loading]);
 
     const handleSave = async () => {
         setSaving(true);
@@ -24,16 +35,16 @@ export default function AssetsPage() {
             const res = await fetch('/api/assets/base', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content })
+                body: JSON.stringify({ content, profile })
             });
             if (res.ok) {
-                alert('Base resume saved successfully!');
+                alert('Target profile and base resume saved successfully!');
             } else {
                 throw new Error('Failed to save');
             }
         } catch (e: any) {
             console.error(e);
-            alert('Error saving base resume.');
+            alert('Error saving profile.');
         } finally {
             setSaving(false);
         }
@@ -81,14 +92,14 @@ export default function AssetsPage() {
         }
     };
 
-    if (loading) return <div style={{ padding: '2rem' }}>Loading assets...</div>;
+    if (loading) return <div style={{ padding: '2rem' }}>Loading profile...</div>;
 
     return (
-        <div className="animate-fade-in" style={{ paddingBottom: '4rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="animate-fade-in" style={{ paddingBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 className="page-title">Base Assets</h1>
-                    <p className="page-subtitle">Manage your base resume. Claude uses this context to generate tailored assets.</p>
+                    <h1 className="page-title">My Profile</h1>
+                    <p className="page-subtitle">Manage your target profile, scoring rubric, and base resume used by AI automation.</p>
                 </div>
                 <button 
                     onClick={handleSave} 
@@ -101,9 +112,39 @@ export default function AssetsPage() {
                 </button>
             </div>
 
-            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }} data-tour="assets-editor">
+            {/* Target Profile & Scoring Rubric Section (Above Base Resume) */}
+            <div className="glass-card" id="target-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} data-tour="target-profile">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
+                        <Target size={20} /> Target Profile & Scoring Rubric
+                    </h3>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    This exact text is used by the AI to score and rank jobs. Update it to reflect what you truly care about in your target roles.
+                </p>
+                <textarea
+                    value={profile}
+                    onChange={(e) => setProfile(e.target.value)}
+                    placeholder="Enter target job titles, key skills, industry preferences, and scoring rubric..."
+                    style={{
+                        width: '100%',
+                        minHeight: '200px',
+                        background: 'rgba(0,0,0,0.2)',
+                        border: '1px solid var(--border-glass)',
+                        borderRadius: '8px',
+                        color: 'var(--text-primary)',
+                        padding: '1rem',
+                        fontFamily: 'monospace',
+                        fontSize: '0.9rem',
+                        resize: 'vertical'
+                    }}
+                />
+            </div>
+
+            {/* Base Resume Section */}
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} data-tour="assets-editor">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
                         <FileText size={20} /> Base Resume
                     </h3>
                     <div style={{ display: 'flex', gap: '0.5rem' }} data-tour="assets-upload">
@@ -133,10 +174,10 @@ export default function AssetsPage() {
                 <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
+                    placeholder="Paste or write your base resume in Markdown..."
                     style={{
-                        flex: 1,
                         width: '100%',
-                        minHeight: '500px',
+                        minHeight: '450px',
                         background: 'rgba(0,0,0,0.2)',
                         border: '1px solid var(--border-glass)',
                         borderRadius: '8px',

@@ -136,8 +136,8 @@
             ]
         },
         "assets": {
-            "name": "Base Assets",
-            "description": "Learn how to manage your master resume for AI generation.",
+            "name": "My Profile",
+            "description": "Learn how to manage your target profile, scoring rubric, and master resume for AI generation.",
             "roles": ["*"],
             "autoStart": false,
             "steps": [

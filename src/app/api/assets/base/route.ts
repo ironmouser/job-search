@@ -17,6 +17,7 @@ export async function GET() {
         });
 
         let content = prefs?.resumeMarkdown || '';
+        let profile = prefs?.profile || '';
         
         if (!content) {
             // Fallback to reading disk file if user has no resumeMarkdown stored
@@ -29,7 +30,7 @@ export async function GET() {
             }
         }
         
-        return NextResponse.json({ content });
+        return NextResponse.json({ content, profile });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -42,19 +43,19 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         
-        const { content } = await request.json();
-        if (typeof content !== 'string') {
-            return NextResponse.json({ error: 'Content must be a string' }, { status: 400 });
-        }
+        const { content, profile } = await request.json();
+        
+        const updateData: any = {};
+        if (typeof content === 'string') updateData.resumeMarkdown = content;
+        if (typeof profile === 'string') updateData.profile = profile;
         
         await prisma.userPreferences.upsert({
             where: { userId: session.user.id },
-            update: {
-                resumeMarkdown: content
-            },
+            update: updateData,
             create: {
                 userId: session.user.id,
-                resumeMarkdown: content
+                resumeMarkdown: typeof content === 'string' ? content : '',
+                profile: typeof profile === 'string' ? profile : ''
             }
         });
         

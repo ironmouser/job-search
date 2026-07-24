@@ -37,10 +37,12 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const pathname = req.nextUrl.pathname;
+        const isAuthApi = pathname.startsWith('/api/auth');
+        const isWebhook = pathname.startsWith('/api/webhooks');
         const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login';
         const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
         const isWorkerApi = pathname.startsWith('/api/worker');
-        if (isPublicPage || isPublicAsset || isWorkerApi) return true;
+        if (isPublicPage || isPublicAsset || isWorkerApi || isAuthApi || isWebhook) return true;
         return !!token;
       },
     },

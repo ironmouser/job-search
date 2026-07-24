@@ -14,7 +14,7 @@ export async function GET() {
         
         // Fetch all jobs for this user from UserJob to get the correct user-specific status
         const userJobs = await prisma.userJob.findMany({
-            where: { userId: session.user.id },
+            where: { userId: session.user.id, status: { not: 'deleted' }, isArchived: false },
             include: {
                 job: {
                     select: { id: true, title: true, company: true, opportunityScores: { select: { totalScore: true } } }

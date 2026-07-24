@@ -61,7 +61,8 @@ export async function POST(
 
             // 2. Remove script/style noise and search DOM
             $('script, style, noscript, nav, header, footer, iframe, svg').remove();
-            const htmlStr = $('main, article, .job-description, .job_description, #job-description, [class*="description"], [id*="description"]').html() || $('body').html() || '';
+            const containerSelector = 'main, article, .job-description, .job_description, #job-description, #jobDescriptionText, .posting-requirements, .section-description, [data-automation-id="jobPostingDescription"], [class*="description"], [class*="posting"], [class*="details"], [id*="description"], [id*="posting"]';
+            const htmlStr = $(containerSelector).html() || $('body').html() || '';
             if (htmlStr.trim().length > 100) {
                 return await reformatJobDescriptionWithGemini(htmlStr.trim());
             }

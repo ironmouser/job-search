@@ -24,7 +24,8 @@ export default async function PipelinePage() {
     userJobs = await prisma.userJob.findMany({
       where: { 
         userId,
-        status: { in: ['applied', 'interviewing', 'offer', 'rejected'] } 
+        status: { in: ['applied', 'interviewing', 'offer', 'rejected'], not: 'deleted' },
+        isArchived: false
       },
       include: {
         job: { select: { id: true, title: true, company: true, location: true, salaryRange: true } }

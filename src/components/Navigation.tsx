@@ -78,9 +78,9 @@ export default function Navigation() {
           </Link>
         </li>
         <li className="nav-item">
-          <Link href="/assets" className={pathname === '/assets' ? 'active' : ''} onClick={closeMenu} title="Assets">
+          <Link href="/assets" className={pathname === '/assets' ? 'active' : ''} onClick={closeMenu} title="My Profile">
             <FileText size={20} />
-            <span className="nav-text">Assets</span>
+            <span className="nav-text">My Profile</span>
           </Link>
         </li>
         <li className="nav-item">

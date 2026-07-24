@@ -4,10 +4,31 @@ import fs from 'fs';
 import path from 'path';
 import { getUserSettings } from './settings';
 import { cleanCompanyName } from './cleaners';
+import { checkAiSafeguard, logAiCost, estimateTokens } from './ai-safeguard';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY || '',
 });
+
+async function callAnthropicSafeguarded(params: any, userId?: string) {
+    const promptText = (params.system || '') + JSON.stringify(params.messages);
+    const estimatedTokens = estimateTokens(promptText);
+    const estimatedCost = (estimatedTokens / 1_000_000) * 0.25 + (params.max_tokens / 1_000_000) * 1.25;
+    
+    await checkAiSafeguard(estimatedCost, params.model, userId);
+    
+    const response = await anthropic.messages.create(params);
+    
+    const usage = response.usage;
+    if (usage) {
+        await logAiCost(params.model, usage.input_tokens, usage.output_tokens, userId);
+    } else {
+        const outText = (response as any).content?.[0]?.text || '';
+        await logAiCost(params.model, estimatedTokens, estimateTokens(outText), userId);
+    }
+    
+    return response;
+}
 
 export async function generateAssetsForJob(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string) {
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -63,7 +84,7 @@ ${baseResume}
 
     console.log(`Generating assets for ${company} - ${jobTitle}...`);
 
-    const response = await anthropic.messages.create({
+    const response = await callAnthropicSafeguarded({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
         system: systemPrompt,
@@ -206,7 +227,7 @@ ${question}
 
     console.log(`Generating answer for question: "${question.substring(0, 30)}..." at ${company} (Tone: ${finalTone}, Instruction: ${instruction || 'none'})...`);
 
-    const response = await anthropic.messages.create({
+    const response = await callAnthropicSafeguarded({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 2048,
         system: systemPrompt,
@@ -256,7 +277,7 @@ Output ONLY the Markdown string of the tailored resume in plain text. Do not wra
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
-    const response = await anthropic.messages.create({
+    const response = await callAnthropicSafeguarded({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
         system: systemPrompt,
@@ -297,7 +318,7 @@ Output ONLY the cover letter body in plain text (no JSON wrapping).`;
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
-    const response = await anthropic.messages.create({
+    const response = await callAnthropicSafeguarded({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
         system: systemPrompt,
@@ -336,7 +357,7 @@ Output ONLY the text of the networking message. Do not wrap it in JSON.`;
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
     
-    const response = await anthropic.messages.create({
+    const response = await callAnthropicSafeguarded({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         system: systemPrompt,

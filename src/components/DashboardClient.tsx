@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2 } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
@@ -274,6 +274,23 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const deleteJob = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this job?')) return;
+    setJobList(prev => prev ? prev.filter(j => j.id !== id) : []);
+    try {
+      const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        throw new Error('Failed to delete job');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete job.');
+      router.refresh();
     }
   };
 
@@ -719,6 +736,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                           <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
                             <Archive size={14} />
                           </button>
+                          <button onClick={() => deleteJob(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Delete">
+                            <Trash2 size={14} />
+                          </button>
                           <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>
                             Details
                           </Link>
@@ -837,6 +857,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                     )}
                     <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
                       <Archive size={14} />
+                    </button>
+                    <button onClick={() => deleteJob(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Delete">
+                      <Trash2 size={14} />
                     </button>
                     <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className="btn-primary" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
                       Details

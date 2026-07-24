@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2 } from 'lucide-react';
 import AutofillButton from './AutofillButton';
 import { AutoApplyPanel } from './AutoApplyPanel';
@@ -27,17 +28,54 @@ export function ApplyStepAccordion({
   appliesThisWeek,
   hasAssets,
 }: ApplyStepAccordionProps) {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeUrl, setActiveUrl] = useState(applicationUrl || initialUrl);
   const [customUrl, setCustomUrl] = useState('');
   const [isSavingUrl, setIsSavingUrl] = useState(false);
   
+  const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
+  const [isGeneratingAssets, setIsGeneratingAssets] = useState(false);
+  const [hasStartedGenerating, setHasStartedGenerating] = useState(false);
+
   const [confidenceData, setConfidenceData] = useState<{ platform: string; confidence: number } | null>(null);
   const [isCheckingConfidence, setIsCheckingConfidence] = useState(false);
 
+  useEffect(() => {
+    setLocalHasAssets(hasAssets);
+  }, [hasAssets]);
+
+  // Automatically start asset generation when opening accordion if user hasn't generated assets yet
+  useEffect(() => {
+    if (isExpanded && !localHasAssets && !isGeneratingAssets && !hasStartedGenerating) {
+      setHasStartedGenerating(true);
+      setIsGeneratingAssets(true);
+
+      fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId }),
+      })
+        .then((res) => {
+          if (res.ok) {
+            setLocalHasAssets(true);
+            router.refresh();
+          } else {
+            console.error('Failed to auto-generate assets');
+          }
+        })
+        .catch((err) => {
+          console.error('Error auto-generating assets:', err);
+        })
+        .finally(() => {
+          setIsGeneratingAssets(false);
+        });
+    }
+  }, [isExpanded, localHasAssets, isGeneratingAssets, hasStartedGenerating, jobId, router]);
+
   // Check confidence whenever activeUrl changes
   useEffect(() => {
-    if (!activeUrl || !isExpanded) return;
+    if (!activeUrl || !isExpanded || isGeneratingAssets) return;
     let isMounted = true;
     setIsCheckingConfidence(true);
 
@@ -159,80 +197,109 @@ export function ApplyStepAccordion({
       {isExpanded && (
         <div style={{ padding: '2rem', borderTop: '1px solid var(--border-glass)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
-          {/* Custom URL Input Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <LinkIcon size={14} /> Direct Job Application URL
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="url"
-                value={customUrl}
-                onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder={activeUrl}
-                style={{
-                  flex: 1,
-                  padding: '0.6rem 1rem',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-glass)',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.9rem',
-                }}
+          {isGeneratingAssets ? (
+            /* ONLY show generating message container while assets are generating */
+            <div style={{
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: '12px',
+              padding: '1.75rem 2rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1.25rem',
+              color: 'var(--text-primary)'
+            }}>
+              <Loader2 
+                size={28} 
+                className="animate-spin" 
+                color="var(--accent-primary)" 
+                style={{ flexShrink: 0, animation: 'spin 1s linear infinite' }} 
               />
-              <button
-                className="btn-outline"
-                onClick={handleSaveCustomUrl}
-                disabled={!customUrl.trim() || isSavingUrl}
-                style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-              >
-                {isSavingUrl ? <Loader2 size={14} className="animate-spin" /> : null}
-                Update URL
-              </button>
-            </div>
-            {applicationUrl && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Using custom application URL.</span>
-            )}
-          </div>
-
-          {/* Low Confidence Warning OR AutoApplyPanel */}
-          {isCheckingConfidence ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 1rem' }} />
-              <p>Analyzing job application format...</p>
-            </div>
-          ) : showLowConfidenceWarning ? (
-            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <AlertCircle color="#ef4444" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>
-                <h4 style={{ margin: '0 0 0.5rem 0', color: '#ef4444' }}>Direct Link Required</h4>
-                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                  The current URL doesn't look like it supports Auto Apply (the application might be nested behind the apply button on a job board like Indeed or LinkedIn). 
-                  Try navigating to the company's direct career page and pasting the URL above to see if we can automate it!
+                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-primary)' }}>
+                  Oops, looks like you didn't generate a resume and cover letter for this job (Step 2). Don't worry, I'll do that now. Be sure to review them before Auto applying.
                 </p>
-                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.6 }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Detected Score:</span>
-                  <AutoApplyConfidenceBadge confidence={confidenceData.confidence} />
-                </div>
               </div>
             </div>
           ) : (
-            <div>
-              {confidenceData && (
-                <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Automation Confidence:</span>
-                  <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    ({confidenceData.platform !== 'unknown' ? confidenceData.platform.charAt(0).toUpperCase() + confidenceData.platform.slice(1) : 'Custom Form'})
-                  </span>
+            /* Regular Accordion Content (shown ONLY after asset generation completes or if assets already exist) */
+            <>
+              {/* Custom URL Input Section */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <LinkIcon size={14} /> Direct Job Application URL
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="url"
+                    value={customUrl}
+                    onChange={(e) => setCustomUrl(e.target.value)}
+                    placeholder={activeUrl}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem 1rem',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border-glass)',
+                      background: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                    }}
+                  />
+                  <button
+                    className="btn-outline"
+                    onClick={handleSaveCustomUrl}
+                    disabled={!customUrl.trim() || isSavingUrl}
+                    style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    {isSavingUrl ? <Loader2 size={14} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} /> : null}
+                    Update URL
+                  </button>
+                </div>
+                {applicationUrl && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Using custom application URL.</span>
+                )}
+              </div>
+
+              {/* Low Confidence Warning OR AutoApplyPanel */}
+              {isCheckingConfidence ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
+                  <p>Analyzing job application format...</p>
+                </div>
+              ) : showLowConfidenceWarning ? (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <AlertCircle color="#ef4444" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#ef4444' }}>Direct Link Required</h4>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                      The current URL doesn't look like it supports Auto Apply (the application might be nested behind the apply button on a job board like Indeed or LinkedIn). 
+                      Try navigating to the company's direct career page and pasting the URL above to see if we can automate it!
+                    </p>
+                    <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.6 }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Detected Score:</span>
+                      <AutoApplyConfidenceBadge confidence={confidenceData.confidence} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {confidenceData && (
+                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Automation Confidence:</span>
+                      <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        ({confidenceData.platform !== 'unknown' ? confidenceData.platform.charAt(0).toUpperCase() + confidenceData.platform.slice(1) : 'Custom Form'})
+                      </span>
+                    </div>
+                  )}
+                  <AutoApplyPanel
+                    jobId={jobId}
+                    jobUrl={activeUrl}
+                    hasAssets={localHasAssets}
+                  />
                 </div>
               )}
-              <AutoApplyPanel
-                jobId={jobId}
-                jobUrl={activeUrl}
-                hasAssets={hasAssets}
-              />
-            </div>
+            </>
           )}
         </div>
       )}

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
+import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -13,7 +14,26 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         
         const userId = session.user.id;
         const { id } = await context.params;
-        const { status, applied_at, applicationUrl } = await request.json();
+        const { status, applied_at, applicationUrl, description } = await request.json();
+
+        if (description) {
+            let formattedDesc = description;
+            if (formattedDesc.length > 50 && !formattedDesc.includes('## ')) {
+                try {
+                    formattedDesc = await reformatJobDescriptionWithGemini(description);
+                } catch (e) {}
+            }
+
+            await prisma.job.update({
+                where: { id },
+                data: { description: formattedDesc }
+            });
+
+            await prisma.userJob.update({
+                where: { userId_jobId: { userId, jobId: id } },
+                data: { status: 'discovered' }
+            });
+        }
 
         if (applicationUrl) {
             await prisma.job.update({
@@ -44,6 +64,28 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         return NextResponse.json({ success: true });
     } catch (e: any) {
         console.error('Failed to update job status:', e);
+        return NextResponse.json({ error: e.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        const userId = session.user.id;
+        const { id } = await context.params;
+
+        const data = await prisma.userJob.update({
+            where: { userId_jobId: { userId, jobId: id } },
+            data: { status: 'deleted' }
+        });
+
+        return NextResponse.json({ success: true, data });
+    } catch (e: any) {
+        console.error('Failed to delete job:', e);
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
 }

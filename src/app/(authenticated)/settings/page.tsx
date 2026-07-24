@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Database, Key, Bot, Search, Layout, FileText, Save, Mail } from 'lucide-react';
+import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -533,20 +533,18 @@ export default function SettingsPage() {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-tour="target-profile">
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                                Target Profile & Scoring Rubric
-                            </label>
-                            <textarea 
-                                value={settings.profile || ''}
-                                onChange={(e) => handleChange('profile', e.target.value)}
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', minHeight: '200px', resize: 'vertical', fontFamily: 'monospace', fontSize: '0.9rem' }}
-                            />
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>This exact text is used by the AI to score and rank jobs. Update it to reflect what you truly care about.</span>
+                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Target Profile & Scoring Rubric</label>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                Manage your target job criteria, ideal roles, and scoring rubric on the My Profile page.
+                            </p>
+                            <Link href="/assets#target-profile" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content' }}>
+                                <Target size={16} /> Target & Profile
+                            </Link>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }} data-tour="resume-upload">
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Base Assets</label>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>To update the base resume the AI uses as a template, use the Assets editor.</p>
+                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Base Resume</label>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>To update the base resume the AI uses as a template, visit your My Profile page.</p>
                             <Link href="/assets" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content' }}>
                                 <FileText size={16} /> Manage Base Resume
                             </Link>
