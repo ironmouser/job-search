@@ -415,11 +415,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       
       const scoreCurrent = async () => {
         try {
-          await fetch('/api/score', {
+          const res = await fetch('/api/score', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
           });
+          if (!res.ok) throw new Error(`Status ${res.status}`);
           router.refresh();
         } catch (e) {
           console.error('Failed to score current jobs:', e);
@@ -433,11 +434,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
       const scoreBackground = async () => {
         try {
-          await fetch('/api/score', {
+          const res = await fetch('/api/score', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
           });
+          if (!res.ok) throw new Error(`Status ${res.status}`);
           router.refresh();
         } catch (e) {
           console.error('Failed to background score jobs:', e);
