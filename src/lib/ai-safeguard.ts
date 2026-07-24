@@ -60,9 +60,9 @@ export async function logAiCost(model: string, inputTokens: number, outputTokens
     let costUsd = 0;
 
     // Approximate Pricing (as of 2024/2025)
-    if (model.includes('gemini-2.5-flash-lite')) {
+    if (model.includes('gemini-1.5-flash-8b') || model.includes('gemini-2.5-flash-lite')) {
         costUsd = (inputTokens / 1_000_000) * 0.075 + (outputTokens / 1_000_000) * 0.30;
-    } else if (model.includes('gemini-2.5-flash')) {
+    } else if (model.includes('gemini-1.5-flash') || model.includes('gemini-2.5-flash')) {
         costUsd = (inputTokens / 1_000_000) * 0.075 + (outputTokens / 1_000_000) * 0.30;
     } else if (model.includes('gemini-1.5-pro')) {
         costUsd = (inputTokens / 1_000_000) * 1.25 + (outputTokens / 1_000_000) * 5.00;

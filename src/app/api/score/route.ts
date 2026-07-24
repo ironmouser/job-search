@@ -74,6 +74,10 @@ export async function POST(request: Request) {
                 }
             }
 
+            if (results.some(r => r.error)) {
+                return NextResponse.json({ message: 'Batch scoring had errors.', results }, { status: 500 });
+            }
+
             return NextResponse.json({ 
                 message: 'Batch scoring complete.', 
                 results 
@@ -107,6 +111,10 @@ export async function POST(request: Request) {
                     console.error(`Error scoring job ${job.id}:`, e.message);
                     results.push({ jobId: job.id, error: e.message });
                 }
+            }
+
+            if (results.some(r => r.error)) {
+                return NextResponse.json({ message: 'Batch scoring had errors.', results }, { status: 500 });
             }
 
             return NextResponse.json({ 
