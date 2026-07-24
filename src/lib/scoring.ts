@@ -75,7 +75,7 @@ export async function scoreJob(userId: string, jobId: string, jobTitle: string, 
     }
 
     const model = genAI.getGenerativeModel({ 
-        model: 'gemini-3.1-pro',
+        model: 'gemini-2.0-flash',
         generationConfig: {
             responseMimeType: "application/json",
         }
@@ -113,7 +113,7 @@ Return a JSON object strictly matching this schema:
         // 1. Calculate Estimated Tokens and Check Safeguard
         const estimatedTokens = estimateTokens(promptText);
         const estimatedCost = (estimatedTokens / 1_000_000) * 0.075 + (1000 / 1_000_000) * 0.30;
-        await checkAiSafeguard(estimatedCost, 'gemini-3.1-pro-preview', userId);
+        await checkAiSafeguard(estimatedCost, 'gemini-2.0-flash', userId);
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
@@ -122,10 +122,10 @@ Return a JSON object strictly matching this schema:
                 // 2. Log Actual Cost
                 const usage = result.response.usageMetadata;
                 if (usage) {
-                    await logAiCost('gemini-3.1-pro-preview', usage.promptTokenCount, usage.candidatesTokenCount, userId);
+                    await logAiCost('gemini-2.0-flash', usage.promptTokenCount, usage.candidatesTokenCount, userId);
                 } else {
                     // Fallback to estimate if metadata missing
-                    await logAiCost('gemini-3.1-pro-preview', estimatedTokens, estimateTokens(result.response.text()), userId);
+                    await logAiCost('gemini-2.0-flash', estimatedTokens, estimateTokens(result.response.text()), userId);
                 }
                 
                 return result;
@@ -212,7 +212,7 @@ export async function extractJobsFromEmailText(emailText: string) {
     if (!process.env.GEMINI_API_KEY) return [];
 
     const model = genAI.getGenerativeModel({ 
-        model: 'gemini-3.1-flash-lite',
+        model: 'gemini-2.0-flash-lite',
         generationConfig: {
             responseMimeType: "application/json",
         }

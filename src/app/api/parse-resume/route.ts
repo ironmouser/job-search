@@ -25,8 +25,8 @@ export async function POST(request: Request) {
         const buffer = Buffer.from(await file.arrayBuffer());
         let cleanMarkdown = '';
         
-        // Use gemini-3.1-flash-lite for fast and cost-effective text extraction
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+        // Use gemini-2.0-flash-lite for fast and cost-effective text extraction
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
         if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
             const prompt = `You are an expert resume parser. I am providing you with a PDF file of a resume.
@@ -36,7 +36,7 @@ Preserve all the original information, but structure it beautifully using header
             // Assume parsing a PDF uses ~2000 tokens
             const estimatedTokens = 2000;
             const estimatedCost = (estimatedTokens / 1_000_000) * 0.075 + (1000 / 1_000_000) * 0.30;
-            await checkAiSafeguard(estimatedCost, 'gemini-3.1-flash-lite', userId);
+            await checkAiSafeguard(estimatedCost, 'gemini-2.0-flash-lite', userId);
 
             const response = await model.generateContent([
                 {
@@ -51,7 +51,7 @@ Preserve all the original information, but structure it beautifully using header
             
             const usage = response.response.usageMetadata;
             if (usage) {
-                await logAiCost('gemini-3.1-flash-lite', usage.promptTokenCount, usage.candidatesTokenCount, userId);
+                await logAiCost('gemini-2.0-flash-lite', usage.promptTokenCount, usage.candidatesTokenCount, userId);
             }
         } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
             const result = await mammoth.extractRawText({ buffer });
@@ -66,16 +66,16 @@ ${rawText}`;
 
             const estimatedTokens = estimateTokens(prompt);
             const estimatedCost = (estimatedTokens / 1_000_000) * 0.075 + (1000 / 1_000_000) * 0.30;
-            await checkAiSafeguard(estimatedCost, 'gemini-3.1-flash-lite', userId);
+            await checkAiSafeguard(estimatedCost, 'gemini-2.0-flash-lite', userId);
 
             const response = await model.generateContent(prompt);
             cleanMarkdown = response.response.text();
             
             const usage = response.response.usageMetadata;
             if (usage) {
-                await logAiCost('gemini-3.1-flash-lite', usage.promptTokenCount, usage.candidatesTokenCount, userId);
+                await logAiCost('gemini-2.0-flash-lite', usage.promptTokenCount, usage.candidatesTokenCount, userId);
             } else {
-                await logAiCost('gemini-3.1-flash-lite', estimatedTokens, estimateTokens(cleanMarkdown), userId);
+                await logAiCost('gemini-2.0-flash-lite', estimatedTokens, estimateTokens(cleanMarkdown), userId);
             }
         } else {
             return NextResponse.json({ error: 'Unsupported file type. Please upload a PDF or DOCX file.' }, { status: 400 });
