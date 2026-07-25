@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
@@ -540,6 +540,70 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           </div>
         </div>
       </div>
+
+        {userPlanTier !== 'PRO' && (
+          <div 
+            className="glass-card" 
+            style={{ 
+              marginBottom: '2rem', 
+              padding: '1.5rem 2rem', 
+              background: 'linear-gradient(135deg, rgba(38, 99, 235, 0.12) 0%, rgba(168, 85, 247, 0.12) 100%)', 
+              border: '1px solid rgba(168, 85, 247, 0.3)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1.5rem'
+            }}
+          >
+            <div style={{ flex: 1, minWidth: '280px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ 
+                  background: 'linear-gradient(135deg, #a855f7 0%, #3b82f6 100%)', 
+                  color: '#fff', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 700, 
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <Sparkles size={12} /> Upgrade to Pro
+                </span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Supercharge Your Job Search</span>
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem' }}>Unlock Unlimited AI Scoring, Custom Assets & Auto Apply</h3>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> Unlimited AI Match Scoring</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> Unlimited Tailored Resumes & Cover Letters</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> 1-Click Auto Apply Automation</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> Strategic Application Q&A Answers</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button 
+                onClick={() => setShowUpgradeModal(true)} 
+                className="btn-primary" 
+                style={{ 
+                  padding: '0.75rem 1.5rem', 
+                  fontSize: '0.95rem', 
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 14px rgba(168, 85, 247, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                Upgrade to Pro <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
 
       <div className="responsive-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
         <div 
