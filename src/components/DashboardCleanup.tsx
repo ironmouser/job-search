@@ -24,12 +24,11 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
     applied: false,
     archived: false,
     checked: false,
-    shortDescription: false,
     olderThanDays: ''
   });
 
   const handleCleanup = async () => {
-    if (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.shortDescription && !filters.olderThanDays) {
+    if (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays) {
       alert("Please select at least one criteria for cleanup.");
       return;
     }
@@ -43,7 +42,6 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
           applied: filters.applied,
           archived: filters.archived,
           checked: filters.checked,
-          shortDescription: filters.shortDescription,
           checkedJobIds: filters.checked ? checkedJobs : [],
           olderThanDays: filters.olderThanDays ? parseInt(filters.olderThanDays, 10) : null
         };
@@ -58,7 +56,7 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
           const data = await res.json();
           alert(`Successfully deleted ${data.count} jobs.`);
           setIsOpen(false);
-          setFilters({ disliked: false, viewed: false, applied: false, archived: false, checked: false, shortDescription: false, olderThanDays: '' });
+          setFilters({ disliked: false, viewed: false, applied: false, archived: false, checked: false, olderThanDays: '' });
           onCleanupComplete();
         } else {
           const error = await res.json();
@@ -151,16 +149,6 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
                 <input 
                   type="checkbox" 
-                  checked={filters.shortDescription}
-                  onChange={(e) => setFilters(prev => ({ ...prev, shortDescription: e.target.checked }))}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                <span>Remove jobs with <strong>missing/short description</strong> (&le; 50 chars)</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
                   checked={filters.checked}
                   onChange={(e) => setFilters(prev => ({ ...prev, checked: e.target.checked }))}
                   style={{ width: '18px', height: '18px' }}
@@ -193,7 +181,7 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
                 onClick={handleCleanup}
                 className="btn-primary"
                 style={{ background: 'var(--danger)', color: 'white' }}
-                disabled={isCleaning || (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.shortDescription && !filters.olderThanDays)}
+                disabled={isCleaning || (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays)}
               >
                 {isCleaning ? 'Deleting...' : 'Delete Jobs'}
               </button>

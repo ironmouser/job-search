@@ -57,20 +57,15 @@ export async function POST(request: Request) {
             const scorableJobs = unscoredUserJobs.filter(uj => uj.job.description && uj.job.description.trim().length > 50);
             const nonScorableJobs = unscoredUserJobs.filter(uj => !uj.job.description || uj.job.description.trim().length <= 50);
 
-            // Auto-mark non-scorable jobs as scored with 0 so they don't get stuck in an unscored loop
+            // Auto-purge non-scorable jobs (missing or short descriptions <= 50 chars) from DB
             for (const uj of nonScorableJobs) {
                 try {
-                    await prisma.opportunityScore.upsert({
-                        where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
-                        update: { totalScore: 0, analysisNotes: 'Job description unavailable or too short for AI analysis.' },
-                        create: { userId: session.user.id, jobId: uj.job.id, totalScore: 0, analysisNotes: 'Job description unavailable or too short for AI analysis.' }
-                    });
                     await prisma.userJob.update({
                         where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
-                        data: { status: 'scored' }
+                        data: { status: 'deleted' }
                     });
                 } catch (e) {
-                    console.error(`Error auto-scoring short description job ${uj.job.id}:`, e);
+                    console.error(`Error deleting short description job ${uj.job.id}:`, e);
                 }
             }
 
@@ -123,17 +118,12 @@ export async function POST(request: Request) {
 
             for (const uj of nonScorableJobs) {
                 try {
-                    await prisma.opportunityScore.upsert({
-                        where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
-                        update: { totalScore: 0, analysisNotes: 'Job description unavailable or too short for AI analysis.' },
-                        create: { userId: session.user.id, jobId: uj.job.id, totalScore: 0, analysisNotes: 'Job description unavailable or too short for AI analysis.' }
-                    });
                     await prisma.userJob.update({
                         where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
-                        data: { status: 'scored' }
+                        data: { status: 'deleted' }
                     });
                 } catch (e) {
-                    console.error(`Error auto-scoring short description job ${uj.job.id}:`, e);
+                    console.error(`Error deleting short description job ${uj.job.id}:`, e);
                 }
             }
 

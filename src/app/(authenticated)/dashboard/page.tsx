@@ -26,6 +26,26 @@ export default async function Dashboard() {
   let userJobs: any[] = [];
   let userPrefs: any = null;
   try {
+    // Purge any jobs with missing or short (<50 char) descriptions automatically
+    const shortDescUserJobs = await prisma.userJob.findMany({
+      where: {
+        userId,
+        status: { not: 'deleted' },
+        OR: [
+          { job: { description: null } },
+          { job: { description: '' } }
+        ]
+      },
+      select: { id: true }
+    });
+
+    if (shortDescUserJobs.length > 0) {
+      await prisma.userJob.updateMany({
+        where: { id: { in: shortDescUserJobs.map(uj => uj.id) } },
+        data: { status: 'deleted' }
+      });
+    }
+
     userJobs = await prisma.userJob.findMany({
       where: { 
         userId,
@@ -42,6 +62,24 @@ export default async function Dashboard() {
       orderBy: { createdAt: 'desc' },
       take: 1000
     });
+
+    // Also purge any fetched jobs whose description trimmed length is <= 50
+    const toDeleteIds: string[] = [];
+    userJobs = userJobs.filter(uj => {
+      if (!uj.job.description || uj.job.description.trim().length <= 50) {
+        toDeleteIds.push(uj.id);
+        return false;
+      }
+      return true;
+    });
+
+    if (toDeleteIds.length > 0) {
+      await prisma.userJob.updateMany({
+        where: { id: { in: toDeleteIds } },
+        data: { status: 'deleted' }
+      });
+    }
+
     userPrefs = await prisma.userPreferences.findUnique({ where: { userId } });
   } catch (error: any) {
     console.error('Error fetching jobs:', error);
