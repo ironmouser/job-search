@@ -498,10 +498,15 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'all' ? 'active' : ''}`}
           onClick={() => setActiveFilter('all')}
-          style={{ cursor: 'pointer', padding: '1rem' }}
+          style={{ cursor: 'pointer', padding: '1rem', position: 'relative' }}
         >
           <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Jobs Found</h4>
           <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalDiscovered}</h2>
+          {totalDiscovered > 200 && (
+            <div style={{ marginTop: '6px', color: 'red', fontSize: '0.75rem', fontWeight: 500, position: 'absolute', left: '1rem' }}>
+              Consider a cleanup
+            </div>
+          )}
         </div>
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'scored' ? 'active' : ''}`}
