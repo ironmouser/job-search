@@ -364,6 +364,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Lock size={14} /> Portfolio Recommendation — Available with Pro Plan</span>
                 </div>
               )}
+            </div>
           ) : scoresExhausted ? (
              <div className="glass-card" style={{ position: 'sticky', top: '2rem', textAlign: 'center', padding: '2rem' }}>
                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
