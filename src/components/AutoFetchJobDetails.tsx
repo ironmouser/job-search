@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Edit3, Save } from 'lucide-react';
+import { RefreshCw, Edit3, Save, ExternalLink, Copy, Check } from 'lucide-react';
 import SyncOverlay from './SyncOverlay';
 
-export default function AutoFetchJobDetails({ jobId, initialDescription }: { jobId: string; initialDescription?: string | null }) {
+export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription }: { jobId: string; jobUrl?: string | null; initialDescription?: string | null }) {
   const router = useRouter();
   const [status, setStatus] = useState<'fetching' | 'scoring' | 'error'>('fetching');
   const [retryCount, setRetryCount] = useState(0);
@@ -13,6 +13,15 @@ export default function AutoFetchJobDetails({ jobId, initialDescription }: { job
   const [showManual, setShowManual] = useState(false);
   const [manualText, setManualText] = useState(initialDescription || '');
   const [savingManual, setSavingManual] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyUrl = () => {
+    if (jobUrl) {
+      navigator.clipboard.writeText(jobUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -104,8 +113,57 @@ export default function AutoFetchJobDetails({ jobId, initialDescription }: { job
               Could not automatically extract full job details.
             </p>
             <p style={{ margin: 0 }}>
-              The job board may be blocking automated scrapers. You can retry auto-fetch or paste the full job description text manually below.
+              The job board may be blocking automated scrapers. You can copy/open the job URL below to view the posting, then paste the full job description text manually.
             </p>
+          </div>
+        )}
+
+        {jobUrl && (
+          <div style={{ 
+            background: 'rgba(255, 255, 255, 0.04)', 
+            border: '1px solid var(--border-glass)', 
+            borderRadius: '8px', 
+            padding: '1rem', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '0.6rem' 
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Job Posting Source URL:
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={handleCopyUrl}
+                  className="btn-outline"
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  {copied ? <Check size={14} style={{ color: 'var(--success)' }} /> : <Copy size={14} />}
+                  {copied ? 'Copied URL!' : 'Copy URL'}
+                </button>
+                <a
+                  href={jobUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-outline"
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', textDecoration: 'none', color: 'var(--accent-primary)' }}
+                >
+                  <ExternalLink size={14} /> Open Job Page
+                </a>
+              </div>
+            </div>
+            <div style={{ 
+              fontSize: '0.85rem', 
+              color: 'var(--text-primary)', 
+              wordBreak: 'break-all', 
+              background: 'rgba(0,0,0,0.25)', 
+              padding: '0.5rem 0.75rem', 
+              borderRadius: '6px',
+              fontFamily: 'monospace'
+            }}>
+              {jobUrl}
+            </div>
           </div>
         )}
 

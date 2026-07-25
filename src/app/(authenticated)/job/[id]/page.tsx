@@ -198,7 +198,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             </div>
             <div className="glass-card" data-tour="job-detail-description">
               {!isDescriptionAdequate(job.description) ? (
-                <AutoFetchJobDetails jobId={job.id} initialDescription={job.description} />
+                <AutoFetchJobDetails jobId={job.id} jobUrl={job.url} initialDescription={job.description} />
               ) : (
                 <div 
                   className="job-description-content"
