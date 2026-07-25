@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { regenerateResume } from '@/lib/generator';
+import { getResumePrompts } from '@/lib/generator';
+import { streamDeepSeek } from '@/lib/deepseek';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+        if (!user || user.planTier !== 'PRO') {
+            return NextResponse.json({ error: 'Pro account required.' }, { status: 403 });
         }
 
         const { id: jobId } = await context.params;
@@ -22,14 +28,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
         if (!userJob) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
 
-        const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-        const isPro = user?.planTier === 'PRO';
-        const isUnlocked = userJob.unlockedBySubmission;
-
-        if (!isPro && !isUnlocked) {
-            return NextResponse.json({ error: 'Pro account required.' }, { status: 403 });
-        }
-
         let asset = userJob.job.applicationAssets[0];
         if (!asset) return NextResponse.json({ error: 'Assets not generated yet' }, { status: 400 });
 
@@ -37,17 +35,49 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             return NextResponse.json({ error: 'Regeneration limit reached (5/5).' }, { status: 403 });
         }
 
-        const newResume = await regenerateResume(session.user.id, jobId, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, customizationAmount);
+        const { systemPrompt, userPrompt } = await getResumePrompts(session.user.id, jobId, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, customizationAmount);
 
-        asset = await prisma.applicationAsset.update({
-            where: { id: asset.id },
-            data: {
-                tailoredResumeMarkdown: newResume,
-                resumeRegensUsed: asset.resumeRegensUsed + 1
+        const stream = streamDeepSeek({
+            model: 'deepseek-v4-flash',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
+            temperature: 1.5,
+            maxTokens: 4096,
+            userId: session.user.id
+        });
+
+        const encoder = new TextEncoder();
+        const readableStream = new ReadableStream({
+            async start(controller) {
+                let fullText = '';
+                try {
+                    for await (const chunk of stream) {
+                        fullText += chunk;
+                        controller.enqueue(encoder.encode(chunk));
+                    }
+                    
+                    const newTailoredResume = fullText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
+                    await prisma.applicationAsset.update({
+                        where: { id: asset.id },
+                        data: {
+                            tailoredResumeMarkdown: newTailoredResume,
+                            resumeRegensUsed: asset.resumeRegensUsed + 1
+                        }
+                    });
+                } catch (error) {
+                    console.error('Stream error:', error);
+                    controller.error(error);
+                } finally {
+                    controller.close();
+                }
             }
         });
 
-        return NextResponse.json({ success: true, newResume, regensUsed: asset.resumeRegensUsed });
+        return new Response(readableStream, {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
     } catch (e: any) {
         console.error(e);
         return NextResponse.json({ error: e.message }, { status: 500 });

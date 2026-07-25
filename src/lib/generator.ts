@@ -18,12 +18,13 @@ async function callAiService(params: {
     jsonMode?: boolean;
     userId?: string;
     temperature?: number;
+    model?: string;
 }): Promise<string> {
     const temp = params.temperature ?? 1.5;
 
     if (process.env.DEEPSEEK_API_KEY) {
         return await callDeepSeek({
-            model: 'deepseek-v4-pro',
+            model: params.model || 'deepseek-v4-pro',
             jsonMode: params.jsonMode,
             temperature: temp,
             maxTokens: params.maxTokens || 4096,
@@ -243,16 +244,17 @@ ${question}
     let responseText = await callAiService({
         system: systemPrompt,
         userPrompt: userPrompt,
-        maxTokens: 2048,
+        maxTokens: 1024,
         userId: userId,
-        temperature: 1.5
+        temperature: 1.5,
+        model: 'deepseek-v4-flash'
     });
 
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     return responseText.trim();
 }
 
-export async function regenerateResume(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, customizationAmount?: number) {
+export async function getResumePrompts(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, customizationAmount?: number) {
     const settings = await getUserSettings(userId);
     const driftPercentage = customizationAmount !== undefined ? customizationAmount : (settings.resumeCustomizationMaxPercentage || 25);
     
@@ -281,19 +283,25 @@ Output ONLY the Markdown string of the tailored resume in plain text. Do not wra
 
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    return { systemPrompt, userPrompt };
+}
+
+export async function regenerateResume(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, customizationAmount?: number) {
+    const { systemPrompt, userPrompt } = await getResumePrompts(userId, jobId, jobTitle, jobDescription, company, instruction, customizationAmount);
     
     let responseText = await callAiService({
         system: systemPrompt,
         userPrompt: userPrompt,
         maxTokens: 4096,
         userId: userId,
-        temperature: 1.5
+        temperature: 1.5,
+        model: 'deepseek-v4-flash'
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     return responseText.trim();
 }
 
-export async function regenerateCoverLetter(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
+export async function getCoverLetterPrompts(userId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
     const settings = await getUserSettings(userId);
     const finalTone = tone || 'Confident and strategic';
     
@@ -324,19 +332,25 @@ Output ONLY the cover letter body in plain text (no JSON wrapping).`;
 
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    return { systemPrompt, userPrompt };
+}
+
+export async function regenerateCoverLetter(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
+    const { systemPrompt, userPrompt } = await getCoverLetterPrompts(userId, jobTitle, jobDescription, company, instruction, tone);
     
     let responseText = await callAiService({
         system: systemPrompt,
         userPrompt: userPrompt,
-        maxTokens: 4096,
+        maxTokens: 1024,
         userId: userId,
-        temperature: 1.5
+        temperature: 1.5,
+        model: 'deepseek-v4-flash'
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     return responseText.trim();
 }
 
-export async function regenerateNetworkingMessage(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
+export async function getNetworkingMessagePrompts(userId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
     const settings = await getUserSettings(userId);
     const finalTone = tone || 'Confident and strategic';
     
@@ -362,13 +376,19 @@ Output ONLY the text of the networking message. Do not wrap it in JSON.`;
 
     const cleanCompany = cleanCompanyName(company);
     const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    return { systemPrompt, userPrompt };
+}
+
+export async function regenerateNetworkingMessage(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string, instruction?: string, tone?: string) {
+    const { systemPrompt, userPrompt } = await getNetworkingMessagePrompts(userId, jobTitle, jobDescription, company, instruction, tone);
     
     let responseText = await callAiService({
         system: systemPrompt,
         userPrompt: userPrompt,
         maxTokens: 1024,
         userId: userId,
-        temperature: 1.5
+        temperature: 1.5,
+        model: 'deepseek-v4-flash'
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     return responseText.trim();

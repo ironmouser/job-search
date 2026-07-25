@@ -122,12 +122,28 @@ export default function CoverLetterAssetCard({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ instruction, tone }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to regenerate');
-            const cleanedNewContent = cleanContent(data.newCoverLetter);
-            setContent(cleanedNewContent);
-            setEditContent(cleanedNewContent);
-            setRegensUsed(data.regensUsed);
+            
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Failed to regenerate');
+            }
+            
+            const reader = res.body?.getReader();
+            if (!reader) throw new Error('Failed to read stream');
+            
+            const decoder = new TextDecoder();
+            let newContent = '';
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                newContent += decoder.decode(value, { stream: true });
+                const cleanedContent = cleanContent(newContent);
+                setContent(cleanedContent);
+                setEditContent(cleanedContent);
+            }
+            
+            setRegensUsed(prev => prev + 1);
         } catch (err: any) {
             setError(err.message);
         } finally {

@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { regenerateNetworkingMessage } from '@/lib/generator';
+import { getNetworkingMessagePrompts } from '@/lib/generator';
+import { streamDeepSeek } from '@/lib/deepseek';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -34,17 +35,49 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             return NextResponse.json({ error: 'Regeneration limit reached (5/5).' }, { status: 403 });
         }
 
-        const newNetworkingMessage = await regenerateNetworkingMessage(session.user.id, jobId, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, tone);
+        const { systemPrompt, userPrompt } = await getNetworkingMessagePrompts(session.user.id, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, tone);
 
-        asset = await prisma.applicationAsset.update({
-            where: { id: asset.id },
-            data: {
-                networkingMessage: newNetworkingMessage,
-                networkingMessageRegensUsed: asset.networkingMessageRegensUsed + 1
+        const stream = streamDeepSeek({
+            model: 'deepseek-v4-flash',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
+            temperature: 1.5,
+            maxTokens: 1024,
+            userId: session.user.id
+        });
+
+        const encoder = new TextEncoder();
+        const readableStream = new ReadableStream({
+            async start(controller) {
+                let fullText = '';
+                try {
+                    for await (const chunk of stream) {
+                        fullText += chunk;
+                        controller.enqueue(encoder.encode(chunk));
+                    }
+                    
+                    const newNetworkingMessage = fullText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
+                    await prisma.applicationAsset.update({
+                        where: { id: asset.id },
+                        data: {
+                            networkingMessage: newNetworkingMessage,
+                            networkingMessageRegensUsed: asset.networkingMessageRegensUsed + 1
+                        }
+                    });
+                } catch (error) {
+                    console.error('Stream error:', error);
+                    controller.error(error);
+                } finally {
+                    controller.close();
+                }
             }
         });
 
-        return NextResponse.json({ success: true, newNetworkingMessage, regensUsed: asset.networkingMessageRegensUsed });
+        return new Response(readableStream, {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
     } catch (e: any) {
         console.error(e);
         return NextResponse.json({ error: e.message }, { status: 500 });

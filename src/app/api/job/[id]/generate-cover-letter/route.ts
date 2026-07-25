@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { regenerateCoverLetter } from '@/lib/generator';
+import { getCoverLetterPrompts } from '@/lib/generator';
+import { streamDeepSeek } from '@/lib/deepseek';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -34,17 +35,49 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             return NextResponse.json({ error: 'Regeneration limit reached (5/5).' }, { status: 403 });
         }
 
-        const newCoverLetter = await regenerateCoverLetter(session.user.id, jobId, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, tone);
+        const { systemPrompt, userPrompt } = await getCoverLetterPrompts(session.user.id, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, tone);
 
-        asset = await prisma.applicationAsset.update({
-            where: { id: asset.id },
-            data: {
-                coverLetterMarkdown: newCoverLetter,
-                coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
+        const stream = streamDeepSeek({
+            model: 'deepseek-v4-flash',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
+            temperature: 1.5,
+            maxTokens: 1024,
+            userId: session.user.id
+        });
+
+        const encoder = new TextEncoder();
+        const readableStream = new ReadableStream({
+            async start(controller) {
+                let fullText = '';
+                try {
+                    for await (const chunk of stream) {
+                        fullText += chunk;
+                        controller.enqueue(encoder.encode(chunk));
+                    }
+                    
+                    const newCoverLetter = fullText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
+                    await prisma.applicationAsset.update({
+                        where: { id: asset.id },
+                        data: {
+                            coverLetterMarkdown: newCoverLetter,
+                            coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
+                        }
+                    });
+                } catch (error) {
+                    console.error('Stream error:', error);
+                    controller.error(error);
+                } finally {
+                    controller.close();
+                }
             }
         });
 
-        return NextResponse.json({ success: true, newCoverLetter, regensUsed: asset.coverLetterRegensUsed });
+        return new Response(readableStream, {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
     } catch (e: any) {
         console.error(e);
         return NextResponse.json({ error: e.message }, { status: 500 });

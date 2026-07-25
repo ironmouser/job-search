@@ -93,3 +93,53 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
 
     throw lastError || new Error('All DeepSeek API attempts failed.');
 }
+
+export async function* streamDeepSeek(options: CallDeepSeekOptions): AsyncGenerator<string, void, unknown> {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) throw new Error('DEEPSEEK_API_KEY is not set');
+
+    const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4-flash';
+    const bodyPayload = {
+        model: preferredModel,
+        messages: options.messages,
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens || 1024,
+        stream: true
+    };
+
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(bodyPayload),
+    });
+
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('No readable stream returned');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
+                try {
+                    const data = JSON.parse(trimmedLine.slice(6));
+                    const content = data.choices[0]?.delta?.content;
+                    if (content) yield content;
+                } catch (e) {}
+            }
+        }
+    }
+}

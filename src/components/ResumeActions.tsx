@@ -24,7 +24,7 @@ export default function ResumeActions({ jobId, markdownText, selectedColor = "#0
             const { marked } = await import('marked');
             const html2pdf = (await import('html2pdf.js')).default;
 
-            const htmlContent = await marked.parse(markdownText);
+            const htmlContent = await marked.parse((markdownText || '').replace(/(^|\n)--(?=\n|$)/g, '$1---'));
 
             const html = `
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">

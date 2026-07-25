@@ -58,6 +58,8 @@ export default function ResumeAssetCard({
     const isPro = planTier === 'PRO';
     const regensLeft = 5 - regensUsed;
 
+    const cleanContent = (content: string) => content.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"');
+
     const handleRegenerate = async () => {
         if (!isPro || regensLeft <= 0) return;
         setIsLoading(true);
@@ -69,10 +71,28 @@ export default function ResumeAssetCard({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ instruction: 'different', customizationAmount }),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to regenerate');
-            setContent(data.newResume);
-            setRegensUsed(data.regensUsed);
+            
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Failed to regenerate');
+            }
+            
+            const reader = res.body?.getReader();
+            if (!reader) throw new Error('Failed to read stream');
+            
+            const decoder = new TextDecoder();
+            let newContent = '';
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                newContent += decoder.decode(value, { stream: true });
+                const cleanedContent = cleanContent(newContent);
+                setContent(cleanedContent);
+                setEditContent(cleanedContent);
+            }
+            
+            setRegensUsed(prev => prev + 1);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -247,7 +267,7 @@ export default function ResumeAssetCard({
                     <div 
                         className="markdown-body custom-resume-preview"
                         style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.6 }}
-                        dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
+                        dangerouslySetInnerHTML={{ __html: marked.parse((content || '').replace(/(^|\n)--(?=\n|$)/g, '$1---')) as string }}
                     />
                 )}
                 
