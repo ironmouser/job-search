@@ -8,3 +8,14 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Viewport Centering**: All overlay modals MUST be centered relative to the browser viewport (`position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 9999;`). Always use `createPortal(modalContent, document.body)` so modals attach to the root `document.body` and never get trapped in scrolled/transformed parent containers.
 - **No Background Blur**: Overlay backdrops MUST NOT use `backdrop-filter: blur(...)` or `backdropFilter: 'blur(...)'`. Use a clean solid/semi-transparent background overlay (e.g. `rgba(0, 0, 0, 0.6)`).
 
+# Content Writing Rules
+When writing or rewriting content for resumes, cover letters, networking messages, or Q&A:
+- **Role-Play**: Role-play as an experienced professional.
+- **No Em-Dashes**: Do not use em-dashes ("—" or "--") under any circumstances.
+- **No AI Filler Words**: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
+- **Cover Letter Structure**: Split cover letters into exactly three short paragraphs:
+  - Paragraph 1: Why I am applying and my highest-level qualification.
+  - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
+  - Paragraph 3: A direct call to action for an interview.
+- **Creativity / Temperature**: Set creativity/temperature to 1.5 to ensure natural sentence variation.
+- **Human Tone**: Keep the tone natural, authentic, and human. Avoid robotic phrasing.

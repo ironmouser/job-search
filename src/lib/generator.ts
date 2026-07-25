@@ -17,11 +17,15 @@ async function callAiService(params: {
     maxTokens?: number;
     jsonMode?: boolean;
     userId?: string;
+    temperature?: number;
 }): Promise<string> {
+    const temp = params.temperature ?? 1.5;
+
     if (process.env.DEEPSEEK_API_KEY) {
         return await callDeepSeek({
             model: 'deepseek-v4-pro',
             jsonMode: params.jsonMode,
+            temperature: temp,
             maxTokens: params.maxTokens || 4096,
             userId: params.userId,
             messages: [
@@ -41,6 +45,7 @@ async function callAiService(params: {
         const response = await anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: params.maxTokens || 4096,
+            temperature: Math.min(temp, 1.0),
             system: params.system,
             messages: [{ role: 'user', content: params.userPrompt }]
         });
@@ -74,7 +79,7 @@ export async function generateAssetsForJob(userId: string, jobId: string, jobTit
         }
     }
 
-    const systemPrompt = `You are an expert career strategist and executive resume writer. 
+    const systemPrompt = `You are an expert career strategist and executive resume writer. Role-play as an experienced professional.
 Your goal is to tailor the candidate's resume, write a cover letter, and craft a networking message for a specific job.
 
 CRITICAL GUARDRAILS:
@@ -82,12 +87,19 @@ CRITICAL GUARDRAILS:
 2. MAXIMUM ${driftPercentage}% DRIFT: You may rephrase bullets to highlight relevant keywords from the job description, but the core truth and structure must remain intact.
 3. TONE: ${tone === 'Strict' ? 'Extremely factual, dry, and strictly professional.' : tone === 'Creative' ? 'Bold, aggressive, highlighting impact and narrative.' : 'Confident, strategic, and concise.'}
 4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+5. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
+6. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+
+COVER LETTER STRUCTURE (CRITICAL):
+Split into exactly three short paragraphs:
+- Paragraph 1: Why I am applying and my highest-level qualification.
+- Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
+- Paragraph 3: A direct call to action for an interview.
 
 Return the result as a JSON object with EXACTLY these keys:
 {
   "tailored_resume": "Markdown string of the tailored resume",
-  "cover_letter": "ONLY the body paragraphs of the cover letter (aim for ~150 words). NO title, NO 'Dear...' salutation, NO header block, NO sign-off or signature (e.g. Sincerely). Start directly with the opening paragraph.",
+  "cover_letter": "ONLY the body paragraphs of the cover letter (split into exactly 3 short paragraphs as specified above). NO title, NO 'Dear...' salutation, NO header block, NO sign-off or signature (e.g. Sincerely). Start directly with Paragraph 1.",
   "networking_message": "A short, 2-3 sentence LinkedIn connection request to the hiring manager or recruiter",
   "portfolio_recommendation": "A 1-2 sentence recommendation on which project from the resume to highlight in interviews"
 }`;
@@ -110,7 +122,8 @@ ${baseResume}
         userPrompt: userPrompt,
         maxTokens: 4096,
         jsonMode: true,
-        userId: userId
+        userId: userId,
+        temperature: 1.5
     });
 
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
@@ -197,7 +210,7 @@ export async function generateApplicationAnswer(
         instructionText = 'CRITICAL: Take a completely different approach or angle than a standard answer.';
     }
 
-    const systemPrompt = `You are an expert career strategist and executive resume writer. 
+    const systemPrompt = `You are an expert career strategist and executive resume writer. Role-play as an experienced professional.
 Your goal is to answer a specific job application question on behalf of the candidate.
 
 CRITICAL GUARDRAILS:
@@ -205,8 +218,9 @@ CRITICAL GUARDRAILS:
 2. LENGTH: Aim for around 65 words as a starting point, unless instructed otherwise.
 3. TONE: ${finalTone}
 4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
-6. INSTRUCTION: ${instructionText || 'Answer the question directly and compellingly.'}
+5. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
+6. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+7. INSTRUCTION: ${instructionText || 'Answer the question directly and compellingly.'}
 
 Output ONLY the answer to the question in plain text. Do not wrap it in JSON. Do not include any introductory or conversational text.`;
 
@@ -232,7 +246,8 @@ ${question}
         system: systemPrompt,
         userPrompt: userPrompt,
         maxTokens: 2048,
-        userId: userId
+        userId: userId,
+        temperature: 1.5
     });
 
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
@@ -253,15 +268,16 @@ export async function regenerateResume(userId: string, jobId: string, jobTitle: 
         instructionText = 'CRITICAL: Take a completely different approach or angle than a standard tailoring.';
     }
 
-    const systemPrompt = `You are an expert career strategist and executive resume writer. 
+    const systemPrompt = `You are an expert career strategist and executive resume writer. Role-play as an experienced professional.
 Your goal is to tailor the candidate's resume for a specific job.
 
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME.
 2. MAXIMUM ${driftPercentage}% DRIFT: You may rephrase bullets to highlight relevant keywords from the job description, but the core truth and structure must remain intact.
 3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-4. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
-5. INSTRUCTION: ${instructionText || 'Tailor the resume to the job description.'}
+4. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
+5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+6. INSTRUCTION: ${instructionText || 'Tailor the resume to the job description.'}
 
 Output ONLY the Markdown string of the tailored resume in plain text. Do not wrap it in JSON or Markdown blocks like \`\`\`markdown.`;
 
@@ -272,7 +288,8 @@ Output ONLY the Markdown string of the tailored resume in plain text. Do not wra
         system: systemPrompt,
         userPrompt: userPrompt,
         maxTokens: 4096,
-        userId: userId
+        userId: userId,
+        temperature: 1.5
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     return responseText.trim();
@@ -292,15 +309,19 @@ export async function regenerateCoverLetter(userId: string, jobId: string, jobTi
     else if (instruction === 'longer') instructionText = 'CRITICAL: Expand on the cover letter, adding more detail and depth from the resume.';
     else if (instruction === 'different') instructionText = 'CRITICAL: Take a completely different approach or angle.';
 
-    const systemPrompt = `You are an expert career strategist. Write a tailored cover letter body for a specific job.
+    const systemPrompt = `You are an expert career strategist. Role-play as an experienced professional. Write a tailored cover letter body for a specific job.
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS.
-2. LENGTH: Aim for around 150 words as a starting point, unless instructed otherwise.
+2. COVER LETTER STRUCTURE: Split into exactly three short paragraphs:
+   - Paragraph 1: Why I am applying and my highest-level qualification.
+   - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
+   - Paragraph 3: A direct call to action for an interview.
 3. TONE: ${finalTone}
 4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
-6. INSTRUCTION: ${instructionText || 'Write a compelling cover letter body.'}
-7. OUTPUT FORMAT: Output ONLY the body paragraphs. Do NOT include a title (e.g. "Cover Letter"), do NOT include a salutation ("Dear..."), do NOT include a header block, do NOT include a sign-off (e.g. "Sincerely,") or signature block. Start directly with the opening paragraph of the letter body.
+5. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
+6. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+7. INSTRUCTION: ${instructionText || 'Write a compelling cover letter body.'}
+8. OUTPUT FORMAT: Output ONLY the 3 body paragraphs. Do NOT include a title (e.g. "Cover Letter"), do NOT include a salutation ("Dear..."), do NOT include a header block, do NOT include a sign-off (e.g. "Sincerely,") or signature block. Start directly with paragraph 1.
 
 Output ONLY the cover letter body in plain text (no JSON wrapping).`;
 
@@ -311,7 +332,8 @@ Output ONLY the cover letter body in plain text (no JSON wrapping).`;
         system: systemPrompt,
         userPrompt: userPrompt,
         maxTokens: 4096,
-        userId: userId
+        userId: userId,
+        temperature: 1.5
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     return responseText.trim();
@@ -331,13 +353,14 @@ export async function regenerateNetworkingMessage(userId: string, jobId: string,
     else if (instruction === 'longer') instructionText = 'CRITICAL: Expand the message slightly (LinkedIn InMail or cold email length).';
     else if (instruction === 'different') instructionText = 'CRITICAL: Take a completely different approach or angle.';
 
-    const systemPrompt = `You are an expert career strategist. Write a short networking message to the hiring manager or recruiter.
+    const systemPrompt = `You are an expert career strategist. Role-play as an experienced professional. Write a short networking message to the hiring manager or recruiter.
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS.
 2. TONE: ${finalTone}
 3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-4. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
-5. INSTRUCTION: ${instructionText || 'Write a 2-3 sentence connection request.'}
+4. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
+5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+6. INSTRUCTION: ${instructionText || 'Write a 2-3 sentence connection request.'}
 
 Output ONLY the text of the networking message. Do not wrap it in JSON.`;
 
@@ -348,7 +371,8 @@ Output ONLY the text of the networking message. Do not wrap it in JSON.`;
         system: systemPrompt,
         userPrompt: userPrompt,
         maxTokens: 1024,
-        userId: userId
+        userId: userId,
+        temperature: 1.5
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     return responseText.trim();
