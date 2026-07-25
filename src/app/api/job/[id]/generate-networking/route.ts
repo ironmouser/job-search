@@ -30,8 +30,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         let asset = userJob.job.applicationAssets[0];
         if (!asset) return NextResponse.json({ error: 'Assets not generated yet' }, { status: 400 });
 
-        if (asset.networkingMessageRegensUsed >= 3) {
-            return NextResponse.json({ error: 'Regeneration limit reached (3/3).' }, { status: 403 });
+        if (asset.networkingMessageRegensUsed >= 5) {
+            return NextResponse.json({ error: 'Regeneration limit reached (5/5).' }, { status: 403 });
         }
 
         const newNetworkingMessage = await regenerateNetworkingMessage(session.user.id, jobId, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, tone);

@@ -96,7 +96,7 @@ export default function CoverLetterAssetCard({
     const [isSaving, setIsSaving] = useState(false);
 
     const isPro = planTier === 'PRO';
-    const regensLeft = 3 - regensUsed;
+    const regensLeft = 5 - regensUsed;
 
     const startEditing = () => {
         setEditContent(cleanContent(content));
@@ -573,7 +573,7 @@ export default function CoverLetterAssetCard({
                     flexWrap: 'wrap'
                 }}>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        Regenerations left: {isPro ? regensLeft : 0} / 3
+                        Regenerations left: {isPro ? regensLeft : 0} / 5
                     </span>
                     <div style={{ flexGrow: 1 }} />
                     <button

@@ -33,7 +33,7 @@ export default function NetworkingAssetCard({
     const [isSaving, setIsSaving] = useState(false);
 
     const isPro = planTier === 'PRO';
-    const regensLeft = 3 - regensUsed;
+    const regensLeft = 5 - regensUsed;
 
     const handleRegenerate = async (instruction: string) => {
         if (!isPro || regensLeft <= 0) return;
@@ -216,7 +216,7 @@ export default function NetworkingAssetCard({
                     flexWrap: 'wrap'
                 }}>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        Regenerations left: {isPro ? regensLeft : 0} / 3
+                        Regenerations left: {isPro ? regensLeft : 0} / 5
                     </span>
                     <div style={{ flexGrow: 1 }} />
                     <button 
