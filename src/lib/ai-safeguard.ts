@@ -9,16 +9,20 @@ export async function checkAiSafeguard(estimatedCostUsd: number, modelName: stri
     startOfDay.setHours(0, 0, 0, 0);
 
     let currentDailyCost = 0;
-    if ((prisma as any).aICostLog) {
-        const costResult = await (prisma as any).aICostLog.aggregate({
-            _sum: {
-                costUsd: true
-            },
-            where: {
-                createdAt: { gte: startOfDay }
-            }
-        });
-        currentDailyCost = costResult._sum.costUsd || 0;
+    try {
+        if ((prisma as any).aICostLog) {
+            const costResult = await (prisma as any).aICostLog.aggregate({
+                _sum: {
+                    costUsd: true
+                },
+                where: {
+                    createdAt: { gte: startOfDay }
+                }
+            });
+            currentDailyCost = costResult._sum.costUsd || 0;
+        }
+    } catch (err) {
+        console.warn('Unable to query aICostLog aggregate:', err);
     }
     const projectedCost = currentDailyCost + estimatedCostUsd;
 

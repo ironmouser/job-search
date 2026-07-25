@@ -97,7 +97,7 @@ Return a JSON object strictly matching this schema:
 }`;
 
     const responseText = await callDeepSeek({
-        model: 'deepseek-chat',
+        model: 'deepseek-v4-flash',
         jsonMode: true,
         messages: [{ role: 'user', content: prompt }],
         userId
@@ -188,7 +188,7 @@ ${emailText.substring(0, 30000)}`;
 
     try {
         const responseText = await callDeepSeek({
-            model: 'deepseek-chat',
+            model: 'deepseek-v4-flash',
             jsonMode: true,
             messages: [{ role: 'user', content: prompt }]
         });
