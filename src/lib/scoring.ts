@@ -1,10 +1,15 @@
 import { prisma } from './prisma';
 import { getUserSettings } from './settings';
 import { callDeepSeek } from './deepseek';
+import { isDescriptionAdequate } from './jobFetcher';
 
 export async function scoreJob(userId: string, jobId: string, jobTitle: string, jobDescription: string) {
     if (!process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY) {
         throw new Error('DEEPSEEK_API_KEY or GEMINI_API_KEY is missing.');
+    }
+
+    if (!isDescriptionAdequate(jobDescription)) {
+        throw new Error('Cannot score job: Job description is inadequate or has not been downloaded.');
     }
 
     const settings = await getUserSettings(userId);

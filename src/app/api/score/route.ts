@@ -3,8 +3,45 @@ import { scoreJob } from '@/lib/scoring';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { isDescriptionAdequate, fetchJobDescription } from '@/lib/jobFetcher';
 
 export const maxDuration = 60;
+
+async function ensureAndScoreJob(userId: string, job: { id: string; title: string; description: string | null; url?: string | null }) {
+    let description = job.description || '';
+    
+    // 1. Check if description is adequate
+    if (!isDescriptionAdequate(description)) {
+        if (job.url) {
+            console.log(`Job ${job.id} description is incomplete. Attempting to download full description from ${job.url}...`);
+            try {
+                const downloaded = await fetchJobDescription(job.url);
+                if (downloaded && isDescriptionAdequate(downloaded)) {
+                    description = downloaded + `\n\nApply at: ${job.url}`;
+                    await prisma.job.update({
+                        where: { id: job.id },
+                        data: { description }
+                    });
+                }
+            } catch (e: any) {
+                console.warn(`Failed to auto-download description for job ${job.id}:`, e.message);
+            }
+        }
+    }
+
+    // 2. If description is still inadequate, purge any invalid/stale score and skip scoring
+    if (!isDescriptionAdequate(description)) {
+        console.warn(`Skipping score for job ${job.id} - description cannot be downloaded or is inadequate.`);
+        await prisma.opportunityScore.deleteMany({
+            where: { jobId: job.id, userId }
+        });
+        return { jobId: job.id, skipped: true, reason: 'Description could not be downloaded.' };
+    }
+
+    // 3. Description is adequate -> Score the job!
+    const score = await scoreJob(userId, job.id, job.title, description);
+    return { jobId: job.id, score: score.total_score };
+}
 
 export async function POST(request: Request) {
     try {
@@ -41,65 +78,40 @@ export async function POST(request: Request) {
 
         // If jobIds is provided, score all those specific jobs
         if (jobIds && Array.isArray(jobIds) && jobIds.length > 0) {
-            const unscoredUserJobs = await prisma.userJob.findMany({
+            const userJobs = await prisma.userJob.findMany({
                 where: { 
                     userId: session.user.id,
                     jobId: { in: jobIds }
                 },
-                include: { job: { select: { id: true, title: true, description: true } } }
+                include: { job: { select: { id: true, title: true, description: true, url: true } } }
             });
 
-            if (!unscoredUserJobs || unscoredUserJobs.length === 0) {
-                return NextResponse.json({ message: 'No unscored jobs found for provided IDs.' }, { status: 200 });
+            if (!userJobs || userJobs.length === 0) {
+                return NextResponse.json({ message: 'No jobs found for provided IDs.' }, { status: 200 });
             }
 
-            const scorableJobs = unscoredUserJobs.filter(uj => uj.job.description && uj.job.description.trim().length > 50);
-            const nonScorableJobs = unscoredUserJobs.filter(uj => !uj.job.description || uj.job.description.trim().length <= 50);
-
-            // Auto-purge non-scorable jobs (missing or short descriptions <= 50 chars) from DB
-            for (const uj of nonScorableJobs) {
-                try {
-                    await prisma.userJob.update({
-                        where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
-                        data: { status: 'deleted' }
-                    });
-                } catch (e) {
-                    console.error(`Error deleting short description job ${uj.job.id}:`, e);
-                }
-            }
-
-            if (scorableJobs.length === 0) {
-                return NextResponse.json({ message: 'Marked short description jobs as evaluated.', results: nonScorableJobs.map(uj => ({ jobId: uj.job.id, score: 0 })) }, { status: 200 });
-            }
-
-            console.log(`Found ${scorableJobs.length} specific unscored jobs with descriptions. Scoring...`);
+            console.log(`Processing ${userJobs.length} specific jobs for scoring...`);
             
             const results = await Promise.all(
-                scorableJobs.map(async (uj) => {
-                    const job = uj.job;
+                userJobs.map(async (uj) => {
                     try {
-                        const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
-                        return { jobId: job.id, score: score.total_score };
+                        return await ensureAndScoreJob(session.user.id, uj.job);
                     } catch (e: any) {
-                        console.error(`Error scoring job ${job.id}:`, e.message);
-                        return { jobId: job.id, error: e.message };
+                        console.error(`Error scoring job ${uj.job.id}:`, e.message);
+                        return { jobId: uj.job.id, error: e.message };
                     }
                 })
             );
 
-            if (results.some(r => r.error)) {
-                return NextResponse.json({ message: 'Batch scoring had errors.', results }, { status: 500 });
-            }
-
             return NextResponse.json({ 
                 message: 'Batch scoring complete.', 
-                results: [...results, ...nonScorableJobs.map(uj => ({ jobId: uj.job.id, score: 0 }))]
+                results
             }, { status: 200 });
         }
 
         // If no jobId or jobIds is provided, score all unscored or newly discovered jobs for this user
         if (!jobId) {
-            const unscoredUserJobs = await prisma.userJob.findMany({
+            const userJobs = await prisma.userJob.findMany({
                 where: { 
                     userId: session.user.id,
                     OR: [
@@ -107,71 +119,50 @@ export async function POST(request: Request) {
                         { job: { opportunityScores: { none: { userId: session.user.id } } } }
                     ]
                 },
-                include: { job: { select: { id: true, title: true, description: true } } }
+                include: { job: { select: { id: true, title: true, description: true, url: true } } }
             });
 
-            if (!unscoredUserJobs || unscoredUserJobs.length === 0) {
+            if (!userJobs || userJobs.length === 0) {
                 return NextResponse.json({ message: 'No unscored jobs found.' }, { status: 200 });
             }
 
-            const scorableJobs = unscoredUserJobs.filter(uj => uj.job.description && uj.job.description.trim().length > 50);
-            const nonScorableJobs = unscoredUserJobs.filter(uj => !uj.job.description || uj.job.description.trim().length <= 50);
-
-            for (const uj of nonScorableJobs) {
-                try {
-                    await prisma.userJob.update({
-                        where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
-                        data: { status: 'deleted' }
-                    });
-                } catch (e) {
-                    console.error(`Error deleting short description job ${uj.job.id}:`, e);
-                }
-            }
-
-            if (scorableJobs.length === 0) {
-                return NextResponse.json({ message: 'Marked short description jobs as evaluated.', results: nonScorableJobs.map(uj => ({ jobId: uj.job.id, score: 0 })) }, { status: 200 });
-            }
-
-            console.log(`Found ${scorableJobs.length} unscored jobs. Scoring...`);
+            console.log(`Processing ${userJobs.length} unscored jobs...`);
             
             const results = await Promise.all(
-                scorableJobs.map(async (uj) => {
-                    const job = uj.job;
+                userJobs.map(async (uj) => {
                     try {
-                        const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
-                        return { jobId: job.id, score: score.total_score };
+                        return await ensureAndScoreJob(session.user.id, uj.job);
                     } catch (e: any) {
-                        console.error(`Error scoring job ${job.id}:`, e.message);
-                        return { jobId: job.id, error: e.message };
+                        console.error(`Error scoring job ${uj.job.id}:`, e.message);
+                        return { jobId: uj.job.id, error: e.message };
                     }
                 })
             );
 
-            if (results.some(r => r.error)) {
-                return NextResponse.json({ message: 'Batch scoring had errors.', results }, { status: 500 });
-            }
-
             return NextResponse.json({ 
                 message: 'Batch scoring complete.', 
-                results: [...results, ...nonScorableJobs.map(uj => ({ jobId: uj.job.id, score: 0 }))]
+                results
             }, { status: 200 });
         }
 
         // If jobId is provided, just score that one
         const job = await prisma.job.findUnique({
             where: { id: jobId },
-            select: { id: true, title: true, description: true }
+            select: { id: true, title: true, description: true, url: true }
         });
 
         if (!job) {
             return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
         }
 
-        const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
+        const result = await ensureAndScoreJob(session.user.id, job);
+        if (result.skipped) {
+            return NextResponse.json({ error: 'Cannot score job: Job description has not or cannot be downloaded.' }, { status: 400 });
+        }
 
         return NextResponse.json({ 
             message: 'Job scoring complete.', 
-            score 
+            score: result.score 
         }, { status: 200 });
 
     } catch (error: any) {
