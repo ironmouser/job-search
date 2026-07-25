@@ -58,7 +58,13 @@ export default function ResumeAssetCard({
     const isPro = planTier === 'PRO';
     const regensLeft = 5 - regensUsed;
 
-    const cleanContent = (content: string) => content.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"');
+    const cleanContent = (content: string) => {
+        let cleaned = content.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+        if (cleaned.startsWith('```')) {
+            cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+        }
+        return cleaned;
+    };
 
     const handleRegenerate = async () => {
         if (!isPro || regensLeft <= 0) return;

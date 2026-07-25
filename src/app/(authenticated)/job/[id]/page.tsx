@@ -27,7 +27,10 @@ marked.setOptions({ gfm: true, breaks: true });
 
 function formatDescriptionMarkdown(desc?: string | null): string {
   if (!desc) return '';
-  let cleaned = desc.replace(/\\n/g, '\n').trim();
+  let cleaned = desc.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+  }
   return marked.parse(cleaned) as string;
 }
 

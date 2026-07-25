@@ -9,7 +9,11 @@ import { cleanCompanyName, cleanCompanyLocation } from '@/lib/cleaners';
 
 const cleanContent = (text: string) => {
     if (!text) return '';
-    return text
+    let cleaned = text.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+    if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+    }
+    return cleaned
         .replace(/^(?:#+\s*)?cover\s*letter\s*(?:\r?\n)+/i, '')
         .replace(/(?:\r?\n)+(?:sincerely|best regards|regards|thank you|thanks),?[\s\S]*$/i, '')
         .trim();

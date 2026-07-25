@@ -20,18 +20,18 @@ export async function reformatJobDescriptionWithGemini(rawContent: string): Prom
     const trimmedRaw = rawContent.trim();
 
     if (process.env.DEEPSEEK_API_KEY) {
-        const prompt = `When formatting a scraped job description.
-DO NOT rewrite or summarize.
-Only:
-- preserve all information
-- fix spacing
-- restore headings
-- restore bullet lists
-- restore paragraphs
-- remove duplicated whitespace
-- do not add or remove content
+        const prompt = `You are an expert technical document formatter. Your task is to analyze scraped job description text and convert it into cleanly structured, readable Markdown without altering any of the meaning.
 
-Format this job description into Markdown:
+CRITICAL INSTRUCTIONS:
+1. Identify and Format Headers: Detect section titles (e.g., "About Us", "Role Summary", "Responsibilities", "What You'll Do", "Qualifications", "Requirements", "Nice to Have", "Benefits") and format them with Markdown headings (## or ###).
+2. Create Unordered Lists: When you encounter lists of responsibilities, requirements, technical skills, or benefits, format each point as a bulleted list item (- ) rather than running them together as a paragraph.
+3. Create Ordered Lists: Identify sequential instructions, hiring process stages, or prioritized steps and format them as numbered lists (1., 2., 3.).
+4. Use Emphasis for Clarity: Apply bold emphasis (**bold**) to key terms, tool names, or sub-headers where appropriate to establish visual structure.
+5. Paragraph Spacing: Separate dense text blocks into well-spaced logical paragraphs with clean double line breaks between sections. Remove duplicate spacing and raw scraping artifacts.
+6. Preserve Complete Information: Strictly retain all factual details, requirements, links, and text from the original description. Do NOT rewrite, summarize, add, or delete any content.
+7. Return clean Markdown only: Do not wrap your response in markdown code block fences (like \`\`\`markdown).
+
+Here is the raw job description to format:
 ${trimmedRaw}`;
 
         try {
@@ -40,7 +40,11 @@ ${trimmedRaw}`;
                 messages: [{ role: 'user', content: prompt }]
             });
             if (formatted && formatted.trim().length > 0) {
-                return formatted.trim();
+                let cleaned = formatted.trim().replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                if (cleaned.startsWith('```')) {
+                    cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+                }
+                return cleaned;
             }
         } catch (err: any) {
             console.warn('DeepSeek formatting failed, falling back to html cleanup:', err.message);

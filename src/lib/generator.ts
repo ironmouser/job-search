@@ -6,6 +6,7 @@ import { cleanCompanyName } from './cleaners';
 import { callDeepSeek } from './deepseek';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkAiSafeguard, logAiCost, estimateTokens } from './ai-safeguard';
+import { COVER_LETTER_REFERENCE_EXAMPLES, NETWORKING_REFERENCE_EXAMPLES, QA_REFERENCE_EXAMPLES } from './ai-examples';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY || 'dummy_key',
@@ -113,6 +114,10 @@ ${jobDescription}
 
 BASE RESUME:
 ${baseResume}
+
+${COVER_LETTER_REFERENCE_EXAMPLES}
+
+${NETWORKING_REFERENCE_EXAMPLES}
 `;
 
     console.log(`Generating assets for ${company} - ${jobTitle}...`);
@@ -236,6 +241,7 @@ ${profile}
 BASE RESUME:
 ${baseResume}
 ${examplesText}
+${QA_REFERENCE_EXAMPLES}
 
 QUESTION TO ANSWER:
 ${question}
@@ -331,7 +337,7 @@ CRITICAL GUARDRAILS:
 Output ONLY the cover letter body in plain text (no JSON wrapping).`;
 
     const cleanCompany = cleanCompanyName(company);
-    const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}\n\n${COVER_LETTER_REFERENCE_EXAMPLES}`;
     return { systemPrompt, userPrompt };
 }
 
@@ -375,7 +381,7 @@ CRITICAL GUARDRAILS:
 Output ONLY the text of the networking message. Do not wrap it in JSON.`;
 
     const cleanCompany = cleanCompanyName(company);
-    const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}`;
+    const userPrompt = `COMPANY: ${cleanCompany}\nJOB TITLE: ${jobTitle}\n\nJOB DESCRIPTION:\n${jobDescription}\n\nBASE RESUME:\n${baseResume}\n\n${NETWORKING_REFERENCE_EXAMPLES}`;
     return { systemPrompt, userPrompt };
 }
 
