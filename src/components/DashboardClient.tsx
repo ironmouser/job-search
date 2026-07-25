@@ -224,9 +224,22 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     });
   };
 
+  const hasJobScore = (j: any) => {
+    const scoreVal = j.opportunity_scores?.[0]?.total_score;
+    return j.status === 'scored' || (scoreVal !== undefined && scoreVal !== null);
+  };
+
+  const getEffectiveStatus = (job: any) => {
+    if (job.status === 'applied' || job.applied_at) return 'applied';
+    if (job.status === 'interviewing') return 'interviewing';
+    if (job.is_archived) return 'archived';
+    if (hasJobScore(job)) return 'scored';
+    return job.status || 'discovered';
+  };
+
   const unarchivedJobs = jobList?.filter(j => !j.is_archived) || [];
   const totalDiscovered = unarchivedJobs.length;
-  const totalScored = unarchivedJobs.filter(j => j.status !== 'discovered').length;
+  const totalScored = unarchivedJobs.filter(j => hasJobScore(j)).length;
   const highlyScored = unarchivedJobs.filter(j => j.opportunity_scores?.[0]?.total_score >= 80).length;
   const totalArchived = jobList?.filter(j => j.is_archived).length || 0;
 
@@ -355,7 +368,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       result = result.filter(j => !j.is_archived);
       
       if (activeFilter === 'scored') {
-        result = result.filter(j => j.status !== 'discovered');
+        result = result.filter(j => hasJobScore(j));
       } else if (activeFilter === 'high_fit') {
         result = result.filter(j => j.opportunity_scores?.[0]?.total_score >= 80);
       }
@@ -735,12 +748,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                       <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.location || 'Remote'}</td>
                       <td style={{ padding: '1rem' }}>{score ? <span className={`score-badge ${scoreClass}`} style={{ padding: '0.2rem 0.5rem', fontSize: '0.9rem', borderRadius: '4px' }}>{score}</span> : '-'}</td>
                       <td style={{ padding: '1rem', textTransform: 'capitalize' }}>
-                        {job.status === 'applied' || job.applied_at ? (
+                        {getEffectiveStatus(job) === 'applied' ? (
                           <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <CheckCircle2 size={14} /> Applied {safeFormatDate(job.applied_at)}
                           </span>
                         ) : (
-                          job.status.replace('_', ' ')
+                          <span className={`badge badge-${getEffectiveStatus(job)}`}>{getEffectiveStatus(job).replace('_', ' ')}</span>
                         )}
                       </td>
                       <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{safeFormatDate(job.created_at)}</td>
@@ -862,12 +875,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                 </div>
                 
                 <div style={{ marginTop: 'auto', marginBottom: '1rem' }}>
-                  {job.status === 'applied' || job.applied_at ? (
+                  {getEffectiveStatus(job) === 'applied' ? (
                     <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                       <CheckCircle2 size={14} /> Applied {safeFormatDate(job.applied_at)}
                     </span>
                   ) : (
-                    <span className={`badge badge-${job.status}`}>{job.status.replace('_', ' ')}</span>
+                    <span className={`badge badge-${getEffectiveStatus(job)}`}>{getEffectiveStatus(job).replace('_', ' ')}</span>
                   )}
                 </div>
                 
