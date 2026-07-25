@@ -12,10 +12,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 When writing or rewriting content for resumes, cover letters, networking messages, or Q&A:
 - **Role-Play**: Role-play as an experienced professional.
 - **No Em-Dashes**: Do not use em-dashes ("—" or "--") under any circumstances.
-- **No AI Filler Words**: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
+- **No AI Filler Words**: Avoid generic, robotic AI filler words like "thrilled," "passionate," "dynamic," "testament to," or "delve."
 - **Cover Letter Structure**: Split cover letters into exactly three short paragraphs:
   - Paragraph 1: Why I am applying and my highest-level qualification.
   - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
   - Paragraph 3: A direct call to action for an interview.
 - **Creativity / Temperature**: Set creativity/temperature to 1.5 to ensure natural sentence variation.
-- **Human Tone**: Keep the tone natural, authentic, and human. Avoid robotic phrasing.
+- **Tone and Energy (CRITICAL)**: Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.

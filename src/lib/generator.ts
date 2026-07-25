@@ -85,10 +85,9 @@ Your goal is to tailor the candidate's resume, write a cover letter, and craft a
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME.
 2. MAXIMUM ${driftPercentage}% DRIFT: You may rephrase bullets to highlight relevant keywords from the job description, but the core truth and structure must remain intact.
-3. TONE: ${tone === 'Strict' ? 'Extremely factual, dry, and strictly professional.' : tone === 'Creative' ? 'Bold, aggressive, highlighting impact and narrative.' : 'Confident, strategic, and concise.'}
-4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-5. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
-6. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
+4. NO CLICHÉ AI FILLER: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," or "leverage."
+5. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing directly to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement about the opportunity while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
 
 COVER LETTER STRUCTURE (CRITICAL):
 Split into exactly three short paragraphs:
@@ -216,10 +215,9 @@ Your goal is to answer a specific job application question on behalf of the cand
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME or TARGET PROFILE.
 2. LENGTH: Aim for around 65 words as a starting point, unless instructed otherwise.
-3. TONE: ${finalTone}
-4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-5. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
-6. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
+4. NO CLICHÉ AI FILLER: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," or "leverage."
+5. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational. Do not sound dry, corporate, or overly formal. Inject natural excitement while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
 7. INSTRUCTION: ${instructionText || 'Answer the question directly and compellingly.'}
 
 Output ONLY the answer to the question in plain text. Do not wrap it in JSON. Do not include any introductory or conversational text.`;
@@ -275,8 +273,8 @@ CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS: Do not invent experiences, metrics, or skills that are not present in the BASE RESUME.
 2. MAXIMUM ${driftPercentage}% DRIFT: You may rephrase bullets to highlight relevant keywords from the job description, but the core truth and structure must remain intact.
 3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-4. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
-5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+4. NO CLICHÉ AI FILLER: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," or "leverage."
+5. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational. Do not sound dry, corporate, or overly formal. Inject natural excitement while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
 6. INSTRUCTION: ${instructionText || 'Tailor the resume to the job description.'}
 
 Output ONLY the Markdown string of the tailored resume in plain text. Do not wrap it in JSON or Markdown blocks like \`\`\`markdown.`;
@@ -316,10 +314,9 @@ CRITICAL GUARDRAILS:
    - Paragraph 1: Why I am applying and my highest-level qualification.
    - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
    - Paragraph 3: A direct call to action for an interview.
-3. TONE: ${finalTone}
-4. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-5. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
-6. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
+4. NO CLICHÉ AI FILLER: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," or "leverage."
+5. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing directly to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement about the opportunity while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
 7. INSTRUCTION: ${instructionText || 'Write a compelling cover letter body.'}
 8. OUTPUT FORMAT: Output ONLY the 3 body paragraphs. Do NOT include a title (e.g. "Cover Letter"), do NOT include a salutation ("Dear..."), do NOT include a header block, do NOT include a sign-off (e.g. "Sincerely,") or signature block. Start directly with paragraph 1.
 
@@ -356,10 +353,9 @@ export async function regenerateNetworkingMessage(userId: string, jobId: string,
     const systemPrompt = `You are an expert career strategist. Role-play as an experienced professional. Write a short networking message to the hiring manager or recruiter.
 CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS.
-2. TONE: ${finalTone}
+2. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing directly to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement about the opportunity while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
 3. NO EM-DASHES: Do NOT use em-dashes ("—" or "--") under any circumstances.
-4. NO AI FILLER WORDS: Avoid generic, enthusiastic AI filler words like "thrilled," "passionate," "dynamic," or "testament to my skills."
-5. HUMAN FEEL: Ensure the text reads naturally, authentically, and feels like it was written by a human. Avoid overly robotic or cliché AI phrasing.
+4. NO CLICHÉ AI FILLER: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," or "leverage."
 6. INSTRUCTION: ${instructionText || 'Write a 2-3 sentence connection request.'}
 
 Output ONLY the text of the networking message. Do not wrap it in JSON.`;
