@@ -13,6 +13,13 @@ import AddJobUrlBar from '@/components/AddJobUrlBar';
 
 import SyncOverlay from './SyncOverlay';
 
+const safeFormatDate = (dateVal: any) => {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'numeric', day: 'numeric' });
+};
+
 const getConfidenceBadge = (score?: number) => {
     if (score === undefined) return null;
     if (score >= 70) return <span title="High Automation Confidence" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>High Auto</span>;
@@ -566,7 +573,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Date:</span>
             <div className="date-picker-custom" title="Start Date">
               <Calendar size={14} color={startDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-              {startDate && <span>{new Date(startDate).toLocaleDateString()}</span>}
+              {startDate && <span>{safeFormatDate(startDate)}</span>}
               <input 
                 type="date" 
                 value={startDate}
@@ -578,7 +585,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             
             <div className="date-picker-custom" title="End Date">
               <Calendar size={14} color={endDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-              {endDate && <span>{new Date(endDate).toLocaleDateString()}</span>}
+              {endDate && <span>{safeFormatDate(endDate)}</span>}
               <input 
                 type="date" 
                 value={endDate}
@@ -730,13 +737,13 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                       <td style={{ padding: '1rem', textTransform: 'capitalize' }}>
                         {job.status === 'applied' || job.applied_at ? (
                           <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <CheckCircle2 size={14} /> Applied {job.applied_at ? new Date(job.applied_at).toLocaleDateString() : ''}
+                            <CheckCircle2 size={14} /> Applied {safeFormatDate(job.applied_at)}
                           </span>
                         ) : (
                           job.status.replace('_', ' ')
                         )}
                       </td>
-                      <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{new Date(job.created_at).toLocaleDateString()}</td>
+                      <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{safeFormatDate(job.created_at)}</td>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
                           {isEmailJob && (!job.description || job.description.length < 500) && (
@@ -850,14 +857,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   <span className="job-meta-item"><MapPin size={14} /> {job.location || 'Remote'}</span>
                   <span className="job-meta-item"><DollarSign size={14} /> {job.salary_range || 'Not Listed'}</span>
                   <span className="job-meta-item" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    <Clock size={13} /> {new Date(job.created_at).toLocaleDateString()}
+                    <Clock size={13} /> {safeFormatDate(job.created_at)}
                   </span>
                 </div>
                 
                 <div style={{ marginTop: 'auto', marginBottom: '1rem' }}>
                   {job.status === 'applied' || job.applied_at ? (
                     <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={14} /> Applied {job.applied_at ? new Date(job.applied_at).toLocaleDateString() : ''}
+                      <CheckCircle2 size={14} /> Applied {safeFormatDate(job.applied_at)}
                     </span>
                   ) : (
                     <span className={`badge badge-${job.status}`}>{job.status.replace('_', ' ')}</span>

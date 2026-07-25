@@ -40,7 +40,7 @@ export default function CoverLetterAssetCard({
     companyName?: string;
     companyLocation?: string;
 }) {
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const today = new Date().toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' });
     const initialCompany = cleanCompanyName(companyName);
     const initialLoc = cleanCompanyLocation(companyLocation);
     const initialSenderName = userName && userName !== 'My' ? userName : '';

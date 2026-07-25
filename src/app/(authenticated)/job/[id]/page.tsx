@@ -159,7 +159,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><DollarSign size={16} /> {job.salaryRange || 'Not Listed'}</span>
             {status === 'applied' || appliedAt ? (
               <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                <CheckCircle size={14} /> Applied {appliedAt ? new Date(appliedAt).toLocaleDateString() : ''}
+                <CheckCircle size={14} /> Applied {appliedAt ? new Date(appliedAt).toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'numeric', day: 'numeric' }) : ''}
               </span>
             ) : (
               <span className={`badge badge-${status}`}>{status.replace('_', ' ')}</span>
