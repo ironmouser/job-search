@@ -186,14 +186,16 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
         />
       )}
 
-      {/* Auto Apply button (start / cancel) */}
-      <AutoApplyButton
-        jobId={jobId}
-        jobUrl={jobUrl}
-        hasAssets={hasAssets}
-        currentStatus={session?.status}
-        onSessionStarted={() => fetchStatus()}
-      />
+      {/* Auto Apply button (start / cancel) - hidden when intervention controls take over */}
+      {!(session?.status === AutoApplyStatus.NEEDS_INTERVENTION && pendingIntervention) && (
+        <AutoApplyButton
+          jobId={jobId}
+          jobUrl={jobUrl}
+          hasAssets={hasAssets}
+          currentStatus={session?.status}
+          onSessionStarted={() => fetchStatus()}
+        />
+      )}
 
       {/* Log viewer toggle */}
       {session && (
