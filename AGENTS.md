@@ -11,7 +11,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # Content Writing Rules
 When writing or rewriting content for resumes, cover letters, networking messages, or Q&A:
 - **Role-Play**: Role-play as an experienced professional.
-- **No Em-Dashes**: Do not use em-dashes ("—" or "--") under any circumstances.
+- **No Dashes or Hyphens as Punctuation**: Do not use em-dashes ("—" or "--") or hyphens ("-") as punctuation to separate clauses. Use commas, periods, or natural phrasing instead.
 - **No AI Filler Words**: Avoid generic, robotic AI filler words like "thrilled," "passionate," "dynamic," "testament to," or "delve."
 - **Cover Letter Structure**: Split cover letters into exactly three short paragraphs:
   - Paragraph 1: Why I am applying and my highest-level qualification.
