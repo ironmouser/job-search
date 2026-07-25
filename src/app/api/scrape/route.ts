@@ -148,8 +148,18 @@ export async function POST(request: Request) {
             }));
         }
 
-        const results = await Promise.all(scrapePromises);
-        let rawJobs = results.flat();
+        const timeoutPromise = new Promise<any[]>((resolve) => {
+            setTimeout(() => {
+                console.warn('Scrape route max timeout (15s) reached. Returning available results so far.');
+                resolve([]);
+            }, 15000);
+        });
+
+        const results = await Promise.race([
+            Promise.all(scrapePromises),
+            timeoutPromise
+        ]);
+        let rawJobs = (results || []).flat();
 
         if (!rawJobs || rawJobs.length === 0) {
              return NextResponse.json({ message: 'No jobs found for the given criteria across active sources.' }, { status: 200 });

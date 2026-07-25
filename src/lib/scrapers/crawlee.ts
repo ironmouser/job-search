@@ -16,7 +16,7 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
         try {
             const res = await gotScraping({
                 url,
-                timeout: { request: 15000 },
+                timeout: { request: 8000 },
                 retry: { limit: 0 },
                 throwHttpErrors: false,
             });
@@ -56,7 +56,7 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
                     const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(url)}`;
                     const sdRes = await gotScraping({
                         url: scrapeDoUrl,
-                        timeout: { request: 30000 },
+                        timeout: { request: 12000 },
                         retry: { limit: 0 },
                         throwHttpErrors: false,
                     });

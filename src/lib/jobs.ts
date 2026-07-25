@@ -32,18 +32,13 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
 
       let job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
       if (!job) {
-          let formattedDesc = jobData.description;
-          if (formattedDesc && formattedDesc.length > 50 && !formattedDesc.includes('## ')) {
-              formattedDesc = await reformatJobDescriptionWithGemini(formattedDesc);
-          }
-
           job = await prisma.job.create({
               data: {
                   title: jobData.title,
                   company: jobData.company,
                   location: jobData.location,
                   salaryRange: jobData.salaryRange,
-                  description: formattedDesc,
+                  description: jobData.description || '',
                   url: cleanedUrl,
                   source: jobData.source,
               }
