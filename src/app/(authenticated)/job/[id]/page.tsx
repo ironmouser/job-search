@@ -22,6 +22,14 @@ import { headers } from 'next/headers';
 import { calculateResumeSimilarity } from '@/lib/similarity';
 import { marked } from 'marked';
 
+marked.setOptions({ gfm: true, breaks: true });
+
+function formatDescriptionMarkdown(desc?: string | null): string {
+  if (!desc) return '';
+  let cleaned = desc.replace(/\\n/g, '\n').trim();
+  return marked.parse(cleaned) as string;
+}
+
 export default async function JobDetail({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -193,8 +201,8 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               ) : (
                 <div 
                   className="job-description-content"
-                  style={{ color: 'var(--text-secondary)', wordBreak: 'break-word', fontSize: '0.95rem', lineHeight: '1.6' }}
-                  dangerouslySetInnerHTML={{ __html: marked.parse(job.description || '') as string }}
+                  style={{ color: 'var(--text-secondary)', wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: '0.95rem', lineHeight: '1.6', maxWidth: '100%', overflowX: 'hidden' }}
+                  dangerouslySetInnerHTML={{ __html: formatDescriptionMarkdown(job.description) }}
                 />
               )}
             </div>

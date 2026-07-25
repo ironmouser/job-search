@@ -882,12 +882,14 @@ body.light-theme .email-job-title {
 
 .job-detail-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 2rem;
+  align-items: start;
 }
 
 .job-detail-grid>* {
   min-width: 0;
+  max-width: 100%;
 }
 
 .job-detail-sidebar {
