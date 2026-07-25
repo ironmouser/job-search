@@ -54,10 +54,28 @@ export async function POST(request: Request) {
                 return NextResponse.json({ message: 'No unscored jobs found for provided IDs.' }, { status: 200 });
             }
 
-            // Skip jobs without a meaningful description
             const scorableJobs = unscoredUserJobs.filter(uj => uj.job.description && uj.job.description.trim().length > 50);
+            const nonScorableJobs = unscoredUserJobs.filter(uj => !uj.job.description || uj.job.description.trim().length <= 50);
+
+            // Auto-mark non-scorable jobs as scored with 0 so they don't get stuck in an unscored loop
+            for (const uj of nonScorableJobs) {
+                try {
+                    await prisma.opportunityScore.upsert({
+                        where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
+                        update: { totalScore: 0, analysisNotes: 'Job description unavailable or too short for AI analysis.' },
+                        create: { userId: session.user.id, jobId: uj.job.id, totalScore: 0, analysisNotes: 'Job description unavailable or too short for AI analysis.' }
+                    });
+                    await prisma.userJob.update({
+                        where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
+                        data: { status: 'scored' }
+                    });
+                } catch (e) {
+                    console.error(`Error auto-scoring short description job ${uj.job.id}:`, e);
+                }
+            }
+
             if (scorableJobs.length === 0) {
-                return NextResponse.json({ message: 'No jobs with descriptions to score.' }, { status: 200 });
+                return NextResponse.json({ message: 'Marked short description jobs as evaluated.', results: nonScorableJobs.map(uj => ({ jobId: uj.job.id, score: 0 })) }, { status: 200 });
             }
 
             console.log(`Found ${scorableJobs.length} specific unscored jobs with descriptions. Scoring...`);
@@ -81,7 +99,7 @@ export async function POST(request: Request) {
 
             return NextResponse.json({ 
                 message: 'Batch scoring complete.', 
-                results 
+                results: [...results, ...nonScorableJobs.map(uj => ({ jobId: uj.job.id, score: 0 }))]
             }, { status: 200 });
         }
 
@@ -100,10 +118,33 @@ export async function POST(request: Request) {
                 return NextResponse.json({ message: 'No unscored jobs found.' }, { status: 200 });
             }
 
-            console.log(`Found ${unscoredUserJobs.length} unscored jobs. Scoring...`);
+            const scorableJobs = unscoredUserJobs.filter(uj => uj.job.description && uj.job.description.trim().length > 50);
+            const nonScorableJobs = unscoredUserJobs.filter(uj => !uj.job.description || uj.job.description.trim().length <= 50);
+
+            for (const uj of nonScorableJobs) {
+                try {
+                    await prisma.opportunityScore.upsert({
+                        where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
+                        update: { totalScore: 0, analysisNotes: 'Job description unavailable or too short for AI analysis.' },
+                        create: { userId: session.user.id, jobId: uj.job.id, totalScore: 0, analysisNotes: 'Job description unavailable or too short for AI analysis.' }
+                    });
+                    await prisma.userJob.update({
+                        where: { userId_jobId: { userId: session.user.id, jobId: uj.job.id } },
+                        data: { status: 'scored' }
+                    });
+                } catch (e) {
+                    console.error(`Error auto-scoring short description job ${uj.job.id}:`, e);
+                }
+            }
+
+            if (scorableJobs.length === 0) {
+                return NextResponse.json({ message: 'Marked short description jobs as evaluated.', results: nonScorableJobs.map(uj => ({ jobId: uj.job.id, score: 0 })) }, { status: 200 });
+            }
+
+            console.log(`Found ${scorableJobs.length} unscored jobs. Scoring...`);
             
             const results = await Promise.all(
-                unscoredUserJobs.map(async (uj) => {
+                scorableJobs.map(async (uj) => {
                     const job = uj.job;
                     try {
                         const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
@@ -121,7 +162,7 @@ export async function POST(request: Request) {
 
             return NextResponse.json({ 
                 message: 'Batch scoring complete.', 
-                results 
+                results: [...results, ...nonScorableJobs.map(uj => ({ jobId: uj.job.id, score: 0 }))]
             }, { status: 200 });
         }
 

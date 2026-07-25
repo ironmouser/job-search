@@ -432,6 +432,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             router.refresh();
           } catch (e) {
             console.error('Failed to score current jobs:', e);
+          } finally {
             chunk.forEach(j => scoringInProgress.current.delete(j.id));
           }
         };
@@ -454,6 +455,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             router.refresh();
           } catch (e) {
             console.error('Failed to background score jobs:', e);
+          } finally {
             chunk.forEach(j => scoringInProgress.current.delete(j.id));
           }
         };

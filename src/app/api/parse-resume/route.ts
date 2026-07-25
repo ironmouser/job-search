@@ -51,7 +51,7 @@ RAW RESUME TEXT:
 ${rawText}`;
 
         let cleanMarkdown = await callDeepSeek({
-            model: 'deepseek-v4-flash',
+            model: 'deepseek-chat',
             messages: [{ role: 'user', content: prompt }],
             userId
         });

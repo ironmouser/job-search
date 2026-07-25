@@ -23,11 +23,10 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
         throw new Error('DEEPSEEK_API_KEY is not set in environment variables.');
     }
 
-    const preferredModel = options.model || 'deepseek-v4-flash';
+    const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-chat';
     const modelsToTry = [preferredModel];
-    if (!modelsToTry.includes('deepseek-v4-flash')) modelsToTry.push('deepseek-v4-flash');
-    if (!modelsToTry.includes('deepseek-v4-pro')) modelsToTry.push('deepseek-v4-pro');
     if (!modelsToTry.includes('deepseek-chat')) modelsToTry.push('deepseek-chat');
+    if (!modelsToTry.includes('deepseek-reasoner')) modelsToTry.push('deepseek-reasoner');
 
     const promptText = options.messages.map(m => m.content).join('\n');
     const inputTokens = estimateTokens(promptText);
@@ -69,7 +68,9 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                         await new Promise(r => setTimeout(r, delayMs));
                         continue;
                     }
-                    throw new Error(`DeepSeek API error (${modelName}): ${errMsg}`);
+                    console.warn(`[DeepSeek ${res.status}] Model ${modelName} failed, trying fallback: ${errMsg}`);
+                    lastError = new Error(`DeepSeek API error (${modelName}): ${errMsg}`);
+                    break; // Try next model in modelsToTry
                 }
 
                 const data = await res.json();

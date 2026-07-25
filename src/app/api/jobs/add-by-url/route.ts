@@ -29,7 +29,7 @@ Web Page Content:
 ${rawText.slice(0, 15000)}`;
 
     const text = await callDeepSeek({
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-chat',
       jsonMode: true,
       messages: [{ role: 'user', content: prompt }]
     });

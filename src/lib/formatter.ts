@@ -36,7 +36,7 @@ ${trimmedRaw}`;
 
         try {
             const formatted = await callDeepSeek({
-                model: 'deepseek-v4-flash',
+                model: 'deepseek-chat',
                 messages: [{ role: 'user', content: prompt }]
             });
             if (formatted && formatted.trim().length > 0) {
