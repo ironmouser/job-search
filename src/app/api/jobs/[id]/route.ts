@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
 import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
+import { scoreJob } from '@/lib/scoring';
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -24,7 +25,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
                 } catch (e) {}
             }
 
-            await prisma.job.update({
+            const updatedJob = await prisma.job.update({
                 where: { id },
                 data: { description: formattedDesc }
             });
@@ -33,6 +34,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
                 where: { userId_jobId: { userId, jobId: id } },
                 data: { status: 'discovered' }
             });
+
+            try {
+                await scoreJob(userId, id, updatedJob.title, formattedDesc);
+            } catch (scoreErr: any) {
+                console.warn(`Failed to auto-score job ${id} after description update:`, scoreErr.message);
+            }
         }
 
         if (applicationUrl) {

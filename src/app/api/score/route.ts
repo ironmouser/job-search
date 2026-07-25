@@ -44,8 +44,7 @@ export async function POST(request: Request) {
             const unscoredUserJobs = await prisma.userJob.findMany({
                 where: { 
                     userId: session.user.id,
-                    jobId: { in: jobIds },
-                    job: { opportunityScores: { none: { userId: session.user.id } } }
+                    jobId: { in: jobIds }
                 },
                 include: { job: { select: { id: true, title: true, description: true } } }
             });
@@ -98,13 +97,15 @@ export async function POST(request: Request) {
             }, { status: 200 });
         }
 
-        // If no jobId or jobIds is provided, score all unscored jobs for this user
+        // If no jobId or jobIds is provided, score all unscored or newly discovered jobs for this user
         if (!jobId) {
             const unscoredUserJobs = await prisma.userJob.findMany({
                 where: { 
                     userId: session.user.id,
-                    status: 'discovered',
-                    job: { opportunityScores: { none: { userId: session.user.id } } }
+                    OR: [
+                        { status: 'discovered' },
+                        { job: { opportunityScores: { none: { userId: session.user.id } } } }
+                    ]
                 },
                 include: { job: { select: { id: true, title: true, description: true } } }
             });

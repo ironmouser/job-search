@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { gotScraping } from 'got-scraping';
 import * as cheerio from 'cheerio';
 import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
+import { scoreJob } from '@/lib/scoring';
 
 export async function POST(
     request: Request,
@@ -135,6 +136,13 @@ export async function POST(
             where: { userId_jobId: { userId, jobId } },
             data: { status: 'discovered' }
         });
+
+        // 5. Automatically score the job with the new description
+        try {
+            await scoreJob(userId, jobId, job.title, updatePayload.description);
+        } catch (scoreErr: any) {
+            console.warn(`Failed to auto-score job ${jobId} after fetching details:`, scoreErr.message);
+        }
 
         return NextResponse.json({ success: true });
 
