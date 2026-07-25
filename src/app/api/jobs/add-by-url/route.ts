@@ -8,6 +8,7 @@ import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { callDeepSeek } from '@/lib/deepseek';
+import { cleanJobUrl } from '@/lib/urlUtils';
 
 async function extractJobMetadataWithGemini(rawText: string) {
   if (!process.env.DEEPSEEK_API_KEY || !rawText || rawText.trim().length === 0) {
