@@ -62,17 +62,18 @@ export async function POST(request: Request) {
 
             console.log(`Found ${scorableJobs.length} specific unscored jobs with descriptions. Scoring...`);
             
-            const results = [];
-            for (const uj of scorableJobs) {
-                const job = uj.job;
-                try {
-                    const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
-                    results.push({ jobId: job.id, score: score.total_score });
-                } catch (e: any) {
-                    console.error(`Error scoring job ${job.id}:`, e.message);
-                    results.push({ jobId: job.id, error: e.message });
-                }
-            }
+            const results = await Promise.all(
+                scorableJobs.map(async (uj) => {
+                    const job = uj.job;
+                    try {
+                        const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
+                        return { jobId: job.id, score: score.total_score };
+                    } catch (e: any) {
+                        console.error(`Error scoring job ${job.id}:`, e.message);
+                        return { jobId: job.id, error: e.message };
+                    }
+                })
+            );
 
             if (results.some(r => r.error)) {
                 return NextResponse.json({ message: 'Batch scoring had errors.', results }, { status: 500 });
@@ -101,17 +102,18 @@ export async function POST(request: Request) {
 
             console.log(`Found ${unscoredUserJobs.length} unscored jobs. Scoring...`);
             
-            const results = [];
-            for (const uj of unscoredUserJobs) {
-                const job = uj.job;
-                try {
-                    const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
-                    results.push({ jobId: job.id, score: score.total_score });
-                } catch (e: any) {
-                    console.error(`Error scoring job ${job.id}:`, e.message);
-                    results.push({ jobId: job.id, error: e.message });
-                }
-            }
+            const results = await Promise.all(
+                unscoredUserJobs.map(async (uj) => {
+                    const job = uj.job;
+                    try {
+                        const score = await scoreJob(session.user.id, job.id, job.title, job.description || '');
+                        return { jobId: job.id, score: score.total_score };
+                    } catch (e: any) {
+                        console.error(`Error scoring job ${job.id}:`, e.message);
+                        return { jobId: job.id, error: e.message };
+                    }
+                })
+            );
 
             if (results.some(r => r.error)) {
                 return NextResponse.json({ message: 'Batch scoring had errors.', results }, { status: 500 });

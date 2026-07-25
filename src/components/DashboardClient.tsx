@@ -415,7 +415,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     // Debounce: wait 500ms before firing to avoid overlapping calls on rapid re-renders
     const timer = setTimeout(() => {
       if (unscoredCurrentJobs.length > 0) {
-        const chunk = unscoredCurrentJobs.slice(0, 3);
+        const chunk = unscoredCurrentJobs.slice(0, 10);
         chunk.forEach(j => scoringInProgress.current.add(j.id));
         
         const scoreCurrent = async () => {
@@ -437,7 +437,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         };
         scoreCurrent();
       } else if (otherUnscoredJobs.length > 0) {
-        const chunk = otherUnscoredJobs.slice(0, 3);
+        const chunk = otherUnscoredJobs.slice(0, 10);
         chunk.forEach(j => scoringInProgress.current.add(j.id));
 
         const scoreBackground = async () => {
