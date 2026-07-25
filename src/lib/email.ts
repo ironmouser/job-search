@@ -71,10 +71,11 @@ export async function fetchEmailsAndExtractJobs(userId: string) {
         }
       }
 
-      console.log(`Fetched ${messages.length} emails. Parsing with AI...`);
+      console.log(`Fetched ${messages.length} emails. Parsing most recent messages with AI...`);
+      const recentMessages = messages.slice(-15);
       const rawJobs: any[] = [];
 
-      for (const source of messages) {
+      for (const source of recentMessages) {
         const parsed = await simpleParser(source);
         const text = parsed.text || '';
         const html = parsed.html || '';
