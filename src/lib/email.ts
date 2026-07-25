@@ -137,7 +137,7 @@ ${uniqueUrls.join('\n')}
                 company: cleanCompanyName(job.company) || 'Unknown Company',
                 location: job.location || 'Remote/Unknown',
                 salary_range: null,
-                description: job.description || `Found via email link: ${job.url}`,
+                description: job.description || `Job opportunity imported from your email notifications. Click link to view full details and application page: ${job.url}`,
                 requirements: job.requirements || null,
                 url: job.url,
                 source: sourceCategory

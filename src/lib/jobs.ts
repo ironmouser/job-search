@@ -47,7 +47,9 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
       
       await prisma.userJob.upsert({
           where: { userId_jobId: { userId, jobId: job.id } },
-          update: {},
+          update: {
+              status: 'discovered'
+          },
           create: {
               userId,
               jobId: job.id,

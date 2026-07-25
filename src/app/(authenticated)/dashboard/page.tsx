@@ -63,23 +63,6 @@ export default async function Dashboard() {
       take: 1000
     });
 
-    // Also purge any fetched jobs whose description trimmed length is <= 50
-    const toDeleteIds: string[] = [];
-    userJobs = userJobs.filter(uj => {
-      if (!uj.job.description || uj.job.description.trim().length <= 50) {
-        toDeleteIds.push(uj.id);
-        return false;
-      }
-      return true;
-    });
-
-    if (toDeleteIds.length > 0) {
-      await prisma.userJob.updateMany({
-        where: { id: { in: toDeleteIds } },
-        data: { status: 'deleted' }
-      });
-    }
-
     userPrefs = await prisma.userPreferences.findUnique({ where: { userId } });
   } catch (error: any) {
     console.error('Error fetching jobs:', error);
