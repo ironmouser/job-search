@@ -156,6 +156,28 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   const totalScore = scores?.totalScore;
   const scoreClass = !totalScore ? '' : totalScore >= 80 ? 'score-high' : 'score-med';
 
+  let scoresExhausted = false;
+  let assetGenerationsLeft = 3;
+  if (planTier !== 'PRO') {
+    const scoresThisWeek = await prisma.opportunityScore.count({
+      where: {
+        userId,
+        createdAt: { gte: sevenDaysAgo }
+      }
+    });
+    if (scoresThisWeek >= 10) {
+      scoresExhausted = true;
+    }
+
+    const assetGenerationsThisWeek = await prisma.applicationAsset.count({
+      where: {
+        userId,
+        createdAt: { gte: sevenDaysAgo }
+      }
+    });
+    assetGenerationsLeft = Math.max(0, 3 - assetGenerationsThisWeek);
+  }
+
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '4rem' }}>
       <Link href="/dashboard" className="btn-outline" style={{ border: 'none', padding: '0.5rem 0', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
@@ -180,11 +202,15 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />
-          {totalScore && (
+          {totalScore ? (
             <div className={`score-badge ${scoreClass}`} style={{ width: '64px', height: '64px', fontSize: '1.5rem' }}>
               {totalScore}
             </div>
-          )}
+          ) : scoresExhausted ? (
+            <Link href="/pricing" title="Weekly score allowance reached. Click to upgrade to Pro!" className="score-badge" style={{ width: '64px', height: '64px', background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.2)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Lock size={22} />
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -262,7 +288,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                     Generate a highly personalized cover letter, networking message, and resume extract tailored specifically to this role using your profile and the job description.
                   </p>
                 </div>
-                <GenerateAssetsButton jobId={job.id} />
+                <GenerateAssetsButton jobId={job.id} userPlanTier={planTier} generationsLeftThisWeek={assetGenerationsLeft} />
               </div>
             )}
           </section>
@@ -338,7 +364,21 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Lock size={14} /> Portfolio Recommendation — Available with Pro Plan</span>
                 </div>
               )}
-            </div>
+          ) : scoresExhausted ? (
+             <div className="glass-card" style={{ position: 'sticky', top: '2rem', textAlign: 'center', padding: '2rem' }}>
+               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(102, 252, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
+                   <Lock size={24} />
+                 </div>
+               </div>
+               <h3 style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>Opportunity Score Locked</h3>
+               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+                 You have reached your weekly allowance of 10 AI opportunity scores on the Free plan. Upgrade to our Pro plan to unlock unlimited AI opportunity evaluations, custom resume tailoring, and interview preparation!
+               </p>
+               <Link href="/pricing" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                 Upgrade to Pro Plan
+               </Link>
+             </div>
           ) : (
              <div className="glass-card">
                <p style={{ color: 'var(--text-secondary)' }}>This job hasn't been scored yet.</p>

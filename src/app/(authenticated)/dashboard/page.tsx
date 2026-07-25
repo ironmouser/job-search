@@ -114,7 +114,22 @@ export default async function Dashboard() {
 
   const hasEmailCredentials = !!(userPrefs?.emailAddress && userPrefs?.emailAppPassword);
 
+  let initialScoresExhausted = false;
+  if (planTier !== 'PRO') {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const scoresThisWeek = await prisma.opportunityScore.count({
+      where: {
+        userId,
+        createdAt: { gte: sevenDaysAgo }
+      }
+    });
+    if (scoresThisWeek >= 10) {
+      initialScoresExhausted = true;
+    }
+  }
+
   return (
-    <DashboardClient jobs={jobs} userPlanTier={planTier} hasEmailCredentials={hasEmailCredentials} />
+    <DashboardClient jobs={jobs} userPlanTier={planTier} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} />
   );
 }

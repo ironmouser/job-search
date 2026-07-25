@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2 } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
@@ -27,9 +27,10 @@ const getConfidenceBadge = (score?: number) => {
     return null;
 };
 
-export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean }) {
+export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false, initialScoresExhausted = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean, initialScoresExhausted?: boolean }) {
   const router = useRouter();
   const [jobList, setJobList] = useState<any[]>(jobs || []);
+  const [scoresExhausted, setScoresExhausted] = useState(initialScoresExhausted);
 
   useEffect(() => {
     setJobList(jobs || []);
@@ -192,7 +193,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     try {
       const res = await fetch(`/api/jobs/${jobItem.id}/fetch-details`, { method: 'POST' });
       if (res.ok) {
-        await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
+        if (userPlanTier === 'PRO') {
+          await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
+        }
         setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'success' }));
         router.refresh();
       } else {
@@ -272,10 +275,13 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       const data = await res.json().catch(() => ({ error: 'Failed to parse response' }));
 
       if (res.ok && data.success) {
-        // Also score the new jobs
-        setSyncMessage('Scoring Opportunities...');
-        await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
-        router.refresh();
+        if (data.count === 0) {
+          alert('Email sync complete! We scanned your inbox and found 0 new job opportunities since your last sync.');
+        } else {
+          setSyncMessage(`Found ${data.count} new opportunit${data.count === 1 ? 'y' : 'ies'}! Scoring...`);
+          await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) });
+          router.refresh();
+        }
       } else {
         const errorMsg = data.error || 'Failed to sync emails';
         console.error('Failed to sync emails:', errorMsg);
@@ -435,6 +441,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const currentJobs = filteredAndSortedJobs.slice(startIndex, endIndex);
 
   useEffect(() => {
+    if (userPlanTier !== 'PRO' && scoresExhausted) return;
+
     const isUnscored = (j: any) => (!j.opportunity_scores || j.opportunity_scores.length === 0);
     const hasDescription = (j: any) => !!(j.description && j.description.trim().length > 50);
 
@@ -457,6 +465,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
             });
             if (!res.ok) {
+              if (res.status === 403) {
+                setScoresExhausted(true);
+                return;
+              }
               const errorData = await res.json().catch(() => ({}));
               throw new Error(`Status ${res.status}: ${JSON.stringify(errorData)}`);
             }
@@ -480,6 +492,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
             });
             if (!res.ok) {
+              if (res.status === 403) {
+                setScoresExhausted(true);
+                return;
+              }
               const errorData = await res.json().catch(() => ({}));
               throw new Error(`Status ${res.status}: ${errorData.message || JSON.stringify(errorData)}`);
             }
@@ -495,7 +511,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [currentJobs, filteredAndSortedJobs, router]);
+  }, [currentJobs, filteredAndSortedJobs, router, userPlanTier, scoresExhausted]);
 
   return (
     <>
@@ -757,7 +773,19 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                         </Link>
                       </td>
                       <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.location || 'Remote'}</td>
-                      <td style={{ padding: '1rem' }}>{score ? <span className={`score-badge ${scoreClass}`} style={{ padding: '0.2rem 0.5rem', fontSize: '0.9rem', borderRadius: '4px' }}>{score}</span> : '-'}</td>
+                      <td style={{ padding: '1rem' }}>
+                        {score ? (
+                          <span className={`score-badge ${scoreClass}`} style={{ padding: '0.2rem 0.5rem', fontSize: '0.9rem', borderRadius: '4px' }}>{score}</span>
+                        ) : scoresExhausted ? (
+                          <span 
+                            onClick={() => setShowUpgradeModal(true)} 
+                            title="Weekly score allowance reached. Click to upgrade to Pro!" 
+                            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem 0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '4px', color: 'var(--text-secondary)' }}
+                          >
+                            <Lock size={14} />
+                          </span>
+                        ) : '-'}
+                      </td>
                       <td style={{ padding: '1rem', textTransform: 'capitalize' }}>
                         {getEffectiveStatus(job) === 'applied' ? (
                           <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -870,11 +898,20 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                       <h3 style={{ cursor: 'pointer', margin: 0 }}>{job.title}</h3>
                     </Link>
                   </div>
-                  {score && (
+                  {score ? (
                     <div className={`score-badge ${scoreClass}`}>
                       {score}
                     </div>
-                  )}
+                  ) : scoresExhausted ? (
+                    <div 
+                      onClick={() => setShowUpgradeModal(true)} 
+                      title="Weekly score allowance reached. Click to upgrade to Pro!" 
+                      className="score-badge" 
+                      style={{ cursor: 'pointer', background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.2)', color: 'var(--text-secondary)' }}
+                    >
+                      <Lock size={16} />
+                    </div>
+                  ) : null}
                 </div>
                 
                 <div className="job-meta">

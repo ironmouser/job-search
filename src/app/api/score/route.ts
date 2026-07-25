@@ -50,13 +50,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
-        const aiOpportunityScoringIsPro = globalSettings?.aiOpportunityScoringIsPro ?? true;
         const isPro = (session.user as any).planTier === 'PRO';
-
-        if (aiOpportunityScoringIsPro && !isPro) {
-            return NextResponse.json({ error: 'AI Opportunity Scoring is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
-        }
 
         // Free tier rate-limit: 10 AI scores per rolling 7-day window
         if (!isPro) {
@@ -69,7 +63,7 @@ export async function POST(request: Request) {
                 }
             });
             if (scoresThisWeek >= 10) {
-                return NextResponse.json({ error: 'Free accounts are limited to 10 AI scores per week. Upgrade to Pro for unlimited scoring.' }, { status: 403 });
+                return NextResponse.json({ error: 'Free accounts are limited to 10 AI scores per week. Upgrade to Pro for unlimited scoring.', code: 'LIMIT_REACHED', limitReached: true }, { status: 403 });
             }
         }
 

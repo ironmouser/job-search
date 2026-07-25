@@ -11,13 +11,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
-        const aiAssetGenerationIsPro = globalSettings?.aiAssetGenerationIsPro ?? true;
         const isPro = (session.user as any).planTier === 'PRO';
-
-        if (aiAssetGenerationIsPro && !isPro) {
-            return NextResponse.json({ error: 'Tailored Resume & Cover Letter generation is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
-        }
 
         // Free tier rate-limit: 3 asset generations per rolling 7-day window
         if (!isPro) {

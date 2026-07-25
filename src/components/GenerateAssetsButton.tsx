@@ -8,9 +8,11 @@ import { FileText, Loader2 } from 'lucide-react';
 interface GenerateAssetsButtonProps {
   jobId: string;
   scrollToTopOnClick?: boolean;
+  userPlanTier?: string;
+  generationsLeftThisWeek?: number;
 }
 
-export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false }: GenerateAssetsButtonProps) {
+export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false, userPlanTier = 'FREE', generationsLeftThisWeek }: GenerateAssetsButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const router = useRouter();
 
@@ -27,6 +29,11 @@ export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false
   const handleGenerate = async () => {
     if (isGenerating) return;
     
+    if (userPlanTier !== 'PRO' && generationsLeftThisWeek !== undefined && generationsLeftThisWeek <= 0) {
+      alert('Free accounts are limited to 3 asset generations per week. Please upgrade to Pro for unlimited generation.');
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const res = await fetch('/api/generate', {
@@ -54,24 +61,33 @@ export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false
 
   return (
     <>
-      <button 
-        onClick={handleGenerate}
-        disabled={isGenerating}
-        className="btn-outline"
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 size={16} className="animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <FileText size={16} />
-            Generate Assets
-          </>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <button 
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          className="btn-outline"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <FileText size={16} />
+              Generate Assets
+            </>
+          )}
+        </button>
+        {userPlanTier !== 'PRO' && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.35rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+            {generationsLeftThisWeek !== undefined 
+              ? `${generationsLeftThisWeek} generation${generationsLeftThisWeek === 1 ? '' : 's'} left this week for free account` 
+              : '3 generations left this week for free account'}
+          </span>
         )}
-      </button>
+      </div>
 
       <div className={`sync-overlay-backdrop ${isGenerating ? 'active' : ''}`}>
         <div className="sync-overlay-content">
