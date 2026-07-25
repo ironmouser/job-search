@@ -72,8 +72,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     }
 
     const urlLimit = searchParams?.get('limit') || searchParams?.get('perPage');
-    if (urlLimit) {
-      const limitNum = parseInt(urlLimit, 10);
+    const savedLimit = urlLimit || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_items_per_page') || sessionStorage.getItem('dashboard_items_per_page')) : null);
+    if (savedLimit) {
+      const limitNum = parseInt(savedLimit, 10);
       if (!isNaN(limitNum) && limitNum > 0) {
         setItemsPerPage(limitNum);
       }
@@ -97,6 +98,16 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     setCurrentPage(1);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('dashboard_page', '1');
+      sessionStorage.setItem('dashboard_items_per_page', newLimit.toString());
+      localStorage.setItem('dashboard_items_per_page', newLimit.toString());
+
+      try {
+        const saved = localStorage.getItem('jobAgentDashboardState');
+        const stateObj = saved ? JSON.parse(saved) : {};
+        stateObj.itemsPerPage = newLimit;
+        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
+      } catch (e) {}
+
       const params = new URLSearchParams(window.location.search);
       params.set('page', '1');
       params.set('limit', newLimit.toString());
