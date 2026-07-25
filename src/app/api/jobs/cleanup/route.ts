@@ -10,11 +10,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { disliked, viewed, applied, archived, checked, checkedJobIds, olderThanDays } = await request.json();
+    const { disliked, viewed, applied, archived, checked, checkedJobIds, olderThanDays, shortDescription } = await request.json();
     const userId = session.user.id;
 
     // Build the query for UserJob
     const conditions: any[] = [];
+
+    if (shortDescription) {
+      const allUserJobs = await prisma.userJob.findMany({
+        where: { userId, status: { not: 'deleted' } },
+        include: { job: { select: { id: true, description: true } } }
+      });
+      const shortDescUserJobIds = allUserJobs
+        .filter(uj => !uj.job.description || uj.job.description.trim().length <= 50)
+        .map(uj => uj.id);
+      if (shortDescUserJobIds.length > 0) {
+        conditions.push({ id: { in: shortDescUserJobIds } });
+      }
+    }
 
     if (disliked) {
       conditions.push({
