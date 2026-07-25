@@ -1,6 +1,7 @@
 import { gotScraping } from 'got-scraping';
 import * as cheerio from 'cheerio';
 import { reformatJobDescriptionWithGemini } from './formatter';
+import { cleanJobUrl } from './urlUtils';
 
 export function isDescriptionAdequate(desc?: string | null): boolean {
     if (!desc) return false;
@@ -10,11 +11,26 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
     if (lower.startsWith('apply at:')) return false;
     if (/found via email/i.test(clean) && clean.length < 500) return false;
     if (/position at/i.test(clean) && clean.length < 300) return false;
+
+    // Detect auth checkpoint / login wall content
+    if (
+      lower.includes("we're signing you in") || 
+      lower.includes("signing you in") ||
+      lower.includes("checkpoint/lg/login") || 
+      lower.includes("discover people, jobs") || 
+      lower.includes("remain on this page, you'll be signed in") ||
+      lower.includes("sign in to view") ||
+      lower.includes("login to view")
+    ) {
+      return false;
+    }
+
     return true;
 }
 
-export async function fetchJobDescription(url: string): Promise<string | null> {
-    if (!url) return null;
+export async function fetchJobDescription(rawUrl: string): Promise<string | null> {
+    if (!rawUrl) return null;
+    const url = cleanJobUrl(rawUrl);
 
     const extractContent = async (rawHtml: string): Promise<string | null> => {
         const $ = cheerio.load(rawHtml);
@@ -34,7 +50,7 @@ export async function fetchJobDescription(url: string): Promise<string | null> {
         });
 
         const cleanDesc = jsonLdDesc.trim();
-        if (cleanDesc.length > 100) {
+        if (cleanDesc.length > 100 && isDescriptionAdequate(cleanDesc)) {
             return await reformatJobDescriptionWithGemini(cleanDesc);
         }
 
@@ -43,7 +59,10 @@ export async function fetchJobDescription(url: string): Promise<string | null> {
         const containerSelector = 'main, article, .job-description, .job_description, #job-description, #jobDescriptionText, .posting-requirements, .section-description, [data-automation-id="jobPostingDescription"], [class*="description"], [class*="posting"], [class*="details"], [id*="description"], [id*="posting"]';
         const htmlStr = $(containerSelector).html() || $('body').html() || '';
         if (htmlStr.trim().length > 100) {
-            return await reformatJobDescriptionWithGemini(htmlStr.trim());
+            const formatted = await reformatJobDescriptionWithGemini(htmlStr.trim());
+            if (isDescriptionAdequate(formatted)) {
+                return formatted;
+            }
         }
 
         return null;

@@ -14,6 +14,7 @@ import { cleanCompanyName } from '@/lib/cleaners';
 import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
 import ResumeAssetCard from '@/components/ResumeAssetCard';
 import AutoFetchJobDetails from '@/components/AutoFetchJobDetails';
+import { isDescriptionAdequate } from '@/lib/jobFetcher';
 import { AutoApplyPanel } from '@/components/AutoApplyPanel';
 import { ApplyStepAccordion } from '@/components/ApplyStepAccordion';
 import { getServerSession } from "next-auth/next";
@@ -196,7 +197,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Review Job Description</h2>
             </div>
             <div className="glass-card" data-tour="job-detail-description">
-              {(!job.description || job.description.trim().length < 250 || job.description.trim().toLowerCase().startsWith('apply at:') || /position at/i.test(job.description) || /found via email/i.test(job.description)) ? (
+              {!isDescriptionAdequate(job.description) ? (
                 <AutoFetchJobDetails jobId={job.id} initialDescription={job.description} />
               ) : (
                 <div 
