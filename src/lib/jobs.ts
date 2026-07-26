@@ -8,16 +8,23 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     const settings: any = await getUserSettings(userId);
     const remoteOnly = settings.remoteOnly || false;
 
-    let normalizedJobs = rawJobs.map((job) => ({
-        title: job.title,
-        company: job.company,
-        location: job.location || 'Remote',
-        salaryRange: job.salary_range || null,
-        description: job.description || '',
-        requirements: null,
-        url: job.url,
-        source: job.source || 'Direct',
-    })).filter(j => j.url && j.title);
+    let normalizedJobs = rawJobs.map((job) => {
+        const title = job.title?.trim() || 'Untitled Position';
+        const company = job.company?.trim() || 'Unknown Company';
+        const fallbackDesc = `Job listing for ${title} at ${company}. Click link to view full details and application page: ${job.url || ''}`;
+        const description = (job.description && job.description.trim().length > 0) ? job.description.trim() : fallbackDesc;
+
+        return {
+            title,
+            company,
+            location: job.location || 'Remote',
+            salaryRange: job.salary_range || job.salary || null,
+            description,
+            requirements: null,
+            url: job.url,
+            source: job.source || 'Direct',
+        };
+    }).filter(j => j.url && j.title);
 
     if (remoteOnly) {
         normalizedJobs = normalizedJobs.filter(j => (j.location || '').toLowerCase().includes('remote'));
@@ -38,17 +45,23 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
                   company: jobData.company,
                   location: jobData.location,
                   salaryRange: jobData.salaryRange,
-                  description: jobData.description || '',
+                  description: jobData.description,
                   url: cleanedUrl,
                   source: jobData.source,
               }
+          });
+      } else if (!job.description || job.description.trim().length === 0) {
+          await prisma.job.update({
+              where: { id: job.id },
+              data: { description: jobData.description }
           });
       }
       
       await prisma.userJob.upsert({
           where: { userId_jobId: { userId, jobId: job.id } },
           update: {
-              status: 'discovered'
+              status: 'discovered',
+              createdAt: new Date()
           },
           create: {
               userId,

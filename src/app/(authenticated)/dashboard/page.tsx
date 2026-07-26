@@ -26,25 +26,6 @@ export default async function Dashboard() {
   let userJobs: any[] = [];
   let userPrefs: any = null;
   try {
-    // Purge any jobs with missing or short (<50 char) descriptions automatically
-    const shortDescUserJobs = await prisma.userJob.findMany({
-      where: {
-        userId,
-        status: { not: 'deleted' },
-        OR: [
-          { job: { description: null } },
-          { job: { description: '' } }
-        ]
-      },
-      select: { id: true }
-    });
-
-    if (shortDescUserJobs.length > 0) {
-      await prisma.userJob.updateMany({
-        where: { id: { in: shortDescUserJobs.map(uj => uj.id) } },
-        data: { status: 'deleted' }
-      });
-    }
 
     userJobs = await prisma.userJob.findMany({
       where: { 
