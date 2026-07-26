@@ -25,6 +25,8 @@ export async function GET() {
             return NextResponse.json({
                 searchKeyword: '',
                 searchLocation: '',
+                includeKeywords: '',
+                excludeKeywords: '',
                 remoteOnly: false,
                 theme: 'light',
                 aiStrictness: 'Standard',
@@ -44,6 +46,8 @@ export async function GET() {
         return NextResponse.json({
             searchKeyword: prefs.searchKeyword,
             searchLocation: prefs.searchLocation,
+            includeKeywords: (prefs as any).includeKeywords || '',
+            excludeKeywords: (prefs as any).excludeKeywords || '',
             remoteOnly: prefs.remoteOnly,
             theme: prefs.theme,
             aiStrictness: prefs.aiStrictness,
@@ -88,6 +92,8 @@ export async function POST(request: Request) {
         let updateData: any = {
             searchKeyword: data.searchKeyword,
             searchLocation: data.searchLocation,
+            includeKeywords: data.includeKeywords,
+            excludeKeywords: data.excludeKeywords,
             remoteOnly: data.remoteOnly,
             theme: data.theme,
             aiStrictness: data.aiStrictness,
@@ -112,6 +118,8 @@ export async function POST(request: Request) {
                 userId: session.user.id,
                 searchKeyword: data.searchKeyword || '',
                 searchLocation: data.searchLocation || '',
+                includeKeywords: data.includeKeywords || '',
+                excludeKeywords: data.excludeKeywords || '',
                 remoteOnly: data.remoteOnly || false,
                 theme: data.theme || 'light',
                 aiStrictness: data.aiStrictness || 'Standard',

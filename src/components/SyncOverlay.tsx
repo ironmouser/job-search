@@ -93,7 +93,7 @@ export default function SyncOverlay({
         </div>
         
         {/* GIF Container displaying 10-second looping sequence with preloaded DOM nodes */}
-        <div className="tenor-gif-container" style={{ position: 'relative', width: '260px', height: '260px' }}>
+        <div className="tenor-gif-container" style={{ position: 'relative', width: '300px', height: '250px', background: '#ffffff', borderRadius: '12px', overflow: 'hidden' }}>
           {GIF_SEQUENCE.map((filename, index) => {
             const src = imgSources[filename] || getS3AssetUrl(filename);
             const isActive = activeAnimIndex === index;
@@ -116,6 +116,7 @@ export default function SyncOverlay({
                   alignItems: 'center',
                   borderRadius: '12px',
                   overflow: 'hidden',
+                  background: '#ffffff',
                 }}
               >
                 <img
@@ -129,6 +130,7 @@ export default function SyncOverlay({
                     objectFit: 'cover',
                     borderRadius: '12px',
                     display: 'block',
+                    background: '#ffffff',
                   }}
                 />
               </div>

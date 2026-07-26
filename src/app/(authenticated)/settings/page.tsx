@@ -54,6 +54,7 @@ export default function SettingsPage() {
     const [emailProvider, setEmailProvider] = useState<string>('gmail');
     const [testingEmail, setTestingEmail] = useState(false);
     const [emailTestResult, setEmailTestResult] = useState<{success?: boolean, error?: string} | null>(null);
+    const [previewStandardView, setPreviewStandardView] = useState(false);
 
     // Unsaved changes navigation prompt state
     const [showDialog, setShowDialog] = useState(false);
@@ -313,6 +314,35 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '250px' }}>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Required Keywords (Include)</label>
+                                <input 
+                                    type="text"
+                                    value={settings.includeKeywords || ''}
+                                    onChange={(e) => handleChange('includeKeywords', e.target.value)}
+                                    placeholder='e.g. "React, Node.js, Remote, TypeScript"'
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                />
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    Comma-separated terms. At least one must appear in the job title or description during pre-filtering.
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '250px' }}>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Excluded Keywords (Exclude)</label>
+                                <input 
+                                    type="text"
+                                    value={settings.excludeKeywords || ''}
+                                    onChange={(e) => handleChange('excludeKeywords', e.target.value)}
+                                    placeholder='e.g. "Intern, Junior, Sales, Manager, Associate"'
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                />
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    Comma-separated terms. Any listing with a job title or company matching these words will be rejected immediately.
+                                </span>
+                            </div>
+                        </div>
+
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '0.5rem' }}>
                             <input 
                                 type="checkbox" 
@@ -330,9 +360,22 @@ export default function SettingsPage() {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Scraper Sources</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Scraper Sources</label>
+                                {isAdmin && (
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={previewStandardView} 
+                                            onChange={(e) => setPreviewStandardView(e.target.checked)} 
+                                            style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--accent)' }}
+                                        />
+                                        <span>Preview Standard User (Categorized) View</span>
+                                    </label>
+                                )}
+                            </div>
                             
-                            {isAdmin ? (
+                            {(isAdmin && !previewStandardView) ? (
                                 [
                                     {
                                         title: 'Global Aggregators',
@@ -340,7 +383,7 @@ export default function SettingsPage() {
                                     },
                                     {
                                         title: 'US / Remote Tech',
-                                        sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc']
+                                        sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'arbeitnow', 'ycombinator', 'otta', 'jobspresso', 'justremote']
                                     },
                                     {
                                         title: 'ATS Integrations',
@@ -385,7 +428,12 @@ export default function SettingsPage() {
                                              source === 'remotepoc' ? 'RemotePOC' : 
                                              source === 'arbeitsagentur' ? 'Arbeitsagentur (DE)' :
                                              source === 'themuse' ? 'The Muse (Global)' :
-                                             source === 'computrabajo' ? 'Computrabajo (LATAM)' : source}
+                                             source === 'computrabajo' ? 'Computrabajo (LATAM)' :
+                                             source === 'ycombinator' ? 'Y Combinator' :
+                                             source === 'arbeitnow' ? 'Arbeitnow' :
+                                             source === 'jobspresso' ? 'Jobspresso' :
+                                             source === 'justremote' ? 'JustRemote' :
+                                             source === 'otta' ? 'Otta' : source}
                                                             {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                         </span>
                                                     </label>
@@ -400,20 +448,20 @@ export default function SettingsPage() {
                                         title: 'Global Job Boards',
                                         items: [
                                             { label: 'Free', sources: ['indeed', 'glassdoor', 'ziprecruiter'] },
-                                            { label: 'Premimum', sources: ['linkedin'], isPro: true }
+                                            { label: 'Premium', sources: ['linkedin'], isPro: true }
                                         ]
                                     },
                                     {
                                         title: 'Remote & Tech Jobs',
                                         items: [
-                                            { label: 'Free', sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc'] },
-                                            { label: 'Premimum', sources: ['himalayas'], isPro: true }
+                                            { label: 'Free', sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'arbeitnow', 'ycombinator'] },
+                                            { label: 'Premium', sources: ['himalayas', 'otta', 'jobspresso', 'justremote'], isPro: true }
                                         ]
                                     },
                                     {
                                         title: 'Company Career Sites',
                                         items: [
-                                            { label: 'Premimum', sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'], isPro: true }
+                                            { label: 'Premium', sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'], isPro: true }
                                         ]
                                     },
                                     {

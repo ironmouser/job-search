@@ -1075,7 +1075,7 @@ body.light-theme .sync-overlay-content {
 
 /* Tenor GIF Container */
 .tenor-gif-container {
-  width: 250px;
+  width: 300px;
   height: 250px;
   border-radius: 12px;
   overflow: hidden;
@@ -1083,7 +1083,7 @@ body.light-theme .sync-overlay-content {
   justify-content: center;
   align-items: center;
   position: relative;
-  background: rgba(0, 0, 0, 0.15);
+  background: #ffffff;
 }
 
 .tenor-gif-embed>a {

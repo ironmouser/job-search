@@ -2,11 +2,16 @@ import { prisma } from './prisma';
 import { getUserSettings } from './settings';
 import { reformatJobDescriptionWithGemini } from './formatter';
 import { cleanJobUrl } from './urlUtils';
+import { callDeepSeek } from './deepseek';
 
 export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     if (!rawJobs || rawJobs.length === 0) return [];
     const settings: any = await getUserSettings(userId);
     const remoteOnly = settings.remoteOnly || false;
+    const includeKeywordsStr: string = (settings.includeKeywords || '').trim();
+    const excludeKeywordsStr: string = (settings.excludeKeywords || '').trim();
+    const searchKeyword: string = (settings.searchKeyword || '').trim();
+    const profileText: string = (settings.profile || settings.resumeMarkdown || '').slice(0, 800);
 
     let normalizedJobs = rawJobs.map((job) => {
         const title = job.title?.trim() || 'Untitled Position';
@@ -33,10 +38,141 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
         });
     }
 
+    // Tier 1: Deterministic Keyword Exclusion & Inclusion Filter
+    const excludeTerms = excludeKeywordsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    const includeTerms = includeKeywordsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+    if (excludeTerms.length > 0) {
+        normalizedJobs = normalizedJobs.filter(j => {
+            const titleLower = j.title.toLowerCase();
+            const companyLower = j.company.toLowerCase();
+            const hit = excludeTerms.find(term => titleLower.includes(term) || companyLower.includes(term));
+            if (hit) {
+                console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to excluded keyword: "${hit}"`);
+                return false;
+            }
+            return true;
+        });
+    }
+
+    if (includeTerms.length > 0) {
+        normalizedJobs = normalizedJobs.filter(j => {
+            const contentLower = `${j.title} ${j.description || ''}`.toLowerCase();
+            const match = includeTerms.some(term => contentLower.includes(term));
+            if (!match) {
+                console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to missing required keywords.`);
+                return false;
+            }
+            return true;
+        });
+    }
+
+    // URL cleaning and deduplication
+    const deduplicatedJobs: any[] = [];
+    const seenUrls = new Set<string>();
+
+    for (const job of normalizedJobs) {
+        const cleanedUrl = cleanJobUrl(job.url);
+        if (seenUrls.has(cleanedUrl)) continue;
+        seenUrls.add(cleanedUrl);
+        deduplicatedJobs.push({ ...job, url: cleanedUrl });
+    }
+
+    // Check existing jobs in DB to separate truly new candidates from already discovered jobs
+    const urlsToProcess = deduplicatedJobs.map(j => j.url);
+    const existingJobs = await prisma.job.findMany({
+        where: { url: { in: urlsToProcess } },
+        select: { id: true, url: true }
+    });
+    
+    let userExistingJobIds = new Set<string>();
+    if (existingJobs.length > 0) {
+        const ujs = await prisma.userJob.findMany({
+            where: {
+                userId,
+                jobId: { in: existingJobs.map(j => j.id) }
+            },
+            select: { jobId: true }
+        });
+        userExistingJobIds = new Set(ujs.map(u => u.jobId));
+    }
+
+    const knownGoodJobs: any[] = [];
+    const brandNewCandidates: any[] = [];
+
+    for (const jobData of deduplicatedJobs) {
+        const match = existingJobs.find(e => e.url === jobData.url);
+        if (match && userExistingJobIds.has(match.id)) {
+            knownGoodJobs.push(jobData);
+        } else {
+            brandNewCandidates.push(jobData);
+        }
+    }
+
+    // Tier 2: Batched Rapid Triage via DeepSeek (Lite Pass)
+    const approvedCandidates: any[] = [];
+
+    if (brandNewCandidates.length > 0 && searchKeyword) {
+        console.log(`[AI Triage] Running DeepSeek rapid pre-screening on ${brandNewCandidates.length} new candidate jobs for keyword "${searchKeyword}"...`);
+        
+        const chunkSize = 20;
+        for (let i = 0; i < brandNewCandidates.length; i += chunkSize) {
+            const chunk = brandNewCandidates.slice(i, i + chunkSize);
+            const candidatesPayload = chunk.map((c, index) => ({
+                index,
+                title: c.title,
+                company: c.company,
+                snippet: (c.description || '').slice(0, 200)
+            }));
+
+            try {
+                const triageResponse = await callDeepSeek({
+                    model: 'deepseek-v4-flash',
+                    jsonMode: true,
+                    maxTokens: 1000,
+                    userId,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are an AI recruitment triage filter. Review candidate job listings against the candidate search criteria and background. Discard promotions, spam, and roles with incompatible career tracks or seniority mismatches. Return ONLY valid JSON matching: {"results": [{"index": 0, "pass": true, "reason": "Relevant role"}]}'
+                        },
+                        {
+                            role: 'user',
+                            content: JSON.stringify({
+                                candidateSearchKeyword: searchKeyword,
+                                candidateBackgroundSnippet: profileText,
+                                candidateJobs: candidatesPayload
+                            })
+                        }
+                    ]
+                });
+
+                const parsed = JSON.parse(triageResponse);
+                const results: any[] = parsed?.results || [];
+
+                for (let idx = 0; idx < chunk.length; idx++) {
+                    const res = results.find((r: any) => r.index === idx);
+                    if (res && res.pass === false) {
+                        console.log(`[AI Triage Rejected] Discarding "${chunk[idx].title}" at "${chunk[idx].company}": ${res.reason || 'Not a fit'}`);
+                    } else {
+                        approvedCandidates.push(chunk[idx]);
+                    }
+                }
+            } catch (err: any) {
+                console.warn(`[AI Triage Error] Failing open for chunk due to error: ${err.message}`);
+                approvedCandidates.push(...chunk);
+            }
+        }
+    } else {
+        approvedCandidates.push(...brandNewCandidates);
+    }
+
+    // Tier 3: Persistence
+    const finalJobsToSave = [...knownGoodJobs, ...approvedCandidates];
     const processedUrls: string[] = [];
 
-    for (const jobData of normalizedJobs) {
-      const cleanedUrl = cleanJobUrl(jobData.url);
+    for (const jobData of finalJobsToSave) {
+      const cleanedUrl = jobData.url;
       if (processedUrls.includes(cleanedUrl)) continue;
       processedUrls.push(cleanedUrl);
 
@@ -81,3 +217,4 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     console.log(`Successfully processed ${data?.length || 0} jobs for user ${userId}.`);
     return data;
 }
+

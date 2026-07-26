@@ -231,6 +231,8 @@ model UserPreferences {
   userId            String   @unique @map("user_id")
   searchKeyword     String?
   searchLocation    String?
+  includeKeywords   String?  @map("include_keywords")
+  excludeKeywords   String?  @map("exclude_keywords")
   customCareerPages String[] @default([])
   sources           Json?    @default("{}")
   remoteOnly        Boolean  @default(false)
