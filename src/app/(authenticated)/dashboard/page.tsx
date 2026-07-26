@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from '@/lib/prisma';
+import { getUserSettings } from '@/lib/settings';
 import DashboardClient from '@/components/DashboardClient';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 
@@ -59,7 +60,7 @@ export default async function Dashboard() {
       take: 1000
     });
 
-    userPrefs = await prisma.userPreferences.findUnique({ where: { userId } });
+    userPrefs = await getUserSettings(userId);
   } catch (error: any) {
     console.error('Error fetching jobs:', error);
   }
