@@ -27,7 +27,10 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     }).filter(j => j.url && j.title);
 
     if (remoteOnly) {
-        normalizedJobs = normalizedJobs.filter(j => (j.location || '').toLowerCase().includes('remote'));
+        normalizedJobs = normalizedJobs.filter(j => {
+            const loc = (j.location || '').toLowerCase();
+            return loc.includes('remote') || loc.includes('anywhere') || loc.includes('worldwide') || loc.includes('wfh') || loc.includes('telecommute') || loc.includes('distributed') || loc.includes('work from home') || loc === '';
+        });
     }
 
     const processedUrls: string[] = [];

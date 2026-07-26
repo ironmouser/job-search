@@ -17,12 +17,8 @@ export async function POST(request: Request) {
         const body = await request.json();
         const settings: any = await getUserSettings(userId);
         
-        const keyword = body.keyword || settings.searchKeyword;
-        const location = body.location || settings.searchLocation;
-
-        if (!keyword || !location) {
-            return NextResponse.json({ error: 'Missing keyword or location in request body and settings.' }, { status: 400 });
-        }
+        const keyword = body.keyword || settings.searchKeyword || 'Software Engineer';
+        const location = body.location || settings.searchLocation || 'Remote';
 
         console.log(`Received omni-scrape request for ${keyword} in ${location} for user ${userId}`);
 
