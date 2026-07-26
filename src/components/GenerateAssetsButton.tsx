@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, Loader2 } from 'lucide-react';
-
+import SyncOverlay from './SyncOverlay';
 
 interface GenerateAssetsButtonProps {
   jobId: string;
@@ -15,16 +15,6 @@ interface GenerateAssetsButtonProps {
 export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false, userPlanTier = 'FREE', generationsLeftThisWeek }: GenerateAssetsButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    if (isGenerating) {
-      document.body.style.overflow = 'hidden';
-
-      return () => {
-        document.body.style.overflow = '';
-      };
-    }
-  }, [isGenerating]);
 
   const handleGenerate = async () => {
     if (isGenerating) return;
@@ -89,17 +79,12 @@ export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false
         )}
       </div>
 
-      <div className={`sync-overlay-backdrop ${isGenerating ? 'active' : ''}`}>
-        <div className="sync-overlay-content">
-          <h2>Generating Assets</h2>
-          <p className="sync-overlay-text">Crafting personalized cover letter and resume...</p>
-          <p className="sync-overlay-subtext">
-            This could take up to 30 seconds to complete.<br />
-            Please do not close or refresh this page.
-          </p>
-
-        </div>
-      </div>
+      <SyncOverlay 
+        isSyncing={isGenerating}
+        title="Generating Assets"
+        syncMessage="Crafting personalized cover letter and resume..."
+        subtext={"This could take up to 30 seconds to complete.\nPlease do not close or refresh this page."}
+      />
     </>
   );
 }

@@ -1003,8 +1003,6 @@ details.glass-card>summary::marker {
   width: 100vw;
   height: 100vh;
   background-color: rgba(11, 12, 16, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
   align-items: center;

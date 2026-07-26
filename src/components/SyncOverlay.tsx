@@ -2,14 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { getS3AssetUrl } from '@/lib/s3';
 
-const SYNC_ANIMATIONS = [
-  { id: "18485855", link: "https://tenor.com/view/o2-o2robot-o2ad-bubl-o2bubl-gif-18485855", text: "O2 O2robot GIF" },
-  { id: "18485865", link: "https://tenor.com/view/o2-o2robot-o2ad-bubl-o2bubl-gif-18485865", text: "O2 O2robot Sticker" },
-  { id: "20473504", link: "https://tenor.com/view/o2-o2bubl-bubl-bubble-cute-gif-20473504", text: "O2 O2bubl Sticker" },
-  { id: "23961222", link: "https://tenor.com/view/o2-bubl-robot-blue-fun-gif-23961222", text: "O2 Bubl Sticker" },
-  { id: "20473515", link: "https://tenor.com/view/o2-o2bubl-bubl-bubble-cute-gif-20473515", text: "O2 O2bubl Sticker" },
-];
+const GIF_SEQUENCE = ['thumbs.gif', 'lasso.gif', 'head.gif', 'fly.gif'];
 
 export default function SyncOverlay({ 
   isSyncing, 
@@ -24,38 +19,50 @@ export default function SyncOverlay({
 }) {
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [imgSources, setImgSources] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setMounted(true);
+
+    // Pre-initialize S3 image URLs & aggressively preload all GIFs into browser cache
+    const initialSources: Record<string, string> = {};
+    GIF_SEQUENCE.forEach(filename => {
+      const url = getS3AssetUrl(filename);
+      initialSources[filename] = url;
+      
+      // Eager browser memory preloading
+      if (typeof window !== 'undefined') {
+        const img = new Image();
+        img.src = url;
+      }
+    });
+    setImgSources(initialSources);
   }, []);
 
   useEffect(() => {
     if (isSyncing) {
       document.body.style.overflow = 'hidden';
 
-      // Reload Tenor script to parse newly rendered DOM elements
-      const existingScript = document.getElementById("tenor-embed-script");
-      if (existingScript) {
-        existingScript.remove();
-      }
-      const script = document.createElement('script');
-      script.src = "https://tenor.com/embed.js";
-      script.async = true;
-      script.id = "tenor-embed-script";
-      document.body.appendChild(script);
+      // Re-trigger preloading when overlay becomes active to ensure instant playback
+      GIF_SEQUENCE.forEach(filename => {
+        const src = imgSources[filename] || getS3AssetUrl(filename);
+        const img = new Image();
+        img.src = src;
+      });
 
       return () => {
         document.body.style.overflow = '';
       };
     }
-  }, [isSyncing]);
+  }, [isSyncing, imgSources]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isSyncing) {
+      // Switch GIF every 10 seconds (10,000 ms) in a loop
       interval = setInterval(() => {
-        setActiveAnimIndex(prev => (prev + 1) % SYNC_ANIMATIONS.length);
-      }, 6000);
+        setActiveAnimIndex(prev => (prev + 1) % GIF_SEQUENCE.length);
+      }, 10000);
     } else {
       setActiveAnimIndex(0);
     }
@@ -63,6 +70,16 @@ export default function SyncOverlay({
       if (interval) clearInterval(interval);
     };
   }, [isSyncing]);
+
+  const handleImageError = (filename: string) => {
+    // If S3 URL fails to load, fallback to public folder
+    setImgSources(prev => {
+      if (prev[filename] !== `/${filename}`) {
+        return { ...prev, [filename]: `/${filename}` };
+      }
+      return prev;
+    });
+  };
 
   if (!isSyncing || !mounted) return null;
 
@@ -74,31 +91,51 @@ export default function SyncOverlay({
         <div className="sync-overlay-subtext" style={{ whiteSpace: 'pre-line' }}>
           {typeof subtext === 'string' ? subtext.replace(/\\n/g, '\n') : subtext}
         </div>
-        <div className="tenor-gif-container" style={{ position: 'relative' }}>
-          {SYNC_ANIMATIONS.map((anim, index) => (
-            <div 
-              key={anim.id}
-              style={{
-                position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
-                opacity: activeAnimIndex === index ? 1 : 0,
-                transition: 'opacity 0.5s ease',
-                pointerEvents: activeAnimIndex === index ? 'auto' : 'none',
-                zIndex: activeAnimIndex === index ? 2 : 1
-              }}
-            >
+        
+        {/* GIF Container displaying 10-second looping sequence with preloaded DOM nodes */}
+        <div className="tenor-gif-container" style={{ position: 'relative', width: '260px', height: '260px' }}>
+          {GIF_SEQUENCE.map((filename, index) => {
+            const src = imgSources[filename] || getS3AssetUrl(filename);
+            const isActive = activeAnimIndex === index;
+
+            return (
               <div 
-                className="tenor-gif-embed" 
-                data-postid={anim.id} 
-                data-share-method="host" 
-                data-aspect-ratio="1" 
-                data-width="100%"
+                key={filename}
+                style={{
+                  position: 'absolute',
+                  top: 0, 
+                  left: 0, 
+                  right: 0, 
+                  bottom: 0,
+                  opacity: isActive ? 1 : 0,
+                  transition: 'opacity 0.6s ease-in-out',
+                  pointerEvents: isActive ? 'auto' : 'none',
+                  zIndex: isActive ? 2 : 1,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                }}
               >
-                <a href={anim.link}>{anim.text}</a>
+                <img
+                  src={src}
+                  alt={`Syncing animation ${index + 1}`}
+                  loading="eager"
+                  onError={() => handleImageError(filename)}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '12px',
+                    display: 'block',
+                  }}
+                />
               </div>
-            </div>
-          ))}
-        </div>      </div>
+            );
+          })}
+        </div>
+      </div>
     </div>,
     document.body
   );
