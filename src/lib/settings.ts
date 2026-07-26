@@ -14,7 +14,7 @@ export async function ensureKeywordColumnsExist() {
     }
 }
 
-export async function getUserSettings(userId: string): Promise<Partial<UserPreferences>> {
+export async function getUserSettings(userId: string): Promise<any> {
     try {
         await ensureKeywordColumnsExist();
         const prefs = await prisma.userPreferences.findUnique({
@@ -46,7 +46,7 @@ export async function getUserSettings(userId: string): Promise<Partial<UserPrefe
                     aiStrictness: row.ai_strictness || 'Standard',
                     resumeMarkdown: row.resume_markdown || '',
                     profile: row.profile || ''
-                };
+                } as any;
             }
         } catch (rawErr: any) {
             console.error('Raw SQL fallback error:', rawErr?.message || rawErr);
