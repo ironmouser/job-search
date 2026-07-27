@@ -43,8 +43,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
             ],
-            temperature: 1.5,
-            maxTokens: 1024,
+            temperature: 1.0,
+            maxTokens: 2048,
             userId: session.user.id
         });
 
