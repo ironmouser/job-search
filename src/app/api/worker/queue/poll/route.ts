@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'asc' },
         include: {
           job: {
-            select: { id: true, title: true, company: true, url: true },
+            select: { id: true, title: true, company: true, url: true, applicationUrl: true },
           },
           user: {
             include: { userPreferences: true },
@@ -97,7 +97,8 @@ export async function GET(request: NextRequest) {
       sessionId: session.id,
       jobId: session.jobId,
       userId: session.userId,
-      jobUrl: session.job.url,
+      // Prefer applicationUrl (direct ATS link set by user) over the job listing URL
+      jobUrl: session.job.applicationUrl ?? session.job.url,
       simulationMode: session.simulationMode,
       resumeMarkdown: assets.tailoredResumeMarkdown,
       coverLetterMarkdown: assets.coverLetterMarkdown,
