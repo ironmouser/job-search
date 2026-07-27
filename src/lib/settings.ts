@@ -8,6 +8,7 @@ export async function ensureKeywordColumnsExist() {
     try {
         await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "include_keywords" TEXT');
         await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "exclude_keywords" TEXT');
+        await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "job_level" TEXT DEFAULT \'Mid-level\'');
         columnsChecked = true;
     } catch (e: any) {
         console.warn('Auto-schema update warning:', e?.message || e);
@@ -36,6 +37,7 @@ export async function getUserSettings(userId: string): Promise<any> {
                     id: row.id,
                     userId: row.user_id,
                     searchKeyword: row.search_keyword,
+                    jobLevel: row.job_level || 'Mid-level',
                     searchLocation: row.search_location,
                     includeKeywords: row.include_keywords || '',
                     excludeKeywords: row.exclude_keywords || '',

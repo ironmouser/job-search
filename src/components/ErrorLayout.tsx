@@ -47,7 +47,7 @@ export default function ErrorLayout({
           alignItems: 'center',
           gap: '1.5rem',
           backdropFilter: 'none',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+          boxShadow: 'none',
           borderRadius: '16px',
         }}
       >
@@ -99,19 +99,22 @@ export default function ErrorLayout({
             margin: '0.5rem 0',
             borderRadius: '12px',
             overflow: 'hidden',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.12)',
+            boxShadow: 'none',
+            backgroundColor: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem 0',
             position: 'relative',
-            aspectRatio: '4 / 3',
           }}
         >
           <img
             src={imgSrc}
             alt="Page Error - Lost"
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
+              width: '50%',
+              height: '50%',
+              objectFit: 'contain',
               display: 'block',
             }}
             onError={() => {

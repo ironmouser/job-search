@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, Loader2 } from 'lucide-react';
 import SyncOverlay from './SyncOverlay';
+import { scrollToTop } from './BackToTopButton';
 
 interface GenerateAssetsButtonProps {
   jobId: string;
@@ -34,7 +35,7 @@ export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false
 
       if (res.ok) {
         if (scrollToTopOnClick) {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          scrollToTop();
         }
         router.refresh();
       } else {

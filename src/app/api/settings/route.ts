@@ -24,6 +24,7 @@ export async function GET() {
         if (!prefs) {
             return NextResponse.json({
                 searchKeyword: '',
+                jobLevel: 'Mid-level',
                 searchLocation: '',
                 includeKeywords: '',
                 excludeKeywords: '',
@@ -45,6 +46,7 @@ export async function GET() {
 
         return NextResponse.json({
             searchKeyword: prefs.searchKeyword,
+            jobLevel: (prefs as any).jobLevel || 'Mid-level',
             searchLocation: prefs.searchLocation,
             includeKeywords: (prefs as any).includeKeywords || '',
             excludeKeywords: (prefs as any).excludeKeywords || '',
@@ -91,6 +93,7 @@ export async function POST(request: Request) {
 
         let updateData: any = {
             searchKeyword: data.searchKeyword,
+            jobLevel: data.jobLevel || 'Mid-level',
             searchLocation: data.searchLocation,
             includeKeywords: data.includeKeywords,
             excludeKeywords: data.excludeKeywords,
@@ -117,6 +120,7 @@ export async function POST(request: Request) {
             create: {
                 userId: session.user.id,
                 searchKeyword: data.searchKeyword || '',
+                jobLevel: data.jobLevel || 'Mid-level',
                 searchLocation: data.searchLocation || '',
                 includeKeywords: data.includeKeywords || '',
                 excludeKeywords: data.excludeKeywords || '',

@@ -264,13 +264,13 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
                 {/* Global Preferences */}
-                <div className="glass-card">
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        <Layout size={20} className="text-accent" /> Global Preferences
+                <div className="glass-card" style={{ padding: '2rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
+                        <Layout size={22} className="text-accent" /> Global Preferences
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>UI Theme</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxWidth: '360px' }}>
+                            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>UI Theme</label>
                             <select 
                                 value={settings.theme || 'light'} 
                                 onChange={(e) => handleChange('theme', e.target.value)}
@@ -279,71 +279,109 @@ export default function SettingsPage() {
                                 <option value="dark">Dark Mode</option>
                                 <option value="light">Light Mode</option>
                             </select>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Choose your preferred color theme for the interface</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Job Discovery */}
-                <div className="glass-card" data-tour="job-preferences">
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        <Search size={20} className="text-accent" /> Job Discovery
+                <div className="glass-card" data-tour="job-preferences" style={{ padding: '2rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.75rem', fontSize: '1.25rem', fontWeight: 600 }}>
+                        <Search size={22} className="text-accent" /> Job Discovery Settings
                     </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Search Keyword</label>
-                                <input 
-                                    type="text"
-                                    value={settings.searchKeyword || ''}
-                                    onChange={(e) => handleChange('searchKeyword', e.target.value)}
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Enter a location preference</label>
-                                <input 
-                                    type="text"
-                                    value={settings.searchLocation || ''}
-                                    onChange={(e) => handleChange('searchLocation', e.target.value)}
-                                    placeholder='e.g. "Remote", "Austin, TX", "United Kingdom"'
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
-                                />
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    Examples: "Remote", a specific city ("Austin, TX"), a state/country ("United Kingdom"), or a region ("EMEA").
-                                </span>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                        
+                        {/* Primary Target Controls (Title, Level, Location) */}
+                        <div>
+                            <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 600 }}>
+                                Primary Criteria
+                            </h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Job Title or Role</label>
+                                    <input 
+                                        type="text"
+                                        value={settings.searchKeyword || ''}
+                                        onChange={(e) => handleChange('searchKeyword', e.target.value)}
+                                        placeholder='e.g. "Senior Product Manager"'
+                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
+                                    />
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Target role to search across job boards</span>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Job Level</label>
+                                    <select 
+                                        value={settings.jobLevel || 'Mid-level'} 
+                                        onChange={(e) => handleChange('jobLevel', e.target.value)}
+                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%', height: '44px' }}
+                                    >
+                                        <option value="Entry-Level">Entry-Level</option>
+                                        <option value="Mid-level">Mid-level</option>
+                                        <option value="Senior-level">Senior-level</option>
+                                        <option value="Management">Management</option>
+                                        <option value="Director">Director</option>
+                                        <option value="Vice President (VP)">Vice President (VP)</option>
+                                        <option value="C-Suite (Executive)">C-Suite (Executive)</option>
+                                    </select>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Target seniority level</span>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Location Preference</label>
+                                    <input 
+                                        type="text"
+                                        value={settings.searchLocation || ''}
+                                        onChange={(e) => handleChange('searchLocation', e.target.value)}
+                                        placeholder='e.g. "Remote", "Austin, TX"'
+                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
+                                    />
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>City, state, country, region, or "Remote"</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '250px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Required Keywords (Include)</label>
-                                <input 
-                                    type="text"
-                                    value={settings.includeKeywords || ''}
-                                    onChange={(e) => handleChange('includeKeywords', e.target.value)}
-                                    placeholder='e.g. "React, Node.js, Remote, TypeScript"'
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
-                                />
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    Comma-separated terms. At least one must appear in the job title or description during pre-filtering.
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '250px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Excluded Keywords (Exclude)</label>
-                                <input 
-                                    type="text"
-                                    value={settings.excludeKeywords || ''}
-                                    onChange={(e) => handleChange('excludeKeywords', e.target.value)}
-                                    placeholder='e.g. "Intern, Junior, Sales, Manager, Associate"'
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
-                                />
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    Comma-separated terms. Any listing with a job title or company matching these words will be rejected immediately.
-                                </span>
+                        <div style={{ height: '1px', background: 'var(--border-glass)', margin: '0.25rem 0' }} />
+
+                        {/* Pre-Filtering Rules (Required & Excluded Keywords) */}
+                        <div>
+                            <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '1rem', fontWeight: 600 }}>
+                                Pre-Filtering Rules
+                            </h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Required Keywords (Include)</label>
+                                    <input 
+                                        type="text"
+                                        value={settings.includeKeywords || ''}
+                                        onChange={(e) => handleChange('includeKeywords', e.target.value)}
+                                        placeholder='e.g. "React, Node.js, Remote, TypeScript"'
+                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
+                                    />
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                        Comma-separated terms. At least one must appear in the job title or description during pre-filtering (leave empty for maximum matches).
+                                    </span>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Excluded Keywords (Exclude)</label>
+                                    <input 
+                                        type="text"
+                                        value={settings.excludeKeywords || ''}
+                                        onChange={(e) => handleChange('excludeKeywords', e.target.value)}
+                                        placeholder='e.g. "Intern, Junior, Sales, Manager, Associate"'
+                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
+                                    />
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                        Comma-separated terms. Any listing with a job title or company matching these words will be rejected immediately (leave empty for maximum matches).
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '0.5rem' }}>
+                        {/* Remote Only Checkbox */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '0.25rem' }}>
                             <input 
                                 type="checkbox" 
                                 id="remoteOnly"
@@ -351,17 +389,17 @@ export default function SettingsPage() {
                                 onChange={(e) => handleChange('remoteOnly', e.target.checked)}
                                 style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent)' }}
                             />
-                            <label htmlFor="remoteOnly" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                            <label htmlFor="remoteOnly" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
                                 Remote Only
                             </label>
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
                                 (Automatically filter out jobs that do not explicitly state "Remote" in their location)
                             </span>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Scraper Sources</label>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Active Scraper Sources</label>
                                 {isAdmin && (
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
                                         <input 
@@ -395,9 +433,9 @@ export default function SettingsPage() {
                                     }
                                 ].map(group => (
                                     <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
                                             {group.title}
-                                        </label>
+                                        </h4>
                                         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                                             {group.sources.map(source => {
                                                 // Determine if this specific source requires PRO
@@ -423,17 +461,17 @@ export default function SettingsPage() {
                                                             }}
                                                             style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
                                                         />
-                                                        <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                        <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                                                             {source === 'jobbank' ? 'Job Bank (CA)' : 
-                                             source === 'remotepoc' ? 'RemotePOC' : 
-                                             source === 'arbeitsagentur' ? 'Arbeitsagentur (DE)' :
-                                             source === 'themuse' ? 'The Muse (Global)' :
-                                             source === 'computrabajo' ? 'Computrabajo (LATAM)' :
-                                             source === 'ycombinator' ? 'Y Combinator' :
-                                             source === 'arbeitnow' ? 'Arbeitnow' :
-                                             source === 'jobspresso' ? 'Jobspresso' :
-                                             source === 'justremote' ? 'JustRemote' :
-                                             source === 'otta' ? 'Otta' : source}
+                                              source === 'remotepoc' ? 'RemotePOC' : 
+                                              source === 'arbeitsagentur' ? 'Arbeitsagentur (DE)' :
+                                              source === 'themuse' ? 'The Muse (Global)' :
+                                              source === 'computrabajo' ? 'Computrabajo (LATAM)' :
+                                              source === 'ycombinator' ? 'Y Combinator' :
+                                              source === 'arbeitnow' ? 'Arbeitnow' :
+                                              source === 'jobspresso' ? 'Jobspresso' :
+                                              source === 'justremote' ? 'JustRemote' :
+                                              source === 'otta' ? 'Otta' : source}
                                                             {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                         </span>
                                                     </label>
@@ -475,9 +513,9 @@ export default function SettingsPage() {
                                     }
                                 ].map(group => (
                                     <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
                                             {group.title}
-                                        </label>
+                                        </h4>
                                         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                                             {group.items.map(item => {
                                                 const isProRequired = item.isPro;
@@ -504,7 +542,7 @@ export default function SettingsPage() {
                                                             }}
                                                             style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
                                                         />
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                                                             {item.label}
                                                             {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                         </span>
@@ -517,12 +555,12 @@ export default function SettingsPage() {
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: isPro ? 1 : 0.5 }}>
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', opacity: isPro ? 1 : 0.5 }}>
+                            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 Custom Career Pages
                                 {!isPro && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '12px', fontWeight: 'bold' }}>PRO</span>}
                             </label>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
                                 Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Breezy
                             </p>
                             <textarea 
@@ -536,7 +574,7 @@ export default function SettingsPage() {
                                 title={!isPro ? "Upgrade to Pro to use this feature" : ""}
                                 style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', minHeight: '100px', resize: isPro ? 'vertical' : 'none', fontFamily: 'monospace', cursor: isPro ? 'text' : 'not-allowed' }}
                             />
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                                 {isPro ? 'Put each URL on a new line. These bypass the generic Search Keyword and directly scrape the company page.' : 'Upgrade to Pro to bypass the generic search and directly scrape specific company career pages.'}
                             </span>
                         </div>
@@ -545,14 +583,14 @@ export default function SettingsPage() {
                 </div>
 
                 {/* AI Configuration */}
-                <div className="glass-card">
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        <Bot size={20} className="text-accent" /> AI Generation Preferences
+                <div className="glass-card" style={{ padding: '2rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
+                        <Bot size={22} className="text-accent" /> AI Generation Preferences
                     </h3>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>AI Strictness</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>AI Strictness</label>
                             <select 
                                 value={settings.aiStrictness || 'Standard'}
                                 onChange={(e) => handleChange('aiStrictness', e.target.value)}
@@ -562,11 +600,12 @@ export default function SettingsPage() {
                                 <option value="Standard">Standard (Balanced professional tone)</option>
                                 <option value="Creative">Creative (More aggressive sales pitch)</option>
                             </select>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Controls how strictly the AI adheres to your factual experience</span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Resume Customization Maximum</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Resume Customization Maximum</label>
                                 <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>{settings.resumeCustomizationMaxPercentage || 50}%</span>
                             </div>
                             <input 
@@ -577,23 +616,23 @@ export default function SettingsPage() {
                                 onChange={(e) => handleChange('resumeCustomizationMaxPercentage', Number(e.target.value))}
                                 style={{ width: '100%' }}
                             />
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Limits how much of your base resume the AI is allowed to rewrite.</span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Limits how much of your base resume the AI is allowed to rewrite.</span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-tour="target-profile">
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Target Profile & Scoring Rubric</label>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-tour="target-profile">
+                            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Target Profile & Scoring Rubric</label>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
                                 Manage your target job criteria, ideal roles, and scoring rubric on the My Profile page.
                             </p>
-                            <Link href="/assets#target-profile" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content' }}>
+                            <Link href="/assets#target-profile" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
                                 <Target size={16} /> Target & Profile
                             </Link>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }} data-tour="resume-upload">
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Base Resume</label>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>To update the base resume the AI uses as a template, visit your My Profile page.</p>
-                            <Link href="/assets" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }} data-tour="resume-upload">
+                            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Base Resume</label>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>To update the base resume the AI uses as a template, visit your My Profile page.</p>
+                            <Link href="/assets" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
                                 <FileText size={16} /> Manage Base Resume
                             </Link>
                         </div>
@@ -601,13 +640,13 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Email Sync Configuration */}
-                <div className="glass-card" id="email-sync">
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        <Mail size={20} className="text-accent" /> Email Sync Configuration
+                <div className="glass-card" id="email-sync" style={{ padding: '2rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
+                        <Mail size={22} className="text-accent" /> Email Sync Configuration
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Select your provider</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Select Provider</label>
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 {['gmail', 'outlook', 'yahoo', 'icloud', 'other'].map(provider => (
                                     <button 
@@ -622,9 +661,11 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
-                            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Connection Instructions</h4>
-                            <ul style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
+                            <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: 600 }}>
+                                Connection Instructions
+                            </h4>
+                            <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                 {emailProvider === 'gmail' && (
                                     <>
                                         <li>Make sure IMAP is enabled in your Gmail settings.</li>
@@ -667,9 +708,9 @@ export default function SettingsPage() {
                             </ul>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{providerDisplay === 'Email' ? 'Email Address' : `${providerDisplay} Address`}</label>
+                        <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{providerDisplay === 'Email' ? 'Email Address' : `${providerDisplay} Address`}</label>
                                 <input 
                                     type="email"
                                     value={settings.emailAddress || ''}
@@ -678,9 +719,9 @@ export default function SettingsPage() {
                                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                                 />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                    App Password <span style={{ fontSize: '0.75rem', color: 'var(--warning)', opacity: 0.8, marginLeft: '0.5rem' }}>(this is not your regular {providerDisplay} password)</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    App Password <span style={{ fontSize: '0.75rem', color: 'var(--warning)', opacity: 0.8, marginLeft: '0.5rem', fontWeight: 400 }}>(not your regular {providerDisplay} password)</span>
                                 </label>
                                 <input 
                                     type="password"
@@ -691,9 +732,9 @@ export default function SettingsPage() {
                                 />
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 2, minWidth: '200px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>IMAP Host</label>
+                        <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 2, minWidth: '200px' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>IMAP Host</label>
                                 <input 
                                     type="text"
                                     value={settings.imapHost || ''}
@@ -703,8 +744,8 @@ export default function SettingsPage() {
                                     style={{ background: emailProvider !== 'other' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
                                 />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, minWidth: '100px' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>IMAP Port</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '100px' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>IMAP Port</label>
                                 <input 
                                     type="number"
                                     value={settings.imapPort || ''}
@@ -748,9 +789,9 @@ export default function SettingsPage() {
 
                 {/* API Connections - Admin only */}
                 {isAdmin && (
-                <div className="glass-card">
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        <Database size={20} className="text-accent" /> API Connections
+                <div className="glass-card" style={{ padding: '2rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
+                        <Database size={22} className="text-accent" /> API Connections
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <ConnectionRow name="PostgreSQL Database" status="Connected" connected={true} />

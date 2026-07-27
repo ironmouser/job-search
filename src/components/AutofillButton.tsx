@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Bot, ExternalLink, Copy, CheckCircle, Lock } from 'lucide-react';
+import { scrollToTop } from './BackToTopButton';
 
 export default function AutofillButton({ jobId, jobUrl, jobTitle, jobCompany, isPro = false, appliesThisWeek = 0 }: { jobId: string, jobUrl: string, jobTitle: string, jobCompany: string, isPro?: boolean, appliesThisWeek?: number }) {
   const [isLaunching, setIsLaunching] = useState(false);
@@ -57,7 +58,7 @@ export default function AutofillButton({ jobId, jobUrl, jobTitle, jobCompany, is
       window.open(targetUrl, '_blank');
       
       setIsLaunching(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToTop();
       
     } catch (e: any) {
       console.error(e);

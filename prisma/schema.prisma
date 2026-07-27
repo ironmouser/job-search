@@ -230,6 +230,7 @@ model UserPreferences {
   id                String   @id @default(cuid())
   userId            String   @unique @map("user_id")
   searchKeyword     String?
+  jobLevel          String?  @default("Mid-level") @map("job_level")
   searchLocation    String?
   includeKeywords   String?  @map("include_keywords")
   excludeKeywords   String?  @map("exclude_keywords")

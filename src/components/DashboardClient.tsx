@@ -579,11 +579,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                 </span>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Supercharge Your Job Search</span>
               </div>
-              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem' }}>Unlock Unlimited AI Scoring, Custom Assets & Auto Apply</h3>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem' }}>Supercharge Your Job Search</h3>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> More job results from more sources</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> Unlimited AI Match Scoring</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> Unlimited Tailored Resumes & Cover Letters</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> 1-Click Auto Apply Automation</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Zap size={14} style={{ color: '#a855f7' }} /> Strategic Application Q&A Answers</span>
               </div>
             </div>
