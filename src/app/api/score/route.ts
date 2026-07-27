@@ -3,7 +3,7 @@ import { scoreJob } from '@/lib/scoring';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { isDescriptionAdequate, fetchJobDescription } from '@/lib/jobFetcher';
+import { isDescriptionAdequate, fetchJobDescription, extractUrlFromStubDescription } from '@/lib/jobFetcher';
 
 export const maxDuration = 60;
 
@@ -12,19 +12,24 @@ async function ensureAndScoreJob(userId: string, job: { id: string; title: strin
     
     // 1. Check if description is adequate
     if (!isDescriptionAdequate(description)) {
-        if (job.url) {
-            console.log(`Job ${job.id} description is incomplete. Attempting to download full description from ${job.url}...`);
+        // Try URLs in priority order: embedded URL in stub description, then job.url
+        const stubUrl = extractUrlFromStubDescription(description);
+        const urlsToTry = [...new Set([stubUrl, job.url].filter(Boolean))] as string[];
+
+        for (const tryUrl of urlsToTry) {
+            console.log(`Job ${job.id} description is incomplete. Attempting to download full description from ${tryUrl}...`);
             try {
-                const downloaded = await fetchJobDescription(job.url);
+                const downloaded = await fetchJobDescription(tryUrl);
                 if (downloaded && isDescriptionAdequate(downloaded)) {
-                    description = downloaded + `\n\nApply at: ${job.url}`;
+                    description = downloaded + `\n\nApply at: ${tryUrl}`;
                     await prisma.job.update({
                         where: { id: job.id },
                         data: { description }
                     });
+                    break; // got a good description — stop trying
                 }
             } catch (e: any) {
-                console.warn(`Failed to auto-download description for job ${job.id}:`, e.message);
+                console.warn(`Failed to auto-download description for job ${job.id} from ${tryUrl}:`, e.message);
             }
         }
     }

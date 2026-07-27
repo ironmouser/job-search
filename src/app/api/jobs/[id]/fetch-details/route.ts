@@ -7,7 +7,7 @@ import * as cheerio from 'cheerio';
 import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 
-import { fetchJobDescription } from '@/lib/jobFetcher';
+import { fetchJobDescription, extractUrlFromStubDescription } from '@/lib/jobFetcher';
 
 export async function POST(
     request: Request,
@@ -38,14 +38,23 @@ export async function POST(
             return NextResponse.json({ error: 'Job has no URL' }, { status: 400 });
         }
 
-        const description = await fetchJobDescription(job.url);
+        // Try URLs in priority order: embedded URL in stub description, then job.url
+        const stubUrl = extractUrlFromStubDescription(job.description);
+        const urlsToTry = [...new Set([stubUrl, job.url].filter(Boolean))] as string[];
+
+        let description: string | null = null;
+        let usedUrl = job.url;
+        for (const tryUrl of urlsToTry) {
+            description = await fetchJobDescription(tryUrl);
+            if (description) { usedUrl = tryUrl; break; }
+        }
 
         if (!description) {
             return NextResponse.json({ error: 'Failed to scrape full job details. The site may be blocking automated access.' }, { status: 502 });
         }
 
         const updatePayload: any = {
-            description: description + `\n\nApply at: ${job.url}`
+            description: description + `\n\nApply at: ${usedUrl}`
         };
 
         // 3. Update the job

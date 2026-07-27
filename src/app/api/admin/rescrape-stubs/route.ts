@@ -97,10 +97,11 @@ export async function POST() {
             const desc = (j.description || '').trim();
             return (
                 !desc ||
-                desc.length < 250 ||
+                desc.length < 1000 ||
                 desc.toLowerCase().startsWith('apply at:') ||
                 /position at/i.test(desc) ||
-                /found via email/i.test(desc)
+                /found via email/i.test(desc) ||
+                /^https?:\/\/\S+$/.test(desc)
             );
         });
 

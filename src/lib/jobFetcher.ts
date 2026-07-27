@@ -3,32 +3,45 @@ import * as cheerio from 'cheerio';
 import { reformatJobDescriptionWithGemini } from './formatter';
 import { cleanJobUrl } from './urlUtils';
 
+/**
+ * Returns true only if `desc` looks like a real job description.
+ * Threshold is 1000 chars — real descriptions are always at least that long.
+ * A bare tracking URL (e.g. from an email link) may be hundreds of chars but
+ * is not a description, so we also detect URL-only content explicitly.
+ */
 export function isDescriptionAdequate(desc?: string | null): boolean {
     if (!desc) return false;
     const clean = desc.trim();
-    if (clean.length < 250) return false;
+
+    // Hard minimum: real descriptions are always >= 1000 chars
+    if (clean.length < 1000) return false;
+
     const lower = clean.toLowerCase();
-    
+
     // Detect fallback placeholder strings generated during bulk scraping or email import
     if (
       lower.includes("click link to view full details") ||
-      lower.includes("job listing for ") && lower.includes("click link") ||
-      lower.includes("job opportunity imported from your email") && clean.length < 500 ||
+      (lower.includes("job listing for ") && lower.includes("click link")) ||
+      (lower.includes("job opportunity imported from your email") && clean.length < 1500) ||
       lower.startsWith("apply at:") ||
       /^\s*job listing for .* click link to view full details/i.test(clean)
     ) {
       return false;
     }
 
-    if (/found via email/i.test(clean) && clean.length < 500) return false;
-    if (/position at/i.test(clean) && clean.length < 300) return false;
+    // "Found via email link: <url>" — the URL alone can be hundreds of chars but is not a description
+    if (/found via email/i.test(clean)) return false;
+    if (/position at/i.test(clean) && clean.length < 1200) return false;
+
+    // Content that is almost entirely a single URL
+    if (/^https?:\/\/\S+$/.test(clean)) return false;
 
     // Detect auth checkpoint / login wall content
     if (
-      lower.includes("we're signing you in") || 
+      lower.includes("we're signing you in") ||
       lower.includes("signing you in") ||
-      lower.includes("checkpoint/lg/login") || 
-      lower.includes("discover people, jobs") || 
+      lower.includes("checkpoint/lg/login") ||
+      lower.includes("discover people, jobs") ||
       lower.includes("remain on this page, you'll be signed in") ||
       lower.includes("sign in to view") ||
       lower.includes("login to view")
@@ -37,6 +50,17 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
     }
 
     return true;
+}
+
+/**
+ * When a job description is a stub (e.g. "Found via email link: https://..."),
+ * extract the first URL from it so the fetcher can follow it to get the real description.
+ * Returns null if no URL is found.
+ */
+export function extractUrlFromStubDescription(desc?: string | null): string | null {
+    if (!desc) return null;
+    const match = desc.match(/https?:\/\/[^\s"'<>]+/);
+    return match ? match[0] : null;
 }
 
 export async function fetchJobDescription(rawUrl: string): Promise<string | null> {
