@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
+        await ensureKeywordColumnsExist();
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -72,6 +73,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
     try {
+        await ensureKeywordColumnsExist();
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -91,13 +93,10 @@ export async function POST(request: Request) {
             }
         }
 
-        // Ensure job_level column exists before writing
-        await ensureKeywordColumnsExist();
 
-        // Exclude jobLevel from Prisma upsert — persisted via raw SQL below
-        // to avoid type errors from stale Prisma client cache
         let updateData: any = {
             searchKeyword: data.searchKeyword,
+            jobLevel: data.jobLevel || 'Mid-level',
             searchLocation: data.searchLocation,
             includeKeywords: data.includeKeywords,
             excludeKeywords: data.excludeKeywords,
@@ -124,6 +123,7 @@ export async function POST(request: Request) {
             create: {
                 userId: session.user.id,
                 searchKeyword: data.searchKeyword || '',
+                jobLevel: data.jobLevel || 'Mid-level',
                 searchLocation: data.searchLocation || '',
                 includeKeywords: data.includeKeywords || '',
                 excludeKeywords: data.excludeKeywords || '',
@@ -139,16 +139,8 @@ export async function POST(request: Request) {
                 ...(data.emailAppPassword && data.emailAppPassword !== '********' ? { emailAppPassword: encrypt(data.emailAppPassword) } : {}),
                 imapHost: data.imapHost || 'imap.gmail.com',
                 imapPort: data.imapPort || 993
-            }
+            } as any
         });
-
-        // Persist jobLevel via raw SQL — bypasses Prisma type system safely
-        const jobLevel = data.jobLevel || 'Mid-level';
-        await prisma.$executeRawUnsafe(
-            `UPDATE "user_preferences" SET "job_level" = $1 WHERE "user_id" = $2`,
-            jobLevel,
-            session.user.id
-        );
 
         return NextResponse.json({ success: true, prefs });
     } catch (e: any) {
