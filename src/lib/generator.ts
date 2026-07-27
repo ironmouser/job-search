@@ -316,7 +316,7 @@ ${question}
         userPrompt: userPrompt,
         maxTokens: 1024,
         userId: userId,
-        temperature: 1.5,
+        temperature: 1.0,
         model: 'deepseek-v4-flash'
     });
 
@@ -367,7 +367,7 @@ export async function regenerateResume(userId: string, jobId: string, jobTitle: 
         userPrompt: userPrompt,
         maxTokens: 4096,
         userId: userId,
-        temperature: 1.5,
+        temperature: 1.0,
         model: 'deepseek-v4-flash'
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
@@ -419,7 +419,7 @@ export async function regenerateCoverLetter(userId: string, jobId: string, jobTi
         userPrompt: userPrompt,
         maxTokens: 1024,
         userId: userId,
-        temperature: 1.5,
+        temperature: 1.0,
         model: 'deepseek-v4-flash'
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
@@ -466,7 +466,7 @@ export async function regenerateNetworkingMessage(userId: string, jobId: string,
         userPrompt: userPrompt,
         maxTokens: 1024,
         userId: userId,
-        temperature: 1.5,
+        temperature: 1.0,
         model: 'deepseek-v4-flash'
     });
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
