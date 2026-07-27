@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
@@ -45,6 +45,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [keywordFilter, setKeywordFilter] = useState<string>('');
   const [fetchStatuses, setFetchStatuses] = useState<Record<string, 'fetching' | 'success' | 'error' | 'queued'>>({});
   const [fetchQueue, setFetchQueue] = useState<{id: string, title: string, company: string}[]>([]);
   const [activeFetches, setActiveFetches] = useState<{id: string, title: string, company: string}[]>([]);
@@ -155,6 +156,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         if (state.sourceFilter) setSourceFilter(state.sourceFilter);
         if (state.startDate !== undefined) setStartDate(state.startDate);
         if (state.endDate !== undefined) setEndDate(state.endDate);
+        if (state.keywordFilter !== undefined) setKeywordFilter(state.keywordFilter);
         if (state.itemsPerPage && !searchParams?.get('limit') && !searchParams?.get('perPage')) {
           const limitNum = parseInt(state.itemsPerPage, 10);
           if (!isNaN(limitNum) && limitNum > 0) {
@@ -178,9 +180,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       sourceFilter,
       startDate,
       endDate,
+      keywordFilter,
       itemsPerPage
     }));
-  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, itemsPerPage, isLoaded]);
+  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, itemsPerPage, isLoaded]);
 
   const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
     if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
@@ -362,6 +365,15 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const filteredAndSortedJobs = useMemo(() => {
     let result = [...(jobList || [])];
 
+    // Keyword / Description / Title Filter
+    if (keywordFilter.trim()) {
+      const terms = keywordFilter.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      result = result.filter(j => {
+        const fullText = `${j.title || ''} ${j.company || ''} ${j.location || ''} ${j.description || ''}`.toLowerCase();
+        return terms.every(term => fullText.includes(term));
+      });
+    }
+
     // 0. Apply Source Filter (Email vs Scraped)
     if (sourceFilter === 'email') {
       result = result.filter(j => j.company?.includes('(Scraped via Email)') || j.source?.toLowerCase().includes('email'));
@@ -428,13 +440,13 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     });
 
     return result;
-  }, [jobList, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate]);
+  }, [jobList, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter]);
 
   useEffect(() => {
     if (isPageInitialized.current) {
       changePage(1);
     }
-  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, itemsPerPage]);
+  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, itemsPerPage]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -663,6 +675,44 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         </div>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={14} style={{ position: 'absolute', left: '0.6rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+            <input
+              type="text"
+              placeholder="Filter words or description..."
+              value={keywordFilter}
+              onChange={(e) => setKeywordFilter(e.target.value)}
+              style={{
+                background: 'var(--bg-color)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-glass)',
+                padding: '0.4rem 2rem 0.4rem 2rem',
+                borderRadius: '4px',
+                fontSize: '0.85rem',
+                minWidth: '200px'
+              }}
+            />
+            {keywordFilter && (
+              <button
+                onClick={() => setKeywordFilter('')}
+                style={{
+                  position: 'absolute',
+                  right: '0.5rem',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="Clear filter"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Source:</span>
             <select 
