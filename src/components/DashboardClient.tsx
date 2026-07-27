@@ -63,25 +63,48 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const scoringInProgress = useRef(new Set<string>());
   const isPageInitialized = useRef(false);
 
-  // Restore page number and items per page from URL, sessionStorage, or localStorage on mount
+  // Restore page number and items per page from URL, localStorage, or sessionStorage on mount
   useEffect(() => {
     const urlPage = searchParams?.get('page');
-    const savedPage = urlPage || (typeof window !== 'undefined' ? sessionStorage.getItem('dashboard_page') : null);
-    if (savedPage) {
-      const pageNum = parseInt(savedPage, 10);
+    const urlLimit = searchParams?.get('limit') || searchParams?.get('perPage');
+
+    const saved = localStorage.getItem('jobAgentDashboardState');
+    let stateFromStorage: any = {};
+    if (saved) {
+      try {
+        stateFromStorage = JSON.parse(saved);
+        if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter);
+        if (stateFromStorage.viewMode) setViewMode(stateFromStorage.viewMode);
+        if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption);
+        if (stateFromStorage.locationFilter) setLocationFilter(stateFromStorage.locationFilter);
+        if (stateFromStorage.sourceFilter) setSourceFilter(stateFromStorage.sourceFilter);
+        if (stateFromStorage.startDate !== undefined) setStartDate(stateFromStorage.startDate);
+        if (stateFromStorage.endDate !== undefined) setEndDate(stateFromStorage.endDate);
+        if (stateFromStorage.keywordFilter !== undefined) setKeywordFilter(stateFromStorage.keywordFilter);
+      } catch (e) {
+        console.error('Failed to parse dashboard state from local storage', e);
+      }
+    }
+
+    // Determine initial page number
+    const savedPageStr = urlPage || stateFromStorage.currentPage || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_page') || sessionStorage.getItem('dashboard_page')) : null);
+    if (savedPageStr) {
+      const pageNum = parseInt(savedPageStr.toString(), 10);
       if (!isNaN(pageNum) && pageNum > 0) {
         setCurrentPage(pageNum);
       }
     }
 
-    const urlLimit = searchParams?.get('limit') || searchParams?.get('perPage');
-    const savedLimit = urlLimit || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_items_per_page') || sessionStorage.getItem('dashboard_items_per_page')) : null);
-    if (savedLimit) {
-      const limitNum = parseInt(savedLimit, 10);
+    // Determine initial items per page limit
+    const savedLimitStr = urlLimit || stateFromStorage.itemsPerPage || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_items_per_page') || sessionStorage.getItem('dashboard_items_per_page')) : null);
+    if (savedLimitStr) {
+      const limitNum = parseInt(savedLimitStr.toString(), 10);
       if (!isNaN(limitNum) && limitNum > 0) {
         setItemsPerPage(limitNum);
       }
     }
+
+    setIsLoaded(true);
     isPageInitialized.current = true;
   }, [searchParams]);
 
@@ -89,6 +112,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     setCurrentPage(newPage);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('dashboard_page', newPage.toString());
+      localStorage.setItem('dashboard_page', newPage.toString());
+      try {
+        const saved = localStorage.getItem('jobAgentDashboardState');
+        const stateObj = saved ? JSON.parse(saved) : {};
+        stateObj.currentPage = newPage;
+        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
+      } catch (e) {}
+
       const params = new URLSearchParams(window.location.search);
       params.set('page', newPage.toString());
       params.set('limit', itemsPerPage.toString());
@@ -101,6 +132,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     setCurrentPage(1);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('dashboard_page', '1');
+      localStorage.setItem('dashboard_page', '1');
       sessionStorage.setItem('dashboard_items_per_page', newLimit.toString());
       localStorage.setItem('dashboard_items_per_page', newLimit.toString());
 
@@ -108,6 +140,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         const saved = localStorage.getItem('jobAgentDashboardState');
         const stateObj = saved ? JSON.parse(saved) : {};
         stateObj.itemsPerPage = newLimit;
+        stateObj.currentPage = 1;
         localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
       } catch (e) {}
 
@@ -140,35 +173,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     }
   };
 
-
-
   const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('jobAgentDashboardState');
-    if (saved) {
-      try {
-        const state = JSON.parse(saved);
-        if (state.activeFilter) setActiveFilter(state.activeFilter);
-        if (state.viewMode) setViewMode(state.viewMode);
-        if (state.sortOption) setSortOption(state.sortOption);
-        if (state.locationFilter) setLocationFilter(state.locationFilter);
-        if (state.sourceFilter) setSourceFilter(state.sourceFilter);
-        if (state.startDate !== undefined) setStartDate(state.startDate);
-        if (state.endDate !== undefined) setEndDate(state.endDate);
-        if (state.keywordFilter !== undefined) setKeywordFilter(state.keywordFilter);
-        if (state.itemsPerPage && !searchParams?.get('limit') && !searchParams?.get('perPage')) {
-          const limitNum = parseInt(state.itemsPerPage, 10);
-          if (!isNaN(limitNum) && limitNum > 0) {
-            setItemsPerPage(limitNum);
-          }
-        }
-      } catch (e) {
-        console.error('Failed to parse dashboard state from local storage', e);
-      }
-    }
-    setIsLoaded(true);
-  }, []);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -181,9 +186,21 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       startDate,
       endDate,
       keywordFilter,
-      itemsPerPage
+      itemsPerPage,
+      currentPage
     }));
-  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, itemsPerPage, isLoaded]);
+    localStorage.setItem('dashboard_page', currentPage.toString());
+    localStorage.setItem('dashboard_items_per_page', itemsPerPage.toString());
+    sessionStorage.setItem('dashboard_page', currentPage.toString());
+    sessionStorage.setItem('dashboard_items_per_page', itemsPerPage.toString());
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', currentPage.toString());
+      params.set('limit', itemsPerPage.toString());
+      window.history.replaceState(null, '', `?${params.toString()}`);
+    }
+  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, itemsPerPage, currentPage, isLoaded]);
 
   const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
     if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
@@ -442,13 +459,24 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     return result;
   }, [jobList, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter]);
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
-    if (isPageInitialized.current) {
-      changePage(1);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
     }
-  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, itemsPerPage]);
+    changePage(1);
+  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / itemsPerPage));
+  
+  useEffect(() => {
+    if (isLoaded && currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages, isLoaded]);
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, filteredAndSortedJobs.length);
   const currentJobs = filteredAndSortedJobs.slice(startIndex, endIndex);
