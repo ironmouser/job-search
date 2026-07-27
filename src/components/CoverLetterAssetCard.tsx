@@ -529,6 +529,13 @@ export default function CoverLetterAssetCard({
                                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Signature Name</label>
                                     <input
                                         type="text"
+                                        value={editSenderName}
+                                        onChange={(e) => setEditSenderName(e.target.value)}
+                                        placeholder="Your Name"
+                                        style={inlineInputStyle}
+                                    />
+                                </div>
+                            </div>
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                                 <button onClick={cancelEdit} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     <X size={16} /> Cancel
