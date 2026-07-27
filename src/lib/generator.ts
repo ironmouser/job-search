@@ -177,7 +177,7 @@ ${NETWORKING_REFERENCE_EXAMPLES}
 
     console.log(`Generating assets for ${company} - ${jobTitle}...`);
 
-    const jsonTemp = 0.7; // DeepSeek recommended temperature for structured JSON output
+    const jsonTemp = 1.0; // User specified temperature setting
 
     const fetchAndParseAssets = async (attempt: number) => {
         let responseText = await callAiService({

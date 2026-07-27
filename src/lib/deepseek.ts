@@ -74,7 +74,12 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                 }
 
                 const data = await res.json();
-                const content = data.choices?.[0]?.message?.content || '';
+                const choice = data.choices?.[0];
+                const content = choice?.message?.content || '';
+
+                if (choice?.finish_reason === 'length') {
+                    console.warn(`[DeepSeek ${modelName}] Response was truncated because it reached max_tokens limit (${bodyPayload.max_tokens}).`);
+                }
 
                 const usage = data.usage;
                 if (usage) {
