@@ -383,18 +383,6 @@ export default function CoverLetterAssetCard({
 
                     <div style={{ flexGrow: 1 }} />
 
-                    {!isEditing && previousContent && previousContent !== content && (
-                        <button 
-                            onClick={handleRevert} 
-                            disabled={isReverting}
-                            className="btn-outline"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                            title="Revert to previous version"
-                        >
-                            {isReverting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-                            Previous Version
-                        </button>
-                    )}
                     {!isEditing && (
                         <button
                             onClick={startEditing}
@@ -541,14 +529,6 @@ export default function CoverLetterAssetCard({
                                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '0.2rem' }}>Signature Name</label>
                                     <input
                                         type="text"
-                                        value={editSenderName}
-                                        onChange={(e) => setEditSenderName(e.target.value)}
-                                        placeholder="Your Name"
-                                        style={inlineInputStyle}
-                                    />
-                                </div>
-                            </div>
-
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                                 <button onClick={cancelEdit} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     <X size={16} /> Cancel
@@ -639,6 +619,23 @@ export default function CoverLetterAssetCard({
                         Regenerations left: {isPro ? regensLeft : 0} / 5
                     </span>
                     <div style={{ flexGrow: 1 }} />
+                    <button
+                        onClick={handleRevert}
+                        disabled={!previousContent || previousContent === content || isLoading || isReverting}
+                        className="btn-outline"
+                        title={!previousContent || previousContent === content ? "No previous version available" : "Revert to previous version"}
+                        style={{
+                            padding: '0.4rem 0.8rem',
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            opacity: (!previousContent || previousContent === content || isLoading || isReverting) ? 0.5 : 1,
+                            cursor: (!previousContent || previousContent === content || isLoading || isReverting) ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        {isReverting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />} Previous Version
+                    </button>
                     <button
                         onClick={() => handleRegenerate('different')}
                         disabled={isLoading || !isPro || regensLeft <= 0}

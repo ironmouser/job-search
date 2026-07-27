@@ -245,19 +245,7 @@ export default function ResumeAssetCard({
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginBottom: '1rem' }}>
-                    {!isEditing && previousContent && previousContent !== content && (
-                        <button 
-                            onClick={handleRevert} 
-                            disabled={isReverting}
-                            className="btn-outline"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                            title="Revert to previous version"
-                        >
-                            {isReverting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-                            Previous Version
-                        </button>
-                    )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
                     {!isEditing && (
                         <button 
                             onClick={() => setIsEditing(true)} 
@@ -339,6 +327,23 @@ export default function ResumeAssetCard({
                         Regenerations left: {isPro ? regensLeft : 0} / 5
                     </span>
                     <div style={{ flexGrow: 1 }} />
+                    <button 
+                        onClick={handleRevert} 
+                        disabled={!previousContent || previousContent === content || isLoading || isReverting}
+                        className="btn-outline" 
+                        title={!previousContent || previousContent === content ? "No previous version available" : "Revert to previous version"}
+                        style={{ 
+                            padding: '0.4rem 0.8rem', 
+                            fontSize: '0.8rem', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '0.4rem',
+                            opacity: (!previousContent || previousContent === content || isLoading || isReverting) ? 0.5 : 1,
+                            cursor: (!previousContent || previousContent === content || isLoading || isReverting) ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        {isReverting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />} Previous Version
+                    </button>
                     <button 
                         onClick={handleRegenerate} 
                         disabled={isLoading || !isPro || regensLeft <= 0} 
