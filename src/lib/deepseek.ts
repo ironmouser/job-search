@@ -43,7 +43,7 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                     model: modelName,
                     messages: options.messages,
                     temperature: options.temperature ?? 0.7,
-                    max_tokens: options.maxTokens || 4096,
+                    max_tokens: options.maxTokens || 8192,
                 };
 
                 if (options.jsonMode) {
