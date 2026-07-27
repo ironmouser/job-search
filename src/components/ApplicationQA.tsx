@@ -204,7 +204,11 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
               flexWrap: 'wrap'
             }}>
               <button
-                onClick={() => { setPreviousAnswer(''); setAnswer(previousAnswer); }}
+                onClick={() => {
+                  const current = answer;
+                  setAnswer(previousAnswer);
+                  setPreviousAnswer(current);
+                }}
                 disabled={!previousAnswer || isLoading}
                 className="btn-outline"
                 title={!previousAnswer ? 'No previous version available' : 'Revert to previous answer'}
