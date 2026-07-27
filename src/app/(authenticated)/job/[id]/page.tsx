@@ -17,6 +17,7 @@ import { cleanCompanyName } from '@/lib/cleaners';
 import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
 import ResumeAssetCard from '@/components/ResumeAssetCard';
 import AutoFetchJobDetails from '@/components/AutoFetchJobDetails';
+import OpportunityScoreRefresh from '@/components/OpportunityScoreRefresh';
 import { isDescriptionAdequate } from '@/lib/jobFetcher';
 import { AutoApplyPanel } from '@/components/AutoApplyPanel';
 import { ApplyStepAccordion } from '@/components/ApplyStepAccordion';
@@ -394,9 +395,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                </Link>
              </div>
           ) : (
-             <div className="glass-card">
-               <p style={{ color: 'var(--text-secondary)' }}>This job hasn't been scored yet.</p>
-             </div>
+             <OpportunityScoreRefresh jobId={job.id} />
           )}
         </div>
         
