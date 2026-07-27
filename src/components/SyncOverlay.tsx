@@ -86,14 +86,16 @@ export default function SyncOverlay({
   return createPortal(
     <div className={`sync-overlay-backdrop ${isSyncing ? 'active' : ''}`}>
       <div className="sync-overlay-content">
-        <h2>{title}</h2>
-        <p className="sync-overlay-text">{syncMessage}</p>
-        <div className="sync-overlay-subtext" style={{ whiteSpace: 'pre-line' }}>
-          {typeof subtext === 'string' ? subtext.replace(/\\n/g, '\n') : subtext}
+        <div className="sync-overlay-header">
+          <h2>{title}</h2>
+          <p className="sync-overlay-text">{syncMessage}</p>
+          <div className="sync-overlay-subtext" style={{ whiteSpace: 'pre-line' }}>
+            {typeof subtext === 'string' ? subtext.replace(/\\n/g, '\n') : subtext}
+          </div>
         </div>
         
-        {/* GIF Container displaying 10-second looping sequence with preloaded DOM nodes */}
-        <div className="tenor-gif-container" style={{ position: 'relative', width: '300px', height: '250px', background: '#ffffff', borderRadius: '12px', overflow: 'hidden' }}>
+        {/* GIF Container displaying 10-second looping sequence flush against bottom edge */}
+        <div className="tenor-gif-container" style={{ position: 'relative', width: '100%', height: '270px', overflow: 'hidden' }}>
           {GIF_SEQUENCE.map((filename, index) => {
             const src = imgSources[filename] || getS3AssetUrl(filename);
             const isActive = activeAnimIndex === index;
@@ -114,9 +116,7 @@ export default function SyncOverlay({
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  borderRadius: '12px',
                   overflow: 'hidden',
-                  background: '#ffffff',
                 }}
               >
                 <img
@@ -128,9 +128,7 @@ export default function SyncOverlay({
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
-                    borderRadius: '12px',
                     display: 'block',
-                    background: '#ffffff',
                   }}
                 />
               </div>

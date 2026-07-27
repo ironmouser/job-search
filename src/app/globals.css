@@ -1025,18 +1025,18 @@ body.light-theme .sync-overlay-backdrop {
 
 /* Sync Overlay Content Box */
 .sync-overlay-content {
-  max-width: 450px;
+  max-width: 400px;
   width: 90%;
-  padding: 2.5rem;
+  padding: 0;
   text-align: center;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 16px;
-  background: var(--bg-surface);
+  align-items: stretch;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  background: #ffffff;
+  overflow: hidden;
   transform: translateY(20px);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1046,43 +1046,55 @@ body.light-theme .sync-overlay-backdrop {
 }
 
 body.light-theme .sync-overlay-content {
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.sync-overlay-header {
+  padding: 2.25rem 1.75rem 1.25rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  background: #ffffff;
+}
+
 .sync-overlay-content h2 {
-  font-size: 1.8rem;
-  color: var(--accent-primary);
-  margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, var(--accent-primary), #00ffcc);
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #0076ff;
+  margin: 0;
+  background: linear-gradient(135deg, #0099ff, #00e5ff);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .sync-overlay-text {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
 }
 
 .sync-overlay-subtext {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  line-height: 1.45;
-  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: #7f8c8d;
+  line-height: 1.5;
+  margin: 0;
 }
 
 /* Tenor GIF Container */
 .tenor-gif-container {
-  width: 300px;
-  height: 250px;
-  border-radius: 12px;
+  width: 100%;
+  height: 270px;
   overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
+  margin: 0;
+  padding: 0;
   background: #ffffff;
 }
 
