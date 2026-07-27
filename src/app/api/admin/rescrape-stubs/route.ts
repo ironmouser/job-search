@@ -2,113 +2,38 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import * as cheerio from 'cheerio';
-import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
+import { fetchJobDescription, extractUrlFromStubDescription, isDescriptionAdequate } from '@/lib/jobFetcher';
 
 export const maxDuration = 300;
 
-async function extractContent(rawHtml: string): Promise<string | null> {
-    const $ = cheerio.load(rawHtml);
-
-    let jsonLdDesc = '';
-    $('script[type="application/ld+json"]').each((_, el) => {
-        try {
-            const data = JSON.parse($(el).html() || '');
-            if (typeof data.description === 'string') {
-                jsonLdDesc = data.description;
-            } else if (data['@graph'] && Array.isArray(data['@graph'])) {
-                const item = data['@graph'].find((g: any) => typeof g?.description === 'string');
-                if (item?.description) jsonLdDesc = item.description;
-            }
-        } catch {}
-    });
-
-    const cleanDesc = jsonLdDesc.trim();
-    if (cleanDesc.length > 100) {
-        return await reformatJobDescriptionWithGemini(cleanDesc);
-    }
-
-    $('script, style, noscript, nav, header, footer, iframe, svg').remove();
-    const containerSelector = 'main, article, .job-description, .job_description, #job-description, #jobDescriptionText, .posting-requirements, .section-description, [data-automation-id="jobPostingDescription"], [class*="description"], [class*="posting"], [class*="details"], [id*="description"], [id*="posting"]';
-    const htmlStr = $(containerSelector).html() || $('body').html() || '';
-    if (htmlStr.trim().length > 100) {
-        return await reformatJobDescriptionWithGemini(htmlStr.trim());
-    }
-
-    return null;
-}
-
-async function fetchWithFallback(url: string): Promise<string | null> {
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-            }
-        });
-        if (response.ok) {
-            const bodyStr = await response.text();
-            if (!bodyStr.includes('Just a moment...') && !bodyStr.includes('cf-challenge-error-title')) {
-                const extracted = await extractContent(bodyStr);
-                if (extracted) return extracted;
-            }
-        }
-    } catch (e: any) {
-        console.warn(`Direct fetch failed for ${url}: ${e.message}`);
-    }
-
-    if (process.env.SCRAPEDO_API_KEY) {
-        try {
-            const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(url)}`;
-            const sdRes = await fetch(scrapeDoUrl);
-            if (sdRes.ok) {
-                const sdBody = await sdRes.text();
-                const extracted = await extractContent(sdBody);
-                if (extracted) return extracted;
-            }
-        } catch (err: any) {
-            console.warn(`Scrape.do fallback error for ${url}: ${err.message}`);
-        }
-    }
-
-    return null;
-}
-
-export async function POST() {
+export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
+        const { searchParams } = new URL(request.url);
+        const scanAll = searchParams.get('all') === 'true' || true; // Default to all inadequate jobs
 
-        const jobsToday = await prisma.job.findMany({
-            where: {
-                createdAt: {
-                    gte: startOfToday
-                }
-            },
+        let whereClause: any = {};
+        if (!scanAll) {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            whereClause.createdAt = { gte: startOfToday };
+        }
+
+        const candidateJobs = await prisma.job.findMany({
+            where: whereClause,
             select: { id: true, title: true, company: true, url: true, description: true, createdAt: true }
         });
 
-        const stubJobs = jobsToday.filter(j => {
-            const desc = (j.description || '').trim();
-            return (
-                !desc ||
-                desc.length < 1000 ||
-                desc.toLowerCase().startsWith('apply at:') ||
-                /position at/i.test(desc) ||
-                /found via email/i.test(desc) ||
-                /^https?:\/\/\S+$/.test(desc)
-            );
-        });
+        const stubJobs = candidateJobs.filter(j => !isDescriptionAdequate(j.description));
 
         if (stubJobs.length === 0) {
             return NextResponse.json({
-                message: 'No stub jobs added today found in the database.',
-                totalToday: jobsToday.length,
+                message: 'No stub/inadequate jobs found in database.',
+                totalExamined: candidateJobs.length,
                 stubCount: 0,
                 updatedCount: 0
             });
@@ -119,16 +44,33 @@ export async function POST() {
         let failedCount = 0;
 
         for (const job of stubJobs) {
-            if (!job.url) {
+            const stubUrl = extractUrlFromStubDescription(job.description);
+            const urlsToTry = Array.from(new Set([stubUrl, job.url].filter((u): u is string => Boolean(u))));
+
+            if (urlsToTry.length === 0) {
                 results.push({ id: job.id, title: job.title, company: job.company, status: 'skipped_no_url' });
                 failedCount++;
                 continue;
             }
 
-            const newDesc = await fetchWithFallback(job.url);
+            let newDesc: string | null = null;
+            let usedUrl = job.url;
 
-            if (newDesc && newDesc.trim().length > 50) {
-                const finalDesc = newDesc + `\n\nApply at: ${job.url}`;
+            for (const tryUrl of urlsToTry) {
+                try {
+                    const fetched = await fetchJobDescription(tryUrl);
+                    if (fetched && isDescriptionAdequate(fetched)) {
+                        newDesc = fetched;
+                        usedUrl = tryUrl;
+                        break;
+                    }
+                } catch (e: any) {
+                    console.warn(`Failed fetch for ${tryUrl}:`, e.message);
+                }
+            }
+
+            if (newDesc) {
+                const finalDesc = newDesc + `\n\nApply at: ${usedUrl}`;
                 await prisma.job.update({
                     where: { id: job.id },
                     data: { description: finalDesc }
@@ -148,8 +90,8 @@ export async function POST() {
         }
 
         return NextResponse.json({
-            message: `Processed ${stubJobs.length} stub jobs added today.`,
-            totalToday: jobsToday.length,
+            message: `Processed ${stubJobs.length} inadequate job descriptions across database.`,
+            totalExamined: candidateJobs.length,
             stubCount: stubJobs.length,
             updatedCount,
             failedCount,
