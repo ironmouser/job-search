@@ -995,6 +995,26 @@ details.glass-card>summary::marker {
   }
 }
 
+/* Mobile padding overrides for asset cards */
+@media (max-width: 640px) {
+  .glass-card {
+    padding: 1rem;
+  }
+
+  details.glass-card > summary {
+    padding: 0;
+  }
+
+  .asset-card-body {
+    padding: 1rem !important;
+    margin-top: 1rem !important;
+  }
+
+  .cover-letter-document {
+    padding: 1.25rem 1rem !important;
+  }
+}
+
 /* Sync Overlay Backdrop */
 .sync-overlay-backdrop {
   position: fixed;

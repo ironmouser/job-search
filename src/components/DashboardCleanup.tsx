@@ -143,7 +143,7 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
                   onChange={(e) => setFilters(prev => ({ ...prev, archived: e.target.checked }))}
                   style={{ width: '18px', height: '18px' }}
                 />
-                <span>Remove <strong>archived</strong> jobs</span>
+                <span>Remove <strong>saved</strong> jobs</span>
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>

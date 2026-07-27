@@ -655,7 +655,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           onClick={() => setActiveFilter('archived')}
           style={{ cursor: 'pointer', padding: '1rem' }}
         >
-          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Archived</h4>
+          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Saved</h4>
           <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalArchived}</h2>
         </div>
       </div>
@@ -942,7 +942,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                             onNudgeDismiss={handleNudgeDismiss}
                             onFeedbackGiven={handleNudgeFeedbackGiven}
                           />
-                          <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
+                          <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} title={job.is_archived ? "Unsave" : "Save"}>
                             <Archive size={14} />
                           </button>
                           <button onClick={() => deleteJob(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Delete">
@@ -1073,7 +1073,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                           fetchStatuses[job.id] === 'error' ? 'Failed - Retry' : 'Fetch Details'}
                        </button>
                     )}
-                    <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
+                    <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }} title={job.is_archived ? "Unsave" : "Save"}>
                       <Archive size={14} />
                     </button>
                     <button onClick={() => deleteJob(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Delete">

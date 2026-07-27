@@ -135,7 +135,7 @@ export default function NetworkingAssetCard({
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
             </summary>
-            <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
+            <div className="asset-card-body" style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                     <select
                         value={tone}

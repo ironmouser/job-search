@@ -308,7 +308,7 @@ export default function CoverLetterAssetCard({
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
             </summary>
-            <div style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
+            <div className="asset-card-body" style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
 
                 {/* Tone + Edit Controls */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
@@ -364,7 +364,7 @@ export default function CoverLetterAssetCard({
                 </div>
 
                 {/* Letter Document Paper */}
-                <div style={{
+                <div className="cover-letter-document" style={{
                     background: '#fff',
                     color: '#1a1a1a',
                     borderRadius: '6px',

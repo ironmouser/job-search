@@ -7,7 +7,7 @@ import { getAssetUrl } from '@/lib/assets';
 const slides = [
   {
     label: 'Dashboard',
-    placeholder: 'Dashboard UI — Jobs Found, Great Matches, Scored, Archived',
+    placeholder: 'Dashboard UI — Jobs Found, Great Matches, Scored, Saved',
     accent: '#2563eb',
     image: '/dashboard.png',
   },

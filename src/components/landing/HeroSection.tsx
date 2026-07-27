@@ -90,7 +90,7 @@ export default function HeroSection() {
             </div>
             <div style={{ background: 'rgba(255,255,255,0.1)', padding: '1.05rem', borderRadius: '8px' }}>
               <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', lineHeight: 1 }}>2</div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.63rem', marginTop: '0.35rem', fontWeight: 500 }}>Archived</div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.63rem', marginTop: '0.35rem', fontWeight: 500 }}>Saved</div>
             </div>
           </div>
         </div>

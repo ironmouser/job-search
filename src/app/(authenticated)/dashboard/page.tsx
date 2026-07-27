@@ -27,22 +27,6 @@ export default async function Dashboard() {
   let userJobs: any[] = [];
   let userPrefs: any = null;
   try {
-    // Recover any jobs that were accidentally marked 'deleted' by legacy auto-purge
-    const deletedJobsToRestore = await prisma.userJob.findMany({
-      where: {
-        userId,
-        status: 'deleted'
-      },
-      select: { id: true }
-    });
-
-    if (deletedJobsToRestore.length > 0) {
-      await prisma.userJob.updateMany({
-        where: { id: { in: deletedJobsToRestore.map(uj => uj.id) } },
-        data: { status: 'discovered' }
-      });
-    }
-
     userJobs = await prisma.userJob.findMany({
       where: { 
         userId,
