@@ -124,6 +124,9 @@ export default function CoverLetterAssetCard({
         setIsLoading(true);
         setError('');
         setSavedPref(false);
+        if (content) {
+            setPreviousContent(content);
+        }
         try {
             const res = await fetch(`/api/job/${jobId}/generate-cover-letter`, {
                 method: 'POST',
@@ -187,6 +190,9 @@ export default function CoverLetterAssetCard({
             if (!res.ok) {
                 const data = await res.json();
                 throw new Error(data.error || 'Failed to save edits');
+            }
+            if (content) {
+                setPreviousContent(content);
             }
             setContent(editContent);
             setHeaderDate(editHeaderDate);

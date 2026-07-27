@@ -47,6 +47,9 @@ export default function NetworkingAssetCard({
         if (!isPro || regensLeft <= 0) return;
         setIsLoading(true);
         setError('');
+        if (content) {
+            setPreviousContent(content);
+        }
         
         try {
             const res = await fetch(`/api/job/${jobId}/generate-networking`, {
@@ -111,6 +114,9 @@ export default function NetworkingAssetCard({
             if (!res.ok) {
                 const data = await res.json();
                 throw new Error(data.error || 'Failed to save edits');
+            }
+            if (content) {
+                setPreviousContent(content);
             }
             setContent(editContent);
             setIsEditing(false);
