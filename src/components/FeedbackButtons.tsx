@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { submitJobFeedback } from '@/app/(authenticated)/job/[id]/actions';
 import { ThumbsUp, ThumbsDown, X } from 'lucide-react';
+import FeedbackNudgeTooltip from './FeedbackNudgeTooltip';
 
 const DISLIKE_REASONS = [
   "Compensation too low",
@@ -18,7 +19,7 @@ const DISLIKE_REASONS = [
   "Other"
 ];
 
-export default function FeedbackButtons({ jobId, initialFeedback, compact = false }: { jobId: string, initialFeedback?: 'like' | 'dislike' | null, compact?: boolean }) {
+export default function FeedbackButtons({ jobId, initialFeedback, compact = false, onFeedbackGiven, showNudgeTooltip = false, nudgeVariant = 'job-detail', onNudgeDismiss }: { jobId: string, initialFeedback?: 'like' | 'dislike' | null, compact?: boolean, onFeedbackGiven?: () => void, showNudgeTooltip?: boolean, nudgeVariant?: 'job-detail' | 'dashboard', onNudgeDismiss?: () => void }) {
   const [feedback, setFeedback] = useState<'like' | 'dislike' | null>(initialFeedback || null);
   const [showModal, setShowModal] = useState(false);
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
@@ -35,6 +36,7 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
     await submitJobFeedback(jobId, 'like', []);
     setFeedback('like');
     setIsSubmitting(false);
+    onFeedbackGiven?.();
   };
 
   const handleDislikeClick = () => {
@@ -52,6 +54,7 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
     setFeedback('dislike');
     setIsSubmitting(false);
     setShowModal(false);
+    onFeedbackGiven?.();
   };
 
   const toggleReason = (reason: string) => {
@@ -152,6 +155,12 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
 
   return (
     <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
+      {showNudgeTooltip && !feedback && (
+        <FeedbackNudgeTooltip
+          variant={nudgeVariant}
+          onDismiss={() => onNudgeDismiss?.()}
+        />
+      )}
       <button 
         onClick={handleLike} 
         disabled={isSubmitting || feedback === 'like'}

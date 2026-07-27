@@ -5,6 +5,9 @@ import { notFound, redirect } from 'next/navigation';
 import AutofillButton from '@/components/AutofillButton';
 import ResumeActions from '@/components/ResumeActions';
 import FeedbackButtons from '@/components/FeedbackButtons';
+import FeedbackButtonsWithNudge from '@/components/FeedbackButtonsWithNudge';
+import FeedbackNudgeTracker from '@/components/FeedbackNudgeTracker';
+import FeedbackNudgeInlineBanner from '@/components/FeedbackNudgeInlineBanner';
 import ApplicationQA from '@/components/ApplicationQA';
 import CopyToClipboardButton from '@/components/CopyToClipboardButton';
 import BackToTopButton from '@/components/BackToTopButton';
@@ -180,6 +183,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '4rem' }}>
+      <FeedbackNudgeTracker />
       <Link href="/dashboard" className="btn-outline" style={{ border: 'none', padding: '0.5rem 0', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
         <ArrowLeft size={16} /> Back to Dashboard
       </Link>
@@ -201,7 +205,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />
+          <FeedbackButtonsWithNudge jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />
           {totalScore ? (
             <div className={`score-badge ${scoreClass}`} style={{ width: '64px', height: '64px', fontSize: '1.5rem' }}>
               {totalScore}
@@ -240,6 +244,12 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />
             </div>
           </section>
+
+          {/* Feedback Nudge — Inline Banner (Nudge #1) */}
+          <FeedbackNudgeInlineBanner
+            jobId={job.id}
+            initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined}
+          />
 
           {/* Step 2: Application Assets */}
           <section data-tour="job-detail-assets">

@@ -10,6 +10,7 @@ import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter, useSearchParams } from 'next/navigation';
 import OnboardingWidget from '@/components/common/OnboardingWidget';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
+import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
 
 import SyncOverlay from './SyncOverlay';
 
@@ -439,6 +440,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, filteredAndSortedJobs.length);
   const currentJobs = filteredAndSortedJobs.slice(startIndex, endIndex);
+
+  const { nudgeJobId, handleDismiss: handleNudgeDismiss, handleFeedbackGiven: handleNudgeFeedbackGiven } = useDashboardFeedbackNudge(currentJobs);
 
   useEffect(() => {
     if (userPlanTier !== 'PRO' && scoresExhausted) return;
@@ -884,6 +887,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                             jobId={job.id}
                             initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
                             compact
+                            showNudgeTooltip={nudgeJobId === job.id}
+                            nudgeVariant="dashboard"
+                            onNudgeDismiss={handleNudgeDismiss}
+                            onFeedbackGiven={handleNudgeFeedbackGiven}
                           />
                           <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} title={job.is_archived ? "Unarchive" : "Archive"}>
                             <Archive size={14} />
@@ -1032,6 +1039,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                       jobId={job.id}
                       initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
                       compact
+                      showNudgeTooltip={nudgeJobId === job.id}
+                      nudgeVariant="dashboard"
+                      onNudgeDismiss={handleNudgeDismiss}
+                      onFeedbackGiven={handleNudgeFeedbackGiven}
                     />
                   </div>
                   <div style={{ marginLeft: 'auto', marginRight: '-12px', marginBottom: '-36px' }}>
