@@ -31,12 +31,25 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    setFeedback(initialFeedback || null);
+  }, [initialFeedback]);
+
   const handleLike = async () => {
     setIsSubmitting(true);
-    await submitJobFeedback(jobId, 'like', []);
     setFeedback('like');
-    setIsSubmitting(false);
-    onFeedbackGiven?.();
+    try {
+      await fetch(`/api/jobs/${jobId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedbackType: 'like', reasons: [] })
+      });
+    } catch (e) {
+      console.error('Failed to submit like feedback:', e);
+    } finally {
+      setIsSubmitting(false);
+      onFeedbackGiven?.();
+    }
   };
 
   const handleDislikeClick = () => {
@@ -50,11 +63,20 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
       ? [...selectedReasons.filter(r => r !== "Other"), `Other: ${otherReason.trim()}`]
       : selectedReasons;
 
-    await submitJobFeedback(jobId, 'dislike', finalReasons);
     setFeedback('dislike');
-    setIsSubmitting(false);
     setShowModal(false);
-    onFeedbackGiven?.();
+    try {
+      await fetch(`/api/jobs/${jobId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedbackType: 'dislike', reasons: finalReasons })
+      });
+    } catch (e) {
+      console.error('Failed to submit dislike feedback:', e);
+    } finally {
+      setIsSubmitting(false);
+      onFeedbackGiven?.();
+    }
   };
 
   const toggleReason = (reason: string) => {
