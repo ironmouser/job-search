@@ -25,7 +25,7 @@ async function callAiService(params: {
 
     if (process.env.DEEPSEEK_API_KEY) {
         return await callDeepSeek({
-            model: params.model || 'deepseek-chat',
+            model: params.model || 'deepseek-v4-pro',
             jsonMode: params.jsonMode,
             temperature: temp,
             maxTokens: params.maxTokens || 4096,
@@ -38,7 +38,7 @@ async function callAiService(params: {
     }
 
     if (process.env.ANTHROPIC_API_KEY) {
-        const anthropicModel = 'claude-3-5-haiku-20241022';
+        const anthropicModel = 'claude-haiku-4-5-20251001';
         const promptText = params.system + params.userPrompt;
         const estimatedTokens = estimateTokens(promptText);
         const estimatedCost = (estimatedTokens / 1_000_000) * 0.25 + ((params.maxTokens || 2048) / 1_000_000) * 1.25;
@@ -126,32 +126,43 @@ ${NETWORKING_REFERENCE_EXAMPLES}
 
     console.log(`Generating assets for ${company} - ${jobTitle}...`);
 
-    let responseText = await callAiService({
-        system: systemPrompt,
-        userPrompt: userPrompt,
-        maxTokens: 4096,
-        jsonMode: true,
-        userId: userId,
-        temperature: 1.5
-    });
+    // Cap temperature for JSON mode — high values (>1.0) cause malformed JSON from DeepSeek
+    const jsonTemp = Math.min(1.5, 1.0);
 
-    responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
+    const fetchAndParseAssets = async (attempt: number) => {
+        let responseText = await callAiService({
+            system: systemPrompt,
+            userPrompt: userPrompt,
+            maxTokens: 4096,
+            jsonMode: true,
+            userId: userId,
+            temperature: jsonTemp
+        });
 
-    let cleanedText = responseText.trim();
-    if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+        responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
+
+        let cleanedText = responseText.trim();
+        if (cleanedText.startsWith('```')) {
+            cleanedText = cleanedText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+        }
+
+        const match = cleanedText.match(/\{[\s\S]*\}/);
+        if (!match) {
+            console.error(`[Attempt ${attempt}] Failed to find JSON in AI response. Raw:`, responseText.substring(0, 500));
+            throw new Error('No JSON object found in the AI response.');
+        }
+        return JSON.parse(match[0]);
+    };
+
+    let assets;
+    try {
+        assets = await fetchAndParseAssets(1);
+    } catch (firstErr) {
+        console.warn('First asset generation attempt failed, retrying...', (firstErr as Error).message);
+        assets = await fetchAndParseAssets(2);
     }
-
-    const match = cleanedText.match(/\{[\s\S]*\}/);
-    if (!match) {
-        console.error('Failed to parse AI response as JSON. Raw response was:', responseText);
-        throw new Error('No JSON object found in the AI response.');
-    }
-    const jsonString = match[0];
 
     try {
-        const assets = JSON.parse(jsonString);
-
         const data = await prisma.applicationAsset.upsert({
             where: { userId_jobId: { userId, jobId } },
             update: {
@@ -177,8 +188,8 @@ ${NETWORKING_REFERENCE_EXAMPLES}
 
         return data;
     } catch (e: any) {
-        console.error('Failed to parse or save AI response', e);
-        throw new Error('Failed to parse or save generated assets: ' + e.message);
+        console.error('Failed to save generated assets', e);
+        throw new Error('Failed to save generated assets: ' + e.message);
     }
 }
 
