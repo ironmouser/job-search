@@ -17,17 +17,7 @@ export async function PUT(
     const body = await request.json();
     const { tailoredResumeMarkdown, coverLetterMarkdown, networkingMessage } = body;
 
-    // Build the update data object only with provided fields
-    const updateData: any = {};
-    if (tailoredResumeMarkdown !== undefined) updateData.tailoredResumeMarkdown = tailoredResumeMarkdown;
-    if (coverLetterMarkdown !== undefined) updateData.coverLetterMarkdown = coverLetterMarkdown;
-    if (networkingMessage !== undefined) updateData.networkingMessage = networkingMessage;
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'No data to update' }, { status: 400 });
-    }
-
-    // Check if asset exists
+    // Check if asset exists first
     const existingAsset = await prisma.applicationAsset.findUnique({
       where: {
         userId_jobId: {
@@ -39,6 +29,31 @@ export async function PUT(
 
     if (!existingAsset) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+
+    // Build the update data object only with provided fields
+    const updateData: any = {};
+    if (tailoredResumeMarkdown !== undefined) {
+      updateData.tailoredResumeMarkdown = tailoredResumeMarkdown;
+      if (existingAsset.tailoredResumeMarkdown) {
+        updateData.previousTailoredResumeMarkdown = existingAsset.tailoredResumeMarkdown;
+      }
+    }
+    if (coverLetterMarkdown !== undefined) {
+      updateData.coverLetterMarkdown = coverLetterMarkdown;
+      if (existingAsset.coverLetterMarkdown) {
+        updateData.previousCoverLetterMarkdown = existingAsset.coverLetterMarkdown;
+      }
+    }
+    if (networkingMessage !== undefined) {
+      updateData.networkingMessage = networkingMessage;
+      if (existingAsset.networkingMessage) {
+        updateData.previousNetworkingMessage = existingAsset.networkingMessage;
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No data to update' }, { status: 400 });
     }
 
     const updatedAsset = await prisma.applicationAsset.update({

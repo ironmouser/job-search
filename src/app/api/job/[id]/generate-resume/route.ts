@@ -63,6 +63,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
                         where: { id: asset.id },
                         data: {
                             tailoredResumeMarkdown: newTailoredResume,
+                            previousTailoredResumeMarkdown: asset.tailoredResumeMarkdown || null,
                             resumeRegensUsed: asset.resumeRegensUsed + 1
                         }
                     });

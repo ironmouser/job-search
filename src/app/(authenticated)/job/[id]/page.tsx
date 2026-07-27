@@ -263,6 +263,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 <NetworkingAssetCard 
                   jobId={job.id} 
                   initialContent={assets.networkingMessage || ''} 
+                  initialPreviousContent={assets.previousNetworkingMessage || undefined}
                   initialRegensUsed={assets.networkingMessageRegensUsed || 0} 
                   planTier={planTier} 
                   initialTone={preferences?.networkingMessageTone || 'Confident and strategic'} 
@@ -271,6 +272,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 <CoverLetterAssetCard 
                   jobId={job.id} 
                   initialContent={assets.coverLetterMarkdown || ''} 
+                  initialPreviousContent={assets.previousCoverLetterMarkdown || undefined}
                   initialRegensUsed={assets.coverLetterRegensUsed || 0} 
                   planTier={planTier} 
                   initialTone={preferences?.coverLetterTone || 'Confident and strategic'} 
@@ -285,6 +287,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 <ResumeAssetCard 
                   jobId={job.id} 
                   initialContent={assets.tailoredResumeMarkdown || ''} 
+                  initialPreviousContent={assets.previousTailoredResumeMarkdown || undefined}
                   initialRegensUsed={assets.resumeRegensUsed || 0} 
                   planTier={planTier} 
                   initialCustomization={preferences?.resumeCustomizationMaxPercentage || 50} 

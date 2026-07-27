@@ -63,6 +63,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
                         where: { id: asset.id },
                         data: {
                             networkingMessage: newNetworkingMessage,
+                            previousNetworkingMessage: asset.networkingMessage || null,
                             networkingMessageRegensUsed: asset.networkingMessageRegensUsed + 1
                         }
                     });

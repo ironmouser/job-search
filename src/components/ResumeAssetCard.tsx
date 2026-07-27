@@ -1,24 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X } from 'lucide-react';
+import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw } from 'lucide-react';
 import { marked } from 'marked';
 import ResumeActions from './ResumeActions';
 
 export default function ResumeAssetCard({
     jobId,
     initialContent,
+    initialPreviousContent,
     initialRegensUsed,
     planTier,
     initialCustomization
 }: {
     jobId: string;
     initialContent: string;
+    initialPreviousContent?: string;
     initialRegensUsed: number;
     planTier: string;
     initialCustomization: number;
 }) {
     const [content, setContent] = useState(initialContent);
+    const [previousContent, setPreviousContent] = useState<string | undefined>(initialPreviousContent);
+    const [isReverting, setIsReverting] = useState(false);
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
     const [customizationAmount, setCustomizationAmount] = useState(initialCustomization || 50);
     const [selectedColor, setSelectedColor] = useState('#06af9e');
@@ -144,6 +148,31 @@ export default function ResumeAssetCard({
         }
     };
 
+    const handleRevert = async () => {
+        if (!previousContent) return;
+        setIsReverting(true);
+        setError('');
+        try {
+            const res = await fetch(`/api/job/${jobId}/revert-asset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assetType: 'resume' }),
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to revert to previous version');
+            }
+            const data = await res.json();
+            setContent(data.currentContent);
+            setEditContent(data.currentContent);
+            setPreviousContent(data.previousContent);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsReverting(false);
+        }
+    };
+
     const cancelEdit = () => {
         setEditContent(content);
         setIsEditing(false);
@@ -216,7 +245,19 @@ export default function ResumeAssetCard({
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginBottom: '1rem' }}>
+                    {!isEditing && previousContent && previousContent !== content && (
+                        <button 
+                            onClick={handleRevert} 
+                            disabled={isReverting}
+                            className="btn-outline"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                            title="Revert to previous version"
+                        >
+                            {isReverting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                            Previous Version
+                        </button>
+                    )}
                     {!isEditing && (
                         <button 
                             onClick={() => setIsEditing(true)} 

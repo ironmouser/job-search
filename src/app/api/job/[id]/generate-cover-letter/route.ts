@@ -63,6 +63,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
                         where: { id: asset.id },
                         data: {
                             coverLetterMarkdown: newCoverLetter,
+                            previousCoverLetterMarkdown: asset.coverLetterMarkdown || null,
                             coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
                         }
                     });

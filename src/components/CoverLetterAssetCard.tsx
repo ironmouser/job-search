@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X } from 'lucide-react';
+import { Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw } from 'lucide-react';
 import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadPdfButton from './DownloadPdfButton';
@@ -22,6 +22,7 @@ const cleanContent = (text: string) => {
 export default function CoverLetterAssetCard({
     jobId,
     initialContent,
+    initialPreviousContent,
     initialRegensUsed,
     planTier,
     initialTone,
@@ -34,6 +35,7 @@ export default function CoverLetterAssetCard({
 }: {
     jobId: string;
     initialContent: string;
+    initialPreviousContent?: string;
     initialRegensUsed: number;
     planTier: string;
     initialTone: string;
@@ -51,6 +53,8 @@ export default function CoverLetterAssetCard({
     const initialSenderContact = [userLocation, userPhone, userEmail].filter(Boolean).join('  |  ');
 
     const [content, setContent] = useState(cleanContent(initialContent));
+    const [previousContent, setPreviousContent] = useState<string | undefined>(initialPreviousContent ? cleanContent(initialPreviousContent) : undefined);
+    const [isReverting, setIsReverting] = useState(false);
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
     const [tone, setTone] = useState(initialTone || 'Confident and strategic');
     const [isLoading, setIsLoading] = useState(false);
@@ -198,6 +202,33 @@ export default function CoverLetterAssetCard({
             setError(err.message);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleRevert = async () => {
+        if (!previousContent) return;
+        setIsReverting(true);
+        setError('');
+        try {
+            const res = await fetch(`/api/job/${jobId}/revert-asset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assetType: 'coverLetter' }),
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to revert to previous version');
+            }
+            const data = await res.json();
+            const newCurrent = cleanContent(data.currentContent);
+            const newPrevious = cleanContent(data.previousContent);
+            setContent(newCurrent);
+            setEditContent(newCurrent);
+            setPreviousContent(newPrevious);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsReverting(false);
         }
     };
 
@@ -352,6 +383,18 @@ export default function CoverLetterAssetCard({
 
                     <div style={{ flexGrow: 1 }} />
 
+                    {!isEditing && previousContent && previousContent !== content && (
+                        <button 
+                            onClick={handleRevert} 
+                            disabled={isReverting}
+                            className="btn-outline"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                            title="Revert to previous version"
+                        >
+                            {isReverting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                            Previous Version
+                        </button>
+                    )}
                     {!isEditing && (
                         <button
                             onClick={startEditing}
