@@ -12,6 +12,57 @@ const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY || 'dummy_key',
 });
 
+function parseOrRepairJson(rawText: string, attempt: number = 1): any {
+    let text = rawText.trim();
+    if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    }
+
+    // Try standard JSON match first (enclosed between { and })
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+        try {
+            return JSON.parse(match[0]);
+        } catch (e) {
+            console.warn(`[Attempt ${attempt}] Standard JSON parse failed, trying repair...`, (e as Error).message);
+        }
+    }
+
+    // If no complete JSON object match or standard parse failed, check if it starts with {
+    const startIdx = text.indexOf('{');
+    if (startIdx !== -1) {
+        let snippet = text.substring(startIdx).trim();
+
+        // Fix unescaped control characters in JSON strings (newlines, tabs)
+        snippet = snippet.replace(/[\u0000-\u001F]+/g, (match) => {
+            if (match === '\n') return '\\n';
+            if (match === '\r') return '\\r';
+            if (match === '\t') return '\\t';
+            return '';
+        });
+
+        // Close unclosed quote if truncated inside a string
+        const quoteMatches = snippet.match(/(?<!\\)"/g) || [];
+        if (quoteMatches.length % 2 !== 0) {
+            snippet += '"';
+        }
+
+        // Close JSON object if missing closing brace
+        if (!snippet.endsWith('}')) {
+            snippet += '\n}';
+        }
+
+        try {
+            return JSON.parse(snippet);
+        } catch (repairErr) {
+            console.error(`[Attempt ${attempt}] JSON repair failed. Raw text snippet:`, text.substring(0, 500));
+        }
+    }
+
+    console.error(`[Attempt ${attempt}] Failed to parse AI response. Raw response:`, rawText.substring(0, 500));
+    throw new Error('No JSON object found in the AI response.');
+}
+
 async function callAiService(params: {
     system: string;
     userPrompt: string;
@@ -126,14 +177,13 @@ ${NETWORKING_REFERENCE_EXAMPLES}
 
     console.log(`Generating assets for ${company} - ${jobTitle}...`);
 
-    // Cap temperature for JSON mode — high values (>1.0) cause malformed JSON from DeepSeek
-    const jsonTemp = Math.min(1.5, 1.0);
+    const jsonTemp = 0.7; // DeepSeek recommended temperature for structured JSON output
 
     const fetchAndParseAssets = async (attempt: number) => {
         let responseText = await callAiService({
             system: systemPrompt,
             userPrompt: userPrompt,
-            maxTokens: 4096,
+            maxTokens: 8192,
             jsonMode: true,
             userId: userId,
             temperature: jsonTemp
@@ -141,24 +191,14 @@ ${NETWORKING_REFERENCE_EXAMPLES}
 
         responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
 
-        let cleanedText = responseText.trim();
-        if (cleanedText.startsWith('```')) {
-            cleanedText = cleanedText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-        }
-
-        const match = cleanedText.match(/\{[\s\S]*\}/);
-        if (!match) {
-            console.error(`[Attempt ${attempt}] Failed to find JSON in AI response. Raw:`, responseText.substring(0, 500));
-            throw new Error('No JSON object found in the AI response.');
-        }
-        return JSON.parse(match[0]);
+        return parseOrRepairJson(responseText, attempt);
     };
 
     let assets;
     try {
         assets = await fetchAndParseAssets(1);
     } catch (firstErr) {
-        console.warn('First asset generation attempt failed, retrying...', (firstErr as Error).message);
+        console.warn('First asset generation attempt failed, retrying with second attempt...', (firstErr as Error).message);
         assets = await fetchAndParseAssets(2);
     }
 
