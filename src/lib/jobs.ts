@@ -70,11 +70,19 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     // URL cleaning and deduplication
     const deduplicatedJobs: any[] = [];
     const seenUrls = new Set<string>();
+    const seenTitleCompany = new Set<string>();
 
     for (const job of normalizedJobs) {
         const cleanedUrl = cleanJobUrl(job.url);
         if (seenUrls.has(cleanedUrl)) continue;
+        // Also deduplicate by exact title+company within this batch
+        const titleCompanyKey = `${job.title.toLowerCase().trim()}|${job.company.toLowerCase().trim()}`;
+        if (seenTitleCompany.has(titleCompanyKey)) {
+            console.log(`[Batch Dedup] Skipping duplicate title+company: "${job.title}" at "${job.company}"`);
+            continue;
+        }
         seenUrls.add(cleanedUrl);
+        seenTitleCompany.add(titleCompanyKey);
         deduplicatedJobs.push({ ...job, url: cleanedUrl });
     }
 
@@ -86,6 +94,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     });
     
     let userExistingJobIds = new Set<string>();
+    let userExistingTitleCompany = new Set<string>();
     if (existingJobs.length > 0) {
         const ujs = await prisma.userJob.findMany({
             where: {
@@ -97,6 +106,17 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
         userExistingJobIds = new Set(ujs.map(u => u.jobId));
     }
 
+    // Also fetch ALL user's existing jobs (title+company) to skip near-duplicates with different URLs
+    const allUserJobsForDedup = await prisma.userJob.findMany({
+        where: { userId, status: { not: 'deleted' } },
+        include: { job: { select: { title: true, company: true } } }
+    });
+    userExistingTitleCompany = new Set(
+        allUserJobsForDedup.map(uj =>
+            `${uj.job.title.toLowerCase().trim()}|${uj.job.company.toLowerCase().trim()}`
+        )
+    );
+
     const knownGoodJobs: any[] = [];
     const brandNewCandidates: any[] = [];
 
@@ -105,6 +125,12 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
         if (match && userExistingJobIds.has(match.id)) {
             knownGoodJobs.push(jobData);
         } else {
+            // Skip brand-new jobs that are near-duplicates of existing user jobs (same title+company, different URL)
+            const titleCompanyKey = `${jobData.title.toLowerCase().trim()}|${jobData.company.toLowerCase().trim()}`;
+            if (!match && userExistingTitleCompany.has(titleCompanyKey)) {
+                console.log(`[DB Dedup] Skipping "${jobData.title}" at "${jobData.company}" — user already has this role under a different URL.`);
+                continue;
+            }
             brandNewCandidates.push(jobData);
         }
     }
@@ -199,8 +225,9 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
       await prisma.userJob.upsert({
           where: { userId_jobId: { userId, jobId: job.id } },
           update: {
-              status: 'discovered',
-              createdAt: new Date()
+              // Do NOT reset createdAt — preserve original discovery date so jobs
+              // don't bubble back to the top of the dashboard on each scrape run.
+              status: 'discovered'
           },
           create: {
               userId,

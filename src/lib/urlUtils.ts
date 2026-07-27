@@ -42,6 +42,11 @@ export function cleanJobUrl(rawUrl: string): string {
         'midToken', 'midSig', 'trkEmail', 'eid', 'otpToken', 'lipi', 'session_redirect'
     ];
     trackingParams.forEach(param => parsed.searchParams.delete(param));
+
+    // 5. Normalize www vs non-www to always use non-www for deduplication
+    if (parsed.hostname.startsWith('www.')) {
+        parsed.hostname = parsed.hostname.slice(4);
+    }
     
     let cleaned = parsed.toString();
     if (cleaned.endsWith('/')) {
@@ -52,3 +57,4 @@ export function cleanJobUrl(rawUrl: string): string {
     return rawUrl.trim();
   }
 }
+
