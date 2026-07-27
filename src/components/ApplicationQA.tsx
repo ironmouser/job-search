@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown } from 'lucide-react';
+import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown, RotateCcw } from 'lucide-react';
 import DownloadTextButton from './DownloadTextButton';
 
 export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed = 0 }: { jobId: string; planTier?: string; initialQaUsed?: number }) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
+  const [previousAnswer, setPreviousAnswer] = useState('');
   const [tone, setTone] = useState('Confident and strategic');
   const [isLoading, setIsLoading] = useState(false);
   const [isSavingPref, setIsSavingPref] = useState(false);
@@ -24,6 +25,7 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
     
     setIsLoading(true);
     setError('');
+    if (answer) setPreviousAnswer(answer); // Save current answer as previous before generating a new one
     if (!instruction) setAnswer(''); // Only clear if it's a completely new generation, keep it if we are modifying
     setSavedPref(false);
     
@@ -201,6 +203,23 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
               borderTop: '1px solid var(--border-glass)',
               flexWrap: 'wrap'
             }}>
+              <button
+                onClick={() => { setPreviousAnswer(''); setAnswer(previousAnswer); }}
+                disabled={!previousAnswer || isLoading}
+                className="btn-outline"
+                title={!previousAnswer ? 'No previous version available' : 'Revert to previous answer'}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  opacity: (!previousAnswer || isLoading) ? 0.5 : 1,
+                  cursor: (!previousAnswer || isLoading) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <RotateCcw size={14} /> Previous Version
+              </button>
               <button onClick={() => handleGenerate('different')} disabled={isLoading || regensLeft <= 0} title={regensLeft <= 0 && !isPro ? "Upgrade to Pro for more" : ""} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Different
               </button>
