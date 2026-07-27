@@ -25,7 +25,7 @@ async function callAiService(params: {
 
     if (process.env.DEEPSEEK_API_KEY) {
         return await callDeepSeek({
-            model: params.model || 'deepseek-v4-pro',
+            model: params.model || 'deepseek-chat',
             jsonMode: params.jsonMode,
             temperature: temp,
             maxTokens: params.maxTokens || 4096,
@@ -38,14 +38,15 @@ async function callAiService(params: {
     }
 
     if (process.env.ANTHROPIC_API_KEY) {
+        const anthropicModel = 'claude-3-5-haiku-20241022';
         const promptText = params.system + params.userPrompt;
         const estimatedTokens = estimateTokens(promptText);
         const estimatedCost = (estimatedTokens / 1_000_000) * 0.25 + ((params.maxTokens || 2048) / 1_000_000) * 1.25;
 
-        await checkAiSafeguard(estimatedCost, 'claude-haiku-4-5-20251001', params.userId);
+        await checkAiSafeguard(estimatedCost, anthropicModel, params.userId);
 
         const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
+            model: anthropicModel,
             max_tokens: params.maxTokens || 4096,
             temperature: Math.min(temp, 1.0),
             system: params.system,
@@ -54,7 +55,7 @@ async function callAiService(params: {
 
         const usage = response.usage;
         if (usage) {
-            await logAiCost('claude-haiku-4-5-20251001', usage.input_tokens, usage.output_tokens, params.userId);
+            await logAiCost(anthropicModel, usage.input_tokens, usage.output_tokens, params.userId);
         }
 
         return (response as any).content?.[0]?.text || '';
@@ -136,8 +137,14 @@ ${NETWORKING_REFERENCE_EXAMPLES}
 
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
 
-    const match = responseText.match(/\{[\s\S]*\}/);
+    let cleanedText = responseText.trim();
+    if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    }
+
+    const match = cleanedText.match(/\{[\s\S]*\}/);
     if (!match) {
+        console.error('Failed to parse AI response as JSON. Raw response was:', responseText);
         throw new Error('No JSON object found in the AI response.');
     }
     const jsonString = match[0];

@@ -23,10 +23,11 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
         throw new Error('DEEPSEEK_API_KEY is not set in environment variables.');
     }
 
-    const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4-flash';
+    let preferredModel = 'deepseek-chat';
+    if (options.model === 'deepseek-reasoner') {
+        preferredModel = 'deepseek-reasoner';
+    }
     const modelsToTry = [preferredModel];
-    if (!modelsToTry.includes('deepseek-v4-flash')) modelsToTry.push('deepseek-v4-flash');
-    if (!modelsToTry.includes('deepseek-v4-pro')) modelsToTry.push('deepseek-v4-pro');
 
     const promptText = options.messages.map(m => m.content).join('\n');
     const inputTokens = estimateTokens(promptText);
@@ -98,7 +99,7 @@ export async function* streamDeepSeek(options: CallDeepSeekOptions): AsyncGenera
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) throw new Error('DEEPSEEK_API_KEY is not set');
 
-    const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4-flash';
+    const preferredModel = options.model === 'deepseek-reasoner' ? 'deepseek-reasoner' : 'deepseek-chat';
     const bodyPayload = {
         model: preferredModel,
         messages: options.messages,
