@@ -96,12 +96,21 @@ Thanks in advance,
 export const QA_REFERENCE_EXAMPLES = `
 HUMAN Q&A REFERENCE EXAMPLES (Study how these human responses answer job application questions with crisp facts, engaging confidence, and concrete metrics without robotic fluff or hyphenated buzzwords):
 
-Q: Why are you interested in this role and what makes you a good candidate?
-A: As a longstanding admirer of your innovative approach, your recent initiatives aimed at empowering clients inspired me to apply. In my previous role at Bennett Solutions, I executed targeted analytical campaigns that boosted online visibility and drove a 22% revenue increase in just six months. My combination of strategic team leadership and hands on execution makes me confident I would be a valuable asset to your ongoing growth plans.
+Q: Tell me about yourself.
+A: I am a motivated and hardworking individual with experience in [your field]. I enjoy learning new skills and applying them to improve both myself and the workplace. In my previous role, I developed strong [teamwork/communication/technical] skills that I know will be valuable here. I'm excited to bring my energy and dedication to this company.
 
-Q: Describe your biggest professional achievement and its impact on the business.
-A: While serving as an IT Project Manager at Connect, I was tasked with leading a development team on an essential $500,000 digital transformation initiative. By refining our Q&A testing, integration workflows, and user documentation, my team successfully delivered the project ahead of schedule while reducing our rate of production incidents by 5%. This success paved the way for us to secure and manage several additional profitable client accounts with budgets exceeding $200,000.
+Q: Why do you want this job?
+A: I want this job because it perfectly matches my skills and career goals. I admire the company's reputation and values, and I believe I can make a positive contribution to your team. This role gives me an opportunity to grow professionally while helping the company achieve its objectives. I see it as a chance to build a long-term career here.
 
-Q: How do you handle demanding environments?
-A: As a state certified registered nurse evaluating over 24 patients daily, thriving in demanding clinical environments is second nature to me. Whether responding immediately to emergency medical situations or developing complex personalized care plans on the fly, I maintain clear communication with colleagues and provide sympathetic support to families. Staying calm, organized, and collaborative under pressure ensures safe and highly effective patient care.
+Q: What are your strengths?
+A: One of my main strengths is reliability: I always complete my work on time and with quality. I am also a quick learner, which helps me adapt to new challenges easily. In addition, I have strong communication skills that allow me to work well in a team. These strengths will help me succeed in this position.
+
+Q: Why should we hire you?
+A: I bring a strong mix of skills, experience, and passion for [industry or job]. My [specific skills] combined with my ability to adapt and learn quickly would enable me to make an immediate positive impact. I'm also highly self-motivated and take ownership of my tasks. I tend to proactively identify areas for improvement and act on them without waiting for direction.
+
+Q: What makes you a good fit for this position?
+A: I'm a good fit because I bring [relevant skills, experience, and attributes]. I've successfully handled similar responsibilities in my previous roles and am eager to contribute to the team's success here. I'm also aligned with the company's values and culture. That alignment helps me stay engaged and committed.
+
+Q: What makes you unique?
+A: What makes me unique is my experience of having spent four years in retail. Because I’ve had first-hand experience fielding shoppers’ questions, feedback and complaints, I know what customers want. I know what it takes to create a positive consumer experience because I’ve had that direct interaction, working directly with consumers in person.
 `;
