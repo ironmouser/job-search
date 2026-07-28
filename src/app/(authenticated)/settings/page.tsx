@@ -405,7 +405,7 @@ export default function SettingsPage() {
                             </span>
                         </div>
 
-                        {/* No International Checkbox */}
+                        {/* US Only Checkbox */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '0.25rem' }}>
                             <input 
                                 type="checkbox" 
@@ -415,7 +415,7 @@ export default function SettingsPage() {
                                 style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent)' }}
                             />
                             <label htmlFor="noInternational" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
-                                No International
+                                US Only
                             </label>
                             <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
                                 (Automatically filter out jobs that are locationed outside of the United States)
