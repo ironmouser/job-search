@@ -201,6 +201,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   };
 
   const handleMarkViewed = (jobId: string) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('last_clicked_job_id', jobId);
+      localStorage.setItem('last_clicked_job_id', jobId);
+    }
     fetch(`/api/jobs/${jobId}/viewed`, { method: 'POST' }).catch(() => {});
     setJobList(prev => prev.map(j => j.id === jobId ? { ...j, is_viewed: true, isViewed: true } : j));
   };
@@ -250,6 +254,41 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       window.history.replaceState(null, '', `?${params.toString()}`);
     }
   }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, itemsPerPage, currentPage, isLoaded]);
+
+  // Scroll to top of last clicked job when returning to dashboard
+  useEffect(() => {
+    if (!isLoaded || currentJobs.length === 0) return;
+
+    const lastJobId = typeof window !== 'undefined'
+      ? (sessionStorage.getItem('last_clicked_job_id') || localStorage.getItem('last_clicked_job_id'))
+      : null;
+
+    if (!lastJobId) return;
+
+    const scrollElement = () => {
+      const el = document.getElementById(`job-item-${lastJobId}`);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetY = rect.top + scrollTop - 100;
+        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+
+        sessionStorage.removeItem('last_clicked_job_id');
+        localStorage.removeItem('last_clicked_job_id');
+        return true;
+      }
+      return false;
+    };
+
+    if (!scrollElement()) {
+      const t1 = setTimeout(scrollElement, 150);
+      const t2 = setTimeout(scrollElement, 400);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [isLoaded, currentJobs, viewMode]);
 
   const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
     if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
@@ -1048,7 +1087,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   };
                   
                   return (
-                    <tr key={job.id} style={rowStyle}>
+                    <tr key={job.id} id={`job-item-${job.id}`} style={rowStyle}>
                       <td style={{ padding: '1rem', borderLeft: isViewed ? '4px solid #2663EB' : '4px solid transparent' }}>
                         <input 
                           type="checkbox" 
@@ -1189,7 +1228,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             };
             
             return (
-              <div key={job.id} className={`glass-card job-card${confettiJobId === job.id ? ' confetti' : ''}`} style={cardStyle}>
+              <div key={job.id} id={`job-item-${job.id}`} className={`glass-card job-card${confettiJobId === job.id ? ' confetti' : ''}`} style={cardStyle}>
                 <div className="job-header">
                   <div>
                     <div className="job-company" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>

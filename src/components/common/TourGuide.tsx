@@ -9,6 +9,41 @@ interface TourGuideProps {
     tourId?: string;
 }
 
+const isElementInViewport = (el: Element): boolean => {
+    const rect = el.getBoundingClientRect();
+    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+    const windowWidth = window.innerWidth || document.documentElement.clientWidth;
+
+    // Buffer for sticky navigation header (~100px) and bottom padding (20px)
+    const topOffset = 100;
+    const bottomOffset = 20;
+
+    return (
+        rect.top >= topOffset &&
+        rect.left >= 0 &&
+        rect.bottom <= (windowHeight - bottomOffset) &&
+        rect.right <= windowWidth
+    );
+};
+
+const scrollToStepTarget = (targetSelector: string) => {
+    if (!targetSelector) return;
+    try {
+        const el = document.querySelector(targetSelector);
+        if (el) {
+            if (!isElementInViewport(el)) {
+                el.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest'
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Error scrolling to step target:', err);
+    }
+};
+
 const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
     const { activeTour, activeTourId, endTour, startTour, hasSeenTour, markOnboardingTaskComplete, openHelpPanel } = useHelp();
     const router = useRouter();
@@ -31,6 +66,9 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
         run: !!activeTour && steps.length > 0,
         continuous: true,
         skipBeacon: true,
+        scrollToFirstStep: true,
+        scrollOffset: 120,
+        scrollDuration: 400,
         styles: {
             // @ts-expect-error: options is a valid prop at runtime but missing from types
             options: {
@@ -66,6 +104,26 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
             }
         }
     }, [state.index, state.status, activeTour, pathname, router, steps.length]);
+
+    // Scroll to target element if it is outside the viewport when step or route changes
+    useEffect(() => {
+        if (state.status === 'running' && activeTour && state.index >= 0 && state.index < steps.length) {
+            const target = steps[state.index]?.target;
+            if (target) {
+                scrollToStepTarget(target);
+
+                const t1 = setTimeout(() => scrollToStepTarget(target), 150);
+                const t2 = setTimeout(() => scrollToStepTarget(target), 400);
+                const t3 = setTimeout(() => scrollToStepTarget(target), 800);
+
+                return () => {
+                    clearTimeout(t1);
+                    clearTimeout(t2);
+                    clearTimeout(t3);
+                };
+            }
+        }
+    }, [state.index, state.status, activeTour, pathname, steps]);
 
     useEffect(() => {
         if ([STATUS.FINISHED, STATUS.SKIPPED].includes(state.status as any)) {
