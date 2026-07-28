@@ -47,7 +47,7 @@ export async function fetchEmailsAndExtractJobs(userId: string) {
 
     // 1. Get last sync time
     const syncLog = await prisma.syncLog.findFirst({
-        where: { syncType: 'email' },
+        where: { userId, syncType: 'email' },
         select: { id: true, lastSyncedAt: true }
     });
 
@@ -137,7 +137,13 @@ ${uniqueUrls.join('\n')}
                 company: cleanCompanyName(job.company) || 'Unknown Company',
                 location: job.location || 'Remote/Unknown',
                 salary_range: null,
-                description: job.description || `Job opportunity imported from your email notifications. Click link to view full details and application page: ${job.url}`,
+                // Use a sentinel stub that extractUrlFromStubDescription can parse.
+                // The score API will detect this stub, fetch the real description from
+                // the job URL, and then score normally. This avoids the hard
+                // isDescriptionAdequate rejection that blocks scoring.
+                description: job.description && job.description.trim().length > 50
+                  ? job.description.trim()
+                  : `Found via email link: ${job.url}`,
                 requirements: job.requirements || null,
                 url: job.url,
                 source: sourceCategory
@@ -157,7 +163,7 @@ ${uniqueUrls.join('\n')}
          });
       } else {
          await prisma.syncLog.create({
-            data: { syncType: 'email', lastSyncedAt: new Date() }
+            data: { userId, syncType: 'email', lastSyncedAt: new Date() }
          });
       }
 

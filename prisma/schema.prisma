@@ -103,9 +103,11 @@ model JobFeedback {
 
 model SyncLog {
   id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @map("user_id")
   syncType     String   @map("sync_type")
   lastSyncedAt DateTime @default(now()) @map("last_synced_at") @db.Timestamptz(6)
 
+  @@unique([userId, syncType])
   @@map("sync_logs")
 }
 

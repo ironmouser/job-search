@@ -16,7 +16,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     let normalizedJobs = rawJobs.map((job) => {
         const title = job.title?.trim() || 'Untitled Position';
         const company = job.company?.trim() || 'Unknown Company';
-        const fallbackDesc = `Job listing for ${title} at ${company}. Click link to view full details and application page: ${job.url || ''}`;
+        const fallbackDesc = `Found via email link: ${job.url || ''}`;
         const description = (job.description && job.description.trim().length > 0) ? job.description.trim() : fallbackDesc;
 
         return {
@@ -144,12 +144,18 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
         const chunkSize = 20;
         for (let i = 0; i < brandNewCandidates.length; i += chunkSize) {
             const chunk = brandNewCandidates.slice(i, i + chunkSize);
-            const candidatesPayload = chunk.map((c, index) => ({
-                index,
-                title: c.title,
-                company: c.company,
-                snippet: (c.description || '').slice(0, 200)
-            }));
+            const candidatesPayload = chunk.map((c, index) => {
+                const rawSnippet = (c.description || '').slice(0, 200);
+                // For email stubs ("Found via email link: ..."), send an empty snippet
+                // rather than a URL string — the AI should judge by title+company only.
+                const isStub = /^found via email link:/i.test(rawSnippet) || rawSnippet.trim() === '';
+                return {
+                    index,
+                    title: c.title,
+                    company: c.company,
+                    snippet: isStub ? '' : rawSnippet
+                };
+            });
 
             try {
                 const triageResponse = await callDeepSeek({
