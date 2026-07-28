@@ -405,6 +405,23 @@ export default function SettingsPage() {
                             </span>
                         </div>
 
+                        {/* No International Checkbox */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '0.25rem' }}>
+                            <input 
+                                type="checkbox" 
+                                id="noInternational"
+                                checked={settings.noInternational || false}
+                                onChange={(e) => handleChange('noInternational', e.target.checked)}
+                                style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent)' }}
+                            />
+                            <label htmlFor="noInternational" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                No International
+                            </label>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginLeft: '0.5rem' }}>
+                                (Automatically filter out jobs that are locationed outside of the United States)
+                            </span>
+                        </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Active Scraper Sources</label>

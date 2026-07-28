@@ -9,6 +9,7 @@ export async function ensureKeywordColumnsExist() {
         await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "include_keywords" TEXT');
         await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "exclude_keywords" TEXT');
         await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "job_level" TEXT DEFAULT \'Mid-level\'');
+        await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "no_international" BOOLEAN DEFAULT false');
         columnsChecked = true;
     } catch (e: any) {
         console.warn('Auto-schema update warning:', e?.message || e);
@@ -44,6 +45,7 @@ export async function getUserSettings(userId: string): Promise<any> {
                     customCareerPages: row.custom_career_pages || [],
                     sources: row.sources || {},
                     remoteOnly: row.remote_only || false,
+                    noInternational: row.no_international || false,
                     theme: row.theme || 'light',
                     aiStrictness: row.ai_strictness || 'Standard',
                     resumeMarkdown: row.resume_markdown || '',

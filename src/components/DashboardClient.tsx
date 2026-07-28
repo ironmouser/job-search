@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import OnboardingWidget from '@/components/common/OnboardingWidget';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
+import { US_STATE_ABBRS, extractStateAbbr, isUsLocation } from '@/lib/locationUtils';
 
 import SyncOverlay from './SyncOverlay';
 
@@ -406,54 +407,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       alert('Failed to delete job.');
       router.refresh();
     }
-  };
-
-  // Full US state name → 2-letter abbreviation
-  const US_STATES: Record<string, string> = {
-    alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
-    colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
-    hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
-    kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
-    massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS',
-    missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV',
-    'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
-    'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH', oklahoma: 'OK',
-    oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
-    'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT',
-    vermont: 'VT', virginia: 'VA', washington: 'WA', 'west virginia': 'WV',
-    wisconsin: 'WI', wyoming: 'WY', 'washington dc': 'DC', 'district of columbia': 'DC',
-  };
-
-  // Abbreviation set for quick lookup
-  const US_STATE_ABBRS = new Set(Object.values(US_STATES));
-
-  // Resolve a location string to a state abbreviation (or null)
-  const extractStateAbbr = (loc: string): string | null => {
-    // 1. ", XX" abbreviation pattern (e.g. "Austin, TX")
-    const abbrMatch = loc.match(/,\s*([A-Z]{2})\b/);
-    if (abbrMatch && US_STATE_ABBRS.has(abbrMatch[1])) return abbrMatch[1];
-
-    // 2. Full state name (possibly preceded by city: "Austin, Texas" or standalone "Texas")
-    const locLower = loc.toLowerCase();
-    // Sort longer names first so "new york" is checked before "york"
-    const sortedNames = Object.keys(US_STATES).sort((a, b) => b.length - a.length);
-    for (const name of sortedNames) {
-      // Match as a whole word / phrase
-      if (new RegExp(`\\b${name}\\b`).test(locLower)) {
-        return US_STATES[name];
-      }
-    }
-    return null;
-  };
-
-  // Returns true if a location string looks like it's in the United States
-  const isUsLocation = (loc: string): boolean => {
-    const l = loc.toLowerCase();
-    if (l.includes('united states') || l === 'us' || l === 'usa') return true;
-    if (/\bus\b/.test(l)) return true;
-    // Has a state abbreviation or full state name
-    if (extractStateAbbr(loc) !== null) return true;
-    return false;
   };
 
   const uniqueLocations = useMemo(() => {

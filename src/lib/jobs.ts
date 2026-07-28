@@ -3,11 +3,13 @@ import { getUserSettings } from './settings';
 import { reformatJobDescriptionWithGemini } from './formatter';
 import { cleanJobUrl } from './urlUtils';
 import { callDeepSeek } from './deepseek';
+import { isInternationalLocation } from './locationUtils';
 
 export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, options: { isEmailSync?: boolean } = {}) {
     if (!rawJobs || rawJobs.length === 0) return [];
     const settings: any = await getUserSettings(userId);
     const remoteOnly = settings.remoteOnly || false;
+    const noInternational = settings.noInternational || false;
     const includeKeywordsStr: string = (settings.includeKeywords || '').trim();
     const excludeKeywordsStr: string = (settings.excludeKeywords || '').trim();
     const searchKeyword: string = (settings.searchKeyword || '').trim();
@@ -36,6 +38,10 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
             const loc = (j.location || '').toLowerCase();
             return loc.includes('remote') || loc.includes('anywhere') || loc.includes('worldwide') || loc.includes('wfh') || loc.includes('telecommute') || loc.includes('distributed') || loc.includes('work from home') || loc === '';
         });
+    }
+
+    if (noInternational) {
+        normalizedJobs = normalizedJobs.filter(j => !isInternationalLocation(j.location || ''));
     }
 
     // Tier 1: Deterministic Keyword Exclusion & Inclusion Filter
