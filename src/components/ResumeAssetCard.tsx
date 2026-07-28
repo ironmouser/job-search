@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw } from 'lucide-react';
 import { marked } from 'marked';
 import ResumeActions from './ResumeActions';
+import DownloadPdfButton from './DownloadPdfButton';
+import CopyToClipboardButton from './CopyToClipboardButton';
 
 export default function ResumeAssetCard({
     jobId,
@@ -185,13 +187,24 @@ export default function ResumeAssetCard({
         setError('');
     };
 
+    let extractedName = 'My';
+    const nameMatch = (content || '').match(/^#\s+([^\n]+)/);
+    if (nameMatch && nameMatch[1]) {
+        extractedName = nameMatch[1].trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    }
+    const resumeFilename = `${extractedName}_Resume.pdf`;
+
     return (
         <details className="glass-card" style={{ cursor: 'pointer' }}>
             <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', listStyle: 'none' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
                     <CheckCircle size={20} /> Tailored Resume Extract
                 </h3>
-                <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} onClick={(e) => e.stopPropagation()}>
+                    <DownloadPdfButton markdownText={content} filename={resumeFilename} />
+                    <CopyToClipboardButton textToCopy={content || ''} />
+                    <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
+                </div>
             </summary>
             <div className="asset-card-body" style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto', overflow: 'auto' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
