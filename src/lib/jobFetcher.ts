@@ -67,6 +67,37 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
     if (!rawUrl) return null;
     const url = cleanJobUrl(rawUrl);
 
+    // --- Dice.com: use their public job-posting-service REST API ---
+    // URL pattern: https://www.dice.com/job-detail/{uuid}
+    const diceMatch = url.match(/dice\.com\/job-detail\/([a-f0-9-]{36})/i);
+    if (diceMatch) {
+        const jobUuid = diceMatch[1];
+        try {
+            const apiUrl = `https://job-posting-service.dice.com/jobProfile/${jobUuid}`;
+            const apiRes = await gotScraping({
+                url: apiUrl,
+                headers: { Accept: 'application/json' },
+                timeout: { request: 15000 },
+                retry: { limit: 0 },
+                throwHttpErrors: false,
+            });
+            if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
+                const data = JSON.parse(apiRes.body.toString());
+                // descriptionHtml is the full HTML job description field
+                const rawDesc: string = data.descriptionHtml || data.description || '';
+                if (rawDesc.length > 100) {
+                    // Strip HTML tags for plain text, then reformat
+                    const textOnly = rawDesc.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+                    const formatted = await reformatJobDescriptionWithGemini(rawDesc);
+                    if (isDescriptionAdequate(formatted)) return formatted;
+                    if (isDescriptionAdequate(textOnly)) return textOnly;
+                }
+            }
+        } catch (e: any) {
+            console.warn(`Dice API fetch failed for ${url}: ${e.message}`);
+        }
+    }
+
     const extractContent = async (rawHtml: string): Promise<string | null> => {
         const $ = cheerio.load(rawHtml);
 
