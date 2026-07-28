@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { submitJobFeedback } from '@/app/(authenticated)/job/[id]/actions';
 import { ThumbsUp, ThumbsDown, X, Bookmark, BookmarkX } from 'lucide-react';
@@ -47,6 +47,19 @@ export default function FeedbackButtons({
   const [otherReason, setOtherReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const reasonsContainerRef = useRef<HTMLDivElement>(null);
+  const otherTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (selectedReasons.includes("Other")) {
+      setTimeout(() => {
+        if (reasonsContainerRef.current) {
+          reasonsContainerRef.current.scrollTop = reasonsContainerRef.current.scrollHeight;
+        }
+        otherTextareaRef.current?.focus();
+      }, 50);
+    }
+  }, [selectedReasons]);
 
   useEffect(() => {
     setMounted(true);
@@ -161,7 +174,7 @@ export default function FeedbackButtons({
             </button>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', maxHeight: '300px', overflowY: 'auto' }}>
+          <div ref={reasonsContainerRef} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem', maxHeight: '300px', overflowY: 'auto' }}>
             {DISLIKE_REASONS.map(reason => (
               <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
                 <input 
@@ -176,6 +189,7 @@ export default function FeedbackButtons({
             
             {selectedReasons.includes("Other") && (
               <textarea
+                ref={otherTextareaRef}
                 value={otherReason}
                 onChange={(e) => setOtherReason(e.target.value)}
                 placeholder="Please explain why..."
