@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { handleUserUpgradeToPro } from "@/lib/settings";
 
 export async function GET() {
   try {
@@ -43,6 +44,10 @@ export async function POST(request: Request) {
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    }
+
+    if (planTier === 'PRO') {
+      await handleUserUpgradeToPro(userId);
     }
 
     const updatedUser = await prisma.user.update({

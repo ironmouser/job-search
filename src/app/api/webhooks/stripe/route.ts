@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { handleUserUpgradeToPro } from "@/lib/settings";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
           planTier: "PRO",
         },
       });
+      await handleUserUpgradeToPro(session.metadata.userId);
     } else {
       // One-time payment fallback
       await prisma.user.update({
@@ -62,6 +64,7 @@ export async function POST(req: Request) {
           planTier: "PRO",
         },
       });
+      await handleUserUpgradeToPro(session.metadata.userId);
     }
   }
 

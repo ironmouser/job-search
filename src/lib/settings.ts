@@ -57,4 +57,95 @@ export async function getUserSettings(userId: string): Promise<any> {
     }
 }
 
+export const PREMIUM_NON_INTL_SOURCES = [
+    'linkedin',
+    'himalayas',
+    'otta',
+    'jobspresso',
+    'justremote',
+    'greenhouse',
+    'lever',
+    'ashby',
+    'workable',
+    'smartrecruiters',
+    'breezy'
+];
+
+export const INTERNATIONAL_SOURCES = [
+    'themuse',
+    'arbeitsagentur',
+    'computrabajo',
+    'jobbank',
+    'eures',
+    'bumeran',
+    'workopolis',
+    'workana'
+];
+
+export const ALL_PRO_SOURCES = [
+    ...PREMIUM_NON_INTL_SOURCES,
+    ...INTERNATIONAL_SOURCES
+];
+
+export async function handleUserUpgradeToPro(userId: string) {
+    await ensureKeywordColumnsExist();
+
+    // 1. Update user planTier to PRO
+    await prisma.user.update({
+        where: { id: userId },
+        data: { planTier: 'PRO' }
+    });
+
+    // 2. Fetch existing user preferences
+    const prefs = await prisma.userPreferences.findUnique({
+        where: { userId }
+    });
+
+    const currentSources = (prefs?.sources as Record<string, boolean>) || {
+        indeed: true,
+        glassdoor: false,
+        ziprecruiter: false,
+        weworkremotely: true,
+        remoteco: true,
+        remoteok: true,
+        workingnomads: true,
+        remotive: true,
+        remotepoc: true,
+        arbeitnow: true,
+        ycombinator: true
+    };
+
+    // 3. Automatically enable all non-international premium sources
+    const updatedSources = { ...currentSources };
+    for (const src of PREMIUM_NON_INTL_SOURCES) {
+        updatedSources[src] = true;
+    }
+
+    // 4. Preserve existing user choices for international sources (do not auto-enable)
+    for (const src of INTERNATIONAL_SOURCES) {
+        if (updatedSources[src] === undefined) {
+            updatedSources[src] = false;
+        }
+    }
+
+    // 5. Update database
+    if (prefs) {
+        await prisma.userPreferences.update({
+            where: { userId },
+            data: { sources: updatedSources }
+        });
+    } else {
+        await prisma.userPreferences.create({
+            data: {
+                userId,
+                sources: updatedSources,
+                theme: 'light',
+                jobLevel: 'Mid-level',
+                aiStrictness: 'Standard',
+                resumeCustomizationMaxPercentage: 50,
+            } as any
+        });
+    }
+}
+
 

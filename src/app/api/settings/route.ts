@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { encrypt } from '@/lib/encryption';
-import { ensureKeywordColumnsExist } from '@/lib/settings';
+import { ensureKeywordColumnsExist, ALL_PRO_SOURCES } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,13 +81,12 @@ export async function POST(request: Request) {
 
         const data = await request.json();
         const isPro = (session.user as any).planTier === 'PRO';
-        const INTERNATIONAL_SOURCES = ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana'];
 
         // Strip Pro-only fields for free users
         if (!isPro) {
             data.customCareerPages = [];
             if (data.sources) {
-                for (const src of INTERNATIONAL_SOURCES) {
+                for (const src of ALL_PRO_SOURCES) {
                     data.sources[src] = false;
                 }
             }
