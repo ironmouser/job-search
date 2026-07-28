@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
@@ -41,7 +41,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
   const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote' | 'auto_apply'>('newest');
-  const [locationFilter, setLocationFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<string[]>([]);
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
+  const locationDropdownRef = useRef<HTMLDivElement>(null);
   const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -87,6 +89,16 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+    // Close location dropdown when clicking outside
+    const handleClickOutside = (e: MouseEvent) => {
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(e.target as Node)) {
+        setIsLocationDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Restore page number and items per page from URL, localStorage, or sessionStorage on mount
   useEffect(() => {
     const urlPage = searchParams?.get('page');
@@ -100,7 +112,17 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter);
         if (stateFromStorage.viewMode) setViewMode(stateFromStorage.viewMode);
         if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption);
-        if (stateFromStorage.locationFilter) setLocationFilter(stateFromStorage.locationFilter);
+        if (stateFromStorage.locationFilter !== undefined) {
+          if (Array.isArray(stateFromStorage.locationFilter)) {
+            setLocationFilter(stateFromStorage.locationFilter);
+          } else if (typeof stateFromStorage.locationFilter === 'string') {
+            if (stateFromStorage.locationFilter === 'all' || !stateFromStorage.locationFilter) {
+              setLocationFilter([]);
+            } else {
+              setLocationFilter([stateFromStorage.locationFilter]);
+            }
+          }
+        }
         if (stateFromStorage.sourceFilter) setSourceFilter(stateFromStorage.sourceFilter);
         if (stateFromStorage.startDate !== undefined) setStartDate(stateFromStorage.startDate);
         if (stateFromStorage.endDate !== undefined) setEndDate(stateFromStorage.endDate);
@@ -503,18 +525,19 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     }
 
     // 2. Apply Location Filter
-    if (locationFilter !== 'all') {
+    if (locationFilter.length > 0) {
       result = result.filter(j => {
         if (!j.location) return false;
         const locLower = j.location.toLowerCase();
-        if (locationFilter === 'Remote') return locLower.includes('remote');
-        if (locationFilter === 'United States') return isUsLocation(j.location) && !locLower.includes('remote');
-        if (locationFilter === 'International') return !isUsLocation(j.location) && !locLower.includes('remote');
-        // State abbreviation filter (e.g. "CA") — matches both "Austin, TX" and "Austin, Texas" or "Texas"
-        if (US_STATE_ABBRS.has(locationFilter)) {
-          return extractStateAbbr(j.location) === locationFilter;
-        }
-        return false;
+        return locationFilter.some(locOpt => {
+          if (locOpt === 'Remote') return locLower.includes('remote');
+          if (locOpt === 'United States') return isUsLocation(j.location) && !locLower.includes('remote');
+          if (locOpt === 'International') return !isUsLocation(j.location) && !locLower.includes('remote');
+          if (US_STATE_ABBRS.has(locOpt)) {
+            return extractStateAbbr(j.location) === locOpt;
+          }
+          return false;
+        });
       });
     }
 
@@ -866,18 +889,109 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             </div>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Filter size={16} color="var(--text-secondary)" />
-            <select 
-              value={locationFilter} 
-              onChange={(e) => setLocationFilter(e.target.value)}
-              style={{ background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-glass)', padding: '0.4rem', borderRadius: '4px' }}
+          <div ref={locationDropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button 
+              type="button"
+              onClick={() => setIsLocationDropdownOpen(prev => !prev)}
+              style={{ 
+                background: 'var(--bg-color)', 
+                color: 'var(--text-primary)', 
+                border: '1px solid var(--border-glass)', 
+                padding: '0.4rem 0.65rem', 
+                borderRadius: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                cursor: 'pointer'
+              }}
             >
-              <option value="all">All Locations</option>
-              {uniqueLocations.map(loc => (
-                <option key={loc} value={loc}>{loc}</option>
-              ))}
-            </select>
+              <Filter size={16} color="var(--text-secondary)" />
+              <span>
+                {locationFilter.length === 0 
+                  ? 'All Locations' 
+                  : locationFilter.length === 1 
+                    ? locationFilter[0] 
+                    : `${locationFilter.length} Locations Selected`}
+              </span>
+              <ChevronDown size={14} color="var(--text-secondary)" style={{ transform: isLocationDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+            </button>
+
+            {isLocationDropdownOpen && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 4px)',
+                left: 0,
+                background: 'var(--bg-color)',
+                border: '1px solid var(--border-glass)',
+                borderRadius: '8px',
+                padding: '0.5rem',
+                zIndex: 100,
+                minWidth: '220px',
+                maxHeight: '280px',
+                overflowY: 'auto',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem'
+              }}>
+                <div 
+                  onClick={() => { setLocationFilter([]); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justify: 'space-between',
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: locationFilter.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    background: locationFilter.length === 0 ? 'rgba(102, 252, 241, 0.08)' : 'transparent'
+                  }}
+                >
+                  <span>All Locations</span>
+                  {locationFilter.length > 0 && (
+                    <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Clear</span>
+                  )}
+                </div>
+
+                <div style={{ borderBottom: '1px solid var(--border-glass)', margin: '0.25rem 0' }} />
+
+                {uniqueLocations.map(loc => {
+                  const isChecked = locationFilter.includes(loc);
+                  return (
+                    <label 
+                      key={loc}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        padding: '0.35rem 0.6rem',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        color: isChecked ? 'var(--accent-primary)' : 'var(--text-primary)',
+                        background: isChecked ? 'rgba(102, 252, 241, 0.05)' : 'transparent',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <input 
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setLocationFilter(prev => 
+                            prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc]
+                          );
+                        }}
+                        style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)', width: '15px', height: '15px' }}
+                      />
+                      <span>{loc}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
