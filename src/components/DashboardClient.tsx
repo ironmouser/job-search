@@ -89,7 +89,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-    // Close location dropdown when clicking outside
+
+  // Close location dropdown when clicking outside
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (locationDropdownRef.current && !locationDropdownRef.current.contains(e.target as Node)) {
         setIsLocationDropdownOpen(false);
