@@ -942,7 +942,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'space-between',
+                    justifyContent: 'space-between',
                     padding: '0.4rem 0.6rem',
                     borderRadius: '4px',
                     cursor: 'pointer',
