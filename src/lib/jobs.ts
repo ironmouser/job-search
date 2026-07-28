@@ -4,7 +4,7 @@ import { reformatJobDescriptionWithGemini } from './formatter';
 import { cleanJobUrl } from './urlUtils';
 import { callDeepSeek } from './deepseek';
 
-export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
+export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, options: { isEmailSync?: boolean } = {}) {
     if (!rawJobs || rawJobs.length === 0) return [];
     const settings: any = await getUserSettings(userId);
     const remoteOnly = settings.remoteOnly || false;
@@ -55,7 +55,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
         });
     }
 
-    if (includeTerms.length > 0) {
+    if (includeTerms.length > 0 && !options.isEmailSync) {
         normalizedJobs = normalizedJobs.filter(j => {
             const contentLower = `${j.title} ${j.description || ''}`.toLowerCase();
             const match = includeTerms.some(term => contentLower.includes(term));
@@ -138,7 +138,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string) {
     // Tier 2: Batched Rapid Triage via DeepSeek (Lite Pass)
     const approvedCandidates: any[] = [];
 
-    if (brandNewCandidates.length > 0 && searchKeyword) {
+    if (brandNewCandidates.length > 0 && searchKeyword && !options.isEmailSync) {
         console.log(`[AI Triage] Running DeepSeek rapid pre-screening on ${brandNewCandidates.length} new candidate jobs for keyword "${searchKeyword}"...`);
         
         const chunkSize = 20;

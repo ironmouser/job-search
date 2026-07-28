@@ -130,7 +130,8 @@ ${uniqueUrls.join('\n')}
                  continue; // Skip invalid or unknown jobs
              }
 
-             const sourceCategory = JOB_BOARDS.find(b => job.url.toLowerCase().includes(b)) || job.source || 'Email Sync';
+             const boardMatch = JOB_BOARDS.find(b => job.url.toLowerCase().includes(b)) || job.source;
+             const sourceCategory = boardMatch ? `Email Sync (${boardMatch})` : 'Email Sync';
              
              rawJobs.push({
                 title: jobTitle,
@@ -153,7 +154,7 @@ ${uniqueUrls.join('\n')}
 
       // 3. Save to database
       if (rawJobs.length > 0) {
-        await normalizeAndSaveJobs(rawJobs, userId);
+        await normalizeAndSaveJobs(rawJobs, userId, { isEmailSync: true });
       }
 
       if (syncLog) {

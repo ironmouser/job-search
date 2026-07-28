@@ -59,6 +59,7 @@ export default async function Dashboard() {
       salary_range: j.salaryRange,
       url: j.url,
       description: j.description,
+      source: j.source,
       
       status: uj.status,
       is_archived: uj.isArchived,
