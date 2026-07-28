@@ -385,20 +385,37 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   };
 
   // Extract unique locations for the filter dropdown
+  // Returns true if a location string looks like it's in the United States
+  const isUsLocation = (loc: string) => {
+    const l = loc.toLowerCase();
+    // Explicit US mentions
+    if (l.includes('united states') || l === 'us' || l === 'usa') return true;
+    // "Anywhere in the US" style phrasing
+    if (/\bus\b/.test(l)) return true;
+    // Has a US state abbreviation pattern: ", XX" where XX is 2 caps
+    if (/,\s*[A-Z]{2}\b/.test(loc)) return true;
+    return false;
+  };
+
   const uniqueLocations = useMemo(() => {
     const locs = new Set<string>();
+    let hasInternational = false;
     jobList?.forEach(j => {
       if (!j.location) return;
       const locLower = j.location.toLowerCase();
       if (locLower.includes('remote')) {
         locs.add('Remote');
-      } else {
-        // Try to extract state (e.g. "Los Angeles, CA 90034" -> "CA")
+      } else if (isUsLocation(j.location)) {
+        // Extract state abbreviation if present, otherwise bucket as United States
         const match = j.location.match(/,\s*([A-Z]{2})\b/);
         if (match) locs.add(match[1]);
-        else if (locLower.includes('united states') || locLower.includes('us')) locs.add('United States');
+        else locs.add('United States');
+      } else {
+        // Non-remote, non-US → International
+        hasInternational = true;
       }
     });
+    if (hasInternational) locs.add('International');
     return Array.from(locs).sort();
   }, [jobList]);
 
@@ -457,9 +474,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     if (locationFilter !== 'all') {
       result = result.filter(j => {
         if (!j.location) return false;
-        if (locationFilter === 'Remote') return j.location.toLowerCase().includes('remote');
-        if (locationFilter === 'United States') return j.location.toLowerCase().includes('united states') || j.location.toLowerCase().includes('us');
-        return j.location.includes(locationFilter);
+        const locLower = j.location.toLowerCase();
+        if (locationFilter === 'Remote') return locLower.includes('remote');
+        if (locationFilter === 'United States') return isUsLocation(j.location) && !locLower.includes('remote');
+        if (locationFilter === 'International') return !isUsLocation(j.location) && !locLower.includes('remote');
+        // US state abbreviation (e.g. "CA", "NY")
+        return j.location.match(new RegExp(`,\\s*${locationFilter}\\b`)) !== null;
       });
     }
 
