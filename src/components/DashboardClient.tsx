@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import OnboardingWidget from '@/components/common/OnboardingWidget';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
-import { US_STATE_ABBRS, extractStateAbbr, isUsLocation } from '@/lib/locationUtils';
+import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation } from '@/lib/locationUtils';
 
 import SyncOverlay from './SyncOverlay';
 
@@ -414,13 +414,13 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     let hasInternational = false;
     jobList?.forEach(j => {
       if (!j.location) return;
-      const locLower = j.location.toLowerCase();
-      if (locLower.includes('remote')) {
+      if (isRemoteLocation(j.location)) {
         locs.add('Remote');
-      } else if (isUsLocation(j.location)) {
+      }
+      if (isUsLocation(j.location)) {
         const abbr = extractStateAbbr(j.location);
         locs.add(abbr ?? 'United States');
-      } else {
+      } else if (!isRemoteLocation(j.location)) {
         hasInternational = true;
       }
     });
@@ -485,9 +485,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         if (!j.location) return false;
         const locLower = j.location.toLowerCase();
         return locationFilter.some(locOpt => {
-          if (locOpt === 'Remote') return locLower.includes('remote');
-          if (locOpt === 'United States') return isUsLocation(j.location) && !locLower.includes('remote');
-          if (locOpt === 'International') return !isUsLocation(j.location) && !locLower.includes('remote');
+          if (locOpt === 'Remote') return isRemoteLocation(j.location);
+          if (locOpt === 'United States') return isUsLocation(j.location) && !isRemoteLocation(j.location);
+          if (locOpt === 'International') return !isUsLocation(j.location) && !isRemoteLocation(j.location);
           if (US_STATE_ABBRS.has(locOpt)) {
             return extractStateAbbr(j.location) === locOpt;
           }
@@ -507,8 +507,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         return extractMaxSalary(b.salary_range) - extractMaxSalary(a.salary_range);
       }
       if (sortOption === 'remote') {
-        const isRemoteA = (a.location || '').toLowerCase().includes('remote') ? 1 : 0;
-        const isRemoteB = (b.location || '').toLowerCase().includes('remote') ? 1 : 0;
+        const isRemoteA = isRemoteLocation(a.location || '') ? 1 : 0;
+        const isRemoteB = isRemoteLocation(b.location || '') ? 1 : 0;
         return isRemoteB - isRemoteA;
       }
       if (sortOption === 'auto_apply') {

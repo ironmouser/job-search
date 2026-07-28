@@ -3,7 +3,7 @@ import { getUserSettings } from './settings';
 import { reformatJobDescriptionWithGemini } from './formatter';
 import { cleanJobUrl } from './urlUtils';
 import { callDeepSeek } from './deepseek';
-import { isInternationalLocation } from './locationUtils';
+import { isInternationalLocation, isRemoteLocation } from './locationUtils';
 
 export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, options: { isEmailSync?: boolean } = {}) {
     if (!rawJobs || rawJobs.length === 0) return [];
@@ -34,10 +34,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
     }).filter(j => j.url && j.title);
 
     if (remoteOnly) {
-        normalizedJobs = normalizedJobs.filter(j => {
-            const loc = (j.location || '').toLowerCase();
-            return loc.includes('remote') || loc.includes('anywhere') || loc.includes('worldwide') || loc.includes('wfh') || loc.includes('telecommute') || loc.includes('distributed') || loc.includes('work from home') || loc === '';
-        });
+        normalizedJobs = normalizedJobs.filter(j => isRemoteLocation(j.location || ''));
     }
 
     if (noInternational) {

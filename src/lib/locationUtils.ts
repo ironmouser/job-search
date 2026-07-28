@@ -44,11 +44,42 @@ export const isUsLocation = (loc: string): boolean => {
   return false;
 };
 
+// Returns true if a location string is generic US with no state or city info (e.g. "United States", "US", "USA")
+export const isGenericUsLocation = (loc: string): boolean => {
+  if (!loc) return false;
+  if (extractStateAbbr(loc) !== null) return false;
+  const l = loc.trim().toLowerCase();
+  if (l === 'united states' || l === 'us' || l === 'usa' || l === 'united states of america' || l === 'u.s.' || l === 'u.s.a.') {
+    return true;
+  }
+  const stripped = l.replace(/\b(united states|usa|us|u\.s\.a\.|u\.s\.)\b/g, '').replace(/[^a-z0-9]/g, '').trim();
+  return isUsLocation(loc) && stripped.length === 0;
+};
+
+// Returns true if a location is considered Remote (including generic "United States" without state/city info)
+export const isRemoteLocation = (loc: string): boolean => {
+  if (!loc) return true;
+  const l = loc.toLowerCase();
+  if (
+    l.includes('remote') ||
+    l.includes('anywhere') ||
+    l.includes('worldwide') ||
+    l.includes('wfh') ||
+    l.includes('telecommute') ||
+    l.includes('distributed') ||
+    l.includes('work from home')
+  ) {
+    return true;
+  }
+  // Generic "United States" with no state or city specified is also considered remote
+  return isGenericUsLocation(loc);
+};
+
 // Returns true if a location string looks like it's outside the United States
 export const isInternationalLocation = (loc: string): boolean => {
   if (!loc) return false;
   const locLower = loc.toLowerCase();
-  if (locLower.includes('remote')) {
+  if (isRemoteLocation(loc)) {
     if (isUsLocation(loc)) return false;
     const intlKeywords = ['uk', 'europe', 'canada', 'emea', 'apac', 'latam', 'germany', 'france', 'india', 'brazil', 'australia', 'japan', 'china', 'singapore', 'mexico', 'united kingdom'];
     return intlKeywords.some(k => new RegExp(`\\b${k}\\b`).test(locLower));
