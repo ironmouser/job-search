@@ -26,7 +26,16 @@ export async function POST(
         
     if (!userJob) throw new Error('Job not found in your pipeline');
 
-    const newArchivedState = !userJob.isArchived;
+    let newArchivedState = !userJob.isArchived;
+
+    try {
+      const body = await request.json();
+      if (typeof body.isArchived === 'boolean') {
+        newArchivedState = body.isArchived;
+      }
+    } catch {
+      // Body is optional
+    }
 
     const data = await prisma.userJob.update({
       where: { userId_jobId: { userId, jobId: id } },

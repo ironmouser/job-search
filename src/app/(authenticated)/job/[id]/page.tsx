@@ -242,7 +242,12 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               )}
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '1.5rem' }}>
-              <FeedbackButtons jobId={job.id} initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} />
+              <FeedbackButtons 
+                jobId={job.id} 
+                initialFeedback={feedback?.feedbackType as "like" | "dislike" | undefined} 
+                initialIsArchived={userJob.isArchived}
+                showSaveForLater={true}
+              />
             </div>
           </section>
 

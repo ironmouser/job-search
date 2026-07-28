@@ -13,12 +13,22 @@ export async function POST(request: Request) {
     const { disliked, viewed, applied, archived, checked, checkedJobIds, olderThanDays, shortDescription } = await request.json();
     const userId = session.user.id;
 
-    // Build the query for UserJob
+    // Protection rule: General cleanup filters (olderThanDays, viewed, disliked, shortDescription)
+    // MUST NOT touch active pipeline jobs or saved/archived jobs.
+    const protectedExclusion = {
+      isArchived: false,
+      appliedAt: null,
+      status: { notIn: ['applied', 'interviewing', 'offer', 'rejected', 'archived', 'saved', 'deleted'] }
+    };
+
     const conditions: any[] = [];
 
     if (shortDescription) {
       const allUserJobs = await prisma.userJob.findMany({
-        where: { userId, status: { not: 'deleted' } },
+        where: {
+          userId,
+          ...protectedExclusion
+        },
         include: { job: { select: { id: true, description: true } } }
       });
       const shortDescUserJobIds = allUserJobs
@@ -31,27 +41,16 @@ export async function POST(request: Request) {
 
     if (disliked) {
       conditions.push({
+        ...protectedExclusion,
         job: { jobFeedbacks: { some: { userId, feedbackType: 'dislike' } } }
       });
     }
 
     if (viewed) {
       conditions.push({
+        ...protectedExclusion,
         job: { isViewed: true }
       });
-    }
-
-    if (applied) {
-      conditions.push({ status: 'applied' });
-      conditions.push({ appliedAt: { not: null } });
-    }
-
-    if (archived) {
-      conditions.push({ status: 'archived' });
-    }
-
-    if (checked && Array.isArray(checkedJobIds) && checkedJobIds.length > 0) {
-      conditions.push({ jobId: { in: checkedJobIds } });
     }
 
     if (olderThanDays !== null && olderThanDays !== undefined && !isNaN(Number(olderThanDays))) {
@@ -59,15 +58,39 @@ export async function POST(request: Request) {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
       conditions.push({
+        ...protectedExclusion,
         createdAt: { lt: cutoffDate }
       });
+    }
+
+    // Explicitly requested removals (only included if user specifically checked these checkboxes)
+    if (applied) {
+      conditions.push({
+        OR: [
+          { status: { in: ['applied'] } },
+          { appliedAt: { not: null } }
+        ]
+      });
+    }
+
+    if (archived) {
+      conditions.push({
+        OR: [
+          { isArchived: true },
+          { status: { in: ['archived', 'saved'] } }
+        ]
+      });
+    }
+
+    if (checked && Array.isArray(checkedJobIds) && checkedJobIds.length > 0) {
+      conditions.push({ jobId: { in: checkedJobIds } });
     }
 
     if (conditions.length === 0) {
       return NextResponse.json({ message: 'No criteria provided' }, { status: 400 });
     }
 
-    // Find UserJobs that match ANY of the conditions
+    // Find UserJobs that match ANY of the active conditions
     const matchingUserJobs = await prisma.userJob.findMany({
       where: {
         userId,

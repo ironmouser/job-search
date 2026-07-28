@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { submitJobFeedback } from '@/app/(authenticated)/job/[id]/actions';
-import { ThumbsUp, ThumbsDown, X } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, X, Bookmark } from 'lucide-react';
 import FeedbackNudgeTooltip from './FeedbackNudgeTooltip';
 
 const DISLIKE_REASONS = [
@@ -19,8 +19,29 @@ const DISLIKE_REASONS = [
   "Other"
 ];
 
-export default function FeedbackButtons({ jobId, initialFeedback, compact = false, onFeedbackGiven, showNudgeTooltip = false, nudgeVariant = 'job-detail', onNudgeDismiss }: { jobId: string, initialFeedback?: 'like' | 'dislike' | null, compact?: boolean, onFeedbackGiven?: () => void, showNudgeTooltip?: boolean, nudgeVariant?: 'job-detail' | 'dashboard', onNudgeDismiss?: () => void }) {
+export default function FeedbackButtons({
+  jobId,
+  initialFeedback,
+  initialIsArchived = false,
+  showSaveForLater = false,
+  compact = false,
+  onFeedbackGiven,
+  showNudgeTooltip = false,
+  nudgeVariant = 'job-detail',
+  onNudgeDismiss
+}: {
+  jobId: string,
+  initialFeedback?: 'like' | 'dislike' | null,
+  initialIsArchived?: boolean,
+  showSaveForLater?: boolean,
+  compact?: boolean,
+  onFeedbackGiven?: () => void,
+  showNudgeTooltip?: boolean,
+  nudgeVariant?: 'job-detail' | 'dashboard',
+  onNudgeDismiss?: () => void
+}) {
   const [feedback, setFeedback] = useState<'like' | 'dislike' | null>(initialFeedback || null);
+  const [isSaved, setIsSaved] = useState<boolean>(initialIsArchived);
   const [showModal, setShowModal] = useState(false);
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [otherReason, setOtherReason] = useState("");
@@ -34,6 +55,25 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
   useEffect(() => {
     setFeedback(initialFeedback || null);
   }, [initialFeedback]);
+
+  useEffect(() => {
+    setIsSaved(initialIsArchived);
+  }, [initialIsArchived]);
+
+  const handleSaveForLater = async () => {
+    const nextState = !isSaved;
+    setIsSaved(nextState);
+    try {
+      await fetch(`/api/jobs/${jobId}/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: nextState })
+      });
+    } catch (e) {
+      console.error('Failed to update saved state:', e);
+      setIsSaved(!nextState);
+    }
+  };
 
   const handleLike = async () => {
     setIsSubmitting(true);
@@ -220,6 +260,30 @@ export default function FeedbackButtons({ jobId, initialFeedback, compact = fals
       >
         <ThumbsDown size={18} color={feedback === 'dislike' ? 'var(--danger)' : 'var(--text-secondary)'} />
       </button>
+
+      {showSaveForLater && (
+        <button
+          onClick={handleSaveForLater}
+          className="btn-outline"
+          style={{
+            padding: compact ? '0.24rem 0.6rem' : '0.5rem 0.9rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            background: isSaved ? 'rgba(102, 252, 241, 0.1)' : 'transparent',
+            borderColor: isSaved ? 'var(--accent-primary)' : 'var(--border-glass)',
+            color: isSaved ? 'var(--accent-primary)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            borderRadius: '8px',
+            fontSize: compact ? '0.8rem' : '0.9rem',
+            fontWeight: 500
+          }}
+          title={isSaved ? "Saved for later" : "Save for later"}
+        >
+          <Bookmark size={18} fill={isSaved ? 'var(--accent-primary)' : 'none'} color={isSaved ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
+          <span>{isSaved ? 'Saved' : 'Save for later'}</span>
+        </button>
+      )}
 
       {renderModal()}
     </div>
