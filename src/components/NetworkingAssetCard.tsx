@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Copy, Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Copy, Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send } from 'lucide-react';
 import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadTextButton from './DownloadTextButton';
@@ -39,12 +39,21 @@ export default function NetworkingAssetCard({
     const isPro = planTier === 'PRO';
     const regensLeft = 5 - regensUsed;
 
+    // Custom prompt state
+    const [showCustomPrompt, setShowCustomPrompt] = useState(false);
+    const [customPrompt, setCustomPrompt] = useState('');
+    const customPromptInputRef = useRef<HTMLInputElement>(null);
+    const MAX_CUSTOM_CHARS = 200;
+
     const cleanContent = (text: string) => {
         return text.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"');
     };
 
     const handleRegenerate = async (instruction: string) => {
         if (!isPro || regensLeft <= 0) return;
+        // Clear custom prompt UI on any regeneration
+        setShowCustomPrompt(false);
+        setCustomPrompt('');
         setIsLoading(true);
         setError('');
         if (content) {
@@ -319,7 +328,91 @@ export default function NetworkingAssetCard({
                     >
                         {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Maximize2 size={14} />} Expand
                     </button>
+                    <button
+                        onClick={() => {
+                            setShowCustomPrompt(v => !v);
+                            if (!showCustomPrompt) {
+                                setTimeout(() => customPromptInputRef.current?.focus(), 50);
+                            }
+                        }}
+                        disabled={isLoading || !isPro || regensLeft <= 0}
+                        className="btn-outline"
+                        title={!isPro ? 'Pro account only' : showCustomPrompt ? 'Close custom prompt' : 'Enter a custom instruction'}
+                        style={{
+                            padding: '0.4rem 0.8rem',
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            background: showCustomPrompt ? 'var(--accent-primary)' : undefined,
+                            color: showCustomPrompt ? '#fff' : undefined,
+                            borderColor: showCustomPrompt ? 'var(--accent-primary)' : undefined,
+                        }}
+                    >
+                        <Pencil size={14} /> Custom
+                    </button>
                 </div>
+
+                {/* Custom prompt inline row */}
+                {showCustomPrompt && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        marginTop: '0.75rem',
+                        padding: '0.75rem',
+                        background: 'var(--glass-bg, rgba(255,255,255,0.04))',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '0.5rem',
+                        flexWrap: 'wrap',
+                    }}>
+                        <input
+                            ref={customPromptInputRef}
+                            type="text"
+                            value={customPrompt}
+                            onChange={e => setCustomPrompt(e.target.value.slice(0, MAX_CUSTOM_CHARS))}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && customPrompt.trim() && !isLoading && regensLeft > 0) {
+                                    handleRegenerate(customPrompt.trim());
+                                }
+                                if (e.key === 'Escape') { setShowCustomPrompt(false); setCustomPrompt(''); }
+                            }}
+                            placeholder='e.g. "Emphasize my leadership experience"'
+                            maxLength={MAX_CUSTOM_CHARS}
+                            disabled={isLoading}
+                            style={{
+                                flex: 1,
+                                minWidth: '180px',
+                                padding: '0.4rem 0.6rem',
+                                fontSize: '0.82rem',
+                                background: 'var(--input-bg, rgba(0,0,0,0.2))',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '0.375rem',
+                                color: 'var(--text-primary)',
+                                outline: 'none',
+                            }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                            {customPrompt.length}/{MAX_CUSTOM_CHARS}
+                        </span>
+                        <button
+                            onClick={() => { if (customPrompt.trim()) handleRegenerate(customPrompt.trim()); }}
+                            disabled={isLoading || !customPrompt.trim() || regensLeft <= 0}
+                            className="btn-primary"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                        >
+                            {isLoading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Generate
+                        </button>
+                        <button
+                            onClick={() => { setShowCustomPrompt(false); setCustomPrompt(''); }}
+                            className="btn-outline"
+                            style={{ padding: '0.4rem 0.5rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center' }}
+                            title="Close"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                )}
             </div>
         </details>
     );

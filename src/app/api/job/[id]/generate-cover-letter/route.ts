@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getCoverLetterPrompts } from '@/lib/generator';
 import { streamDeepSeek } from '@/lib/deepseek';
+import { validateCustomInstructionSemantics, validateGeneratedAsset } from '@/lib/asset-validator';
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -21,12 +22,24 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         const body = await request.json();
         const { instruction, tone } = body;
 
+        // Server-side guard 1: length check
+        if (instruction && typeof instruction === 'string' && !['shorter', 'longer', 'different'].includes(instruction) && instruction.length > 200) {
+            return NextResponse.json({ error: 'Custom instruction must be 200 characters or fewer.' }, { status: 400 });
+        }
+
+        // Server-side guard 2: contextual semantic validation check
+        const semanticCheck = validateCustomInstructionSemantics(instruction, 'coverLetter');
+        if (!semanticCheck.isValid) {
+            return NextResponse.json({ error: semanticCheck.reason }, { status: 400 });
+        }
+
         const userJob = await prisma.userJob.findUnique({
             where: { userId_jobId: { userId: session.user.id, jobId } },
             include: { job: { include: { applicationAssets: { where: { userId: session.user.id } } } } }
         });
 
         if (!userJob) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+
 
         let asset = userJob.job.applicationAssets[0];
         if (!asset) return NextResponse.json({ error: 'Assets not generated yet' }, { status: 400 });
@@ -59,14 +72,24 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
                     }
                     
                     const newCoverLetter = fullText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
-                    await prisma.applicationAsset.update({
-                        where: { id: asset.id },
-                        data: {
-                            coverLetterMarkdown: newCoverLetter,
-                            previousCoverLetterMarkdown: asset.coverLetterMarkdown || null,
-                            coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
-                        }
-                    });
+                    
+                    // Output Validation Layer: Check for hallucinations / corrupted output
+                    const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
+                    const baseResumeText = userPrefs?.resumeMarkdown || '';
+                    const outputValidation = validateGeneratedAsset(newCoverLetter, baseResumeText, userJob.job.description || '', 'coverLetter');
+
+                    if (!outputValidation.severeHallucination) {
+                        await prisma.applicationAsset.update({
+                            where: { id: asset.id },
+                            data: {
+                                coverLetterMarkdown: newCoverLetter,
+                                previousCoverLetterMarkdown: asset.coverLetterMarkdown || null,
+                                coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
+                            }
+                        });
+                    } else {
+                        console.warn('[Output Validation] Cover letter generation rejected due to severe hallucination:', outputValidation.warnings);
+                    }
                 } catch (error) {
                     console.error('Stream error:', error);
                     controller.error(error);

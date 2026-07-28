@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { generateApplicationAnswer } from '@/lib/generator';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { validateCustomInstructionSemantics, validateGeneratedAsset } from '@/lib/asset-validator';
 
 export async function POST(
   request: Request,
@@ -18,8 +19,23 @@ export async function POST(
     const body = await request.json();
     const { question, tone, instruction } = body;
 
-    if (!question) {
+    if (!question || typeof question !== 'string' || !question.trim()) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
+    }
+
+    // Security Guard 1: Input Length Caps (question <= 300, instruction <= 200)
+    if (question.length > 300) {
+      return NextResponse.json({ error: 'Question must be 300 characters or fewer.' }, { status: 400 });
+    }
+    if (instruction && typeof instruction === 'string' && !['shorter', 'longer', 'different'].includes(instruction) && instruction.length > 200) {
+      return NextResponse.json({ error: 'Custom instruction must be 200 characters or fewer.' }, { status: 400 });
+    }
+
+    // Security Guard 2: Contextual Semantic Validation Check
+    const fullPromptText = `${question}${instruction ? ' - ' + instruction : ''}`;
+    const semanticCheck = validateCustomInstructionSemantics(fullPromptText, 'qa');
+    if (!semanticCheck.isValid) {
+      return NextResponse.json({ error: semanticCheck.reason }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } });
@@ -66,6 +82,16 @@ export async function POST(
       tone,
       instruction
     );
+
+    // Security Guard 3: Output Validation Check for severe hallucination
+    const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
+    const baseResumeText = userPrefs?.resumeMarkdown || '';
+    const outputValidation = validateGeneratedAsset(answer, baseResumeText, userJob.job.description || '', 'qa');
+
+    if (outputValidation.severeHallucination) {
+      console.warn('[Output Validation] Q&A answer generation rejected due to severe hallucination:', outputValidation.warnings);
+      return NextResponse.json({ error: 'Generated answer failed quality verification. Please refine your question.' }, { status: 422 });
+    }
 
     asset = await prisma.applicationAsset.update({
       where: { id: asset.id },

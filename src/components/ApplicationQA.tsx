@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown, RotateCcw } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown, RotateCcw, Pencil, X } from 'lucide-react';
 import DownloadTextButton from './DownloadTextButton';
 
 export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed = 0 }: { jobId: string; planTier?: string; initialQaUsed?: number }) {
@@ -20,8 +20,18 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
   const limit = isPro ? 10 : 2;
   const regensLeft = limit - qaUsed;
 
+  // Custom prompt & length limit state
+  const [showCustomPrompt, setShowCustomPrompt] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const customPromptInputRef = useRef<HTMLInputElement>(null);
+  const MAX_QUESTION_CHARS = 300;
+  const MAX_CUSTOM_CHARS = 200;
+
   const handleGenerate = async (instruction?: string) => {
     if (!question.trim() || regensLeft <= 0) return;
+    
+    setShowCustomPrompt(false);
+    setCustomPrompt('');
     
     setIsLoading(true);
     setError('');
@@ -101,22 +111,29 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
         </p>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <textarea
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="e.g. Why do you want to work at this company?"
-          style={{
-            width: '100%',
-            minHeight: '80px',
-            padding: '1rem',
-            background: 'var(--bg-color)',
-            border: '1px solid var(--border-glass)',
-            borderRadius: '8px',
-            color: 'var(--text-primary)',
-            resize: 'vertical',
-            fontFamily: 'inherit'
-          }}
-        />
+        <div style={{ position: 'relative' }}>
+          <textarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value.slice(0, MAX_QUESTION_CHARS))}
+            placeholder="e.g. Why do you want to work at this company?"
+            maxLength={MAX_QUESTION_CHARS}
+            style={{
+              width: '100%',
+              minHeight: '80px',
+              padding: '1rem',
+              paddingBottom: '1.8rem',
+              background: 'var(--bg-color)',
+              border: '1px solid var(--border-glass)',
+              borderRadius: '8px',
+              color: 'var(--text-primary)',
+              resize: 'vertical',
+              fontFamily: 'inherit'
+            }}
+          />
+          <span style={{ position: 'absolute', bottom: '0.5rem', right: '0.75rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            {question.length}/{MAX_QUESTION_CHARS}
+          </span>
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <select 
@@ -233,6 +250,29 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
               <button onClick={() => handleGenerate('longer')} disabled={isLoading || regensLeft <= 0} title={regensLeft <= 0 && !isPro ? "Upgrade to Pro for more" : ""} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Maximize2 size={14} />} Expand
               </button>
+              <button
+                onClick={() => {
+                  setShowCustomPrompt(v => !v);
+                  if (!showCustomPrompt) {
+                    setTimeout(() => customPromptInputRef.current?.focus(), 50);
+                  }
+                }}
+                disabled={isLoading || regensLeft <= 0}
+                className="btn-outline"
+                title={showCustomPrompt ? 'Close custom prompt' : 'Enter a custom instruction'}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  background: showCustomPrompt ? 'var(--accent-primary)' : undefined,
+                  color: showCustomPrompt ? '#fff' : undefined,
+                  borderColor: showCustomPrompt ? 'var(--accent-primary)' : undefined,
+                }}
+              >
+                <Pencil size={14} /> Custom
+              </button>
               
               <div style={{ flexGrow: 1 }} />
               
@@ -256,6 +296,67 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
                 {savedPref ? 'Saved to Preferences' : 'Save as Preference'}
               </button>
             </div>
+
+            {/* Custom prompt inline row */}
+            {showCustomPrompt && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginTop: '0.75rem',
+                padding: '0.75rem',
+                background: 'var(--glass-bg, rgba(255,255,255,0.04))',
+                border: '1px solid var(--border-color)',
+                borderRadius: '0.5rem',
+                flexWrap: 'wrap',
+              }}>
+                <input
+                  ref={customPromptInputRef}
+                  type="text"
+                  value={customPrompt}
+                  onChange={e => setCustomPrompt(e.target.value.slice(0, MAX_CUSTOM_CHARS))}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && customPrompt.trim() && !isLoading && regensLeft > 0) {
+                      handleGenerate(customPrompt.trim());
+                    }
+                    if (e.key === 'Escape') { setShowCustomPrompt(false); setCustomPrompt(''); }
+                  }}
+                  placeholder='e.g. "Focus on my leadership & project management metrics"'
+                  maxLength={MAX_CUSTOM_CHARS}
+                  disabled={isLoading}
+                  style={{
+                    flex: 1,
+                    minWidth: '180px',
+                    padding: '0.4rem 0.6rem',
+                    fontSize: '0.82rem',
+                    background: 'var(--input-bg, rgba(0,0,0,0.2))',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '0.375rem',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                  }}
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                  {customPrompt.length}/{MAX_CUSTOM_CHARS}
+                </span>
+                <button
+                  onClick={() => { if (customPrompt.trim()) handleGenerate(customPrompt.trim()); }}
+                  disabled={isLoading || !customPrompt.trim() || regensLeft <= 0}
+                  className="btn-primary"
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  {isLoading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Generate
+                </button>
+                <button
+                  onClick={() => { setShowCustomPrompt(false); setCustomPrompt(''); }}
+                  className="btn-outline"
+                  style={{ padding: '0.4rem 0.5rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center' }}
+                  title="Close"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
