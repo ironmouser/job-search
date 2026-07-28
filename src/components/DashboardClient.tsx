@@ -255,40 +255,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     }
   }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, itemsPerPage, currentPage, isLoaded]);
 
-  // Scroll to top of last clicked job when returning to dashboard
-  useEffect(() => {
-    if (!isLoaded || currentJobs.length === 0) return;
-
-    const lastJobId = typeof window !== 'undefined'
-      ? (sessionStorage.getItem('last_clicked_job_id') || localStorage.getItem('last_clicked_job_id'))
-      : null;
-
-    if (!lastJobId) return;
-
-    const scrollElement = () => {
-      const el = document.getElementById(`job-item-${lastJobId}`);
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const targetY = rect.top + scrollTop - 100;
-        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
-
-        sessionStorage.removeItem('last_clicked_job_id');
-        localStorage.removeItem('last_clicked_job_id');
-        return true;
-      }
-      return false;
-    };
-
-    if (!scrollElement()) {
-      const t1 = setTimeout(scrollElement, 150);
-      const t2 = setTimeout(scrollElement, 400);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
-    }
-  }, [isLoaded, currentJobs, viewMode]);
 
   const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
     if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
@@ -586,6 +552,41 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const currentJobs = filteredAndSortedJobs.slice(startIndex, endIndex);
 
   const { nudgeJobId, handleDismiss: handleNudgeDismiss, handleFeedbackGiven: handleNudgeFeedbackGiven } = useDashboardFeedbackNudge(currentJobs);
+
+  // Scroll to top of last clicked job when returning to dashboard
+  useEffect(() => {
+    if (!isLoaded || currentJobs.length === 0) return;
+
+    const lastJobId = typeof window !== 'undefined'
+      ? (sessionStorage.getItem('last_clicked_job_id') || localStorage.getItem('last_clicked_job_id'))
+      : null;
+
+    if (!lastJobId) return;
+
+    const scrollElement = () => {
+      const el = document.getElementById(`job-item-${lastJobId}`);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetY = rect.top + scrollTop - 100;
+        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+
+        sessionStorage.removeItem('last_clicked_job_id');
+        localStorage.removeItem('last_clicked_job_id');
+        return true;
+      }
+      return false;
+    };
+
+    if (!scrollElement()) {
+      const t1 = setTimeout(scrollElement, 150);
+      const t2 = setTimeout(scrollElement, 400);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [isLoaded, currentJobs, viewMode]);
 
   useEffect(() => {
     if (userPlanTier !== 'PRO' && scoresExhausted) return;
