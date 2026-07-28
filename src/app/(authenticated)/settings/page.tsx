@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target } from 'lucide-react';
+import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+
+// Video instructions for email client setup
+const EMAIL_VIDEO_LINKS: Record<string, string> = {
+    gmail: 'https://www.youtube.com/watch?v=ajIJ4dH2H0M',
+    outlook: 'https://youtu.be/u5Xm1LMJOdE?si=QbzwkHC4hZdOnbuG',
+    yahoo: 'https://youtu.be/ZNsQQT9KoIU?si=QqerSZF9rMUEdPlA',
+    icloud: 'https://www.youtube.com/watch?v=RpYRdHx9WNw',
+};
 
 // Helper for deep equality check to detect dirty settings state
 const isDeepEqual = (a: any, b: any): boolean => {
@@ -685,9 +693,33 @@ export default function SettingsPage() {
                         </div>
 
                         <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
-                            <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: 600 }}>
-                                Connection Instructions
-                            </h4>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
+                                    Connection Instructions
+                                </h4>
+                                {EMAIL_VIDEO_LINKS[emailProvider] && (
+                                    <a 
+                                        href={EMAIL_VIDEO_LINKS[emailProvider]}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ 
+                                            display: 'inline-flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.4rem', 
+                                            fontSize: '0.8rem', 
+                                            color: '#3b82f6', 
+                                            fontWeight: 600,
+                                            textDecoration: 'none',
+                                            padding: '0.3rem 0.75rem',
+                                            borderRadius: '6px',
+                                            background: 'rgba(59, 130, 246, 0.12)',
+                                            border: '1px solid rgba(59, 130, 246, 0.25)'
+                                        }}
+                                    >
+                                        <PlayCircle size={15} /> Watch How To Video <ExternalLink size={13} />
+                                    </a>
+                                )}
+                            </div>
                             <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                 {emailProvider === 'gmail' && (
                                     <>
