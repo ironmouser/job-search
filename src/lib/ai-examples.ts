@@ -62,14 +62,35 @@ I look forward to speaking to you about this position and discussing how my clin
 export const NETWORKING_REFERENCE_EXAMPLES = `
 HUMAN NETWORKING MESSAGE REFERENCE EXAMPLES (Study how these messages use natural conversational openings from human letters to build instant connection without cliché AI phrasing or hyphenated modifiers):
 
-Example 1 (Proactive Value-Add):
-"Hi [Name], I understand your team at Systems is actively expanding operations with a focus on digital integration. As an IT Project Manager who recently directed a $500k digital transformation project and cut incidents by 5%, I would love to connect and follow your team's growth!"
+Example 1 (Direct Application & LinkedIn Referral):
+"Hi Sydney,
 
-Example 2 (Product/Mission Admiration):
-"Hi [Name], as a creative online native obsessed with the ImageMap app, I was excited to see your post for the Social Media Associate opening. With a track record of boosting multi platform engagement by 240% and spearheading 13 viral campaigns, I would welcome the opportunity to connect and discuss how my content skills align with your brand."
+We have never met in person before, but I recently applied for the open position in your marketing team. I’m hoping that my background and qualifications are enough to catch your eye (since I’m sure you have a lot of applications to look through), but I thought my LinkedIn page might give you better insight into how I could fit into your company.
 
-Example 3 (Shared Initiative & Idea Pitching):
-"Hi [Name], I have been following InnoTech's journey closely and am deeply impressed by your recent Marketing Master Class initiative for small businesses. Having led campaigns that generated 22% revenue growth within six months, I would love to connect and share a few mentorship and optimization ideas I have for your team."
+If I can do anything to help or answer any questions, please let me know."
+
+Example 2 (Role & Function Interest Connection):
+"Hi [Name]! Hope you are doing well. My name is Ash and I am an engineering program manager and highly interested in the TPM function at [Company] and have applied to [Role]! Would love to chat further and introduce myself. Thank you for taking the time to connect!"
+
+Example 3 (Student/Internship Outreach):
+"I hope this message finds you well. My name is Sarah Chen, and I am a junior at the University of California, Berkeley, majoring in Marketing. I'm reaching out because I am eager to learn about internship opportunities at Procter & Gamble.
+
+I admire P&G’s commitment to innovation and sustainability, and I believe that an internship there would be invaluable for my professional growth. If you have any insights on the internship program or could point me to someone who might, I would greatly appreciate it.
+
+Thank you for your time, and I hope to hear from you soon!"
+
+Example 4 (Job Post Outreach):
+"Hi [Name], I saw your post about [Job Title]. With my background in [Key Skill], I’d love to learn more about the position and how I can support your team."
+
+Example 5 (Recruiter Direct Outreach Post-Application):
+"Hi [Recruiter's Name],
+
+I saw the [Job Title] role listed on your profile/company page and wanted to reach out directly. With [X years] of experience in [relevant skills], I believe I match the job’s requirements well.
+
+I’ve just submitted my application, but I’d appreciate the chance to connect or share any extra details you might need.
+
+Thanks in advance,
+[Your Name]"
 `;
 
 export const QA_REFERENCE_EXAMPLES = `
