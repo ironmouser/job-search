@@ -158,9 +158,7 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
               color: 'var(--text-primary)', 
               wordBreak: 'break-all', 
               background: 'rgba(0,0,0,0.25)', 
-              padding: '0.5rem 0.75rem', 
-              borderRadius: '6px',
-              fontFamily: 'monospace'
+              borderRadius: '6px'
             }}>
               {jobUrl}
             </div>

@@ -236,7 +236,6 @@ export default function NetworkingAssetCard({
                                 border: '1px solid var(--border-glass)', 
                                 background: 'rgba(0,0,0,0.2)', 
                                 color: 'var(--text-primary)', 
-                                fontFamily: 'monospace',
                                 fontSize: '0.9rem',
                                 resize: 'vertical'
                             }} 

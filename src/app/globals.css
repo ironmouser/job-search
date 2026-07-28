@@ -678,7 +678,6 @@ body.light-theme .minimize-btn:hover {
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
   overflow: hidden;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.75rem;
 }
 

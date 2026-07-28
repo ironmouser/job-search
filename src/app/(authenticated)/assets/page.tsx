@@ -134,7 +134,6 @@ export default function AssetsPage() {
                         borderRadius: '8px',
                         color: 'var(--text-primary)',
                         padding: '1rem',
-                        fontFamily: 'monospace',
                         fontSize: '0.9rem',
                         resize: 'vertical'
                     }}
@@ -183,7 +182,6 @@ export default function AssetsPage() {
                         borderRadius: '8px',
                         color: 'var(--text-primary)',
                         padding: '1.5rem',
-                        fontFamily: 'monospace',
                         fontSize: '0.95rem',
                         resize: 'vertical'
                     }}

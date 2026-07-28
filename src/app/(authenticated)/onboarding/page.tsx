@@ -312,7 +312,7 @@ ${goal}
                                 value={formData.resumeMarkdown}
                                 onChange={(e) => handleChange('resumeMarkdown', e.target.value)}
                                 placeholder="Paste your resume here (Markdown, plain text, or rich text)..."
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '1rem', borderRadius: '8px', minHeight: '250px', resize: 'vertical', fontFamily: 'monospace', fontSize: '0.9rem' }}
+                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '1rem', borderRadius: '8px', minHeight: '250px', resize: 'vertical', fontSize: '0.9rem' }}
                             />
                         </div>
                     </div>

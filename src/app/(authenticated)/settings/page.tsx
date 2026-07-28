@@ -572,7 +572,7 @@ export default function SettingsPage() {
                                 }}
                                 placeholder={isPro ? "https://boards.greenhouse.io/anthropic\nhttps://jobs.lever.co/openai" : "Upgrade to Pro to add custom career pages"}
                                 title={!isPro ? "Upgrade to Pro to use this feature" : ""}
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', minHeight: '100px', resize: isPro ? 'vertical' : 'none', fontFamily: 'monospace', cursor: isPro ? 'text' : 'not-allowed' }}
+                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', minHeight: '100px', resize: isPro ? 'vertical' : 'none', cursor: isPro ? 'text' : 'not-allowed' }}
                             />
                             <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                                 {isPro ? 'Put each URL on a new line. These bypass the generic Search Keyword and directly scrape the company page.' : 'Upgrade to Pro to bypass the generic search and directly scrape specific company career pages.'}

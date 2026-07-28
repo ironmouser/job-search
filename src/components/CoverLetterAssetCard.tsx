@@ -511,7 +511,6 @@ export default function CoverLetterAssetCard({
                                         border: '1px solid #ccc',
                                         background: '#f9f9f9',
                                         color: '#1a1a1a',
-                                        fontFamily: 'monospace',
                                         fontSize: '0.9rem',
                                         resize: 'vertical',
                                         boxSizing: 'border-box',
