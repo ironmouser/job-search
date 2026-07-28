@@ -2,9 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { gotScraping } from 'got-scraping';
-import * as cheerio from 'cheerio';
-import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 
 import { fetchJobDescription, extractUrlFromStubDescription } from '@/lib/jobFetcher';
@@ -34,16 +31,16 @@ export async function POST(
             return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
 
-        if (!job.url) {
-            return NextResponse.json({ error: 'Job has no URL' }, { status: 400 });
-        }
-
         // Try URLs in priority order: embedded URL in stub description, then job.url
         const stubUrl = extractUrlFromStubDescription(job.description);
         const urlsToTry = [...new Set([stubUrl, job.url].filter(Boolean))] as string[];
 
+        if (urlsToTry.length === 0) {
+            return NextResponse.json({ error: 'Job has no URL to fetch from' }, { status: 400 });
+        }
+
         let description: string | null = null;
-        let usedUrl = job.url;
+        let usedUrl: string = urlsToTry[0];
         for (const tryUrl of urlsToTry) {
             description = await fetchJobDescription(tryUrl);
             if (description) { usedUrl = tryUrl; break; }
