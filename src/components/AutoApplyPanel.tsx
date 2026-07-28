@@ -121,6 +121,16 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
     return () => clearInterval(interval);
   }, [isActive, fetchStatus]);
 
+  // When auto-apply succeeds (real or simulation), mark this job for confetti on the dashboard
+  useEffect(() => {
+    if (
+      session?.status === AutoApplyStatus.APPLIED ||
+      session?.status === AutoApplyStatus.SIMULATED
+    ) {
+      sessionStorage.setItem('just_applied_job_id', jobId);
+    }
+  }, [session?.status, jobId]);
+
   const pendingIntervention = session?.interventions?.[0] ?? null;
 
   return (

@@ -56,12 +56,36 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [confettiJobId, setConfettiJobId] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
   const scoringInProgress = useRef(new Set<string>());
   const isPageInitialized = useRef(false);
+
+  // Trigger confetti on the card of the job the user just applied to
+  useEffect(() => {
+    const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem('just_applied_job_id') : null;
+    const urlId = searchParams?.get('justApplied');
+    const targetId = urlId || sessionId;
+    if (!targetId) return;
+
+    setConfettiJobId(targetId);
+
+    // Clean up storage and URL param so confetti only fires once
+    if (sessionId) sessionStorage.removeItem('just_applied_job_id');
+    if (urlId && typeof window !== 'undefined') {
+      const next = new URL(window.location.href);
+      next.searchParams.delete('justApplied');
+      window.history.replaceState({}, '', next.toString());
+    }
+
+    // Remove the class after 3 seconds
+    const timer = setTimeout(() => setConfettiJobId(null), 3000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Restore page number and items per page from URL, localStorage, or sessionStorage on mount
   useEffect(() => {
@@ -892,7 +916,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   };
                   
                   return (
-                    <tr key={job.id} style={rowStyle}>
+                    <tr key={job.id} className={confettiJobId === job.id ? 'job-card confetti' : 'job-card'} style={rowStyle}>
                       <td style={{ padding: '1rem', borderLeft: isViewed ? '4px solid #2663EB' : '4px solid transparent' }}>
                         <input 
                           type="checkbox" 
@@ -1033,7 +1057,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             };
             
             return (
-              <div key={job.id} className="glass-card job-card" style={cardStyle}>
+              <div key={job.id} className={`glass-card job-card${confettiJobId === job.id ? ' confetti' : ''}`} style={cardStyle}>
                 <div className="job-header">
                   <div>
                     <div className="job-company" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>

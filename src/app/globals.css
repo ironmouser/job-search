@@ -1321,3 +1321,25 @@ body.light-theme .sync-overlay-content {
 .animate-spin {
   animation: spin 1s linear infinite !important;
 }
+.confetti {
+  position: relative;
+  overflow: hidden;
+}
+.confetti::before {
+    content: "";
+    display: flex;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: url(confetti.webp) center / cover no-repeat;
+    pointer-events: none;
+    z-index: 10;
+    animation: confettiFade 3s ease-in-out forwards;
+}
+@keyframes confettiFade {
+  0%   { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}

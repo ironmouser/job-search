@@ -54,6 +54,9 @@ export default function AutofillButton({ jobId, jobUrl, jobTitle, jobCompany, is
         targetUrl = `https://www.google.com/search?q=${searchQuery}`;
       }
 
+      // Mark this job as just-applied so the dashboard can show confetti
+      sessionStorage.setItem('just_applied_job_id', jobId);
+
       // Open the job board (or Google search fallback) in a new tab
       window.open(targetUrl, '_blank');
       
