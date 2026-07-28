@@ -316,7 +316,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const getEffectiveStatus = (job: any) => {
     if (job.status === 'applied' || job.applied_at) return 'applied';
     if (job.status === 'interviewing') return 'interviewing';
-    if (job.is_archived) return 'archived';
+    if (job.is_archived) return 'saved';
     if (hasJobScore(job)) return 'scored';
     return job.status || 'discovered';
   };
