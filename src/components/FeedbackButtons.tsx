@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { submitJobFeedback } from '@/app/(authenticated)/job/[id]/actions';
-import { ThumbsUp, ThumbsDown, X, Bookmark } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, X, Bookmark, BookmarkX } from 'lucide-react';
 import FeedbackNudgeTooltip from './FeedbackNudgeTooltip';
 
 const DISLIKE_REASONS = [
@@ -280,7 +280,11 @@ export default function FeedbackButtons({
           }}
           title={isSaved ? "Saved for later" : "Save for later"}
         >
-          <Bookmark size={18} fill={isSaved ? 'var(--accent-primary)' : 'none'} color={isSaved ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
+          {isSaved ? (
+            <BookmarkX size={18} color="var(--accent-primary)" />
+          ) : (
+            <Bookmark size={18} fill="none" color="var(--text-secondary)" />
+          )}
           <span>{isSaved ? 'Saved' : 'Save for later'}</span>
         </button>
       )}

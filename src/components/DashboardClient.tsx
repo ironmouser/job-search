@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
@@ -1002,8 +1002,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                             onNudgeDismiss={handleNudgeDismiss}
                             onFeedbackGiven={handleNudgeFeedbackGiven}
                           />
-                          <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} title={job.is_archived ? "Unsave" : "Save"}>
-                            <Archive size={14} />
+                          <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} title={job.is_archived ? "Unsave" : "Save"}>
+                            {job.is_archived ? <BookmarkX size={14} /> : <Bookmark size={14} />}
                           </button>
                           <button onClick={() => deleteJob(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Delete">
                             <Trash2 size={14} />
@@ -1133,8 +1133,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                           fetchStatuses[job.id] === 'error' ? 'Failed - Retry' : 'Fetch Details'}
                        </button>
                     )}
-                    <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }} title={job.is_archived ? "Unsave" : "Save"}>
-                      <Archive size={14} />
+                    <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem', color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} title={job.is_archived ? "Unsave" : "Save"}>
+                      {job.is_archived ? <BookmarkX size={14} /> : <Bookmark size={14} />}
                     </button>
                     <button onClick={() => deleteJob(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Delete">
                       <Trash2 size={14} />
