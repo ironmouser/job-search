@@ -727,6 +727,11 @@ body.light-theme .minimize-btn:hover {
   background: color-mix(in srgb, var(--accent-primary) var(--card-tint-opacity), var(--bg-glass));
 }
 
+/* Table view row hover — separate from card layout */
+table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .job-header {
   display: flex;
   justify-content: space-between;

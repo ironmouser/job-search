@@ -924,7 +924,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   };
                   
                   return (
-                    <tr key={job.id} className="job-card" style={rowStyle}>
+                    <tr key={job.id} style={rowStyle}>
                       <td style={{ padding: '1rem', borderLeft: isViewed ? '4px solid #2663EB' : '4px solid transparent' }}>
                         <input 
                           type="checkbox" 
