@@ -579,6 +579,17 @@ export default function SettingsPage() {
                             </span>
                         </div>
 
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)' }}>
+                            <button 
+                                onClick={() => handleSave()} 
+                                disabled={saving}
+                                className="btn-primary" 
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <Save size={18} />
+                                {saving ? 'Saving...' : 'Save Settings'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -635,6 +646,18 @@ export default function SettingsPage() {
                             <Link href="/assets" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
                                 <FileText size={16} /> Manage Base Resume
                             </Link>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)' }}>
+                            <button 
+                                onClick={() => handleSave()} 
+                                disabled={saving}
+                                className="btn-primary" 
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <Save size={18} />
+                                {saving ? 'Saving...' : 'Save Settings'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -784,6 +807,17 @@ export default function SettingsPage() {
                             )}
                         </div>
 
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)' }}>
+                            <button 
+                                onClick={() => handleSave()} 
+                                disabled={saving}
+                                className="btn-primary" 
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <Save size={18} />
+                                {saving ? 'Saving...' : 'Save Settings'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
