@@ -133,18 +133,18 @@ ${uniqueUrls.join('\n')}
              const boardMatch = JOB_BOARDS.find(b => job.url.toLowerCase().includes(b)) || job.source;
              const sourceCategory = boardMatch ? `Email Sync (${boardMatch})` : 'Email Sync';
              
+             const shortDescParts = [job.description, job.requirements].filter(Boolean).map(s => String(s).trim()).filter(s => s.length > 0);
+             const extractedDesc = shortDescParts.join('\n\n');
+             const finalDesc = (extractedDesc.length > 15) 
+               ? `${extractedDesc}\n\nFound via email link: ${job.url}`
+               : `Found via email link: ${job.url}`;
+
              rawJobs.push({
                 title: jobTitle,
                 company: cleanCompanyName(job.company) || 'Unknown Company',
                 location: job.location || 'Remote/Unknown',
-                salary_range: null,
-                // Use a sentinel stub that extractUrlFromStubDescription can parse.
-                // The score API will detect this stub, fetch the real description from
-                // the job URL, and then score normally. This avoids the hard
-                // isDescriptionAdequate rejection that blocks scoring.
-                description: job.description && job.description.trim().length > 50
-                  ? job.description.trim()
-                  : `Found via email link: ${job.url}`,
+                salary_range: job.salary_range || null,
+                description: finalDesc,
                 requirements: job.requirements || null,
                 url: job.url,
                 source: sourceCategory

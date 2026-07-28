@@ -44,9 +44,8 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
 
     if (excludeTerms.length > 0) {
         normalizedJobs = normalizedJobs.filter(j => {
-            const titleLower = j.title.toLowerCase();
-            const companyLower = j.company.toLowerCase();
-            const hit = excludeTerms.find(term => titleLower.includes(term) || companyLower.includes(term));
+            const contentLower = `${j.title} ${j.company} ${j.description || ''}`.toLowerCase();
+            const hit = excludeTerms.find(term => contentLower.includes(term));
             if (hit) {
                 console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to excluded keyword: "${hit}"`);
                 return false;
@@ -55,15 +54,23 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
         });
     }
 
-    if (includeTerms.length > 0 && !options.isEmailSync) {
+    if (includeTerms.length > 0) {
         normalizedJobs = normalizedJobs.filter(j => {
-            const contentLower = `${j.title} ${j.description || ''}`.toLowerCase();
+            const desc = j.description || '';
+            const isStubOnly = /^found via email link:\s*https?:/i.test(desc.trim());
+            const contentLower = `${j.title} ${desc}`.toLowerCase();
             const match = includeTerms.some(term => contentLower.includes(term));
-            if (!match) {
-                console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to missing required keywords.`);
-                return false;
+
+            if (match) return true;
+
+            // If it's an email job with only a bare URL stub, pass open so we don't discard
+            // before the full URL is scraped in the background.
+            if (options.isEmailSync && isStubOnly) {
+                return true;
             }
-            return true;
+
+            console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to missing required keywords.`);
+            return false;
         });
     }
 

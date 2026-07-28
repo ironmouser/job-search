@@ -182,8 +182,9 @@ Return a JSON array of objects strictly matching this schema:
   "company": "Company Name",
   "location": "Location (e.g. Remote, or city)",
   "url": "The link to the job posting",
-  "description": "The full, detailed job description provided in the email. Extract as much detail as possible.",
-  "requirements": "A detailed list of requirements, skills, or qualifications mentioned in the email, if any."
+  "description": "Any job description, summary text, skill tags, or key topics provided in the email text for this role (e.g., 'AI, Automation, B2B, Product management, SaaS'). Extract as much detail as possible.",
+  "requirements": "A detailed list of requirements, skills, or qualifications mentioned in the email, if any.",
+  "salary_range": "Salary range if mentioned in the email (e.g. $150k - $175k yearly), otherwise null"
 }]
 
 If there are no jobs, return an empty array [].
