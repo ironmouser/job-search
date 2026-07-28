@@ -613,6 +613,11 @@ export default function CoverLetterAssetCard({
                     )}
                 </div>
 
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <CopyToClipboardButton textToCopy={fullLetterText} label="Copy Text" />
+                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.pdf`} label="Download PDF" />
+                </div>
+
                 {error && (
                     <div style={{ padding: '1rem', background: 'rgba(255, 77, 77, 0.1)', color: 'var(--danger)', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '1rem' }}>
                         {error}
