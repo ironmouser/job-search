@@ -13,6 +13,13 @@ export async function POST(req: Request) {
 
     const { name, image } = await req.json();
 
+    if (name !== undefined && (typeof name !== 'string' || name.length > 100)) {
+      return new NextResponse("Invalid name length", { status: 400 });
+    }
+    if (image !== undefined && (typeof image !== 'string' || image.length > 1000 || !image.startsWith('http'))) {
+      return new NextResponse("Invalid image URL", { status: 400 });
+    }
+
     const user = await prisma.user.update({
       where: {
         email: session.user.email,

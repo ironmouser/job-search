@@ -82,6 +82,25 @@ export async function POST(request: Request) {
         }
 
         const data = await request.json();
+        
+        // Basic Input Validation for length bounds
+        const MAX_KEYWORD_LENGTH = 200;
+        const MAX_PROFILE_LENGTH = 10000;
+        const MAX_RESUME_LENGTH = 50000;
+        
+        if (data.searchKeyword && typeof data.searchKeyword === 'string' && data.searchKeyword.length > MAX_KEYWORD_LENGTH) {
+             return NextResponse.json({ error: 'Search keyword is too long.' }, { status: 400 });
+        }
+        if (data.searchLocation && typeof data.searchLocation === 'string' && data.searchLocation.length > MAX_KEYWORD_LENGTH) {
+             return NextResponse.json({ error: 'Search location is too long.' }, { status: 400 });
+        }
+        if (data.profile && typeof data.profile === 'string' && data.profile.length > MAX_PROFILE_LENGTH) {
+             return NextResponse.json({ error: 'Profile is too long.' }, { status: 400 });
+        }
+        if (data.resumeMarkdown && typeof data.resumeMarkdown === 'string' && data.resumeMarkdown.length > MAX_RESUME_LENGTH) {
+             return NextResponse.json({ error: 'Resume markdown is too long.' }, { status: 400 });
+        }
+
         const isPro = (session.user as any).planTier === 'PRO';
 
         // Strip Pro-only fields for free users

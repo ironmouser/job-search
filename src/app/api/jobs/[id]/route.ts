@@ -17,6 +17,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         const { id } = await context.params;
         const { status, applied_at, applicationUrl, description } = await request.json();
 
+        if (description || applicationUrl) {
+            const job = await prisma.job.findUnique({
+                where: { id },
+                select: { addedById: true }
+            });
+            if (!job) {
+                return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+            }
+            
+            const isAdmin = (session.user as any).role === 'ADMIN';
+            if (!isAdmin && job.addedById !== userId) {
+                return NextResponse.json(
+                    { error: 'Unauthorized to modify shared job properties. Only the original creator can edit this job.' },
+                    { status: 403 }
+                );
+            }
+        }
+
         if (description) {
             let formattedDesc = description;
             if (formattedDesc.length > 50 && !formattedDesc.includes('## ')) {
