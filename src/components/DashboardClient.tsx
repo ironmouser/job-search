@@ -84,8 +84,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       window.history.replaceState({}, '', next.toString());
     }
 
-    // Remove the class after 3 seconds
-    const timer = setTimeout(() => setConfettiJobId(null), 3000);
+    // Remove the class after 9 seconds
+    const timer = setTimeout(() => setConfettiJobId(null), 9000);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

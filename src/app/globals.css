@@ -1347,7 +1347,7 @@ body.light-theme .sync-overlay-content {
     background: url('/confetti.webp') center / cover no-repeat;
     pointer-events: none;
     z-index: 10;
-    animation: confettiFade 3s ease-in-out forwards;
+    animation: confettiFade 9s ease-in-out forwards;
 }
 @keyframes confettiFade {
   0%   { opacity: 1; }
