@@ -916,7 +916,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                   };
                   
                   return (
-                    <tr key={job.id} className={confettiJobId === job.id ? 'job-card confetti' : 'job-card'} style={rowStyle}>
+                    <tr key={job.id} className="job-card" style={rowStyle}>
                       <td style={{ padding: '1rem', borderLeft: isViewed ? '4px solid #2663EB' : '4px solid transparent' }}>
                         <input 
                           type="checkbox" 
@@ -936,7 +936,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td className={confettiJobId === job.id ? 'confetti' : undefined} style={{ padding: '1rem' }}>
                         <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className={isEmailJob ? 'email-job-title' : 'job-title'} style={{ textDecoration: 'none', fontWeight: 600, fontSize: '1.1rem' }}>
                           {job.title}
                         </Link>
