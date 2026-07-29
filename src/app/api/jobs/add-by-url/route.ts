@@ -23,7 +23,8 @@ JSON Structure:
   "company": "Company Name",
   "location": "Location or Remote",
   "salaryRange": "Salary info if present or null",
-  "description": "Clean markdown formatted job description"
+  "description": "Clean markdown formatted job description",
+  "is_legitimate_job_posting": boolean
 }
 
 Web Page Content:
@@ -62,14 +63,10 @@ export async function POST(request: Request) {
 
     const cleanUrl = rawUrl ? cleanJobUrl(rawUrl) : `manual-${Date.now()}@userjob`;
 
-    // 0. Trusted Domain Check (Phishing Prevention)
-    if (rawUrl && !isTrustedJobUrl(cleanUrl)) {
-      await logSuspiciousActivity({ type: 'UNTRUSTED_URL_SUBMISSION', message: 'Attempted to add untrusted URL', userId, metadata: { url: cleanUrl } });
-      return NextResponse.json({ 
-        error: 'UNTRUSTED_SOURCE',
-        message: 'This URL is not from a verified job board or ATS. For your security, we only allow scraping from trusted sites like LinkedIn, Greenhouse, Lever, Workday, etc.'
-      }, { status: 400 });
-    }
+    const isTrusted = isTrustedJobUrl(cleanUrl);
+
+    // We no longer block untrusted URLs immediately.
+    // Instead, we verify their content using the LLM later in the pipeline.
 
     // 1. Check if job already exists in DB by cleanUrl
     let job = rawUrl ? await prisma.job.findUnique({ where: { url: cleanUrl } }) : null;
@@ -175,10 +172,19 @@ export async function POST(request: Request) {
           description = htmlBody;
         }
 
-        // If metadata is incomplete or description is raw HTML, attempt Gemini extraction
-        if ((!title || !company || description.includes('<')) && process.env.GEMINI_API_KEY) {
+        // If metadata is incomplete, description is raw HTML, or it's an untrusted URL, attempt LLM extraction/verification
+        if ((!title || !company || description.includes('<') || !isTrusted) && process.env.GEMINI_API_KEY) {
           const aiExtracted = await extractJobMetadataWithGemini(description || $('body').text());
           if (aiExtracted) {
+            // For custom/untrusted URLs, strictly enforce AI verification
+            if (!isTrusted && aiExtracted.is_legitimate_job_posting === false) {
+              await logSuspiciousActivity({ type: 'AI_PHISHING_FLAG', message: 'AI flagged submitted URL as non-job or malicious content', userId, metadata: { url: cleanUrl } });
+              return NextResponse.json({ 
+                error: 'UNTRUSTED_SOURCE',
+                message: 'We could not verify that this URL is a legitimate job posting. For your security, we only allow verified job postings to be added.'
+              }, { status: 400 });
+            }
+
             if (!title && aiExtracted.title) title = aiExtracted.title;
             if (!company && aiExtracted.company) company = aiExtracted.company;
             if (aiExtracted.location) location = aiExtracted.location;
@@ -186,6 +192,13 @@ export async function POST(request: Request) {
             if (aiExtracted.description && aiExtracted.description.length > 50) {
               description = aiExtracted.description;
             }
+          } else if (!isTrusted) {
+             // If AI extraction failed completely on an untrusted site, we block it to be safe
+             await logSuspiciousActivity({ type: 'AI_VERIFICATION_FAILED', message: 'AI failed to extract data from untrusted URL', userId, metadata: { url: cleanUrl } });
+             return NextResponse.json({ 
+                error: 'UNTRUSTED_SOURCE',
+                message: 'Failed to verify custom job URL. Please paste the job description manually.'
+              }, { status: 400 });
           }
         }
 
