@@ -8,7 +8,7 @@ import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { callDeepSeek } from '@/lib/deepseek';
-import { cleanJobUrl } from '@/lib/urlUtils';
+import { cleanJobUrl, isTrustedJobUrl } from '@/lib/urlUtils';
 
 async function extractJobMetadataWithGemini(rawText: string) {
   if (!process.env.DEEPSEEK_API_KEY || !rawText || rawText.trim().length === 0) {
@@ -61,8 +61,37 @@ export async function POST(request: Request) {
 
     const cleanUrl = rawUrl ? cleanJobUrl(rawUrl) : `manual-${Date.now()}@userjob`;
 
+    // 0. Trusted Domain Check (Phishing Prevention)
+    if (rawUrl && !isTrustedJobUrl(cleanUrl)) {
+      return NextResponse.json({ 
+        error: 'UNTRUSTED_SOURCE',
+        message: 'This URL is not from a verified job board or ATS. For your security, we only allow scraping from trusted sites like LinkedIn, Greenhouse, Lever, Workday, etc.'
+      }, { status: 400 });
+    }
+
     // 1. Check if job already exists in DB by cleanUrl
     let job = rawUrl ? await prisma.job.findUnique({ where: { url: cleanUrl } }) : null;
+
+    // Duplicate Check & Global Limit Check
+    if (job) {
+      const existingUserJob = await prisma.userJob.findUnique({
+        where: { userId_jobId: { userId, jobId: job.id } }
+      });
+      if (existingUserJob) {
+        return NextResponse.json({
+          error: 'ALREADY_SAVED',
+          message: 'You have already added this job to your pipeline.'
+        }, { status: 400 });
+      }
+
+      const globalCount = await prisma.userJob.count({ where: { jobId: job.id } });
+      if (globalCount >= 5) {
+        return NextResponse.json({
+          error: 'SUBMISSION_LIMIT_REACHED',
+          message: 'This job URL has been added by too many users and cannot be submitted again to prevent spam.'
+        }, { status: 403 });
+      }
+    }
 
     let title = manualTitle || job?.title || '';
     let company = manualCompany || job?.company || '';

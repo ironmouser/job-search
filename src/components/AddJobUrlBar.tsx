@@ -70,7 +70,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
           setShowManualModal(true);
           setErrorMsg('Unable to scrape this site directly. Please paste the job description manually below.');
         } else {
-          setErrorMsg(data.error || 'Failed to add job from URL');
+          setErrorMsg(data.message || data.error || 'Failed to add job from URL');
         }
         setIsLoading(false);
         return;
@@ -111,7 +111,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMsg(data.error || 'Failed to submit manual job details');
+        setErrorMsg(data.message || data.error || 'Failed to submit manual job details');
         setIsSubmittingManual(false);
         return;
       }

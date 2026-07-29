@@ -58,3 +58,36 @@ export function cleanJobUrl(rawUrl: string): string {
   }
 }
 
+export const TRUSTED_JOB_DOMAINS = [
+  'linkedin.com',
+  'indeed.com',
+  'glassdoor.com',
+  'ziprecruiter.com',
+  'wellfound.com',
+  'angel.co',
+  'greenhouse.io',
+  'lever.co',
+  'workday.com',
+  'myworkdayjobs.com',
+  'ashbyhq.com',
+  'workable.com',
+  'bamboohr.com',
+  'icims.com',
+  'smartrecruiters.com',
+  'taleo.net',
+  'breezy.hr',
+  'applytojob.com',
+];
+
+export function isTrustedJobUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    // Remove www. just in case
+    const hostname = parsed.hostname.replace(/^www\./, '');
+    return TRUSTED_JOB_DOMAINS.some(domain => 
+      hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false; // Invalid URLs are inherently untrusted
+  }
+}
