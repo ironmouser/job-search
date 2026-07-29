@@ -220,17 +220,27 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
 
       let job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
       if (!job) {
-          job = await prisma.job.create({
-              data: {
-                  title: jobData.title,
-                  company: jobData.company,
-                  location: jobData.location,
-                  salaryRange: jobData.salaryRange,
-                  description: jobData.description,
-                  url: cleanedUrl,
-                  source: jobData.source,
+          try {
+              job = await prisma.job.create({
+                  data: {
+                      title: jobData.title,
+                      company: jobData.company,
+                      location: jobData.location,
+                      salaryRange: jobData.salaryRange,
+                      description: jobData.description,
+                      url: cleanedUrl,
+                      source: jobData.source,
+                  }
+              });
+          } catch (e: any) {
+              // Handle race condition: another process may have created this exact job just now
+              if (e.code === 'P2002') {
+                  job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
+                  if (!job) throw e;
+              } else {
+                  throw e;
               }
-          });
+          }
       } else if (!job.description || job.description.trim().length === 0) {
           await prisma.job.update({
               where: { id: job.id },

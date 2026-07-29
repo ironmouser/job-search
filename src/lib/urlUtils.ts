@@ -28,8 +28,8 @@ export function cleanJobUrl(rawUrl: string): string {
     }
 
     // 3. General redirect unwrapper (e.g. email tracking links with dest/target)
-    if (parsed.searchParams.has('redirect_url') || parsed.searchParams.has('target_url')) {
-      const target = parsed.searchParams.get('redirect_url') || parsed.searchParams.get('target_url');
+    if (parsed.searchParams.has('redirect_url') || parsed.searchParams.has('target_url') || parsed.searchParams.has('continue')) {
+      const target = parsed.searchParams.get('redirect_url') || parsed.searchParams.get('target_url') || parsed.searchParams.get('continue');
       if (target && target.startsWith('http')) {
         return cleanJobUrl(decodeURIComponent(target));
       }

@@ -44,7 +44,9 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
       lower.includes("discover people, jobs") ||
       lower.includes("remain on this page, you'll be signed in") ||
       lower.includes("sign in to view") ||
-      lower.includes("login to view")
+      lower.includes("login to view") ||
+      lower.includes("account.ycombinator.com/authenticate") ||
+      lower.includes("workatastartup.com/application")
     ) {
       return false;
     }
@@ -66,6 +68,15 @@ export function extractUrlFromStubDescription(desc?: string | null): string | nu
 export async function fetchJobDescription(rawUrl: string): Promise<string | null> {
     if (!rawUrl) return null;
     const url = cleanJobUrl(rawUrl);
+
+    // Fast-fail on known strict auth-walls where scraping is impossible
+    if (
+        url.includes('account.ycombinator.com') || 
+        url.includes('workatastartup.com/application')
+    ) {
+        console.info(`Skipping fetch for known auth wall: ${url}`);
+        return null;
+    }
 
     // --- Dice.com: use their public job-posting-service REST API ---
     // URL pattern: https://www.dice.com/job-detail/{uuid}
