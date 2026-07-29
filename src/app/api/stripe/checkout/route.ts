@@ -52,6 +52,7 @@ export async function POST(request: Request) {
       cancel_url: `${process.env.NEXTAUTH_URL}/pricing?canceled=true`,
       payment_method_types: ["card"],
       mode: "subscription",
+      allow_promotion_codes: true,
       billing_address_collection: "auto",
       customer_email: stripeCustomerId ? undefined : session.user.email,
       customer: stripeCustomerId || undefined,
