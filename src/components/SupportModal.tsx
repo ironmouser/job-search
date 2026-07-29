@@ -15,6 +15,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [hpWebsite, setHpWebsite] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -48,7 +49,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
       const res = await fetch('/api/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, subject, message }),
+        body: JSON.stringify({ name, email, subject, message, hp_website: hpWebsite }),
       });
 
       const data = await res.json();
@@ -70,6 +71,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
     setEmail('');
     setSubject('');
     setMessage('');
+    setHpWebsite('');
     setError(null);
     setSuccess(false);
     onClose();
@@ -194,6 +196,17 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+              {/* Honeypot field for bot trap */}
+              <input
+                type="text"
+                name="hp_website"
+                value={hpWebsite}
+                onChange={(e) => setHpWebsite(e.target.value)}
+                style={{ display: 'none' }}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+              />
               {error && (
                 <div
                   style={{
