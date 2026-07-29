@@ -33,6 +33,12 @@ const getConfidenceBadge = (score?: number) => {
 export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false, initialScoresExhausted = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean, initialScoresExhausted?: boolean }) {
   const router = useRouter();
   const [jobList, setJobList] = useState<any[]>(jobs || []);
+  const [scoresExhausted, setScoresExhausted] = useState(initialScoresExhausted);
+
+  useEffect(() => {
+    setJobList(jobs || []);
+  }, [jobs]);
+
   const { getOnboardingProgress } = useHelp();
   const [showDiscoveryNudge, setShowDiscoveryNudge] = useState(false);
 
