@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-[#000000]'; // wait, React DOM createPortal!
-import { createPortal as reactDOMCreatePortal } from 'react-dom';
+import { createPortal } from 'react-dom';
 import { X, Send, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 interface SupportModalProps {
@@ -373,5 +372,5 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
     </div>
   );
 
-  return reactDOMCreatePortal(modalContent, document.body);
+  return createPortal(modalContent, document.body);
 }
