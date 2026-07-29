@@ -167,7 +167,7 @@ ${goal}
                 // Update NextAuth session to trigger token update with new isOnboarded flag
                 await update({ isOnboarded: true });
                 // Hard navigate to dashboard to bypass any cached layout/middleware state
-                window.location.href = '/';
+                window.location.href = '/dashboard';
             } else {
                 alert('Failed to save settings. Please try again.');
             }
