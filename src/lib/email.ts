@@ -71,9 +71,9 @@ export async function fetchEmailsAndExtractJobs(userId: string) {
         }
       }
 
-      console.log(`Fetched ${messages.length} emails. Parsing most recent messages with AI...`);
-      const recentMessages = messages.slice(-15);
-      const rawJobs: any[] = [];
+      console.log(`Fetched ${messages.length} emails. Parsing recent job messages with AI in parallel...`);
+      const recentMessages = messages.slice(-5);
+      const candidatePayloads = [];
 
       for (const source of recentMessages) {
         const parsed = await simpleParser(source);
@@ -109,21 +109,36 @@ export async function fetchEmailsAndExtractJobs(userId: string) {
 
         if (!text && uniqueUrls.length === 0) continue;
 
-        const emailContentForAI = `
+        candidatePayloads.push({
+          emailContentForAI: `
 EMAIL TEXT:
 ${text}
 
 LINKS FOUND IN EMAIL:
 ${uniqueUrls.join('\n')}
-        `;
-
-        const extractedJobs = await extractJobsFromEmailText(emailContentForAI, {
-          searchKeyword: prefs.searchKeyword || undefined,
-          jobLevel: prefs.jobLevel || undefined,
-          includeKeywords: prefs.includeKeywords || undefined,
-          excludeKeywords: prefs.excludeKeywords || undefined,
+          `
         });
-        
+      }
+
+      // Parallel AI extractions to keep processing fast and avoid HTTP 502 timeouts
+      const extractedJobBatches = await Promise.all(
+        candidatePayloads.map(async ({ emailContentForAI }) => {
+          try {
+            return await extractJobsFromEmailText(emailContentForAI, {
+              searchKeyword: prefs.searchKeyword || undefined,
+              jobLevel: prefs.jobLevel || undefined,
+              includeKeywords: prefs.includeKeywords || undefined,
+              excludeKeywords: prefs.excludeKeywords || undefined,
+            });
+          } catch (e) {
+            console.error('Error extracting jobs from email text:', e);
+            return [];
+          }
+        })
+      );
+
+      const rawJobs: any[] = [];
+      for (const extractedJobs of extractedJobBatches) {
         for (const job of extractedJobs) {
              if (!job.url) continue;
 

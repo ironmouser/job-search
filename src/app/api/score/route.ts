@@ -108,18 +108,19 @@ export async function POST(request: Request) {
             }, { status: 200 });
         }
 
-        // If no jobId or jobIds is provided, score all unscored or newly discovered jobs for this user
+        // If no jobId or jobIds is provided, score all unscored or newly discovered jobs for this user (capped at 5 to prevent timeout)
         if (!jobId) {
-            const userJobs = await prisma.userJob.findMany({
-                where: { 
-                    userId: session.user.id,
-                    OR: [
-                        { status: 'discovered' },
-                        { job: { opportunityScores: { none: { userId: session.user.id } } } }
-                    ]
-                },
-                include: { job: { select: { id: true, title: true, description: true, url: true } } }
-            });
+          const userJobs = await prisma.userJob.findMany({
+            where: { 
+              userId: session.user.id,
+              OR: [
+                { status: 'discovered' },
+                { job: { opportunityScores: { none: { userId: session.user.id } } } }
+              ]
+            },
+            include: { job: { select: { id: true, title: true, description: true, url: true } } },
+            take: 5
+          });
 
             if (!userJobs || userJobs.length === 0) {
                 return NextResponse.json({ message: 'No unscored jobs found.' }, { status: 200 });
