@@ -170,12 +170,30 @@ Return a JSON object strictly matching this schema:
     }
 }
 
-export async function extractJobsFromEmailText(emailText: string) {
+export async function extractJobsFromEmailText(
+    emailText: string,
+    options?: {
+        searchKeyword?: string;
+        jobLevel?: string;
+        includeKeywords?: string;
+        excludeKeywords?: string;
+    }
+) {
     if (!process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY) return [];
 
-    const prompt = `You are a highly accurate data extraction AI.
-Extract all job postings mentioned in the following email text.
+    let criteriaPrompt = '';
+    if (options?.searchKeyword) {
+        criteriaPrompt += `\nCANDIDATE PRIMARY CRITERIA:\n`;
+        criteriaPrompt += `Target Job Title / Field: ${options.searchKeyword}\n`;
+        if (options.jobLevel) criteriaPrompt += `Preferred Level: ${options.jobLevel}\n`;
+        if (options.includeKeywords) criteriaPrompt += `Must Include Keywords: ${options.includeKeywords}\n`;
+        if (options.excludeKeywords) criteriaPrompt += `Must Exclude Keywords: ${options.excludeKeywords}\n`;
+        criteriaPrompt += `\nCRITICAL FILTERING INSTRUCTION: Only extract job postings that closely align with the candidate's target job title and field. STRICTLY IGNORE job postings for unrelated career tracks or industries (for example, if target is Software Engineer, IGNORE warehouse worker, store associate, driver, or administrative roles).\n`;
+    }
 
+    const prompt = `You are a highly accurate data extraction AI.
+Extract job postings mentioned in the following email text that align with the candidate's criteria.
+${criteriaPrompt}
 Return a JSON array of objects strictly matching this schema:
 [{
   "title": "Job Title (e.g. Senior Product Manager)",
@@ -187,7 +205,7 @@ Return a JSON array of objects strictly matching this schema:
   "salary_range": "Salary range if mentioned in the email (e.g. $150k - $175k yearly), otherwise null"
 }]
 
-If there are no jobs, return an empty array [].
+If there are no matching jobs, return an empty array [].
 
 EMAIL TEXT:
 ${emailText.substring(0, 30000)}`;

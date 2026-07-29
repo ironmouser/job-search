@@ -148,7 +148,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
     // Tier 2: Batched Rapid Triage via DeepSeek (Lite Pass)
     const approvedCandidates: any[] = [];
 
-    if (brandNewCandidates.length > 0 && searchKeyword && !options.isEmailSync) {
+    if (brandNewCandidates.length > 0 && searchKeyword) {
         console.log(`[AI Triage] Running DeepSeek rapid pre-screening on ${brandNewCandidates.length} new candidate jobs for keyword "${searchKeyword}"...`);
         
         const chunkSize = 20;

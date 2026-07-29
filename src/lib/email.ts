@@ -117,7 +117,12 @@ LINKS FOUND IN EMAIL:
 ${uniqueUrls.join('\n')}
         `;
 
-        const extractedJobs = await extractJobsFromEmailText(emailContentForAI);
+        const extractedJobs = await extractJobsFromEmailText(emailContentForAI, {
+          searchKeyword: prefs.searchKeyword || undefined,
+          jobLevel: prefs.jobLevel || undefined,
+          includeKeywords: prefs.includeKeywords || undefined,
+          excludeKeywords: prefs.excludeKeywords || undefined,
+        });
         
         for (const job of extractedJobs) {
              if (!job.url) continue;
