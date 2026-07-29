@@ -16,7 +16,8 @@ function sanitizeHeader(str: string): string {
   return str.replace(/[\r\n]/g, ' ').trim();
 }
 
-const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+// Standard web email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     const realIp = request.headers.get('x-real-ip');
     const clientIp = (forwardedFor ? forwardedFor.split(',')[0] : realIp) || '127.0.0.1';
 
-    const { limited, retryAfterSeconds } = isRateLimited(clientIp, 5, 15 * 60 * 1000);
+    const { limited, retryAfterSeconds } = isRateLimited(clientIp, 10, 15 * 60 * 1000);
     if (limited) {
       await logSuspiciousActivity({
         type: 'SUPPORT_FORM_RATE_LIMITED',
@@ -49,11 +50,10 @@ export async function POST(request: Request) {
         message: `Honeypot triggered on support form by IP: ${clientIp}`,
         metadata: { clientIp, name, email, hp_website },
       });
-      // Silently return success to waste bot operator resources without sending email
       return NextResponse.json({ success: true, message: 'Support request received' });
     }
 
-    // 3. Strict Input Type & Presence Validation
+    // 3. Input Validation
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
     const cleanEmail = sanitizeHeader(email);
     if (!EMAIL_REGEX.test(cleanEmail)) {
-      return NextResponse.json({ error: 'Please provide a valid email address' }, { status: 400 });
+      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
     }
 
     if (!subject || typeof subject !== 'string' || !subject.trim()) {
@@ -75,8 +75,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    // 4. Length Limits Defense
-    if (name.length > 100) {
+    // 4. Length Limits
+    if (name.trim().length > 100) {
       return NextResponse.json({ error: 'Name must not exceed 100 characters' }, { status: 400 });
     }
 
@@ -84,16 +84,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email must not exceed 254 characters' }, { status: 400 });
     }
 
-    if (subject.length > 200) {
+    if (subject.trim().length > 200) {
       return NextResponse.json({ error: 'Subject must not exceed 200 characters' }, { status: 400 });
     }
 
-    if (message.length > 5000) {
+    if (message.trim().length > 5000) {
       return NextResponse.json({ error: 'Message must not exceed 5000 characters' }, { status: 400 });
-    }
-
-    if (message.trim().length < 10) {
-      return NextResponse.json({ error: 'Please enter a message of at least 10 characters' }, { status: 400 });
     }
 
     // 5. Header Sanitization & HTML Escaping

@@ -60,7 +60,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
 
       setSuccess(true);
     } catch (err: any) {
-      setError('Oops! Something went wrong. Please email support@jobagenthq.com directly for assistance.');
+      setError(err.message || 'We were unable to send your support request automatically.');
     } finally {
       setLoading(false);
     }
@@ -226,7 +226,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     <span>Oops! Something went wrong</span>
                   </div>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#fca5a5', lineHeight: 1.4 }}>
-                    We were unable to send your support request automatically. Please email <a href="mailto:support@jobagenthq.com" style={{ color: '#ffffff', textDecoration: 'underline' }}>support@jobagenthq.com</a> directly for assistance.
+                    {error} Please email <a href="mailto:support@jobagenthq.com" style={{ color: '#ffffff', textDecoration: 'underline' }}>support@jobagenthq.com</a> directly for assistance.
                   </p>
                 </div>
               )}
