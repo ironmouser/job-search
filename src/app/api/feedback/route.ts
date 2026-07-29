@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const planType = user?.planTier || (session.user as any).planTier || 'FREE';
     const jobTitle = userPrefs?.searchKeyword || userPrefs?.jobLevel || 'Job Seeker';
 
-    const feedback = await prisma.appFeedback.create({
+    const feedback = await (prisma as any).appFeedback.create({
       data: {
         userId,
         userName,
