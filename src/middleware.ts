@@ -6,15 +6,13 @@ export default withAuth(
     const token = req.nextauth.token;
     const isAuth = !!token;
     const pathname = req.nextUrl.pathname;
-    const isAuthPage = pathname.startsWith('/api/auth');
+    const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/worker') || pathname.startsWith('/api/webhooks') || pathname === '/api/support';
+    const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms';
+    const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
     const isApiRoute = pathname.startsWith('/api');
     const isOnboardingPage = pathname.startsWith('/onboarding');
-    const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
-    const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login';
 
-    const isWorkerApi = pathname.startsWith('/api/worker');
-
-    if (isAuthPage || isPublicAsset || isPublicPage || isWorkerApi) {
+    if (isPublicApi || isPublicAsset || isPublicPage) {
       return null;
     }
 
@@ -37,12 +35,10 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const pathname = req.nextUrl.pathname;
-        const isAuthApi = pathname.startsWith('/api/auth');
-        const isWebhook = pathname.startsWith('/api/webhooks');
-        const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login';
+        const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/worker') || pathname === '/api/support';
+        const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms';
         const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
-        const isWorkerApi = pathname.startsWith('/api/worker');
-        if (isPublicPage || isPublicAsset || isWorkerApi || isAuthApi || isWebhook) return true;
+        if (isPublicPage || isPublicAsset || isPublicApi) return true;
         return !!token;
       },
     },
@@ -59,10 +55,11 @@ export const config = {
      * - api/auth (API routes for authentication)
      * - api/webhooks (Stripe and other webhooks)
      * - api/worker (DigitalOcean worker endpoints)
+     * - api/support (Public support request endpoint)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      */
-    '/((?!api/auth|api/webhooks|api/worker|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!api/auth|api/webhooks|api/worker|api/support|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 }
