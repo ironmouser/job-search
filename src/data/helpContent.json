@@ -4,7 +4,7 @@
             "name": "Dashboard Overview",
             "description": "Learn how to navigate your dashboard and track job applications.",
             "roles": ["*"],
-            "autoStart": true,
+            "autoStart": false,
             "steps": [
                 {
                     "target": "[data-tour='dashboard-stats']",

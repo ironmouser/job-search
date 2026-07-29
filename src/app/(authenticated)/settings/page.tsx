@@ -71,6 +71,17 @@ export default function SettingsPage() {
 
     useEffect(() => {
         setMounted(true);
+        if (typeof window !== 'undefined') {
+            const hash = window.location.hash;
+            if (hash === '#job-discovery' || hash === '#job-preferences') {
+                setTimeout(() => {
+                    const el = document.getElementById('job-discovery') || document.querySelector('[data-tour="job-preferences"]');
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 350);
+            }
+        }
     }, []);
     
     const isDirty = initialSettings && !isDeepEqual(initialSettings, settings);
@@ -293,7 +304,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Job Discovery */}
-                <div className="glass-card" data-tour="job-preferences" style={{ padding: '2rem' }}>
+                <div className="glass-card" id="job-discovery" data-tour="job-preferences" style={{ padding: '2rem' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.75rem', fontSize: '1.25rem', fontWeight: 600 }}>
                         <Search size={22} className="text-accent" /> Job Discovery Settings
                     </h3>

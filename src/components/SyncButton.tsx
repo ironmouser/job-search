@@ -5,9 +5,10 @@ import { RefreshCw } from 'lucide-react';
 
 interface SyncButtonProps {
   onSyncStateChange?: (isLoading: boolean, statusText: string) => void;
+  onSyncComplete?: (newJobsCount: number) => void;
 }
 
-export default function SyncButton({ onSyncStateChange }: SyncButtonProps) {
+export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState('Sync Jobs');
 
@@ -34,7 +35,15 @@ export default function SyncButton({ onSyncStateChange }: SyncButtonProps) {
         return;
       }
 
+      // Record successful job sync in localStorage
+      try {
+        localStorage.setItem('job_agent_just_completed_job_sync', 'true');
+        localStorage.setItem('job_agent_has_completed_job_sync', 'true');
+      } catch (e) {}
+
       const newJobsCount = data.new_jobs_saved || 0;
+      onSyncComplete?.(newJobsCount);
+
       if (newJobsCount === 0) {
         setStatusText('0 New Jobs');
         onSyncStateChange?.(false, 'No new jobs discovered');

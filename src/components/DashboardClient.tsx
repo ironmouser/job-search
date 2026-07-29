@@ -8,12 +8,13 @@ import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter, useSearchParams } from 'next/navigation';
-import OnboardingWidget from '@/components/common/OnboardingWidget';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
 import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation } from '@/lib/locationUtils';
 
 import SyncOverlay from './SyncOverlay';
+import { useHelp } from '@/contexts/HelpContext';
+import DiscoveryNudgeOverlay from '@/components/DiscoveryNudgeOverlay';
 
 const safeFormatDate = (dateVal: any) => {
   if (!dateVal) return '';
@@ -32,11 +33,31 @@ const getConfidenceBadge = (score?: number) => {
 export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false, initialScoresExhausted = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean, initialScoresExhausted?: boolean }) {
   const router = useRouter();
   const [jobList, setJobList] = useState<any[]>(jobs || []);
-  const [scoresExhausted, setScoresExhausted] = useState(initialScoresExhausted);
+  const { getOnboardingProgress } = useHelp();
+  const [showDiscoveryNudge, setShowDiscoveryNudge] = useState(false);
+
+  const checkAndTriggerDiscoveryNudge = () => {
+    try {
+      const hasCompletedSync = localStorage.getItem('job_agent_has_completed_job_sync') === 'true' || localStorage.getItem('job_agent_just_completed_job_sync') === 'true';
+      const hasSeenNudge = localStorage.getItem('job_agent_discovery_nudge_seen') === 'true';
+      const onboardingIncomplete = getOnboardingProgress().percentage < 100;
+
+      if (hasCompletedSync && onboardingIncomplete && !hasSeenNudge) {
+        setShowDiscoveryNudge(true);
+      }
+    } catch (e) {}
+  };
 
   useEffect(() => {
-    setJobList(jobs || []);
-  }, [jobs]);
+    checkAndTriggerDiscoveryNudge();
+  }, [getOnboardingProgress]);
+
+  const handleCloseDiscoveryNudge = () => {
+    setShowDiscoveryNudge(false);
+    try {
+      localStorage.setItem('job_agent_discovery_nudge_seen', 'true');
+    } catch (e) {}
+  };
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -663,7 +684,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
   return (
     <>
-      <OnboardingWidget />
       <div className="animate-fade-in">
         <div className="flex-stack-mobile" style={{ marginBottom: '2rem' }}>
         <div>
@@ -681,10 +701,17 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             {isEmailSyncing ? 'Syncing...' : 'Sync Emails'}
           </button>
           <div data-tour="dashboard-sync-jobs">
-            <SyncButton onSyncStateChange={(loading, text) => {
-              setIsSyncing(loading);
-              setSyncMessage(text);
-            }} />
+            <SyncButton 
+              onSyncStateChange={(loading, text) => {
+                setIsSyncing(loading);
+                setSyncMessage(text);
+              }}
+              onSyncComplete={() => {
+                setTimeout(() => {
+                  checkAndTriggerDiscoveryNudge();
+                }, 600);
+              }}
+            />
           </div>
         </div>
       </div>
@@ -1513,6 +1540,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
           </div>
         </div>
       )}
+
+      <DiscoveryNudgeOverlay
+        isOpen={showDiscoveryNudge}
+        onClose={handleCloseDiscoveryNudge}
+      />
     </>
   );
 }
