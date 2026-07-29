@@ -105,8 +105,8 @@ export async function handleUserUpgradeToPro(userId: string) {
 
     const currentSources = (prefs?.sources as Record<string, boolean>) || {
         indeed: true,
-        glassdoor: false,
-        ziprecruiter: false,
+        glassdoor: true,
+        ziprecruiter: true,
         weworkremotely: true,
         remoteco: true,
         remoteok: true,

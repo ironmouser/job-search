@@ -344,6 +344,7 @@ body.light-theme .nav-item a.active {
 }
 
 .help-btn,
+.feedback-btn,
 .logout-btn,
 .login-btn {
   display: flex;
@@ -363,6 +364,7 @@ body.light-theme .nav-item a.active {
 }
 
 .help-btn:hover,
+.feedback-btn:hover,
 .logout-btn:hover,
 .login-btn:hover {
   background: rgba(255, 255, 255, 0.05);
@@ -370,6 +372,7 @@ body.light-theme .nav-item a.active {
 }
 
 body.light-theme .help-btn:hover,
+body.light-theme .feedback-btn:hover,
 body.light-theme .logout-btn:hover,
 body.light-theme .login-btn:hover {
   background: rgba(37, 99, 235, 0.08);
@@ -450,6 +453,7 @@ body.light-theme .minimize-btn:hover {
   }
 
   .sidebar.minimized .help-btn,
+  .sidebar.minimized .feedback-btn,
   .sidebar.minimized .logout-btn,
   .sidebar.minimized .login-btn,
   .sidebar.minimized .nav-item a {

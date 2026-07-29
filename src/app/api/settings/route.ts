@@ -8,6 +8,20 @@ import { logSuspiciousActivity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
+export const DEFAULT_FREE_SOURCES: Record<string, boolean> = {
+    indeed: true,
+    glassdoor: true,
+    ziprecruiter: true,
+    weworkremotely: true,
+    remoteco: true,
+    remoteok: true,
+    workingnomads: true,
+    remotive: true,
+    remotepoc: true,
+    arbeitnow: true,
+    ycombinator: true,
+};
+
 export async function GET() {
     try {
         await ensureKeywordColumnsExist();
@@ -24,6 +38,29 @@ export async function GET() {
             where: { id: 'system' }
         });
 
+        const defaultSources = {
+            ...DEFAULT_FREE_SOURCES,
+            linkedin: false,
+            greenhouse: false,
+            lever: false,
+            ashby: false,
+            workable: false,
+            smartrecruiters: false,
+            breezy: false,
+            himalayas: false,
+            otta: false,
+            jobspresso: false,
+            justremote: false,
+            themuse: false,
+            arbeitsagentur: false,
+            computrabajo: false,
+            jobbank: false,
+        };
+
+        const resolvedSources = prefs?.sources
+            ? { ...DEFAULT_FREE_SOURCES, ...(prefs.sources as Record<string, boolean>) }
+            : defaultSources;
+
         if (!prefs) {
             return NextResponse.json({
                 searchKeyword: '',
@@ -37,7 +74,7 @@ export async function GET() {
                 aiStrictness: 'Standard',
                 resumeCustomizationMaxPercentage: 50,
                 customCareerPages: [],
-                sources: { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false, remotepoc: true },
+                sources: resolvedSources,
                 profile: '',
                 resumeMarkdown: '',
                 emailAddress: '',
@@ -60,7 +97,7 @@ export async function GET() {
             aiStrictness: prefs.aiStrictness,
             resumeCustomizationMaxPercentage: prefs.resumeCustomizationMaxPercentage,
             customCareerPages: prefs.customCareerPages,
-            sources: prefs.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false, remotepoc: true },
+            sources: resolvedSources,
             profile: prefs.profile || '',
             resumeMarkdown: prefs.resumeMarkdown || '',
             emailAddress: prefs.emailAddress || '',
@@ -159,7 +196,7 @@ export async function POST(request: Request) {
                 aiStrictness: data.aiStrictness || 'Standard',
                 resumeCustomizationMaxPercentage: data.resumeCustomizationMaxPercentage || 50,
                 customCareerPages: data.customCareerPages || [],
-                sources: data.sources || { indeed: true, linkedin: false, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: false, monster: false, wellfound: false, remotepoc: true },
+                sources: data.sources || { ...DEFAULT_FREE_SOURCES, linkedin: false, greenhouse: false, lever: false, ashby: false },
                 profile: data.profile || '',
                 resumeMarkdown: data.resumeMarkdown || '',
                 emailAddress: data.emailAddress || '',

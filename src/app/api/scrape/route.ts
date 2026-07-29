@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const isPro = (session.user as any).planTier === 'PRO';
-        let sources = settings.sources || { indeed: true, linkedin: true, greenhouse: true, lever: true, ashby: true, glassdoor: false, ziprecruiter: true, monster: false, wellfound: false, remotepoc: true, himalayas: true, arbeitnow: true, ycombinator: true, otta: true, jobspresso: true, justremote: true };
+        let sources = settings.sources || { indeed: true, glassdoor: true, ziprecruiter: true, weworkremotely: true, remoteco: true, remoteok: true, workingnomads: true, remotive: true, remotepoc: true, arbeitnow: true, ycombinator: true, linkedin: true, greenhouse: true, lever: true, ashby: true, himalayas: true, otta: true, jobspresso: true, justremote: true };
         
         if (!isPro && globalSettings) {
             // Standard job boards are Pro-only by default

@@ -192,6 +192,7 @@ model User {
   scores               OpportunityScore[]
   assets               ApplicationAsset[]
   feedbacks            JobFeedback[]
+  appFeedbacks         AppFeedback[]
   autoApplySessions    AutoApplySession[]
   interventionRequests InterventionRequest[]
 }
@@ -419,3 +420,22 @@ model AICostLog {
   @@index([createdAt])
   @@map("ai_cost_logs")
 }
+
+model AppFeedback {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String?  @map("user_id")
+  userName            String   @map("user_name")
+  planType            String   @map("plan_type")
+  jobTitle            String   @map("job_title")
+  rating              Int
+  totalJobsApplied    Int      @map("total_jobs_applied")
+  totalJobsDiscovered Int      @map("total_jobs_discovered")
+  totalSyncedEmails   Int      @map("total_synced_emails")
+  comment             String   @db.Text
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("app_feedback")
+}
+

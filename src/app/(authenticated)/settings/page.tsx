@@ -489,7 +489,7 @@ export default function SettingsPage() {
                                                     <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
                                                         <input 
                                                             type="checkbox" 
-                                                            checked={isDisabled ? false : (settings.sources?.[source] || false)}
+                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : true)}
                                                             disabled={isDisabled}
                                                             onChange={(e) => {
                                                                 const newSources = { ...settings.sources, [source]: e.target.checked };
@@ -560,7 +560,7 @@ export default function SettingsPage() {
                                                 const isChecked = !isDisabled && (
                                                     item.sources.length === 0 
                                                         ? false 
-                                                        : item.sources.every(source => settings.sources?.[source] || false)
+                                                        : item.sources.every(source => (settings.sources?.[source] !== undefined ? settings.sources[source] : true))
                                                 );
 
                                                 return (

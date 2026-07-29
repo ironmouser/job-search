@@ -2,20 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Send, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Star, Send, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
-interface SupportModalProps {
+interface FeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
+export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   const [mounted, setMounted] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [hpWebsite, setHpWebsite] = useState('');
+  const [rating, setRating] = useState<number>(0);
+  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -42,42 +40,47 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (rating === 0) {
+      setError('Please select a star rating from 1 to 5.');
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
     try {
-      const res = await fetch('/api/support', {
+      const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, subject, message, hp_website: hpWebsite }),
+        body: JSON.stringify({ rating, comment }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit support request');
+        throw new Error(data.error || 'Failed to submit feedback');
       }
 
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'We were unable to send your support request automatically.');
+      setError(err.message || 'Unable to submit feedback right now. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setName('');
-    setEmail('');
-    setSubject('');
-    setMessage('');
-    setHpWebsite('');
+    setRating(0);
+    setHoverRating(0);
+    setComment('');
     setError(null);
     setSuccess(false);
     onClose();
   };
 
   if (!mounted || !isOpen) return null;
+
+  const activeStarCount = hoverRating || rating;
 
   const modalContent = (
     <div
@@ -88,7 +91,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         padding: '1.5rem',
       }}
       onClick={(e) => {
@@ -98,10 +101,10 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="support-modal-title"
+        aria-labelledby="feedback-modal-title"
         style={{
           width: '100%',
-          maxWidth: '520px',
+          maxWidth: '480px',
           backgroundColor: '#ffffff',
           border: '1px solid #e5e7eb',
           borderRadius: '16px',
@@ -123,11 +126,11 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
           }}
         >
           <div>
-            <h2 id="support-modal-title" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: '#111827' }}>
-              Contact Support
+            <h2 id="feedback-modal-title" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: '#111827' }}>
+              Rate Your Experience
             </h2>
             <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: '4px 0 0 0' }}>
-              Send a request directly to Support@jobagenthq.com
+              Your feedback helps us make Job Agent even better
             </p>
           </div>
           <button
@@ -172,10 +175,10 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 <CheckCircle2 size={32} />
               </div>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111827' }}>
-                Thank You!
+                Thank You for Your Feedback!
               </h3>
               <p style={{ color: '#4b5563', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-                Thank you for reaching out. Your support request has been submitted successfully, and our team will get back to you shortly.
+                We appreciate you taking the time to rate our platform. Your response has been saved.
               </p>
               <button
                 onClick={handleReset}
@@ -195,18 +198,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-              {/* Honeypot field for bot trap */}
-              <input
-                type="text"
-                name="hp_website"
-                value={hpWebsite}
-                onChange={(e) => setHpWebsite(e.target.value)}
-                style={{ display: 'none' }}
-                tabIndex={-1}
-                autoComplete="off"
-                aria-hidden="true"
-              />
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {error && (
                 <div
                   style={{
@@ -217,102 +209,70 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     color: '#991b1b',
                     fontSize: '0.875rem',
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.35rem',
+                    alignItems: 'center',
+                    gap: '0.5rem',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: '#dc2626' }}>
-                    <AlertCircle size={18} style={{ flexShrink: 0 }} />
-                    <span>Oops! Something went wrong</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#991b1b', lineHeight: 1.4 }}>
-                    {error} Please email <a href="mailto:support@jobagenthq.com" style={{ color: '#4f46e5', textDecoration: 'underline' }}>support@jobagenthq.com</a> directly for assistance.
-                  </p>
+                  <AlertCircle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                  <span>{error}</span>
                 </div>
               )}
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
-                  Your Name *
+              {/* Star Rating Section */}
+              <div style={{ textAlign: 'center' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#374151', marginBottom: '0.75rem' }}>
+                  How would you rate Job Agent HQ? *
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Jane Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.65rem 0.85rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    color: '#111827',
-                    fontSize: '0.925rem',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <div
+                  style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+                  onMouseLeave={() => setHoverRating(0)}
+                >
+                  {[1, 2, 3, 4, 5].map((starIndex) => (
+                    <button
+                      key={starIndex}
+                      type="button"
+                      onClick={() => setRating(starIndex)}
+                      onMouseEnter={() => setHoverRating(starIndex)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        transition: 'transform 0.15s ease',
+                        transform: activeStarCount >= starIndex ? 'scale(1.15)' : 'scale(1)',
+                      }}
+                      aria-label={`Rate ${starIndex} out of 5 stars`}
+                    >
+                      <Star
+                        size={32}
+                        fill={starIndex <= activeStarCount ? '#f59e0b' : 'none'}
+                        color={starIndex <= activeStarCount ? '#f59e0b' : '#d1d5db'}
+                        strokeWidth={1.5}
+                      />
+                    </button>
+                  ))}
+                </div>
+                {rating > 0 && (
+                  <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.4rem', fontWeight: 500 }}>
+                    {rating === 1 && 'Poor'}
+                    {rating === 2 && 'Fair'}
+                    {rating === 3 && 'Good'}
+                    {rating === 4 && 'Very Good'}
+                    {rating === 5 && 'Excellent!'}
+                  </p>
+                )}
               </div>
 
+              {/* Comments Input */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="jane@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.65rem 0.85rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    color: '#111827',
-                    fontSize: '0.925rem',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
-                  Subject *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="How can we help you?"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.65rem 0.85rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    color: '#111827',
-                    fontSize: '0.925rem',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
-                  Message *
+                  Comments or Suggestions
                 </label>
                 <textarea
-                  required
                   rows={4}
-                  placeholder="Please describe your question or issue in detail..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Tell us what you like or how we can improve..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '0.65rem 0.85rem',
@@ -329,7 +289,8 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              {/* Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
                 <button
                   type="button"
                   onClick={onClose}
@@ -349,7 +310,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || rating === 0}
                   style={{
                     padding: '0.65rem 1.4rem',
                     backgroundColor: '#4f46e5',
@@ -358,22 +319,22 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     borderRadius: '8px',
                     fontWeight: 600,
                     fontSize: '0.9rem',
-                    cursor: loading ? 'not-allowed' : 'pointer',
+                    cursor: loading || rating === 0 ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    opacity: loading ? 0.7 : 1,
+                    opacity: loading || rating === 0 ? 0.6 : 1,
                   }}
                 >
                   {loading ? (
                     <>
                       <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                      Sending...
+                      Submitting...
                     </>
                   ) : (
                     <>
                       <Send size={16} />
-                      Send Request
+                      Submit Feedback
                     </>
                   )}
                 </button>
