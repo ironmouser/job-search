@@ -7,26 +7,33 @@ import { isDescriptionAdequate, fetchJobDescription, extractUrlFromStubDescripti
 
 export const maxDuration = 60;
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 async function ensureAndScoreJob(userId: string, job: { id: string; title: string; description: string | null; url?: string | null }) {
     let description = job.description || '';
     
     // 1. Check if description is adequate
     if (!isDescriptionAdequate(description)) {
-        // Try URLs in priority order: embedded URL in stub description, then job.url
         const stubUrl = extractUrlFromStubDescription(description);
         const urlsToTry = [...new Set([stubUrl, job.url].filter(Boolean))] as string[];
 
         for (const tryUrl of urlsToTry) {
-            console.log(`Job ${job.id} description is incomplete. Attempting to download full description from ${tryUrl}...`);
+            console.log(`Job ${job.id} description is incomplete. Attempting fast fetch from ${tryUrl}...`);
             try {
-                const downloaded = await fetchJobDescription(tryUrl);
+                // Enforce strict 4-second timeout on fetching to prevent 502 Bad Gateway timeouts
+                const downloaded = await withTimeout(fetchJobDescription(tryUrl), 4000, null);
                 if (downloaded && isDescriptionAdequate(downloaded)) {
                     description = downloaded + `\n\nApply at: ${tryUrl}`;
                     await prisma.job.update({
                         where: { id: job.id },
                         data: { description }
                     });
-                    break; // got a good description — stop trying
+                    break;
                 }
             } catch (e: any) {
                 console.warn(`Failed to auto-download description for job ${job.id} from ${tryUrl}:`, e.message);
@@ -34,7 +41,7 @@ async function ensureAndScoreJob(userId: string, job: { id: string; title: strin
         }
     }
 
-    // 2. If description is still inadequate, purge any invalid/stale score and skip scoring
+    // 2. If description is still inadequate, skip scoring
     if (!isDescriptionAdequate(description)) {
         console.warn(`Skipping score for job ${job.id} - description cannot be downloaded or is inadequate.`);
         await prisma.opportunityScore.deleteMany({
@@ -43,8 +50,17 @@ async function ensureAndScoreJob(userId: string, job: { id: string; title: strin
         return { jobId: job.id, skipped: true, reason: 'Description could not be downloaded.' };
     }
 
-    // 3. Description is adequate -> Score the job!
-    const score = await scoreJob(userId, job.id, job.title, description);
+    // 3. Score the job! (Wrap scoring in 8s timeout)
+    const score = await withTimeout(
+      scoreJob(userId, job.id, job.title, description),
+      8000,
+      null
+    );
+
+    if (!score) {
+      return { jobId: job.id, skipped: true, reason: 'Scoring timed out.' };
+    }
+
     return { jobId: job.id, score: score.total_score };
 }
 
@@ -72,15 +88,22 @@ export async function POST(request: Request) {
             }
         }
 
-        const body = await request.json();
+        let body: any = {};
+        try {
+          body = await request.json();
+        } catch (e) {
+          // Allow empty POST body
+          body = {};
+        }
+
         const { jobId, jobIds } = body;
 
-        // If jobIds is provided, score all those specific jobs
+        // If jobIds is provided, score specific jobs (capped at 3 per batch)
         if (jobIds && Array.isArray(jobIds) && jobIds.length > 0) {
             const userJobs = await prisma.userJob.findMany({
                 where: { 
                     userId: session.user.id,
-                    jobId: { in: jobIds }
+                    jobId: { in: jobIds.slice(0, 3) }
                 },
                 include: { job: { select: { id: true, title: true, description: true, url: true } } }
             });
@@ -108,19 +131,19 @@ export async function POST(request: Request) {
             }, { status: 200 });
         }
 
-        // If no jobId or jobIds is provided, score all unscored or newly discovered jobs for this user (capped at 5 to prevent timeout)
+        // If no jobId or jobIds is provided, score unscored jobs (capped at 2 per request to prevent 502 timeouts)
         if (!jobId) {
-          const userJobs = await prisma.userJob.findMany({
-            where: { 
-              userId: session.user.id,
-              OR: [
-                { status: 'discovered' },
-                { job: { opportunityScores: { none: { userId: session.user.id } } } }
-              ]
-            },
-            include: { job: { select: { id: true, title: true, description: true, url: true } } },
-            take: 5
-          });
+            const userJobs = await prisma.userJob.findMany({
+                where: { 
+                    userId: session.user.id,
+                    OR: [
+                        { status: 'discovered' },
+                        { job: { opportunityScores: { none: { userId: session.user.id } } } }
+                    ]
+                },
+                include: { job: { select: { id: true, title: true, description: true, url: true } } },
+                take: 2
+            });
 
             if (!userJobs || userJobs.length === 0) {
                 return NextResponse.json({ message: 'No unscored jobs found.' }, { status: 200 });
@@ -145,7 +168,7 @@ export async function POST(request: Request) {
             }, { status: 200 });
         }
 
-        // If jobId is provided, just score that one
+        // If single jobId is provided, score that one with timeout protection
         const job = await prisma.job.findUnique({
             where: { id: jobId },
             select: { id: true, title: true, description: true, url: true }
