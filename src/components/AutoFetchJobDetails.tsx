@@ -91,8 +91,16 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
         body: JSON.stringify({ description: manualText.trim() })
       });
       if (res.ok) {
-        await fetch('/api/score', { method: 'POST', body: JSON.stringify({ jobId }) });
-        router.refresh();
+        const data = await res.json().catch(() => ({}));
+        const targetJobId = data.newJobId || jobId;
+        
+        await fetch('/api/score', { method: 'POST', body: JSON.stringify({ jobId: targetJobId }) });
+        
+        if (targetJobId !== jobId) {
+            router.push(`/job/${targetJobId}`);
+        } else {
+            router.refresh();
+        }
       } else {
         alert('Failed to save description');
       }

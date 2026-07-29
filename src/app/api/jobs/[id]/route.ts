@@ -6,6 +6,7 @@ import { headers } from 'next/headers';
 import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 import { logSuspiciousActivity } from '@/lib/security';
+import { isDescriptionAdequate } from '@/lib/jobFetcher';
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -18,17 +19,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         const { id } = await context.params;
         const { status, applied_at, applicationUrl, description } = await request.json();
 
+        const job = await prisma.job.findUnique({
+            where: { id }
+        });
+        if (!job) {
+            return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+        }
+        
+        const isAdmin = (session.user as any).role === 'ADMIN';
+        const isGlobalJob = job.addedById === null;
+
         if (description || applicationUrl) {
-            const job = await prisma.job.findUnique({
-                where: { id },
-                select: { addedById: true }
-            });
-            if (!job) {
-                return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-            }
-            
-            const isAdmin = (session.user as any).role === 'ADMIN';
-            if (!isAdmin && job.addedById !== userId) {
+            // Allow modifying a global job's description ONLY if it doesn't currently have an adequate one.
+            // This lets users paste descriptions for stub jobs imported via email.
+            const isAppendingToGlobalStub = isGlobalJob && description && !isDescriptionAdequate(job.description);
+
+            if (!isAdmin && job.addedById !== userId && !isAppendingToGlobalStub) {
                 await logSuspiciousActivity({ type: 'UNAUTHORIZED_MODIFICATION_ATTEMPT', message: 'Attempted to modify a global job not owned by user', userId, metadata: { jobId: id, requestedChanges: { description: !!description, applicationUrl: !!applicationUrl } } });
                 return NextResponse.json(
                     { error: 'Unauthorized to modify shared job properties. Only the original creator can edit this job.' },
@@ -45,21 +51,66 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
                 } catch (e) {}
             }
 
-            const updatedJob = await prisma.job.update({
-                where: { id },
-                data: { description: formattedDesc }
-            });
+            let targetJobId = id;
+            let updatedJob;
 
-            await prisma.userJob.update({
-                where: { userId_jobId: { userId, jobId: id } },
-                data: { status: 'discovered' }
-            });
+            if (isGlobalJob) {
+                // COPY ON WRITE: Create a private copy of the global job for this user
+                updatedJob = await prisma.job.create({
+                    data: {
+                        title: job!.title || 'Unknown Title',
+                        company: job!.company || 'Unknown Company',
+                        location: job!.location,
+                        salaryRange: job!.salaryRange,
+                        requirements: job!.requirements,
+                        url: job!.url,
+                        source: job!.source,
+                        addedById: userId,
+                        description: formattedDesc
+                    }
+                });
+                
+                targetJobId = updatedJob.id;
+                
+                const oldUserJob = await prisma.userJob.findUnique({
+                    where: { userId_jobId: { userId, jobId: id } }
+                });
+                
+                if (oldUserJob) {
+                    await prisma.userJob.create({
+                        data: {
+                            userId: userId,
+                            jobId: targetJobId,
+                            status: oldUserJob.status === 'new' ? 'discovered' : oldUserJob.status,
+                            appliedAt: oldUserJob.appliedAt,
+                            isArchived: oldUserJob.isArchived,
+                            ipAddress: oldUserJob.ipAddress
+                        }
+                    });
+                    
+                    await prisma.userJob.delete({
+                        where: { userId_jobId: { userId, jobId: id } }
+                    });
+                }
+            } else {
+                updatedJob = await prisma.job.update({
+                    where: { id },
+                    data: { description: formattedDesc }
+                });
+
+                await prisma.userJob.update({
+                    where: { userId_jobId: { userId, jobId: id } },
+                    data: { status: 'discovered' }
+                });
+            }
 
             try {
-                await scoreJob(userId, id, updatedJob.title, formattedDesc);
+                await scoreJob(userId, targetJobId, updatedJob.title, formattedDesc);
             } catch (scoreErr: any) {
-                console.warn(`Failed to auto-score job ${id} after description update:`, scoreErr.message);
+                console.error("Error scoring job:", scoreErr);
             }
+
+            return NextResponse.json({ success: true, newJobId: targetJobId });
         }
 
         if (applicationUrl) {
