@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
 import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
+import { logSuspiciousActivity } from '@/lib/security';
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -28,6 +29,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
             
             const isAdmin = (session.user as any).role === 'ADMIN';
             if (!isAdmin && job.addedById !== userId) {
+                await logSuspiciousActivity({ type: 'UNAUTHORIZED_MODIFICATION_ATTEMPT', message: 'Attempted to modify a global job not owned by user', userId, metadata: { jobId: id, requestedChanges: { description: !!description, applicationUrl: !!applicationUrl } } });
                 return NextResponse.json(
                     { error: 'Unauthorized to modify shared job properties. Only the original creator can edit this job.' },
                     { status: 403 }

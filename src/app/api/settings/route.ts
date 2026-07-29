@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { encrypt } from '@/lib/encryption';
 import { ensureKeywordColumnsExist, ALL_PRO_SOURCES } from '@/lib/settings';
+import { logSuspiciousActivity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,15 +90,19 @@ export async function POST(request: Request) {
         const MAX_RESUME_LENGTH = 50000;
         
         if (data.searchKeyword && typeof data.searchKeyword === 'string' && data.searchKeyword.length > MAX_KEYWORD_LENGTH) {
+             await logSuspiciousActivity({ type: 'PAYLOAD_TOO_LARGE', message: 'Search keyword exceeds max length', userId: session.user.id, metadata: { length: data.searchKeyword.length } });
              return NextResponse.json({ error: 'Search keyword is too long.' }, { status: 400 });
         }
         if (data.searchLocation && typeof data.searchLocation === 'string' && data.searchLocation.length > MAX_KEYWORD_LENGTH) {
+             await logSuspiciousActivity({ type: 'PAYLOAD_TOO_LARGE', message: 'Search location exceeds max length', userId: session.user.id, metadata: { length: data.searchLocation.length } });
              return NextResponse.json({ error: 'Search location is too long.' }, { status: 400 });
         }
         if (data.profile && typeof data.profile === 'string' && data.profile.length > MAX_PROFILE_LENGTH) {
+             await logSuspiciousActivity({ type: 'PAYLOAD_TOO_LARGE', message: 'Profile exceeds max length', userId: session.user.id, metadata: { length: data.profile.length } });
              return NextResponse.json({ error: 'Profile is too long.' }, { status: 400 });
         }
         if (data.resumeMarkdown && typeof data.resumeMarkdown === 'string' && data.resumeMarkdown.length > MAX_RESUME_LENGTH) {
+             await logSuspiciousActivity({ type: 'PAYLOAD_TOO_LARGE', message: 'Resume exceeds max length', userId: session.user.id, metadata: { length: data.resumeMarkdown.length } });
              return NextResponse.json({ error: 'Resume markdown is too long.' }, { status: 400 });
         }
 

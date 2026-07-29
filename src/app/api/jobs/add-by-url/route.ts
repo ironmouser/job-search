@@ -9,6 +9,7 @@ import { scoreJob } from '@/lib/scoring';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { callDeepSeek } from '@/lib/deepseek';
 import { cleanJobUrl, isTrustedJobUrl } from '@/lib/urlUtils';
+import { logSuspiciousActivity } from '@/lib/security';
 
 async function extractJobMetadataWithGemini(rawText: string) {
   if (!process.env.DEEPSEEK_API_KEY || !rawText || rawText.trim().length === 0) {
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
 
     // 0. Trusted Domain Check (Phishing Prevention)
     if (rawUrl && !isTrustedJobUrl(cleanUrl)) {
+      await logSuspiciousActivity({ type: 'UNTRUSTED_URL_SUBMISSION', message: 'Attempted to add untrusted URL', userId, metadata: { url: cleanUrl } });
       return NextResponse.json({ 
         error: 'UNTRUSTED_SOURCE',
         message: 'This URL is not from a verified job board or ATS. For your security, we only allow scraping from trusted sites like LinkedIn, Greenhouse, Lever, Workday, etc.'
@@ -85,11 +87,14 @@ export async function POST(request: Request) {
       }
 
       const globalCount = await prisma.userJob.count({ where: { jobId: job.id } });
-      if (globalCount >= 5) {
-        return NextResponse.json({
-          error: 'SUBMISSION_LIMIT_REACHED',
-          message: 'This job URL has been added by too many users and cannot be submitted again to prevent spam.'
-        }, { status: 403 });
+      if (globalCount >= 10) {
+        if (!isPro) {
+          await logSuspiciousActivity({ type: 'SPAM_LIMIT_REACHED', message: 'User blocked by spam limit', userId, metadata: { url: cleanUrl, jobId: job.id, count: globalCount } });
+          return NextResponse.json({
+            error: 'SUBMISSION_LIMIT_REACHED',
+            message: 'Popular submission! This job has been added by too many users already. Try finding a more unique job, or upgrade to Pro to bypass this limit.'
+          }, { status: 403 });
+        }
       }
     }
 
@@ -289,12 +294,18 @@ export async function POST(request: Request) {
       isPrivate: userJob.isPrivate,
     };
 
+    // Calculate final global count for messaging
+    const finalGlobalCount = await prisma.userJob.count({ where: { jobId: job.id } });
+    const isPopular = finalGlobalCount >= 10;
+
     return NextResponse.json({
       success: true,
       job: formattedJob,
-      message: isPro
-        ? 'Job added privately to your pipeline!'
-        : 'Job added! +1 Free Resume & Cover Letter generation unlocked.'
+      message: isPopular 
+        ? 'Popular submission! This job has been added to your pipeline.'
+        : isPro
+          ? 'Job added privately to your pipeline!'
+          : 'Job added! +1 Free Resume & Cover Letter generation unlocked.'
     });
 
   } catch (error: any) {
