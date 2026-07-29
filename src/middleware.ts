@@ -8,7 +8,7 @@ export default withAuth(
     const pathname = req.nextUrl.pathname;
     const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/worker') || pathname.startsWith('/api/webhooks') || pathname === '/api/support';
     const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms';
-    const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
+    const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webmanifest|json)$/);
     const isApiRoute = pathname.startsWith('/api');
     const isOnboardingPage = pathname.startsWith('/onboarding');
 
@@ -37,7 +37,7 @@ export default withAuth(
         const pathname = req.nextUrl.pathname;
         const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/worker') || pathname === '/api/support';
         const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms';
-        const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico)$/);
+        const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webmanifest|json)$/);
         if (isPublicPage || isPublicAsset || isPublicApi) return true;
         return !!token;
       },
@@ -60,6 +60,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      */
-    '/((?!api/auth|api/webhooks|api/worker|api/support|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!api/auth|api/webhooks|api/worker|api/support|_next/static|_next/image|favicon.ico|site.webmanifest|sitemap.xml|robots.txt).*)',
   ],
 }

@@ -75,8 +75,8 @@ export class BrowserSession {
 
   // ─── Navigation ───────────────────────────────────────────────────────────
 
-  async navigate(url: string, waitUntil: 'load' | 'networkidle' | 'domcontentloaded' = 'networkidle'): Promise<void> {
-    await this.page.goto(url, { waitUntil, timeout: 30_000 });
+  async navigate(url: string, waitUntil: 'load' | 'networkidle' | 'domcontentloaded' = 'domcontentloaded'): Promise<void> {
+    await this.page.goto(url, { waitUntil, timeout: 60_000 });
   }
 
   /** Returns the HTML of the current page */
@@ -101,25 +101,111 @@ export class BrowserSession {
   // ─── File helpers ─────────────────────────────────────────────────────────
 
   /**
-   * Write markdown content as a plain text file for ATS upload.
-   * Most ATS systems accept .txt or .pdf. For MVP, we write to a .txt file.
-   * Future: use a PDF generation library.
+   * Render markdown content as a properly formatted PDF file for ATS upload.
+   *
+   * Uses Playwright's page.pdf() on the already-installed Chromium browser,
+   * so no additional PDF library is required.
+   *
+   * The markdown is converted to clean HTML with resume-appropriate styling
+   * (readable font, tight margins, sensible line-height) before printing.
    */
   async writeMarkdownToPdf(markdown: string, filename: string): Promise<string> {
-    if (!this.tempDir) throw new Error('Session not launched');
+    if (!this.tempDir || !this.browser) throw new Error('BrowserSession not started — call launch() first');
 
-    // Strip markdown syntax for plain text
-    const plainText = markdown
-      .replace(/^#{1,6}\s+/gm, '')     // headings
-      .replace(/\*\*(.+?)\*\*/g, '$1') // bold
-      .replace(/\*(.+?)\*/g, '$1')     // italic
-      .replace(/`(.+?)`/g, '$1')       // code
-      .replace(/\[(.+?)\]\(.+?\)/g, '$1') // links
-      .trim();
+    // Ensure the output filename ends in .pdf
+    const pdfFilename = filename.replace(/\.(txt|md)$/, '') + '.pdf';
+    const filePath = path.join(this.tempDir, pdfFilename);
 
-    const txtFilename = filename.replace(/\.pdf$/, '.txt');
-    const filePath = path.join(this.tempDir, txtFilename);
-    await fs.writeFile(filePath, plainText, 'utf-8');
+    // Convert markdown to HTML (lightweight, no external lib needed for resumes)
+    const html = this.markdownToHtml(markdown);
+
+    // Open a dedicated page in a fresh context so it doesn't interfere with the
+    // live application page
+    const pdfContext = await this.browser.newContext();
+    const pdfPage = await pdfContext.newPage();
+
+    try {
+      await pdfPage.setContent(html, { waitUntil: 'domcontentloaded' });
+      await pdfPage.pdf({
+        path: filePath,
+        format: 'Letter',
+        margin: { top: '0.75in', bottom: '0.75in', left: '0.75in', right: '0.75in' },
+        printBackground: false,
+      });
+    } finally {
+      await pdfPage.close().catch(() => {});
+      await pdfContext.close().catch(() => {});
+    }
+
     return filePath;
+  }
+
+  /**
+   * Converts resume/cover letter markdown to clean HTML for PDF rendering.
+   * Handles headings, bold, italic, bullet lists, horizontal rules, and line breaks.
+   */
+  private markdownToHtml(markdown: string): string {
+    let html = markdown
+      // Escape HTML special chars first
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // Headings (process largest first)
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      // Bold and italic
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Inline code
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      // Horizontal rules
+      .replace(/^---+$/gm, '<hr>')
+      // Unordered list items
+      .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+      // Wrap consecutive <li> blocks in <ul>
+      .replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
+      // Links
+      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
+      // Paragraphs: blank lines become paragraph breaks
+      .split(/\n{2,}/)
+      .map((block) => {
+        const trimmed = block.trim();
+        if (!trimmed) return '';
+        // Don't wrap block-level elements in <p>
+        if (/^<(h[1-6]|ul|ol|li|hr|blockquote)/.test(trimmed)) return trimmed;
+        return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
+      })
+      .join('\n');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 11pt;
+      line-height: 1.5;
+      color: #111;
+    }
+    h1 { font-size: 18pt; margin-bottom: 4pt; }
+    h2 { font-size: 13pt; margin-top: 12pt; margin-bottom: 3pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; }
+    h3 { font-size: 11pt; margin-top: 8pt; margin-bottom: 2pt; }
+    p  { margin-bottom: 6pt; }
+    ul { margin: 4pt 0 6pt 18pt; }
+    li { margin-bottom: 2pt; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 10pt 0; }
+    strong { font-weight: bold; }
+    em { font-style: italic; }
+    code { font-family: monospace; font-size: 10pt; }
+    a  { color: #111; text-decoration: none; }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
   }
 }
