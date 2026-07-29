@@ -47,14 +47,6 @@ function LoginForm() {
     }
   };
 
-  const handleTestSignIn = async () => {
-    try {
-      await signIn("credentials", { callbackUrl: "/dashboard" });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh", position: "relative", overflow: "hidden", padding: "2rem", backgroundColor: "#D2DCE3" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", marginTop: "-200px" }}>
@@ -163,13 +155,6 @@ function LoginForm() {
                   </svg>
                 )}
                 Google
-              </button>
-              <button
-                onClick={handleTestSignIn}
-                className="btn-outline"
-                style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", borderColor: "var(--border-glass)", marginTop: '1rem' }}
-              >
-                Test Login
               </button>
             </div>
 
