@@ -83,9 +83,31 @@ export function generateStyledPdfHtml(markdownText: string, options: PdfStyleOpt
         h1StyleExtra = 'display: flex; justify-content: space-between; align-items: baseline;';
     }
 
+    const isMinimal = templateKey === 'minimal';
+    const isModern = templateKey === 'modern';
+
+    const h1BorderStyle = isMinimal 
+        ? 'border-bottom: none; padding-bottom: 0;' 
+        : isModern 
+            ? `border-bottom: 10px solid ${primaryColor}; padding-bottom: 6px;` 
+            : `border-bottom: 2px solid ${primaryColor}; padding-bottom: 6px;`;
+
+    const h2BorderStyle = isMinimal 
+        ? 'border-bottom: none; padding-bottom: 0;' 
+        : isModern 
+            ? `border-bottom: 10px solid ${primaryColor}; padding-bottom: 4px;` 
+            : `border-bottom: 1px solid ${primaryColor}; padding-bottom: 4px;`;
+
+    const hrStyle = isMinimal 
+        ? 'display: none;' 
+        : isModern 
+            ? `border: none; border-top: 10px solid ${primaryColor}; margin: 16px 0;` 
+            : `border: none; border-top: 1px solid ${primaryColor}; margin: 16px 0;`;
+
     parsedContent = parsedContent
-        .replace(/<h1(\s|>)/gi, `<h1 style="font-size: 22pt; font-weight: 700; color: ${primaryColor}; margin-bottom: 8px; margin-top: 0; border-bottom: 2px solid ${primaryColor}; padding-bottom: 6px; page-break-inside: avoid; break-inside: avoid; ${h1StyleExtra}"$1`)
-        .replace(/<h2(\s|>)/gi, `<h2 style="font-size: 13pt; font-weight: 700; color: ${primaryColor}; margin-top: 18px; margin-bottom: 8px; border-bottom: 1px solid ${primaryColor}; padding-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; page-break-inside: avoid; break-inside: avoid;"$1`)
+        .replace(/<h1(\s|>)/gi, `<h1 style="font-size: 22pt; font-weight: 700; color: ${primaryColor}; margin-bottom: 8px; margin-top: 0; ${h1BorderStyle} page-break-inside: avoid; break-inside: avoid; ${h1StyleExtra}"$1`)
+        .replace(/<h2(\s|>)/gi, `<h2 style="font-size: 13pt; font-weight: 700; color: ${primaryColor}; margin-top: 18px; margin-bottom: 8px; ${h2BorderStyle} text-transform: uppercase; letter-spacing: 0.05em; page-break-inside: avoid; break-inside: avoid;"$1`)
+        .replace(/<hr(\s|>|\/>)/gi, `<hr style="${hrStyle}"$1`)
         .replace(/<h3(\s|>)/gi, `<h3 style="font-size: 11.5pt; font-weight: 600; color: ${primaryColor}; margin-top: 14px; margin-bottom: 4px; page-break-inside: avoid; break-inside: avoid;"$1`)
         .replace(/<h4(\s|>)/gi, `<h4 style="font-size: 10.5pt; font-weight: 600; color: ${primaryColor}; margin-top: 12px; margin-bottom: 4px; page-break-inside: avoid; break-inside: avoid;"$1`)
         .replace(/<h5(\s|>)/gi, `<h5 style="font-size: 10pt; font-weight: 600; color: ${primaryColor}; margin-top: 10px; margin-bottom: 2px; page-break-inside: avoid; break-inside: avoid;"$1`)
@@ -102,14 +124,14 @@ export function generateStyledPdfHtml(markdownText: string, options: PdfStyleOpt
             font-family: ${fontFamily}; 
             line-height: ${lineHeight}; 
             color: ${textColor}; 
-            padding: ${padding}; 
+            padding: ${padding} !important; 
             font-size: ${fontSize};
             background-color: #ffffff;
             box-sizing: border-box;
             width: 100%;
             ${headerContainerExtra}
         ">
-            <div class="pdf-body">
+            <div class="pdf-body" style="box-sizing: border-box; width: 100%;">
                 ${parsedContent}
             </div>
         </div>

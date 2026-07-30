@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send } from 'lucide-react';
+import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { marked } from 'marked';
 import ResumeActions from './ResumeActions';
 import DownloadPdfButton from './DownloadPdfButton';
@@ -46,11 +47,6 @@ export default function ResumeAssetCard({
         };
     }, []);
 
-    const handleColorChange = (color: string) => {
-        setSelectedColor(color);
-        localStorage.setItem('theme-selected-color', color);
-        window.dispatchEvent(new CustomEvent('theme-color-change', { detail: color }));
-    };
     const [isLoading, setIsLoading] = useState(false);
     const [isSavingPref, setIsSavingPref] = useState(false);
     const [savedPref, setSavedPref] = useState(false);
@@ -228,29 +224,6 @@ export default function ResumeAssetCard({
                         />
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {['black', '#0155a1', '#06af9e', '#1d90f7'].map((color) => (
-                            <button
-                                key={color}
-                                onClick={() => handleColorChange(color)}
-                                style={{
-                                    width: '18px',
-                                    height: '18px',
-                                    borderRadius: '50%',
-                                    background: color,
-                                    border: selectedColor === color ? '2px solid var(--accent-primary)' : '1px solid var(--border-glass)',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    outline: 'none',
-                                    boxShadow: selectedColor === color ? '0 0 4px var(--accent-primary)' : 'none',
-                                    transition: 'transform 0.1s ease',
-                                    transform: selectedColor === color ? 'scale(1.1)' : 'none'
-                                }}
-                                title={color}
-                            />
-                        ))}
-                    </div>
-
                     <button
                         onClick={savePreference}
                         disabled={isSavingPref || savedPref}
@@ -270,6 +243,27 @@ export default function ResumeAssetCard({
                         {isSavingPref ? <Loader2 size={14} className="animate-spin" /> : <ThumbsUp size={14} />}
                         {savedPref ? 'Saved to Preferences' : 'Save Preference'}
                     </button>
+
+                    <Link
+                        href="/settings#pdf-styling-resume"
+                        title="PDF Styling Settings"
+                        style={{
+                            padding: '0.4rem 0.6rem',
+                            fontSize: '0.8rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-glass)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            textDecoration: 'none'
+                        }}
+                    >
+                        <Settings size={14} />
+                    </Link>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>

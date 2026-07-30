@@ -76,13 +76,22 @@ export default function SettingsPage() {
         setMounted(true);
         if (typeof window !== 'undefined') {
             const hash = window.location.hash;
-            if (hash === '#job-discovery' || hash === '#job-preferences') {
-                setTimeout(() => {
-                    const el = document.getElementById('job-discovery') || document.querySelector('[data-tour="job-preferences"]');
-                    if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (hash) {
+                const targetId = hash.startsWith('#pdf-styling') ? 'pdf-styling' : hash.replace('#', '');
+                let attempts = 0;
+                const scrollToElement = () => {
+                    let el = document.getElementById(targetId);
+                    if (!el && (hash === '#job-discovery' || hash === '#job-preferences')) {
+                        el = document.getElementById('job-discovery') || document.querySelector('[data-tour="job-preferences"]');
                     }
-                }, 350);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else if (attempts < 10) {
+                        attempts++;
+                        setTimeout(scrollToElement, 150);
+                    }
+                };
+                setTimeout(scrollToElement, 100);
             }
         }
     }, []);

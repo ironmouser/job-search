@@ -62,6 +62,25 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
     const headerColorInputRef = useRef<HTMLInputElement>(null);
     const textColorInputRef = useRef<HTMLInputElement>(null);
 
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const hash = window.location.hash;
+            if (hash.startsWith('#pdf-styling')) {
+                if (hash.includes('cover-letter')) {
+                    setActiveTab('coverLetter');
+                } else if (hash.includes('resume')) {
+                    setActiveTab('resume');
+                }
+                setTimeout(() => {
+                    const el = document.getElementById('pdf-styling');
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+            }
+        }
+    }, []);
+
     const prefix = activeTab === 'resume' ? 'resumePdf' : 'coverLetterPdf';
 
     const currentTemplate = settings[`${prefix}Template`] || 'classic';
@@ -145,7 +164,7 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
     };
 
     return (
-        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="glass-card" id="pdf-styling" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Header Title */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
@@ -393,6 +412,7 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                                 <option value="0.3in">0.3 in</option>
                                 <option value="0.4in">0.4 in</option>
                                 <option value="0.5in">0.5 in</option>
+                                <option value="0.6in">0.6 in</option>
                                 <option value="0.65in">0.65 in</option>
                             </select>
                             <ChevronDown size={14} color="#0f172a" style={{ position: 'absolute', right: '0.55rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
@@ -615,7 +635,6 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                         style={{
                             background: '#ffffff',
                             width: '100%',
-                            maxWidth: '600px',
                             minHeight: '750px',
                             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
                             borderRadius: '2px',

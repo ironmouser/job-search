@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send } from 'lucide-react';
+import { Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadPdfButton from './DownloadPdfButton';
@@ -394,6 +395,27 @@ export default function CoverLetterAssetCard({
                         {isSavingPref ? <Loader2 size={14} className="animate-spin" /> : <ThumbsUp size={14} />}
                         {savedPref ? 'Saved to Preferences' : 'Save as Preference'}
                     </button>
+
+                    <Link
+                        href="/settings#pdf-styling-cover-letter"
+                        title="PDF Styling Settings"
+                        style={{
+                            padding: '0.4rem 0.6rem',
+                            fontSize: '0.8rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-glass)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            textDecoration: 'none'
+                        }}
+                    >
+                        <Settings size={14} />
+                    </Link>
 
                     <div style={{ flexGrow: 1 }} />
 
