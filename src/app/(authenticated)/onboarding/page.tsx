@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bot, Search, FileText, Target, CheckCircle, ChevronRight, ChevronLeft, Loader2, UploadCloud, Flame, Star, Sparkles } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import CloudResumePicker from '@/components/common/CloudResumePicker';
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -305,6 +306,13 @@ ${goal}
                                 </div>
                             )}
                         </div>
+
+                        <CloudResumePicker
+                            onParseStart={() => setIsParsing(true)}
+                            onParseEnd={() => setIsParsing(false)}
+                            onParseSuccess={(markdown) => handleChange('resumeMarkdown', markdown)}
+                            onError={(err) => alert(err)}
+                        />
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1rem 0' }}>
                             <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />

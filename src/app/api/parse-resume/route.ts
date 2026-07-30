@@ -5,6 +5,34 @@ import mammoth from 'mammoth';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import { callDeepSeek } from '@/lib/deepseek';
 
+function normalizeCloudUrl(url: string, accessToken?: string): { fetchUrl: string; headers?: Record<string, string> } {
+    let fetchUrl = url;
+    const headers: Record<string, string> = {};
+
+    if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    // Google Drive share links
+    if (url.includes('drive.google.com')) {
+        const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (fileIdMatch && fileIdMatch[1]) {
+            const fileId = fileIdMatch[1];
+            if (accessToken) {
+                fetchUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+            } else {
+                fetchUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+            }
+        }
+    }
+    // Dropbox share links
+    else if (url.includes('dropbox.com')) {
+        fetchUrl = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '?dl=1');
+    }
+
+    return { fetchUrl, headers };
+}
+
 export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
@@ -13,17 +41,57 @@ export async function POST(request: Request) {
         }
         const userId = session.user.id as string;
 
-        const formData = await request.formData();
-        const file = formData.get('file') as File;
+        let buffer: Buffer;
+        let fileName = 'resume.pdf';
 
-        if (!file) {
-            return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+        const contentType = request.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            const json = await request.json();
+            const { fileUrl, fileName: providedFileName, accessToken } = json;
+
+            if (!fileUrl) {
+                return NextResponse.json({ error: 'No file URL provided' }, { status: 400 });
+            }
+
+            if (providedFileName) {
+                fileName = providedFileName;
+            } else if (fileUrl.includes('.docx')) {
+                fileName = 'resume.docx';
+            }
+
+            const { fetchUrl, headers } = normalizeCloudUrl(fileUrl, accessToken);
+
+            const res = await fetch(fetchUrl, { headers });
+            if (!res.ok) {
+                return NextResponse.json({ error: `Failed to download file from cloud storage (${res.status})` }, { status: 400 });
+            }
+
+            const arrayBuffer = await res.arrayBuffer();
+            buffer = Buffer.from(arrayBuffer);
+        } else {
+            const formData = await request.formData();
+            const file = formData.get('file') as File;
+
+            if (!file) {
+                return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+            }
+
+            fileName = file.name;
+            buffer = Buffer.from(await file.arrayBuffer());
         }
 
-        const buffer = Buffer.from(await file.arrayBuffer());
         let rawText = '';
 
-        if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        if (fileName.toLowerCase().endsWith('.docx') || contentType.includes('wordprocessingml')) {
+            try {
+                const result = await mammoth.extractRawText({ buffer });
+                rawText = result.value || '';
+            } catch (err: any) {
+                console.warn('DOCX raw text extraction failed:', err.message);
+                rawText = buffer.toString('utf8');
+            }
+        } else {
             try {
                 const pdfData = await pdfParse(buffer);
                 rawText = pdfData.text || '';
@@ -31,11 +99,6 @@ export async function POST(request: Request) {
                 console.warn('PDF raw text extraction failed:', err.message);
                 rawText = buffer.toString('utf8');
             }
-        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
-            const result = await mammoth.extractRawText({ buffer });
-            rawText = result.value || '';
-        } else {
-            return NextResponse.json({ error: 'Unsupported file type. Please upload a PDF or DOCX file.' }, { status: 400 });
         }
 
         if (!rawText.trim()) {
