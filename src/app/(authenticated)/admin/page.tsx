@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail, AlertTriangle } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail, AlertTriangle, Trash2, UserX, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -83,6 +84,17 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+
+  // User Deletion & Purge State
+  const [mounted, setMounted] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserRecord | null>(null);
+  const [showPurgeModal, setShowPurgeModal] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [isPurging, setIsPurging] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // System Alerts State
   const [systemAlerts, setSystemAlerts] = useState<any[]>([]);
@@ -246,6 +258,49 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingUserId(userId);
+    try {
+      const res = await fetch(`/api/admin/users?userId=${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        setUserToDelete(null);
+      } else {
+        alert(data.error || 'Failed to delete user');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error deleting user');
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
+  const handlePurgeFreeUsers = async () => {
+    setIsPurging(true);
+    try {
+      const res = await fetch('/api/admin/users?deleteFree=true', {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers(prev => prev.filter(u => u.planTier !== 'FREE' || u.role === 'ADMIN'));
+        setShowPurgeModal(false);
+        alert(data.message || `Successfully removed free tier users.`);
+      } else {
+        alert(data.error || 'Failed to purge free tier users');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error purging free tier users');
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     try {
@@ -336,24 +391,55 @@ export default function AdminDashboard() {
               Registered Users ({filteredUsers.length})
             </h3>
             
-            {/* Search */}
-            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <Search size={16} color="var(--text-secondary)" style={{ position: "absolute", left: "12px" }} />
-              <input
-                type="text"
-                placeholder="Search name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  padding: "0.5rem 0.75rem 0.5rem 2.25rem",
-                  background: "rgba(0,0,0,0.2)",
-                  border: "1px solid var(--border-glass)",
-                  color: "var(--text-primary)",
-                  borderRadius: "8px",
-                  fontSize: "0.9rem",
-                  width: "250px"
-                }}
-              />
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              {/* Purge Free Users Button */}
+              {(() => {
+                const freeUsersCount = users.filter(u => u.planTier === 'FREE' && u.role !== 'ADMIN').length;
+                return (
+                  <button
+                    onClick={() => setShowPurgeModal(true)}
+                    disabled={freeUsersCount === 0}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      padding: "0.5rem 0.85rem",
+                      background: freeUsersCount > 0 ? "rgba(239, 68, 68, 0.1)" : "rgba(255,255,255,0.05)",
+                      color: freeUsersCount > 0 ? "#ef4444" : "var(--text-secondary)",
+                      border: freeUsersCount > 0 ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid var(--border-glass)",
+                      borderRadius: "8px",
+                      fontSize: "0.85rem",
+                      fontWeight: 500,
+                      cursor: freeUsersCount > 0 ? "pointer" : "not-allowed",
+                      transition: "all 0.2s ease",
+                      opacity: freeUsersCount === 0 ? 0.6 : 1
+                    }}
+                    title={freeUsersCount === 0 ? "No free tier non-admin users to purge" : "Purge all free tier users"}
+                  >
+                    <UserX size={16} /> Remove Free Tier Users ({freeUsersCount})
+                  </button>
+                );
+              })()}
+
+              {/* Search */}
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <Search size={16} color="var(--text-secondary)" style={{ position: "absolute", left: "12px" }} />
+                <input
+                  type="text"
+                  placeholder="Search name or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    padding: "0.5rem 0.75rem 0.5rem 2.25rem",
+                    background: "rgba(0,0,0,0.2)",
+                    border: "1px solid var(--border-glass)",
+                    color: "var(--text-primary)",
+                    borderRadius: "8px",
+                    fontSize: "0.9rem",
+                    width: "230px"
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -394,7 +480,7 @@ export default function AdminDashboard() {
                           {/* Role selector */}
                           <select
                             value={user.role}
-                            disabled={savingUserId === user.id}
+                            disabled={savingUserId === user.id || deletingUserId === user.id}
                             onChange={(e) => handleUpdateUser(user.id, { role: e.target.value as 'USER' | 'ADMIN' })}
                             style={{ background: "var(--bg-color)", color: "var(--text-primary)", border: "1px solid var(--border-glass)", padding: "0.25rem", borderRadius: "6px" }}
                           >
@@ -405,13 +491,34 @@ export default function AdminDashboard() {
                           {/* Plan selector */}
                           <select
                             value={user.planTier}
-                            disabled={savingUserId === user.id}
+                            disabled={savingUserId === user.id || deletingUserId === user.id}
                             onChange={(e) => handleUpdateUser(user.id, { planTier: e.target.value })}
                             style={{ background: "var(--bg-color)", color: "var(--text-primary)", border: "1px solid var(--border-glass)", padding: "0.25rem", borderRadius: "6px" }}
                           >
                             <option value="FREE">Free</option>
                             <option value="PRO">Pro</option>
                           </select>
+
+                          {/* Delete single user button */}
+                          <button
+                            onClick={() => setUserToDelete(user)}
+                            disabled={user.role === 'ADMIN' || user.id === (session?.user as any)?.id || deletingUserId === user.id}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: "0.35rem 0.5rem",
+                              background: "rgba(239, 68, 68, 0.1)",
+                              color: "#ef4444",
+                              border: "1px solid rgba(239, 68, 68, 0.3)",
+                              borderRadius: "6px",
+                              cursor: user.role === 'ADMIN' || user.id === (session?.user as any)?.id ? "not-allowed" : "pointer",
+                              opacity: user.role === 'ADMIN' || user.id === (session?.user as any)?.id ? 0.3 : 1
+                            }}
+                            title={user.role === 'ADMIN' ? "Admin accounts cannot be deleted" : "Delete user account"}
+                          >
+                            <Trash2 size={15} />
+                          </button>
 
                           {savingUserId === user.id && <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Saving...</span>}
                         </div>
@@ -822,6 +929,172 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Single User Deletion Modal */}
+      {mounted && userToDelete && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deletingUserId) setUserToDelete(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              backgroundColor: 'var(--card-bg, #18181b)',
+              border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              color: 'var(--text-primary, #ffffff)',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ padding: '0.5rem', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+                <Trash2 size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>Confirm User Deletion</h3>
+            </div>
+
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary, #a1a1aa)', margin: 0, lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete <strong style={{ color: 'var(--text-primary)' }}>{userToDelete.name || userToDelete.email}</strong> ({userToDelete.email})?
+              All associated data (saved jobs, assets, and preferences) will be permanently purged.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                disabled={deletingUserId === userToDelete.id}
+                className="btn-outline"
+                style={{ padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteUser(userToDelete.id)}
+                disabled={deletingUserId === userToDelete.id}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {deletingUserId === userToDelete.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                Delete User
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Bulk Free Users Purge Modal */}
+      {mounted && showPurgeModal && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isPurging) setShowPurgeModal(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              width: '100%',
+              maxWidth: '460px',
+              backgroundColor: 'var(--card-bg, #18181b)',
+              border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              color: 'var(--text-primary, #ffffff)',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ padding: '0.5rem', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+                <UserX size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>Remove All Free Tier Users</h3>
+            </div>
+
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary, #a1a1aa)', margin: 0, lineHeight: 1.5 }}>
+              Are you sure you want to permanently remove all <strong style={{ color: '#ef4444' }}>{users.filter(u => u.planTier === 'FREE' && u.role !== 'ADMIN').length}</strong> free tier users?
+              Admin accounts will not be affected. This action cannot be undone.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowPurgeModal(false)}
+                disabled={isPurging}
+                className="btn-outline"
+                style={{ padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePurgeFreeUsers}
+                disabled={isPurging}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {isPurging ? <Loader2 size={16} className="animate-spin" /> : <UserX size={16} />}
+                Confirm Purge
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

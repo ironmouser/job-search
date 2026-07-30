@@ -51,6 +51,20 @@ export const authOptions: AuthOptions = {
         token.isOnboarded = (user as any).isOnboarded || false;
         token.planTier = (user as any).planTier || "FREE";
         token.role = (user as any).role || "USER";
+      } else if (token.id) {
+        // Verify user still exists in DB
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { id: true, isOnboarded: true, planTier: true, role: true }
+        });
+        if (!dbUser) {
+          // User was deleted from DB; invalidate token
+          token.id = "";
+          return token;
+        }
+        token.isOnboarded = dbUser.isOnboarded;
+        token.planTier = dbUser.planTier;
+        token.role = dbUser.role;
       }
       
       if (trigger === "update") {
@@ -64,6 +78,9 @@ export const authOptions: AuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      if (!token.id) {
+        return null as any;
+      }
       if (session.user) {
         session.user.id = token.id as string;
         (session.user as any).isOnboarded = token.isOnboarded as boolean;

@@ -179,75 +179,77 @@ ${goal}
     };
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: 'var(--bg-main)' }}>
-            <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '800px', padding: '3rem' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'clamp(0.75rem, 3vw, 2rem)', background: 'var(--bg-main)', width: '100%', boxSizing: 'border-box' }}>
+            <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '800px', padding: 'clamp(1.25rem, 4vw, 2.5rem)', boxSizing: 'border-box' }}>
                 
                 {/* Progress Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem', position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'clamp(1.5rem, 4vw, 2.5rem)', position: 'relative' }}>
                     <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', background: 'var(--border-glass)', zIndex: 0 }} />
                     <div style={{ position: 'absolute', top: '50%', left: 0, width: `${(step - 1) * 50}%`, height: '2px', background: 'var(--accent-primary)', zIndex: 0, transition: 'width 0.3s ease' }} />
                     
                     {[1, 2, 3].map(i => (
                         <div key={i} style={{ 
                             position: 'relative', zIndex: 1, 
-                            width: '40px', height: '40px', borderRadius: '50%', 
+                            width: '38px', height: '38px', borderRadius: '50%', 
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             background: step >= i ? 'var(--accent-primary)' : 'var(--bg-surface)',
                             color: step >= i ? '#fff' : 'var(--text-secondary)',
                             fontWeight: 600,
+                            fontSize: '0.9rem',
                             border: `2px solid ${step >= i ? 'var(--accent-primary)' : 'var(--border-glass)'}`,
                             transition: 'all 0.3s ease'
                         }}>
-                            {step > i ? <CheckCircle size={20} /> : i}
+                            {step > i ? <CheckCircle size={18} /> : i}
                         </div>
                     ))}
                 </div>
 
                 {/* Step 1 */}
                 {step === 1 && (
-                    <div className="animate-fade-in">
-                        <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Search className="text-accent" /> What are you looking for?
+                    <div className="animate-fade-in" style={{ width: '100%' }}>
+                        <h2 style={{ fontSize: 'clamp(1.35rem, 4vw, 1.85rem)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                            <Search className="text-accent" size={24} style={{ flexShrink: 0 }} />
+                            <span>What are you looking for?</span>
                         </h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Let's set up your primary job search criteria so the agent knows what to hunt for.</p>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Let's set up your primary job search criteria so the agent knows what to hunt for.</p>
                         
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
                                 <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Target Job Title / Keyword</label>
                                 <input 
                                     type="text"
                                     value={formData.searchKeyword}
                                     onChange={(e) => handleChange('searchKeyword', e.target.value)}
                                     placeholder="e.g. Senior Software Engineer"
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '1rem', borderRadius: '8px', fontSize: '1rem' }}
+                                    style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
                                 />
                             </div>
                             
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', width: '100%' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
                                     <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Enter a location preference</label>
                                     <input 
                                         type="text"
                                         value={formData.searchLocation}
                                         onChange={(e) => handleChange('searchLocation', e.target.value)}
                                         placeholder='e.g. "Remote", "Austin, TX", "United Kingdom"'
-                                        style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '1rem', borderRadius: '8px', fontSize: '1rem' }}
+                                        style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
                                     />
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                                         Examples: "Remote", a specific city ("Austin, TX"), a state/country ("United Kingdom"), or a region ("EMEA").
                                     </span>
                                 </div>
                                 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'flex-start', width: '100%' }}>
                                     <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Remote Only?</label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', padding: '0.85rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--border-glass)', width: '100%', boxSizing: 'border-box' }}>
                                         <input 
                                             type="checkbox" 
                                             checked={formData.remoteOnly}
                                             onChange={(e) => handleChange('remoteOnly', e.target.checked)}
-                                            style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                            style={{ cursor: 'pointer', width: '18px', height: '18px', flexShrink: 0 }}
                                         />
-                                        <span>Must be remote</span>
+                                        <span style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Must be remote</span>
                                     </label>
                                 </div>
                             </div>
@@ -257,11 +259,12 @@ ${goal}
 
                 {/* Step 2 */}
                 {step === 2 && (
-                    <div className="animate-fade-in">
-                        <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <FileText className="text-accent" /> Base Resume
+                    <div className="animate-fade-in" style={{ width: '100%' }}>
+                        <h2 style={{ fontSize: 'clamp(1.35rem, 4vw, 1.85rem)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                            <FileText className="text-accent" size={24} style={{ flexShrink: 0 }} />
+                            <span>Base Resume</span>
                         </h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Upload a PDF/Word doc or paste your resume. The AI will convert it to Markdown to use as a template.</p>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Upload a PDF/Word doc or paste your resume. The AI will convert it to Markdown to use as a template.</p>
                         
                         <div 
                             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -271,13 +274,15 @@ ${goal}
                             style={{ 
                                 border: `2px dashed ${isDragging ? 'var(--accent-primary)' : 'var(--border-glass)'}`, 
                                 background: isDragging ? 'rgba(99, 102, 241, 0.1)' : 'rgba(0,0,0,0.2)', 
-                                padding: '2rem', 
+                                padding: 'clamp(1.25rem, 4vw, 2rem)', 
                                 borderRadius: '8px', 
                                 textAlign: 'center',
                                 cursor: 'pointer',
                                 transition: 'all 0.3s ease',
                                 marginBottom: '1.5rem',
-                                position: 'relative'
+                                position: 'relative',
+                                width: '100%',
+                                boxSizing: 'border-box'
                             }}
                         >
                             <input 
@@ -296,23 +301,23 @@ ${goal}
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
                                     <UploadCloud size={32} style={{ color: isDragging ? 'var(--accent-primary)' : 'inherit' }} />
                                     <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Drag & Drop PDF or Word Doc</span>
-                                    <span>or click to browse</span>
+                                    <span style={{ fontSize: '0.85rem' }}>or click to browse</span>
                                 </div>
                             )}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1rem 0' }}>
                             <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>OR PASTE TEXT</span>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>OR PASTE TEXT</span>
                             <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
                             <textarea 
                                 value={formData.resumeMarkdown}
                                 onChange={(e) => handleChange('resumeMarkdown', e.target.value)}
                                 placeholder="Paste your resume here (Markdown, plain text, or rich text)..."
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '1rem', borderRadius: '8px', minHeight: '250px', resize: 'vertical', fontSize: '0.9rem' }}
+                                style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '1rem', borderRadius: '8px', minHeight: '220px', resize: 'vertical', fontSize: '0.9rem' }}
                             />
                         </div>
                     </div>
@@ -320,35 +325,36 @@ ${goal}
 
                 {/* Step 3 */}
                 {step === 3 && (
-                    <div className="animate-fade-in">
-                        <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Target className="text-accent" /> AI Scoring Rubric
+                    <div className="animate-fade-in" style={{ width: '100%' }}>
+                        <h2 style={{ fontSize: 'clamp(1.35rem, 4vw, 1.85rem)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                            <Target className="text-accent" size={24} style={{ flexShrink: 0 }} />
+                            <span>AI Scoring Rubric</span>
                         </h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Define exactly how the AI should score and rank jobs. Be specific about your priorities.</p>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Define exactly how the AI should score and rank jobs. Be specific about your priorities.</p>
                         
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
-                            <label style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>1. What is your overall job search goal?</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', width: '100%' }}>
+                            <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>1. What is your overall job search goal?</label>
                             <textarea 
                                 value={goal}
                                 onChange={(e) => setGoal(e.target.value)}
                                 placeholder="Example: I am looking for high-growth tech opportunities with strong engineering culture..."
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '1rem', borderRadius: '8px', minHeight: '100px', resize: 'vertical', fontSize: '0.9rem' }}
+                                style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', minHeight: '90px', resize: 'vertical', fontSize: '0.9rem' }}
                             />
                         </div>
 
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
-                                <label style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>2. Sort Your Priorities</label>
-                                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Drag & Drop to re-weight</span>
+                        <div style={{ marginBottom: '1.5rem', width: '100%' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>2. Sort Your Priorities</label>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Drag & drop or tap to re-weight</span>
                             </div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Percentages dynamically update. Must-Haves carry 5x more weight than Nice-to-Haves.</p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.4 }}>Percentages dynamically update. Must-Haves carry 5x more weight than Nice-to-Haves.</p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', minHeight: '350px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem', width: '100%' }}>
                                 
                                 {([
-                                    { level: 'mustHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Flame size={18} /> Must-Haves</span>, desc: 'Dealbreakers', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
-                                    { level: 'important', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Star size={18} /> Important</span>, desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
-                                    { level: 'niceToHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Sparkles size={18} /> Nice-to-Haves</span>, desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
+                                    { level: 'mustHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Flame size={16} /> Must-Haves</span>, desc: 'Dealbreakers', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
+                                    { level: 'important', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Star size={16} /> Important</span>, desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
+                                    { level: 'niceToHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Sparkles size={16} /> Nice-to-Haves</span>, desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
                                 ] as const).map(bucket => (
                                     <div 
                                         key={bucket.level}
@@ -358,15 +364,17 @@ ${goal}
                                             background: bucket.bg, 
                                             border: `1px solid ${bucket.border}`, 
                                             borderRadius: '8px', 
-                                            padding: '1rem',
+                                            padding: '0.85rem',
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            gap: '0.75rem'
+                                            gap: '0.75rem',
+                                            width: '100%',
+                                            boxSizing: 'border-box'
                                         }}
                                     >
-                                        <div style={{ marginBottom: '0.5rem' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{bucket.title}</h3>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{bucket.desc}</span>
+                                        <div style={{ marginBottom: '0.25rem' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center' }}>{bucket.title}</h3>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{bucket.desc}</span>
                                         </div>
                                         
                                         {criteriaList.filter(c => bucketState[c.id] === bucket.level).map(c => {
@@ -385,20 +393,46 @@ ${goal}
                                                         border: '1px solid var(--border-glass)',
                                                         cursor: 'grab',
                                                         opacity: draggedItem === c.id ? 0.5 : 1,
-                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                                        width: '100%',
+                                                        boxSizing: 'border-box'
                                                     }}
                                                 >
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.label}</span>
+                                                        <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{c.label}</span>
                                                         <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)', fontSize: '0.85rem' }}>{pct}%</span>
                                                     </div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{c.desc}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3, marginBottom: '0.5rem' }}>{c.desc}</div>
+                                                    
+                                                    {/* Quick Priority Selector for Mobile/Touch */}
+                                                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                                        {(['mustHave', 'important', 'niceToHave'] as PriorityLevel[]).map(lvl => (
+                                                            <button
+                                                                key={lvl}
+                                                                type="button"
+                                                                onClick={() => setBucketState(prev => ({ ...prev, [c.id]: lvl }))}
+                                                                style={{
+                                                                    padding: '0.2rem 0.45rem',
+                                                                    fontSize: '0.7rem',
+                                                                    borderRadius: '4px',
+                                                                    border: '1px solid var(--border-glass)',
+                                                                    background: bucketState[c.id] === lvl ? 'var(--accent-primary)' : 'rgba(0,0,0,0.2)',
+                                                                    color: bucketState[c.id] === lvl ? '#ffffff' : 'var(--text-secondary)',
+                                                                    cursor: 'pointer',
+                                                                    fontWeight: bucketState[c.id] === lvl ? 600 : 400,
+                                                                    transition: 'all 0.15s ease'
+                                                                }}
+                                                            >
+                                                                {lvl === 'mustHave' ? 'Must' : lvl === 'important' ? 'Important' : 'Nice'}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
                                         {criteriaList.filter(c => bucketState[c.id] === bucket.level).length === 0 && (
-                                            <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-secondary)', fontSize: '0.85rem', border: '1px dashed var(--border-glass)', borderRadius: '6px' }}>
-                                                Drop items here
+                                            <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-secondary)', fontSize: '0.8rem', border: '1px dashed var(--border-glass)', borderRadius: '6px' }}>
+                                                Drop or select items here
                                             </div>
                                         )}
                                     </div>
@@ -409,12 +443,12 @@ ${goal}
                 )}
 
                 {/* Footer Controls */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border-glass)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'clamp(1.5rem, 4vw, 2.5rem)', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)', width: '100%' }}>
                     <button 
                         onClick={handlePrev} 
                         disabled={step === 1 || loading}
                         className="btn-outline" 
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: step === 1 ? 0 : 1, pointerEvents: step === 1 ? 'none' : 'auto' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: step === 1 ? 0 : 1, pointerEvents: step === 1 ? 'none' : 'auto', padding: '0.65rem 1.15rem' }}
                     >
                         <ChevronLeft size={18} /> Back
                     </button>
@@ -423,7 +457,7 @@ ${goal}
                         <button 
                             onClick={handleNext} 
                             className="btn-primary" 
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem' }}
                         >
                             Next <ChevronRight size={18} />
                         </button>
@@ -432,7 +466,7 @@ ${goal}
                             onClick={handleSubmit} 
                             disabled={loading}
                             className="btn-primary" 
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', padding: '0.65rem 1.25rem' }}
                         >
                             {loading ? <Loader2 size={18} className="animate-spin" /> : <Bot size={18} />}
                             {loading ? 'Initializing Agent...' : 'Complete Setup'}
