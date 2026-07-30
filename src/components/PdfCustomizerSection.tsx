@@ -577,9 +577,6 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Live PDF Preview ({activeTab === 'resume' ? 'Base Resume' : 'Cover Letter'})
-                        </span>
                         <button
                             type="button"
                             onClick={() => handleApplyTemplate('classic')}
@@ -599,6 +596,9 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                         >
                             <RotateCcw size={13} />
                         </button>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Live PDF Preview ({activeTab === 'resume' ? 'Base Resume' : 'Cover Letter'})
+                        </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>

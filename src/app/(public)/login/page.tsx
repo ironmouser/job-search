@@ -1,9 +1,9 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Mail, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
+import { Mail, Loader2, ArrowRight, ShieldCheck, LogOut } from "lucide-react";
 import { getAssetUrl } from "@/lib/assets";
 
 function LoginForm() {
@@ -18,6 +18,17 @@ function LoginForm() {
       setIsVerifyView(true);
     }
   }, [searchParams]);
+
+  const handleClearSession = async () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      await signOut({ callbackUrl: "/login", redirect: true });
+    } catch (e) {
+      console.error(e);
+      window.location.href = "/login";
+    }
+  };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +58,16 @@ function LoginForm() {
     }
   };
 
+  const errorParam = searchParams?.get("error");
+  let errorMessage: string | null = null;
+  if (errorParam === "OAuthAccountNotLinked") {
+    errorMessage = "An account with this email address already exists. Google sign-in will securely link to your account.";
+  } else if (errorParam === "AccessDenied") {
+    errorMessage = "Access denied. You do not have permission to sign in.";
+  } else if (errorParam) {
+    errorMessage = "An authentication error occurred. Clearing your session usually fixes this.";
+  }
+
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh", position: "relative", overflow: "hidden", padding: "2rem", backgroundColor: "#D2DCE3" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", marginTop: "-200px" }}>
@@ -62,6 +83,31 @@ function LoginForm() {
         </div>
 
         <div className="glass-card" style={{ width: "100%", maxWidth: "420px", position: "relative", zIndex: 10 }}>
+        {errorMessage && (
+          <div style={{ padding: "0.85rem 1rem", background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "8px", color: "#ef4444", fontSize: "0.85rem", marginBottom: "1.25rem", lineHeight: 1.4 }}>
+            <div style={{ marginBottom: "0.5rem" }}>{errorMessage}</div>
+            <button
+              type="button"
+              onClick={handleClearSession}
+              style={{
+                background: "rgba(239, 68, 68, 0.25)",
+                border: "1px solid rgba(239, 68, 68, 0.5)",
+                color: "#ffffff",
+                padding: "0.35rem 0.65rem",
+                borderRadius: "6px",
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                fontWeight: 600,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem"
+              }}
+            >
+              <LogOut size={13} />
+              Clear Session & Retry
+            </button>
+          </div>
+        )}
         {isVerifyView ? (
           <div style={{ textAlign: "center", animation: "fadeIn 0.5s ease" }}>
             <div style={{ margin: "0 auto 1.5rem", display: "flex", alignItems: "center", justifyContent: "center", width: "64px", height: "64px", borderRadius: "50%", background: "rgba(54, 149, 227, 0.15)" }}>

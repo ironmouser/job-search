@@ -45,6 +45,39 @@ export const authOptions: AuthOptions = {
     verifyRequest: '/login?verify=true',
   },
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === 'google' && user?.email) {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            include: { accounts: true }
+          });
+
+          if (existingUser) {
+            const hasGoogleAccount = existingUser.accounts.some(a => a.provider === 'google');
+            if (!hasGoogleAccount) {
+              await prisma.account.create({
+                data: {
+                  userId: existingUser.id,
+                  type: account.type,
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  access_token: account.access_token,
+                  expires_at: account.expires_at,
+                  token_type: account.token_type,
+                  scope: account.scope,
+                  id_token: account.id_token,
+                }
+              });
+            }
+            user.id = existingUser.id;
+          }
+        } catch (e) {
+          console.error("Error linking Google account in signIn callback:", e);
+        }
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
