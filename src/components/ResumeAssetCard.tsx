@@ -209,7 +209,7 @@ export default function ResumeAssetCard({
                     <CheckCircle size={20} /> Tailored Resume Extract
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} onClick={(e) => e.stopPropagation()}>
-                    <DownloadPdfButton markdownText={content} filename={resumeFilename} />
+                    <DownloadPdfButton markdownText={content} filename={resumeFilename} type="resume" />
                     <CopyToClipboardButton textToCopy={content || ''} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>

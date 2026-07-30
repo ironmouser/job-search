@@ -182,7 +182,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
     setIsLoaded(true);
     isPageInitialized.current = true;
-  }, [searchParams]);
+  }, []);
 
   const changePage = (newPage: number) => {
     setCurrentPage(newPage);

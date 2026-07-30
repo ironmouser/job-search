@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+const PdfCustomizerSection = dynamic(() => import('@/components/PdfCustomizerSection'), { ssr: false, loading: () => null });
 
 // Video instructions for email client setup
 const EMAIL_VIDEO_LINKS: Record<string, string> = {
@@ -57,6 +59,7 @@ export default function SettingsPage() {
     const router = useRouter();
     const [settings, setSettings] = useState<any>({});
     const [initialSettings, setInitialSettings] = useState<any>(null);
+    const [isDirty, setIsDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [emailProvider, setEmailProvider] = useState<string>('gmail');
@@ -83,8 +86,6 @@ export default function SettingsPage() {
             }
         }
     }, []);
-    
-    const isDirty = initialSettings && !isDeepEqual(initialSettings, settings);
 
     // Handle standard browser page unload (e.g. closing tab, refreshing, manual URL typing)
     useEffect(() => {
@@ -107,7 +108,6 @@ export default function SettingsPage() {
         if (!isDirty) return;
 
         const handleAnchorClick = (e: MouseEvent) => {
-            // Handle only standard left click without modifiers
             if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
                 return;
             }
@@ -124,11 +124,9 @@ export default function SettingsPage() {
                     return;
                 }
 
-                // Relative internal link detection
                 if (href && (href.startsWith('/') || href.startsWith(window.location.origin))) {
                     const parsedUrl = href.replace(window.location.origin, '');
                     
-                    // Ignore clicks pointing to current page or anchor links
                     if (parsedUrl === window.location.pathname || parsedUrl.startsWith('#')) {
                         return;
                     }
@@ -142,12 +140,16 @@ export default function SettingsPage() {
             }
         };
 
-        // Capture phase to intercept Next.js Link click handler
         document.addEventListener('click', handleAnchorClick, true);
         return () => {
             document.removeEventListener('click', handleAnchorClick, true);
         };
     }, [isDirty]);
+
+    const handleChange = useCallback((key: string, value: any) => {
+        setSettings((prev: any) => ({ ...prev, [key]: value }));
+        setIsDirty(true);
+    }, []);
 
     const handleProviderChange = (provider: string) => {
         setEmailProvider(provider);
@@ -170,8 +172,7 @@ export default function SettingsPage() {
     const isAdmin = (session?.user as any)?.role === 'ADMIN';
     const isPro = (session?.user as any)?.planTier === 'PRO';
 
-
-    const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true; // Server-side env vars not exposed, mock for now
+    const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true;
 
     useEffect(() => {
         fetch('/api/settings', { cache: 'no-store' })
@@ -179,14 +180,11 @@ export default function SettingsPage() {
             .then(data => {
                 setSettings(data);
                 setInitialSettings(JSON.parse(JSON.stringify(data)));
+                setIsDirty(false);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
     }, []);
-
-    const handleChange = (key: string, value: any) => {
-        setSettings({ ...settings, [key]: value });
-    };
 
     const handleSave = async (settingsOverride?: any, silent = false) => {
         setSaving(true);
@@ -209,6 +207,7 @@ export default function SettingsPage() {
             }
             setSettings(savedState);
             setInitialSettings(JSON.parse(JSON.stringify(savedState)));
+            setIsDirty(false);
             if (!silent) {
                 alert('Settings saved successfully!');
             }
@@ -302,6 +301,8 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </div>
+
+
 
                 {/* Job Discovery */}
                 <div className="glass-card" id="job-discovery" data-tour="job-preferences" style={{ padding: '2rem' }}>
@@ -698,6 +699,9 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
+                {/* PDF Styling Customizer */}
+                <PdfCustomizerSection settings={settings} onChange={handleChange} />
+
                 {/* Email Sync Configuration */}
                 <div className="glass-card" id="email-sync" style={{ padding: '2rem' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
@@ -900,10 +904,8 @@ export default function SettingsPage() {
             {mounted && showDialog && createPortal(
                 <div style={{
                     position: 'fixed',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(11, 12, 16, 0.85)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
+                    inset: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',

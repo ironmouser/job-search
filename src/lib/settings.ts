@@ -4,16 +4,7 @@ import { UserPreferences } from '@prisma/client';
 let columnsChecked = false;
 
 export async function ensureKeywordColumnsExist() {
-    if (columnsChecked) return;
-    try {
-        await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "include_keywords" TEXT');
-        await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "exclude_keywords" TEXT');
-        await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "job_level" TEXT DEFAULT \'Mid-level\'');
-        await prisma.$executeRawUnsafe('ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "no_international" BOOLEAN DEFAULT false');
-        columnsChecked = true;
-    } catch (e: any) {
-        console.warn('Auto-schema update warning:', e?.message || e);
-    }
+    return;
 }
 
 export async function getUserSettings(userId: string): Promise<any> {
@@ -49,7 +40,23 @@ export async function getUserSettings(userId: string): Promise<any> {
                     theme: row.theme || 'light',
                     aiStrictness: row.ai_strictness || 'Standard',
                     resumeMarkdown: row.resume_markdown || '',
-                    profile: row.profile || ''
+                    profile: row.profile || '',
+                    resumePdfTemplate: row.resume_pdf_template || 'classic',
+                    resumePdfFontFamily: row.resume_pdf_font_family || 'Helvetica, Arial, sans-serif',
+                    resumePdfFontSize: row.resume_pdf_font_size || '11pt',
+                    resumePdfLineHeight: row.resume_pdf_line_height || '1.5',
+                    resumePdfPrimaryColor: row.resume_pdf_primary_color || '#1e3a8a',
+                    resumePdfTextColor: row.resume_pdf_text_color || '#111827',
+                    resumePdfMargin: row.resume_pdf_margin || '0.5in',
+                    resumePdfHeaderLayout: row.resume_pdf_header_layout || 'left',
+                    coverLetterPdfTemplate: row.cover_letter_pdf_template || 'classic',
+                    coverLetterPdfFontFamily: row.cover_letter_pdf_font_family || 'Helvetica, Arial, sans-serif',
+                    coverLetterPdfFontSize: row.cover_letter_pdf_font_size || '11pt',
+                    coverLetterPdfLineHeight: row.cover_letter_pdf_line_height || '1.5',
+                    coverLetterPdfPrimaryColor: row.cover_letter_pdf_primary_color || '#1e3a8a',
+                    coverLetterPdfTextColor: row.cover_letter_pdf_text_color || '#111827',
+                    coverLetterPdfMargin: row.cover_letter_pdf_margin || '0.5in',
+                    coverLetterPdfHeaderLayout: row.cover_letter_pdf_header_layout || 'left',
                 } as any;
             }
         } catch (rawErr: any) {

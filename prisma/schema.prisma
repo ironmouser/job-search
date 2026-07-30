@@ -255,6 +255,26 @@ model UserPreferences {
   emailAppPassword  String?
   imapHost          String?  @default("imap.gmail.com")
   imapPort          Int?     @default(993)
+
+  // PDF Styling Customization
+  resumePdfTemplate         String? @default("classic") @map("resume_pdf_template")
+  resumePdfFontFamily       String? @default("Helvetica, Arial, sans-serif") @map("resume_pdf_font_family")
+  resumePdfFontSize         String? @default("11pt") @map("resume_pdf_font_size")
+  resumePdfLineHeight       String? @default("1.5") @map("resume_pdf_line_height")
+  resumePdfPrimaryColor     String? @default("#1e3a8a") @map("resume_pdf_primary_color")
+  resumePdfTextColor        String? @default("#111827") @map("resume_pdf_text_color")
+  resumePdfMargin           String? @default("0.5in") @map("resume_pdf_margin")
+  resumePdfHeaderLayout     String? @default("left") @map("resume_pdf_header_layout")
+
+  coverLetterPdfTemplate     String? @default("classic") @map("cover_letter_pdf_template")
+  coverLetterPdfFontFamily   String? @default("Helvetica, Arial, sans-serif") @map("cover_letter_pdf_font_family")
+  coverLetterPdfFontSize     String? @default("11pt") @map("cover_letter_pdf_font_size")
+  coverLetterPdfLineHeight   String? @default("1.5") @map("cover_letter_pdf_line_height")
+  coverLetterPdfPrimaryColor String? @default("#1e3a8a") @map("cover_letter_pdf_primary_color")
+  coverLetterPdfTextColor    String? @default("#111827") @map("cover_letter_pdf_text_color")
+  coverLetterPdfMargin       String? @default("0.5in") @map("cover_letter_pdf_margin")
+  coverLetterPdfHeaderLayout String? @default("left") @map("cover_letter_pdf_header_layout")
+
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)

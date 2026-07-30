@@ -2,43 +2,63 @@
 
 import { useState } from 'react';
 import { Download, CheckCircle, Loader2 } from 'lucide-react';
+import { generateStyledPdfHtml, PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
 
-export default function DownloadPdfButton({ markdownText, filename, label = "Download", html }: { markdownText?: string, filename: string, label?: string, html?: string }) {
+interface DownloadPdfButtonProps {
+    markdownText?: string;
+    filename: string;
+    label?: string;
+    html?: string;
+    type?: 'resume' | 'coverLetter';
+    styleOptions?: PdfStyleOptions;
+}
+
+export default function DownloadPdfButton({ markdownText, filename, label = "Download", html, type = 'resume', styleOptions }: DownloadPdfButtonProps) {
     const [isDownloading, setIsDownloading] = useState(false);
     const [isDownloaded, setIsDownloaded] = useState(false);
 
     const handleDownload = async () => {
         setIsDownloading(true);
         try {
-            const { marked } = await import('marked');
             const html2pdf = (await import('html2pdf.js')).default;
+            let finalHtml = html;
 
-            const htmlContent = html || `
-            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">
-                <style>
-                    h1 { font-size: 24pt; font-weight: bold; margin-bottom: 5px; margin-top: 0; border-bottom: none !important; page-break-inside: avoid; break-inside: avoid; }
-                    h2 { font-size: 14pt; font-weight: bold; margin-top: 20px; margin-bottom: 20px; border-bottom: none !important; page-break-inside: avoid; break-inside: avoid; }
-                    h3 { font-size: 14pt; font-weight: bold; margin-top: 25px; margin-bottom: 15px; border-bottom: none !important; padding-bottom: 0; page-break-inside: avoid; break-inside: avoid; }
-                    h4, h5, h6 { border-bottom: none !important; page-break-inside: avoid; break-inside: avoid; }
-                    p { margin: 8px 0; page-break-inside: avoid; break-inside: avoid; }
-                    ul { margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }
-                    li { margin-bottom: 4px; page-break-inside: avoid; break-inside: avoid; }
-                    strong { font-weight: bold; }
-                </style>
-                ${await marked.parse(markdownText || '')}
-            </div>
-            `;
+            if (!finalHtml) {
+                let options = styleOptions;
+
+                if (!options) {
+                    try {
+                        const res = await fetch('/api/settings');
+                        const settings = await res.json();
+                        const prefix = type === 'coverLetter' ? 'coverLetterPdf' : 'resumePdf';
+                        options = {
+                            template: settings[`${prefix}Template`],
+                            fontFamily: settings[`${prefix}FontFamily`],
+                            fontSize: settings[`${prefix}FontSize`],
+                            lineHeight: settings[`${prefix}LineHeight`],
+                            primaryColor: settings[`${prefix}PrimaryColor`],
+                            textColor: settings[`${prefix}TextColor`],
+                            margin: settings[`${prefix}Margin`],
+                            headerLayout: settings[`${prefix}HeaderLayout`],
+                        };
+                    } catch (e) {
+                        console.warn('Could not fetch user PDF settings, using defaults');
+                    }
+                }
+
+                finalHtml = generateStyledPdfHtml(markdownText || '', options);
+            }
 
             const opt: any = {
-                margin:       [0.5, 0, 0.5, 0],
+                margin:       [0.4, 0, 0.4, 0],
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
                 pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
             };
 
-            await html2pdf().set(opt).from(htmlContent).save();
+            await html2pdf().set(opt).from(finalHtml).save();
             
             setIsDownloaded(true);
             setTimeout(() => setIsDownloaded(false), 2000);
@@ -68,3 +88,4 @@ export default function DownloadPdfButton({ markdownText, filename, label = "Dow
         </button>
     );
 }
+
