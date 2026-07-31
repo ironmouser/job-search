@@ -1,6 +1,14 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: dbUrl,
+    },
+  },
+});
 
 async function main() {
   console.log("Migrating all legacy ADMIN users to SYSTEM_ADMIN in PostgreSQL...");

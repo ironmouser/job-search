@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bot, Search, FileText, Target, CheckCircle, ChevronRight, ChevronLeft, Loader2, UploadCloud, Flame, Star, Sparkles } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import CloudResumePicker from '@/components/common/CloudResumePicker';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -14,6 +15,11 @@ export default function OnboardingPage() {
     const [isDragging, setIsDragging] = useState(false);
     const [isParsing, setIsParsing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
     
     const [formData, setFormData] = useState({
         searchKeyword: 'Senior Product Manager',
@@ -34,8 +40,6 @@ export default function OnboardingPage() {
         culture: 'niceToHave',
         techStack: 'niceToHave'
     });
-    
-    const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
     const criteriaList = [
         { id: 'compensation', label: 'Compensation & Benefits', desc: 'Salary, equity, health, retirement packages' },
@@ -73,24 +77,14 @@ export default function OnboardingPage() {
         return calculated;
     };
 
-    const handleDragStart = (e: React.DragEvent, id: string) => {
-        setDraggedItem(id);
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', id);
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-    };
-
-    const handleDropToBucket = (e: React.DragEvent, level: PriorityLevel) => {
-        e.preventDefault();
-        const id = e.dataTransfer.getData('text/plain');
-        if (id) {
-            setBucketState(prev => ({ ...prev, [id]: level }));
-        }
-        setDraggedItem(null);
+    const handleDragEnd = (result: DropResult) => {
+        if (!result.destination) return;
+        const newLevel = result.destination.droppableId as PriorityLevel;
+        const itemId = result.draggableId;
+        setBucketState(prev => ({
+            ...prev,
+            [itemId]: newLevel
+        }));
     };
 
 
@@ -357,95 +351,116 @@ ${goal}
                             </div>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.4 }}>Percentages dynamically update. Must-Haves carry 5x more weight than Nice-to-Haves.</p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem', width: '100%' }}>
-                                
-                                {([
-                                    { level: 'mustHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Flame size={16} /> Must-Haves</span>, desc: 'Dealbreakers', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
-                                    { level: 'important', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Star size={16} /> Important</span>, desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
-                                    { level: 'niceToHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Sparkles size={16} /> Nice-to-Haves</span>, desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
-                                ] as const).map(bucket => (
-                                    <div 
-                                        key={bucket.level}
-                                        onDragOver={handleDragOver}
-                                        onDrop={(e) => handleDropToBucket(e, bucket.level as PriorityLevel)}
-                                        style={{ 
-                                            background: bucket.bg, 
-                                            border: `1px solid ${bucket.border}`, 
-                                            borderRadius: '8px', 
-                                            padding: '0.85rem',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '0.75rem',
-                                            width: '100%',
-                                            boxSizing: 'border-box'
-                                        }}
-                                    >
-                                        <div style={{ marginBottom: '0.25rem' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center' }}>{bucket.title}</h3>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{bucket.desc}</span>
-                                        </div>
-                                        
-                                        {criteriaList.filter(c => bucketState[c.id] === bucket.level).map(c => {
-                                            const calculatedWeights = getCalculatedWeights();
-                                            const pct = calculatedWeights[c.id];
-                                            return (
-                                                <div 
-                                                    key={c.id}
-                                                    draggable
-                                                    onDragStart={(e) => handleDragStart(e, c.id)}
-                                                    onDragEnd={() => setDraggedItem(null)}
-                                                    style={{ 
-                                                        background: 'var(--bg-color)', 
-                                                        padding: '0.75rem', 
-                                                        borderRadius: '6px', 
-                                                        border: '1px solid var(--border-glass)',
-                                                        cursor: 'grab',
-                                                        opacity: draggedItem === c.id ? 0.5 : 1,
-                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                                        width: '100%',
-                                                        boxSizing: 'border-box'
-                                                    }}
-                                                >
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                                        <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{c.label}</span>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)', fontSize: '0.85rem' }}>{pct}%</span>
+                            {isMounted ? (
+                                <DragDropContext onDragEnd={handleDragEnd}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem', width: '100%' }}>
+                                        {([
+                                            { level: 'mustHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Flame size={16} /> Must-Haves</span>, desc: 'Dealbreakers', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
+                                            { level: 'important', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Star size={16} /> Important</span>, desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
+                                            { level: 'niceToHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Sparkles size={16} /> Nice-to-Haves</span>, desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
+                                        ] as const).map(bucket => (
+                                            <Droppable key={bucket.level} droppableId={bucket.level}>
+                                                {(provided, snapshot) => (
+                                                    <div 
+                                                        ref={provided.innerRef}
+                                                        {...provided.droppableProps}
+                                                        style={{ 
+                                                            background: snapshot.isDraggingOver ? 'rgba(99, 102, 241, 0.12)' : bucket.bg, 
+                                                            border: `1px solid ${snapshot.isDraggingOver ? 'var(--accent-primary)' : bucket.border}`, 
+                                                            borderRadius: '8px', 
+                                                            padding: '0.85rem',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: '0.75rem',
+                                                            width: '100%',
+                                                            boxSizing: 'border-box',
+                                                            minHeight: '160px',
+                                                            transition: 'background 0.2s ease, border-color 0.2s ease'
+                                                        }}
+                                                    >
+                                                        <div style={{ marginBottom: '0.25rem' }}>
+                                                            <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center' }}>{bucket.title}</h3>
+                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{bucket.desc}</span>
+                                                        </div>
+                                                        
+                                                        {criteriaList
+                                                            .filter(c => bucketState[c.id] === bucket.level)
+                                                            .map((c, index) => {
+                                                                const calculatedWeights = getCalculatedWeights();
+                                                                const pct = calculatedWeights[c.id];
+                                                                return (
+                                                                    <Draggable key={c.id} draggableId={c.id} index={index}>
+                                                                        {(draggableProvided, draggableSnapshot) => (
+                                                                            <div 
+                                                                                ref={draggableProvided.innerRef}
+                                                                                {...draggableProvided.draggableProps}
+                                                                                {...draggableProvided.dragHandleProps}
+                                                                                style={{ 
+                                                                                    background: draggableSnapshot.isDragging ? 'var(--bg-surface-hover, #1e293b)' : 'var(--bg-color)', 
+                                                                                    padding: '0.75rem', 
+                                                                                    borderRadius: '6px', 
+                                                                                    border: `1px solid ${draggableSnapshot.isDragging ? 'var(--accent-primary)' : 'var(--border-glass)'}`,
+                                                                                    cursor: 'grab',
+                                                                                    boxShadow: draggableSnapshot.isDragging ? '0 10px 25px -5px rgba(0,0,0,0.5), 0 0 10px rgba(99,102,241,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+                                                                                    width: '100%',
+                                                                                    boxSizing: 'border-box',
+                                                                                    touchAction: 'manipulation',
+                                                                                    userSelect: 'none',
+                                                                                    ...draggableProvided.draggableProps.style
+                                                                                }}
+                                                                            >
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                                                                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{c.label}</span>
+                                                                                    <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)', fontSize: '0.85rem' }}>{pct}%</span>
+                                                                                </div>
+                                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3, marginBottom: '0.5rem' }}>{c.desc}</div>
+                                                                                
+                                                                                {/* Quick Priority Selector for Mobile/Touch */}
+                                                                                <div 
+                                                                                    style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}
+                                                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                                                    onTouchStart={(e) => e.stopPropagation()}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                >
+                                                                                    {(['mustHave', 'important', 'niceToHave'] as PriorityLevel[]).map(lvl => (
+                                                                                        <button
+                                                                                            key={lvl}
+                                                                                            type="button"
+                                                                                            onClick={() => setBucketState(prev => ({ ...prev, [c.id]: lvl }))}
+                                                                                            style={{
+                                                                                                padding: '0.2rem 0.45rem',
+                                                                                                fontSize: '0.7rem',
+                                                                                                borderRadius: '4px',
+                                                                                                border: '1px solid var(--border-glass)',
+                                                                                                background: bucketState[c.id] === lvl ? 'var(--accent-primary)' : 'rgba(0,0,0,0.2)',
+                                                                                                color: bucketState[c.id] === lvl ? '#ffffff' : 'var(--text-secondary)',
+                                                                                                cursor: 'pointer',
+                                                                                                fontWeight: bucketState[c.id] === lvl ? 600 : 400,
+                                                                                                transition: 'all 0.15s ease'
+                                                                                            }}
+                                                                                        >
+                                                                                            {lvl === 'mustHave' ? 'Must' : lvl === 'important' ? 'Important' : 'Nice'}
+                                                                                        </button>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </Draggable>
+                                                                );
+                                                            })}
+                                                        {provided.placeholder}
+                                                        {criteriaList.filter(c => bucketState[c.id] === bucket.level).length === 0 && (
+                                                            <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-secondary)', fontSize: '0.8rem', border: '1px dashed var(--border-glass)', borderRadius: '6px' }}>
+                                                                Drop or select items here
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3, marginBottom: '0.5rem' }}>{c.desc}</div>
-                                                    
-                                                    {/* Quick Priority Selector for Mobile/Touch */}
-                                                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                                        {(['mustHave', 'important', 'niceToHave'] as PriorityLevel[]).map(lvl => (
-                                                            <button
-                                                                key={lvl}
-                                                                type="button"
-                                                                onClick={() => setBucketState(prev => ({ ...prev, [c.id]: lvl }))}
-                                                                style={{
-                                                                    padding: '0.2rem 0.45rem',
-                                                                    fontSize: '0.7rem',
-                                                                    borderRadius: '4px',
-                                                                    border: '1px solid var(--border-glass)',
-                                                                    background: bucketState[c.id] === lvl ? 'var(--accent-primary)' : 'rgba(0,0,0,0.2)',
-                                                                    color: bucketState[c.id] === lvl ? '#ffffff' : 'var(--text-secondary)',
-                                                                    cursor: 'pointer',
-                                                                    fontWeight: bucketState[c.id] === lvl ? 600 : 400,
-                                                                    transition: 'all 0.15s ease'
-                                                                }}
-                                                            >
-                                                                {lvl === 'mustHave' ? 'Must' : lvl === 'important' ? 'Important' : 'Nice'}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                        {criteriaList.filter(c => bucketState[c.id] === bucket.level).length === 0 && (
-                                            <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-secondary)', fontSize: '0.8rem', border: '1px dashed var(--border-glass)', borderRadius: '6px' }}>
-                                                Drop or select items here
-                                            </div>
-                                        )}
+                                                )}
+                                            </Droppable>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                </DragDropContext>
+                            ) : null}
                         </div>
                     </div>
                 )}
