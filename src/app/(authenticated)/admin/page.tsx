@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail, AlertTriangle, Trash2, UserX, Loader2 } from "lucide-react";
+import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail, AlertTriangle, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Filter, Calendar } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -10,8 +10,13 @@ interface UserRecord {
   id: string;
   name: string | null;
   email: string | null;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'ORGANIZATION_ADMIN' | 'SYSTEM_ADMIN';
   planTier: string;
+  createdAt: string | null;
+  lastLoginAt: string | null;
+  jobsAppliedCount?: number;
+  jobsFoundCount?: number;
+  jobsSavedCount?: number;
 }
 
 interface GlobalSettings {
@@ -85,12 +90,17 @@ export default function AdminDashboard() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
 
-  // User Deletion & Purge State
+  // User Deletion State
   const [mounted, setMounted] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserRecord | null>(null);
-  const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
-  const [isPurging, setIsPurging] = useState(false);
+
+  // User Directory Filters & Sorting State
+  const [subscriptionFilter, setSubscriptionFilter] = useState<'ALL' | 'FREE' | 'PRO' | 'BUSINESS'>('ALL');
+  const [lastLoginFilter, setLastLoginFilter] = useState<string>('ALL');
+  const [firstLoginFilter, setFirstLoginFilter] = useState<string>('ALL');
+  const [sortField, setSortField] = useState<'name' | 'role' | 'planTier' | 'createdAt' | 'lastLoginAt' | 'jobsAppliedCount' | 'jobsFoundCount' | 'jobsSavedCount'>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     setMounted(true);
@@ -136,19 +146,23 @@ export default function AdminDashboard() {
 
   // Redirect if not admin
   useEffect(() => {
-    if (session && (session.user as any)?.role !== 'ADMIN') {
+    if (session && (session.user as any)?.role !== 'SYSTEM_ADMIN') {
       router.push('/dashboard');
     }
   }, [session, router]);
 
   // Fetch Users
   useEffect(() => {
-    if (activeTab === 'users' && session && (session.user as any)?.role === 'ADMIN') {
+    if (activeTab === 'users' && session && (session.user as any)?.role === 'SYSTEM_ADMIN') {
       setLoadingUsers(true);
       fetch('/api/admin/users')
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) setUsers(data);
+          if (Array.isArray(data)) {
+            setUsers(data);
+          } else if (data && data.error) {
+            console.error("Error fetching users:", data.error);
+          }
         })
         .catch(console.error)
         .finally(() => setLoadingUsers(false));
@@ -157,7 +171,7 @@ export default function AdminDashboard() {
 
   // Fetch System Alerts
   useEffect(() => {
-    if (activeTab === 'alerts' && session && (session.user as any)?.role === 'ADMIN') {
+    if (activeTab === 'alerts' && session && (session.user as any)?.role === 'SYSTEM_ADMIN') {
       setLoadingAlerts(true);
       fetch('/api/admin/alerts')
         .then(res => res.json())
@@ -174,7 +188,7 @@ export default function AdminDashboard() {
 
   // Fetch Scraper Logs
   useEffect(() => {
-    if (activeTab === 'scrapers' && session && (session.user as any)?.role === 'ADMIN') {
+    if (activeTab === 'scrapers' && session && (session.user as any)?.role === 'SYSTEM_ADMIN') {
       setLoadingScrapers(true);
       fetch('/api/admin/scrapers/logs')
         .then(res => res.json())
@@ -191,7 +205,7 @@ export default function AdminDashboard() {
 
   // Fetch Settings
   useEffect(() => {
-    if (activeTab === 'gates' && session && (session.user as any)?.role === 'ADMIN') {
+    if (activeTab === 'gates' && session && (session.user as any)?.role === 'SYSTEM_ADMIN') {
       setLoadingSettings(true);
       fetch('/api/admin/settings')
         .then(res => res.json())
@@ -279,28 +293,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handlePurgeFreeUsers = async () => {
-    setIsPurging(true);
-    try {
-      const res = await fetch('/api/admin/users?deleteFree=true', {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setUsers(prev => prev.filter(u => u.planTier !== 'FREE' || u.role === 'ADMIN'));
-        setShowPurgeModal(false);
-        alert(data.message || `Successfully removed free tier users.`);
-      } else {
-        alert(data.error || 'Failed to purge free tier users');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('Error purging free tier users');
-    } finally {
-      setIsPurging(false);
-    }
-  };
-
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     try {
@@ -322,12 +314,87 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    (u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
-    (u.email?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
-  );
+  const handleSort = (field: 'name' | 'role' | 'planTier' | 'createdAt' | 'lastLoginAt' | 'jobsAppliedCount' | 'jobsFoundCount' | 'jobsSavedCount') => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
 
-  if (!session || (session.user as any)?.role !== 'ADMIN') {
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "Never";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "Never";
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return "Never";
+    }
+  };
+
+  const now = Date.now();
+
+  const filteredUsers = users.filter(u => {
+    // Search query (name or email)
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      const nameMatch = u.name?.toLowerCase().includes(query) || false;
+      const emailMatch = u.email?.toLowerCase().includes(query) || false;
+      if (!nameMatch && !emailMatch) return false;
+    }
+
+    // Subscription filter
+    if (subscriptionFilter !== 'ALL') {
+      if ((u.planTier || 'FREE').toUpperCase() !== subscriptionFilter) return false;
+    }
+
+    // First Logged In filter
+    if (firstLoginFilter !== 'ALL') {
+      const days = parseInt(firstLoginFilter, 10);
+      if (!u.createdAt) return false;
+      const userDate = new Date(u.createdAt).getTime();
+      const cutoff = now - days * 24 * 60 * 60 * 1000;
+      if (userDate < cutoff) return false;
+    }
+
+    // Last Logged In filter
+    if (lastLoginFilter !== 'ALL') {
+      const days = parseInt(lastLoginFilter, 10);
+      if (!u.lastLoginAt) return false;
+      const userDate = new Date(u.lastLoginAt).getTime();
+      const cutoff = now - days * 24 * 60 * 60 * 1000;
+      if (userDate < cutoff) return false;
+    }
+
+    return true;
+  });
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    let valA: any = a[sortField as keyof UserRecord];
+    let valB: any = b[sortField as keyof UserRecord];
+
+    if (sortField === 'name') {
+      valA = (a.name || a.email || '').toLowerCase();
+      valB = (b.name || b.email || '').toLowerCase();
+    } else if (sortField === 'createdAt' || sortField === 'lastLoginAt') {
+      valA = valA ? new Date(valA).getTime() : 0;
+      valB = valB ? new Date(valB).getTime() : 0;
+    } else if (sortField === 'jobsAppliedCount' || sortField === 'jobsFoundCount' || sortField === 'jobsSavedCount') {
+      valA = valA || 0;
+      valB = valB || 0;
+    } else {
+      valA = (valA || '').toLowerCase();
+      valB = (valB || '').toLowerCase();
+    }
+
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  if (!session || (session.user as any)?.role !== 'SYSTEM_ADMIN') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '1rem' }}>
         <ShieldAlert size={48} className="text-accent" />
@@ -388,39 +455,10 @@ export default function AdminDashboard() {
         <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
             <h3 style={{ fontSize: "1.25rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              Registered Users ({filteredUsers.length})
+              Registered Users ({sortedUsers.length} of {users.length})
             </h3>
             
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              {/* Purge Free Users Button */}
-              {(() => {
-                const freeUsersCount = users.filter(u => u.planTier === 'FREE' && u.role !== 'ADMIN').length;
-                return (
-                  <button
-                    onClick={() => setShowPurgeModal(true)}
-                    disabled={freeUsersCount === 0}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      padding: "0.5rem 0.85rem",
-                      background: freeUsersCount > 0 ? "rgba(239, 68, 68, 0.1)" : "rgba(255,255,255,0.05)",
-                      color: freeUsersCount > 0 ? "#ef4444" : "var(--text-secondary)",
-                      border: freeUsersCount > 0 ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid var(--border-glass)",
-                      borderRadius: "8px",
-                      fontSize: "0.85rem",
-                      fontWeight: 500,
-                      cursor: freeUsersCount > 0 ? "pointer" : "not-allowed",
-                      transition: "all 0.2s ease",
-                      opacity: freeUsersCount === 0 ? 0.6 : 1
-                    }}
-                    title={freeUsersCount === 0 ? "No free tier non-admin users to purge" : "Purge all free tier users"}
-                  >
-                    <UserX size={16} /> Remove Free Tier Users ({freeUsersCount})
-                  </button>
-                );
-              })()}
-
               {/* Search */}
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <Search size={16} color="var(--text-secondary)" style={{ position: "absolute", left: "12px" }} />
@@ -435,10 +473,80 @@ export default function AdminDashboard() {
                     border: "1px solid var(--border-glass)",
                     color: "var(--text-primary)",
                     borderRadius: "8px",
-                    fontSize: "0.9rem",
-                    width: "230px"
+                    fontSize: "0.85rem",
+                    width: "220px"
                   }}
                 />
+              </div>
+
+              {/* Subscription Filter */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                <Filter size={14} color="var(--text-secondary)" />
+                <select
+                  value={subscriptionFilter}
+                  onChange={(e) => setSubscriptionFilter(e.target.value as any)}
+                  style={{
+                    background: "rgba(0,0,0,0.2)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-glass)",
+                    padding: "0.5rem 0.65rem",
+                    borderRadius: "8px",
+                    fontSize: "0.85rem"
+                  }}
+                >
+                  <option value="ALL">All Subscriptions</option>
+                  <option value="FREE">Free</option>
+                  <option value="PRO">Pro</option>
+                  <option value="BUSINESS">Business</option>
+                </select>
+              </div>
+
+              {/* First Logged In Filter */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                <Calendar size={14} color="var(--text-secondary)" />
+                <select
+                  value={firstLoginFilter}
+                  onChange={(e) => setFirstLoginFilter(e.target.value)}
+                  style={{
+                    background: "rgba(0,0,0,0.2)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-glass)",
+                    padding: "0.5rem 0.65rem",
+                    borderRadius: "8px",
+                    fontSize: "0.85rem"
+                  }}
+                >
+                  <option value="ALL">First Login: All Time</option>
+                  <option value="1">First Login: Past 1 Day</option>
+                  <option value="7">First Login: Past 7 Days</option>
+                  <option value="30">First Login: Past 30 Days</option>
+                  <option value="60">First Login: Past 60 Days</option>
+                  <option value="90">First Login: Past 90 Days</option>
+                </select>
+              </div>
+
+              {/* Last Logged In Filter */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                <Calendar size={14} color="var(--text-secondary)" />
+                <select
+                  value={lastLoginFilter}
+                  onChange={(e) => setLastLoginFilter(e.target.value)}
+                  style={{
+                    background: "rgba(0,0,0,0.2)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-glass)",
+                    padding: "0.5rem 0.65rem",
+                    borderRadius: "8px",
+                    fontSize: "0.85rem"
+                  }}
+                >
+                  <option value="ALL">Last Login: All Time</option>
+                  <option value="1">Last Login: Past 1 Day</option>
+                  <option value="7">Last Login: Past 7 Days</option>
+                  <option value="30">Last Login: Past 30 Days</option>
+                  <option value="60">Last Login: Past 60 Days</option>
+                  <option value="90">Last Login: Past 90 Days</option>
+                </select>
               </div>
             </div>
           </div>
@@ -450,14 +558,59 @@ export default function AdminDashboard() {
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-glass)", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                    <th style={{ padding: "1rem" }}>User</th>
-                    <th style={{ padding: "1rem" }}>Role</th>
-                    <th style={{ padding: "1rem" }}>Subscription</th>
-                    <th style={{ padding: "1rem" }}>Actions</th>
+                    <th style={{ padding: "0.75rem 1rem", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('name')}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        User
+                        {sortField === 'name' ? (sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={13} style={{ opacity: 0.4 }} />}
+                      </div>
+                    </th>
+                    <th style={{ padding: "0.75rem 1rem", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('role')}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        Role
+                        {sortField === 'role' ? (sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={13} style={{ opacity: 0.4 }} />}
+                      </div>
+                    </th>
+                    <th style={{ padding: "0.75rem 1rem", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('planTier')}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        Subscription
+                        {sortField === 'planTier' ? (sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={13} style={{ opacity: 0.4 }} />}
+                      </div>
+                    </th>
+                    <th style={{ padding: "0.75rem 1rem", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('createdAt')}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        First Logged In
+                        {sortField === 'createdAt' ? (sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={13} style={{ opacity: 0.4 }} />}
+                      </div>
+                    </th>
+                    <th style={{ padding: "0.75rem 1rem", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('lastLoginAt')}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        Last Logged In
+                        {sortField === 'lastLoginAt' ? (sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={13} style={{ opacity: 0.4 }} />}
+                      </div>
+                    </th>
+                    <th style={{ padding: "0.75rem 1rem", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('jobsFoundCount')}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        Jobs Found
+                        {sortField === 'jobsFoundCount' ? (sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={13} style={{ opacity: 0.4 }} />}
+                      </div>
+                    </th>
+                    <th style={{ padding: "0.75rem 1rem", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('jobsSavedCount')}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        Jobs Saved
+                        {sortField === 'jobsSavedCount' ? (sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={13} style={{ opacity: 0.4 }} />}
+                      </div>
+                    </th>
+                    <th style={{ padding: "0.75rem 1rem", cursor: "pointer", userSelect: "none" }} onClick={() => handleSort('jobsAppliedCount')}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                        Jobs Applied
+                        {sortField === 'jobsAppliedCount' ? (sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />) : <ArrowUpDown size={13} style={{ opacity: 0.4 }} />}
+                      </div>
+                    </th>
+                    <th style={{ padding: "0.75rem 1rem" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map(user => (
+                  {sortedUsers.map(user => (
                     <tr key={user.id} style={{ borderBottom: "1px solid var(--border-glass)", fontSize: "0.95rem" }}>
                       <td style={{ padding: "1rem" }}>
                         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -466,14 +619,29 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td style={{ padding: "1rem" }}>
-                        <span className={user.role === 'ADMIN' ? 'tag tag-pro' : 'tag tag-free'} style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.8rem" }}>
+                        <span className={user.role === 'SYSTEM_ADMIN' ? 'tag tag-pro' : 'tag tag-free'} style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.8rem" }}>
                           {user.role}
                         </span>
                       </td>
                       <td style={{ padding: "1rem" }}>
-                        <span className={user.planTier === 'PRO' ? 'text-accent' : ''} style={{ fontWeight: user.planTier === 'PRO' ? 600 : 400 }}>
+                        <span className={user.planTier === 'PRO' || user.planTier === 'BUSINESS' ? 'text-accent' : ''} style={{ fontWeight: user.planTier === 'PRO' || user.planTier === 'BUSINESS' ? 600 : 400 }}>
                           {user.planTier}
                         </span>
+                      </td>
+                      <td style={{ padding: "1rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                        {formatDate(user.createdAt)}
+                      </td>
+                      <td style={{ padding: "1rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                        {formatDate(user.lastLoginAt)}
+                      </td>
+                      <td style={{ padding: "1rem", fontSize: "0.9rem", color: "var(--text-primary)", fontWeight: 500 }}>
+                        {user.jobsFoundCount ?? 0}
+                      </td>
+                      <td style={{ padding: "1rem", fontSize: "0.9rem", color: "var(--text-primary)", fontWeight: 500 }}>
+                        {user.jobsSavedCount ?? 0}
+                      </td>
+                      <td style={{ padding: "1rem", fontSize: "0.9rem", color: "var(--text-primary)", fontWeight: 500 }}>
+                        {user.jobsAppliedCount ?? 0}
                       </td>
                       <td style={{ padding: "1rem" }}>
                         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
@@ -481,7 +649,7 @@ export default function AdminDashboard() {
                           <select
                             value={user.role}
                             disabled={savingUserId === user.id || deletingUserId === user.id}
-                            onChange={(e) => handleUpdateUser(user.id, { role: e.target.value as 'USER' | 'ADMIN' })}
+                            onChange={(e) => handleUpdateUser(user.id, { role: e.target.value as 'USER' | 'ORGANIZATION_ADMIN' | 'SYSTEM_ADMIN' })}
                             style={{ background: "var(--bg-color)", color: "var(--text-primary)", border: "1px solid var(--border-glass)", padding: "0.25rem", borderRadius: "6px" }}
                           >
                             <option value="USER">User</option>
@@ -497,12 +665,13 @@ export default function AdminDashboard() {
                           >
                             <option value="FREE">Free</option>
                             <option value="PRO">Pro</option>
+                            <option value="BUSINESS">Business</option>
                           </select>
 
                           {/* Delete single user button */}
                           <button
                             onClick={() => setUserToDelete(user)}
-                            disabled={user.role === 'ADMIN' || user.id === (session?.user as any)?.id || deletingUserId === user.id}
+                            disabled={user.role === 'SYSTEM_ADMIN' || user.id === (session?.user as any)?.id || deletingUserId === user.id}
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
@@ -512,10 +681,10 @@ export default function AdminDashboard() {
                               color: "#ef4444",
                               border: "1px solid rgba(239, 68, 68, 0.3)",
                               borderRadius: "6px",
-                              cursor: user.role === 'ADMIN' || user.id === (session?.user as any)?.id ? "not-allowed" : "pointer",
-                              opacity: user.role === 'ADMIN' || user.id === (session?.user as any)?.id ? 0.3 : 1
+                              cursor: user.role === 'SYSTEM_ADMIN' || user.id === (session?.user as any)?.id ? "not-allowed" : "pointer",
+                              opacity: user.role === 'SYSTEM_ADMIN' || user.id === (session?.user as any)?.id ? 0.3 : 1
                             }}
-                            title={user.role === 'ADMIN' ? "Admin accounts cannot be deleted" : "Delete user account"}
+                            title={user.role === 'SYSTEM_ADMIN' ? "Admin accounts cannot be deleted" : "Delete user account"}
                           >
                             <Trash2 size={15} />
                           </button>
@@ -525,10 +694,10 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
-                  {filteredUsers.length === 0 && (
+                  {sortedUsers.length === 0 && (
                     <tr>
-                      <td colSpan={4} style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
-                        No users found matching your search.
+                      <td colSpan={9} style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
+                        No users found matching your search and filter criteria.
                       </td>
                     </tr>
                   )}
@@ -1014,88 +1183,7 @@ export default function AdminDashboard() {
         document.body
       )}
 
-      {/* Bulk Free Users Purge Modal */}
-      {mounted && showPurgeModal && createPortal(
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            padding: '1rem',
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isPurging) setShowPurgeModal(false);
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            style={{
-              width: '100%',
-              maxWidth: '460px',
-              backgroundColor: 'var(--card-bg, #18181b)',
-              border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              color: 'var(--text-primary, #ffffff)',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.25rem'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ padding: '0.5rem', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
-                <UserX size={24} />
-              </div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>Remove All Free Tier Users</h3>
-            </div>
 
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary, #a1a1aa)', margin: 0, lineHeight: 1.5 }}>
-              Are you sure you want to permanently remove all <strong style={{ color: '#ef4444' }}>{users.filter(u => u.planTier === 'FREE' && u.role !== 'ADMIN').length}</strong> free tier users?
-              Admin accounts will not be affected. This action cannot be undone.
-            </p>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => setShowPurgeModal(false)}
-                disabled={isPurging}
-                className="btn-outline"
-                style={{ padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handlePurgeFreeUsers}
-                disabled={isPurging}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                {isPurging ? <Loader2 size={16} className="animate-spin" /> : <UserX size={16} />}
-                Confirm Purge
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

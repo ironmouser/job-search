@@ -26,7 +26,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
             return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
         
-        const isAdmin = (session.user as any).role === 'ADMIN';
+        const isAdmin = (session.user as any).role === 'SYSTEM_ADMIN';
         const isGlobalJob = job.addedById === null;
 
         if (description || applicationUrl) {

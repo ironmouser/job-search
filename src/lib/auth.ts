@@ -36,7 +36,7 @@ export const authOptions: AuthOptions = {
             data: { email: "test@example.com", name: "Test User" }
           });
         }
-        return user;
+        return user as any;
       }
     }),
   ],
@@ -54,6 +54,11 @@ export const authOptions: AuthOptions = {
           });
 
           if (existingUser) {
+            // Block disabled organization users from signing in
+            if ((existingUser as any).isDisabled) {
+              return false;
+            }
+
             const hasGoogleAccount = existingUser.accounts.some(a => a.provider === 'google');
             if (!hasGoogleAccount) {
               await prisma.account.create({
@@ -76,6 +81,16 @@ export const authOptions: AuthOptions = {
           console.error("Error linking Google account in signIn callback:", e);
         }
       }
+      if (user?.id) {
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() }
+          });
+        } catch (e) {
+          console.error("Error updating lastLoginAt timestamp:", e);
+        }
+      }
       return true;
     },
     async jwt({ token, user, trigger, session }) {
@@ -84,20 +99,41 @@ export const authOptions: AuthOptions = {
         token.isOnboarded = (user as any).isOnboarded || false;
         token.planTier = (user as any).planTier || "FREE";
         token.role = (user as any).role || "USER";
+        token.subscriptionType = (user as any).subscriptionType || "FREE";
+        token.organizationId = (user as any).organizationId || null;
+        token.isDisabled = (user as any).isDisabled || false;
       } else if (token.id) {
-        // Verify user still exists in DB
+        // Refresh org-related fields and verify user still exists
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { id: true, isOnboarded: true, planTier: true, role: true }
+          select: {
+            id: true,
+            isOnboarded: true,
+            planTier: true,
+            role: true,
+            subscriptionType: true,
+            organizationId: true,
+            isDisabled: true,
+            orgAccessExpiresAt: true,
+          }
         });
         if (!dbUser) {
           // User was deleted from DB; invalidate token
           token.id = "";
           return token;
         }
+        // Invalidate session for disabled users
+        if (dbUser.isDisabled) {
+          token.id = "";
+          return token;
+        }
         token.isOnboarded = dbUser.isOnboarded;
         token.planTier = dbUser.planTier;
         token.role = dbUser.role;
+        token.subscriptionType = dbUser.subscriptionType || "FREE";
+        token.organizationId = dbUser.organizationId;
+        token.isDisabled = dbUser.isDisabled || false;
+        token.orgAccessExpiresAt = dbUser.orgAccessExpiresAt?.toISOString() || null;
       }
       
       if (trigger === "update") {
@@ -106,6 +142,8 @@ export const authOptions: AuthOptions = {
         if (session?.image !== undefined) token.image = session.image;
         if (session?.name !== undefined) token.name = session.name;
         if (session?.role !== undefined) token.role = session.role;
+        if (session?.subscriptionType !== undefined) token.subscriptionType = session.subscriptionType;
+        if (session?.organizationId !== undefined) token.organizationId = session.organizationId;
       }
       
       return token;
@@ -119,10 +157,20 @@ export const authOptions: AuthOptions = {
         (session.user as any).isOnboarded = token.isOnboarded as boolean;
         (session.user as any).planTier = token.planTier as string || "FREE";
         (session.user as any).role = token.role as string || "USER";
+        let subType = token.subscriptionType as string || "FREE";
+        const expiresAt = token.orgAccessExpiresAt ? new Date(token.orgAccessExpiresAt as string) : null;
+        if (subType === "GROUP" && expiresAt && expiresAt < new Date()) {
+          subType = "FREE";
+        }
+        
+        (session.user as any).subscriptionType = subType;
+        (session.user as any).organizationId = token.organizationId as string | null;
+        (session.user as any).isDisabled = token.isDisabled as boolean || false;
+        (session.user as any).orgAccessExpiresAt = expiresAt;
         if (token.image) session.user.image = token.image as string;
         if (token.name) session.user.name = token.name as string;
       }
       return session;
     }
   }
-}
+};

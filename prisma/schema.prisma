@@ -130,7 +130,86 @@ model ScraperLog {
 
 enum Role {
   USER
-  ADMIN
+  ORGANIZATION_ADMIN
+  SYSTEM_ADMIN
+}
+
+enum SubscriptionType {
+  FREE
+  PREMIUM
+  GROUP
+}
+
+enum OrganizationType {
+  BUSINESS
+  CAREER_CENTER
+  NONPROFIT
+  STAFFING_AGENCY
+  EDUCATIONAL_INSTITUTION
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+// ─── Organization Models ──────────────────────────────────────────────────────
+
+model Organization {
+  id                     String           @id @default(uuid()) @db.Uuid
+  name                   String
+  organizationType       OrganizationType @map("organization_type")
+  stripeCustomerId       String?          @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?          @unique @map("stripe_subscription_id")
+  stripePriceId          String?          @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime?        @map("stripe_current_period_end") @db.Timestamptz(6)
+  seatCount              Int              @default(0) @map("seat_count")
+  consumedSeats          Int              @default(0) @map("consumed_seats")
+  seatValidityDays       Int              @default(90) @map("seat_validity_days")
+  createdBy              String           @map("created_by")
+  createdAt              DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users        User[]
+  invitations  OrganizationInvitation[]
+  activityLogs OrganizationActivityLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationInvitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  email          String
+  invitedBy      String           @map("invited_by")
+  token          String           @unique @default(uuid())
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt     DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([email, status])
+  @@index([organizationId])
+  @@map("organization_invitations")
+}
+
+model OrganizationActivityLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  actorId        String   @map("actor_id")
+  action         String
+  targetId       String?  @map("target_id")
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("organization_activity_logs")
 }
 
 model GlobalSettings {
@@ -175,7 +254,13 @@ model User {
   image         String?
   role          Role      @default(USER)
 
-  // Stripe & Subscriptions
+  // Organization membership
+  organizationId   String?          @map("organization_id") @db.Uuid
+  subscriptionType      SubscriptionType? @map("subscription_type")
+  isDisabled            Boolean?          @default(false) @map("is_disabled")
+  orgAccessExpiresAt    DateTime?         @map("org_access_expires_at") @db.Timestamptz(6)
+
+  // Stripe & Subscriptions (personal users only; org users have billing on Organization)
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?   @unique
   stripePriceId          String?
@@ -183,10 +268,13 @@ model User {
   trialEndsAt            DateTime?
   planTier               String    @default("FREE")
   isOnboarded            Boolean   @default(false) @map("is_onboarded")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastLoginAt            DateTime? @map("last_login_at") @db.Timestamptz(6)
 
   accounts      Account[]
   sessions      Session[]
   
+  organization         Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   userPreferences      UserPreferences?
   userJobs             UserJob[]
   scores               OpportunityScore[]
@@ -196,6 +284,7 @@ model User {
   autoApplySessions    AutoApplySession[]
   interventionRequests InterventionRequest[]
 }
+
 
 model Account {
   id                 String  @id @default(cuid())

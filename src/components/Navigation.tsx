@@ -98,7 +98,7 @@ export default function Navigation() {
               <span className="nav-text">Settings</span>
             </Link>
           </li>
-          {(session.user as any)?.role === 'ADMIN' && (
+          {(session.user as any)?.role === 'SYSTEM_ADMIN' && (
             <li className="nav-item">
               <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={closeMenu} title="Admin Panel">
                 <Shield size={20} />
@@ -106,6 +106,15 @@ export default function Navigation() {
               </Link>
             </li>
           )}
+          {((session.user as any)?.role === 'ORGANIZATION_ADMIN' || (session.user as any)?.role === 'SYSTEM_ADMIN') && (
+            <li className="nav-item">
+              <Link href="/org-admin" className={pathname === '/org-admin' ? 'active' : ''} onClick={closeMenu} title="Org Admin">
+                <Shield size={20} />
+                <span className="nav-text">Org Admin</span>
+              </Link>
+            </li>
+          )}
+
           <li className="nav-item">
             <button 
               onClick={() => { closeMenu(); openHelpPanel(); }} 

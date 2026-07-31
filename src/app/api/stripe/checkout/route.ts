@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { stripe } from "@/lib/stripe";
+import { stripe, createOrgCheckoutSession } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -12,16 +12,52 @@ export async function POST(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { priceId } = await request.json();
+    const { priceId, organizationId, quantity } = await request.json();
 
     if (!priceId) {
       return new NextResponse("Price ID is required", { status: 400 });
     }
 
+    // ── Organization seat purchase ────────────────────────────────────────────
+    if (organizationId) {
+      const sessionUser = session.user as any;
+      const role = sessionUser.role as string;
+
+      // Only org admins of this specific org (or system admins) can purchase seats
+      if (role !== "SYSTEM_ADMIN" && role !== "ORGANIZATION_ADMIN") {
+        return new NextResponse("Forbidden", { status: 403 });
+      }
+      if (role === "ORGANIZATION_ADMIN" && sessionUser.organizationId !== organizationId) {
+        return new NextResponse("Forbidden", { status: 403 });
+      }
+
+      const org = await prisma.organization.findUnique({ where: { id: organizationId } });
+      if (!org) return new NextResponse("Organization not found", { status: 404 });
+
+      const checkoutSession = await createOrgCheckoutSession({
+        organizationId,
+        orgName: org.name,
+        stripeCustomerId: org.stripeCustomerId,
+        priceId,
+        quantity: quantity ?? 10,
+        successUrl: `${process.env.NEXTAUTH_URL}/org-admin?success=true`,
+        cancelUrl: `${process.env.NEXTAUTH_URL}/org-admin?canceled=true`,
+      });
+
+      // If a new Stripe customer was created, save it on the org
+      if (!org.stripeCustomerId && checkoutSession.customer) {
+        await prisma.organization.update({
+          where: { id: organizationId },
+          data: { stripeCustomerId: checkoutSession.customer as string },
+        });
+      }
+
+      return NextResponse.json({ url: checkoutSession.url });
+    }
+
+    // ── Personal (Premium) subscription ──────────────────────────────────────
     const user = await prisma.user.findUnique({
-      where: {
-        email: session.user.email,
-      },
+      where: { email: session.user.email },
     });
 
     if (!user) {
@@ -34,9 +70,7 @@ export async function POST(request: Request) {
       const customer = await stripe.customers.create({
         email: user.email || undefined,
         name: user.name || undefined,
-        metadata: {
-          userId: user.id,
-        },
+        metadata: { userId: user.id },
       });
 
       stripeCustomerId = customer.id;
@@ -56,15 +90,8 @@ export async function POST(request: Request) {
       billing_address_collection: "auto",
       customer_email: stripeCustomerId ? undefined : session.user.email,
       customer: stripeCustomerId || undefined,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        userId: user.id,
-      },
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { userId: user.id },
     });
 
     return NextResponse.json({ url: stripeSession.url });

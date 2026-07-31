@@ -178,7 +178,7 @@ export default function SettingsPage() {
     };
 
     const { data: session } = useSession();
-    const isAdmin = (session?.user as any)?.role === 'ADMIN';
+    const isAdmin = (session?.user as any)?.role === 'SYSTEM_ADMIN';
     const isPro = (session?.user as any)?.planTier === 'PRO';
 
     const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true;

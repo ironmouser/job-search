@@ -12,7 +12,10 @@ export default withAuth(
     const isApiRoute = pathname.startsWith('/api');
     const isOnboardingPage = pathname.startsWith('/onboarding');
 
-    if (isPublicApi || isPublicAsset || isPublicPage) {
+    // Public invitation accept endpoint
+    const isPublicInvite = pathname.startsWith('/api/org/invite/accept');
+
+    if (isPublicApi || isPublicAsset || isPublicPage || isPublicInvite) {
       return null;
     }
 
@@ -24,9 +27,19 @@ export default withAuth(
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
 
-    const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
-    if (isAdminRoute) {
-      if (token?.role !== 'ADMIN') {
+    // System Admin routes — SYSTEM_ADMIN only
+    const isSystemAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
+    if (isSystemAdminRoute) {
+      if (token?.role !== 'SYSTEM_ADMIN') {
+        return NextResponse.redirect(new URL('/dashboard', req.url));
+      }
+    }
+
+    // Organization Admin routes — ORGANIZATION_ADMIN or SYSTEM_ADMIN
+    const isOrgAdminRoute = pathname.startsWith('/org-admin') || pathname.startsWith('/api/org');
+    if (isOrgAdminRoute) {
+      const role = token?.role as string | undefined;
+      if (role !== 'ORGANIZATION_ADMIN' && role !== 'SYSTEM_ADMIN') {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
     }
@@ -38,7 +51,8 @@ export default withAuth(
         const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/worker') || pathname === '/api/support';
         const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms';
         const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webmanifest|json)$/);
-        if (isPublicPage || isPublicAsset || isPublicApi) return true;
+        const isPublicInvite = pathname.startsWith('/api/org/invite/accept');
+        if (isPublicPage || isPublicAsset || isPublicApi || isPublicInvite) return true;
         return !!token;
       },
     },

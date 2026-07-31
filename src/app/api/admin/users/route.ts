@@ -7,23 +7,92 @@ import { handleUserUpgradeToPro } from "@/lib/settings";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || (session.user as any).role !== 'ADMIN') {
+    if (!session?.user || (session.user as any).role !== 'SYSTEM_ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        planTier: true,
-        stripeCustomerId: true,
-        stripeSubscriptionId: true,
-      },
-      orderBy: {
-        id: 'asc'
-      }
+    let rawUsers: any[];
+    try {
+      rawUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          planTier: true,
+          stripeCustomerId: true,
+          stripeSubscriptionId: true,
+          createdAt: true,
+          lastLoginAt: true,
+          userPreferences: {
+            select: {
+              createdAt: true,
+            }
+          },
+          userJobs: {
+            select: {
+              status: true,
+              appliedAt: true,
+              isArchived: true,
+            }
+          }
+        },
+        orderBy: {
+          id: 'asc'
+        }
+      });
+    } catch (dbErr) {
+      console.warn("DB query with createdAt/lastLoginAt failed, falling back to basic query:", dbErr);
+      rawUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          planTier: true,
+          stripeCustomerId: true,
+          stripeSubscriptionId: true,
+          userPreferences: {
+            select: {
+              createdAt: true,
+            }
+          },
+          userJobs: {
+            select: {
+              status: true,
+              appliedAt: true,
+              isArchived: true,
+            }
+          }
+        },
+        orderBy: {
+          id: 'asc'
+        }
+      });
+    }
+
+    const users = rawUsers.map(u => {
+      const createdAt = u.createdAt || u.userPreferences?.createdAt || null;
+      const lastLoginAt = u.lastLoginAt || createdAt;
+      const userJobs: Array<{ status?: string; appliedAt?: Date | null; isArchived?: boolean }> = u.userJobs || [];
+      const jobsFoundCount = userJobs.length;
+      const jobsAppliedCount = userJobs.filter(uj => uj.status === 'applied' || uj.appliedAt != null).length;
+      const jobsSavedCount = userJobs.filter(uj => uj.isArchived || uj.status === 'saved' || uj.status === 'bookmarked' || uj.status === 'shortlisted').length;
+
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        planTier: u.planTier,
+        stripeCustomerId: u.stripeCustomerId,
+        stripeSubscriptionId: u.stripeSubscriptionId,
+        createdAt,
+        lastLoginAt,
+        jobsFoundCount,
+        jobsAppliedCount,
+        jobsSavedCount,
+      };
     });
 
     return NextResponse.json(users);
@@ -35,7 +104,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || (session.user as any).role !== 'ADMIN') {
+    if (!session?.user || (session.user as any).role !== 'SYSTEM_ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -46,24 +115,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    if (planTier === 'PRO') {
+    if (planTier === 'PRO' || planTier === 'BUSINESS') {
       await handleUserUpgradeToPro(userId);
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        role: role,
-        planTier: planTier
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        planTier: true
-      }
-    });
+    let updatedUser: any;
+    try {
+      updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          role: role,
+          planTier: planTier
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          planTier: true,
+          createdAt: true,
+          lastLoginAt: true,
+        }
+      });
+    } catch {
+      updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          role: role,
+          planTier: planTier
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          planTier: true,
+        }
+      });
+    }
 
     return NextResponse.json(updatedUser);
   } catch (e: any) {
@@ -74,7 +163,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || (session.user as any).role !== 'ADMIN') {
+    if (!session?.user || (session.user as any).role !== 'SYSTEM_ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -96,7 +185,7 @@ export async function DELETE(request: Request) {
       const freeUsers = await prisma.user.findMany({
         where: {
           planTier: 'FREE',
-          role: { not: 'ADMIN' },
+          role: { not: 'SYSTEM_ADMIN' },
         },
         select: { id: true },
       });
@@ -143,7 +232,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (targetUser.role === 'ADMIN') {
+    if (targetUser.role === 'SYSTEM_ADMIN') {
       return NextResponse.json({ error: 'Cannot delete an administrator account' }, { status: 403 });
     }
 

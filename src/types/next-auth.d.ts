@@ -6,11 +6,23 @@ declare module "next-auth" {
     user: {
       id: string
       isOnboarded: boolean
+      planTier: string
+      role: "USER" | "ORGANIZATION_ADMIN" | "SYSTEM_ADMIN"
+      subscriptionType: "FREE" | "PREMIUM" | "GROUP"
+      organizationId: string | null
+      isDisabled: boolean
+      orgAccessExpiresAt: Date | null
     } & DefaultSession["user"]
   }
 
   interface User extends DefaultUser {
     isOnboarded: boolean
+    planTier: string
+    role: "USER" | "ORGANIZATION_ADMIN" | "SYSTEM_ADMIN"
+    subscriptionType: "FREE" | "PREMIUM" | "GROUP"
+    organizationId: string | null
+    isDisabled: boolean
+    orgAccessExpiresAt: Date | null
   }
 }
 
@@ -18,5 +30,11 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string
     isOnboarded: boolean
+    planTier: string
+    role: string
+    subscriptionType: string
+    organizationId: string | null
+    isDisabled: boolean
+    orgAccessExpiresAt: string | null
   }
 }
