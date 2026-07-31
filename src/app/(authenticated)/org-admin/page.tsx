@@ -647,45 +647,59 @@ export default function OrgAdminDashboard() {
               alignItems: "center",
               justifyContent: "center",
               zIndex: 9999,
-              background: "rgba(0,0,0,0.6)",
+              background: "rgba(0, 0, 0, 0.5)",
+              padding: "1rem",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !removing) setUserToRemove(null);
             }}
           >
             <div
+              role="dialog"
+              aria-modal="true"
               style={{
-                background: "#1a1d2e",
-                border: "1px solid rgba(255,255,255,0.1)",
+                backgroundColor: "#ffffff",
+                border: "1px solid #e2e8f0",
                 borderRadius: 16,
-                padding: "2rem",
+                padding: "1.75rem",
                 width: "100%",
                 maxWidth: 420,
-                boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+                color: "#0f172a",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.25rem",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-                <h3 style={{ margin: 0 }}>Remove Member</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 600, color: "#0f172a" }}>Remove Member</h3>
                 <button
                   onClick={() => setUserToRemove(null)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}
+                  disabled={removing}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "4px", borderRadius: "6px" }}
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
-              <p style={{ color: "#9ca3af", marginBottom: 24, fontSize: "0.875rem" }}>
+              <p style={{ color: "#475569", margin: 0, fontSize: "0.88rem", lineHeight: 1.5 }}>
                 Are you sure you want to remove{" "}
-                <strong style={{ color: "#f9fafb" }}>
+                <strong style={{ color: "#0f172a" }}>
                   {userToRemove.name ?? userToRemove.email}
                 </strong>{" "}
                 from the organization? This will free their seat immediately.
               </p>
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.25rem" }}>
                 <button
                   onClick={() => setUserToRemove(null)}
+                  disabled={removing}
                   style={{
-                    background: "rgba(255,255,255,0.08)",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    backgroundColor: "#f1f5f9",
+                    border: "1px solid #e2e8f0",
                     borderRadius: 8,
-                    color: "#f9fafb",
-                    padding: "8px 18px",
+                    color: "#334155",
+                    padding: "0.6rem 1.1rem",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
                     cursor: "pointer",
                   }}
                 >
@@ -695,11 +709,12 @@ export default function OrgAdminDashboard() {
                   onClick={handleRemoveMember}
                   disabled={removing}
                   style={{
-                    background: "#ef4444",
+                    background: "#dc2626",
                     border: "none",
                     borderRadius: 8,
-                    color: "#fff",
-                    padding: "8px 18px",
+                    color: "#ffffff",
+                    padding: "0.6rem 1.25rem",
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     cursor: removing ? "wait" : "pointer",
                     display: "flex",

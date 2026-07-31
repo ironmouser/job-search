@@ -154,15 +154,18 @@ export default function CloudResumePicker({
         <button
           type="button"
           onClick={handleGoogleDriveClick}
-          className="btn-outline"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.5rem',
             padding: '0.55rem 0.9rem',
             fontSize: '0.85rem',
+            fontWeight: 500,
             borderRadius: '8px',
-            background: 'rgba(255,255,255,0.03)',
+            backgroundColor: '#ffffff',
+            border: '1px solid #cbd5e1',
+            color: '#1e293b',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
             cursor: 'pointer',
           }}
         >
@@ -178,15 +181,18 @@ export default function CloudResumePicker({
         <button
           type="button"
           onClick={handleDropboxClick}
-          className="btn-outline"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.5rem',
             padding: '0.55rem 0.9rem',
             fontSize: '0.85rem',
+            fontWeight: 500,
             borderRadius: '8px',
-            background: 'rgba(255,255,255,0.03)',
+            backgroundColor: '#ffffff',
+            border: '1px solid #cbd5e1',
+            color: '#1e293b',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
             cursor: 'pointer',
           }}
         >
@@ -199,15 +205,18 @@ export default function CloudResumePicker({
         <button
           type="button"
           onClick={() => setShowUrlModal(true)}
-          className="btn-outline"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '0.4rem',
             padding: '0.55rem 0.9rem',
             fontSize: '0.85rem',
+            fontWeight: 500,
             borderRadius: '8px',
-            background: 'rgba(255,255,255,0.03)',
+            backgroundColor: '#ffffff',
+            border: '1px solid #cbd5e1',
+            color: '#1e293b',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
             cursor: 'pointer',
           }}
         >
@@ -228,7 +237,7 @@ export default function CloudResumePicker({
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 9999,
-              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
               padding: '1rem',
             }}
             onClick={(e) => {
@@ -241,32 +250,32 @@ export default function CloudResumePicker({
               style={{
                 width: '100%',
                 maxWidth: '460px',
-                backgroundColor: 'var(--card-bg, #18181b)',
-                border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
-                borderRadius: '12px',
-                padding: '1.5rem',
-                color: 'var(--text-primary, #ffffff)',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                padding: '1.75rem',
+                color: '#0f172a',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1.25rem',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <ExternalLink size={20} className="text-accent" /> Import Resume from Cloud Link
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
+                  <ExternalLink size={20} style={{ color: '#2563eb' }} /> Import Resume from Cloud Link
                 </h3>
                 <button
                   onClick={() => setShowUrlModal(false)}
                   disabled={urlLoading}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', borderRadius: '6px' }}
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary, #a1a1aa)', margin: 0, lineHeight: 1.5 }}>
-                Paste any shared Google Drive, Dropbox, or public PDF/Word doc URL below.
+              <p style={{ fontSize: '0.88rem', color: '#475569', margin: 0, lineHeight: 1.5 }}>
+                Paste any shared Google Drive, Google Docs, Dropbox, or public PDF/Word document URL below.
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -279,11 +288,12 @@ export default function CloudResumePicker({
                     width: '100%',
                     boxSizing: 'border-box',
                     padding: '0.75rem 1rem',
-                    background: 'rgba(0,0,0,0.2)',
-                    border: '1px solid var(--border-glass)',
-                    color: 'var(--text-primary)',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    color: '#0f172a',
                     borderRadius: '8px',
                     fontSize: '0.9rem',
+                    outline: 'none',
                   }}
                 />
               </div>
@@ -293,8 +303,16 @@ export default function CloudResumePicker({
                   type="button"
                   onClick={() => setShowUrlModal(false)}
                   disabled={urlLoading}
-                  className="btn-outline"
-                  style={{ padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem' }}
+                  style={{
+                    padding: '0.6rem 1.1rem',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    backgroundColor: '#f1f5f9',
+                    color: '#334155',
+                    border: '1px solid #e2e8f0',
+                    cursor: 'pointer',
+                  }}
                 >
                   Cancel
                 </button>
@@ -302,12 +320,15 @@ export default function CloudResumePicker({
                   type="button"
                   onClick={() => handleParseUrl(urlInput)}
                   disabled={urlLoading || !urlInput.trim()}
-                  className="btn-primary"
                   style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    fontSize: '0.85rem',
+                    padding: '0.6rem 1.25rem',
+                    borderRadius: '8px',
+                    fontSize: '0.875rem',
                     fontWeight: 600,
+                    backgroundColor: urlLoading || !urlInput.trim() ? '#93c5fd' : '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    cursor: urlLoading || !urlInput.trim() ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',

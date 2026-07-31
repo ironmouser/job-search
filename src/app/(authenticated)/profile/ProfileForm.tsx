@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { User, Image as ImageIcon, CreditCard, Save, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 
 interface ProfileFormProps {
@@ -73,6 +74,11 @@ export default function ProfileForm({
   const [image, setImage] = useState(initialImage);
   const [saving, setSaving] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Cropper state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -183,10 +189,24 @@ export default function ProfileForm({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-      {cropImageSrc && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.8)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: "90%", maxWidth: "500px", background: "var(--background-secondary)", borderRadius: "12px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <div style={{ position: "relative", width: "100%", height: "400px", backgroundColor: "#000" }}>
+      {mounted && cropImageSrc && createPortal(
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              width: "100%",
+              maxWidth: "500px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: "16px",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+            }}
+          >
+            <div style={{ position: "relative", width: "100%", height: "360px", backgroundColor: "#0f172a" }}>
               <Cropper
                 image={cropImageSrc}
                 crop={crop}
@@ -199,7 +219,7 @@ export default function ProfileForm({
                 onZoomChange={setZoom}
               />
             </div>
-            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem", backgroundColor: "var(--background-primary)" }}>
+            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem", backgroundColor: "#ffffff" }}>
               <input
                 type="range"
                 value={zoom}
@@ -210,13 +230,46 @@ export default function ProfileForm({
                 onChange={(e) => setZoom(Number(e.target.value))}
                 style={{ width: "100%", cursor: "pointer" }}
               />
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem" }}>
-                <button className="btn-outline" onClick={() => setCropImageSrc(null)} disabled={saving}>Cancel</button>
-                <button className="btn-primary" onClick={handleConfirmCrop} disabled={saving}>{saving ? "Uploading..." : "Confirm & Upload"}</button>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setCropImageSrc(null)}
+                  disabled={saving}
+                  style={{
+                    padding: "0.6rem 1.1rem",
+                    borderRadius: "8px",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    backgroundColor: "#f1f5f9",
+                    color: "#334155",
+                    border: "1px solid #e2e8f0",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCrop}
+                  disabled={saving}
+                  style={{
+                    padding: "0.6rem 1.25rem",
+                    borderRadius: "8px",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    backgroundColor: saving ? "#93c5fd" : "#2563eb",
+                    color: "#ffffff",
+                    border: "none",
+                    cursor: saving ? "wait" : "pointer",
+                  }}
+                >
+                  {saving ? "Uploading..." : "Confirm & Upload"}
+                </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Profile Section */}

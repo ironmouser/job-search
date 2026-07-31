@@ -1110,7 +1110,7 @@ export default function AdminDashboard() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9999,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
             padding: '1rem',
           }}
           onClick={(e) => {
@@ -1123,26 +1123,26 @@ export default function AdminDashboard() {
             style={{
               width: '100%',
               maxWidth: '440px',
-              backgroundColor: 'var(--card-bg, #18181b)',
-              border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              color: 'var(--text-primary, #ffffff)',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '16px',
+              padding: '1.75rem',
+              color: '#0f172a',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
               display: 'flex',
               flexDirection: 'column',
               gap: '1.25rem'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ padding: '0.5rem', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+              <div style={{ padding: '0.5rem', borderRadius: '50%', background: '#fee2e2', color: '#dc2626' }}>
                 <Trash2 size={24} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>Confirm User Deletion</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: '#0f172a' }}>Confirm User Deletion</h3>
             </div>
 
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary, #a1a1aa)', margin: 0, lineHeight: 1.5 }}>
-              Are you sure you want to permanently delete <strong style={{ color: 'var(--text-primary)' }}>{userToDelete.name || userToDelete.email}</strong> ({userToDelete.email})?
+            <p style={{ fontSize: '0.9rem', color: '#475569', margin: 0, lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete <strong style={{ color: '#0f172a' }}>{userToDelete.name || userToDelete.email}</strong> ({userToDelete.email})?
               All associated data (saved jobs, assets, and preferences) will be permanently purged.
             </p>
 
@@ -1151,8 +1151,16 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setUserToDelete(null)}
                 disabled={deletingUserId === userToDelete.id}
-                className="btn-outline"
-                style={{ padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem' }}
+                style={{
+                  padding: '0.6rem 1.1rem',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  backgroundColor: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #e2e8f0',
+                  cursor: 'pointer',
+                }}
               >
                 Cancel
               </button>
@@ -1161,11 +1169,11 @@ export default function AdminDashboard() {
                 onClick={() => handleDeleteUser(userToDelete.id)}
                 disabled={deletingUserId === userToDelete.id}
                 style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
+                  padding: '0.6rem 1.25rem',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
                   fontWeight: 600,
-                  background: '#ef4444',
+                  background: '#dc2626',
                   color: '#ffffff',
                   border: 'none',
                   cursor: 'pointer',

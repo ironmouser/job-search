@@ -6,28 +6,47 @@ import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import { callDeepSeek } from '@/lib/deepseek';
 
 function normalizeCloudUrl(url: string, accessToken?: string): { fetchUrl: string; headers?: Record<string, string> } {
-    let fetchUrl = url;
-    const headers: Record<string, string> = {};
+    let fetchUrl = url.trim();
+    const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    };
 
     if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    // Google Drive share links
-    if (url.includes('drive.google.com')) {
-        const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    // Google Docs share links (e.g. https://docs.google.com/document/d/DOC_ID/edit)
+    if (fetchUrl.includes('docs.google.com/document/d/')) {
+        const docIdMatch = fetchUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+        if (docIdMatch && docIdMatch[1]) {
+            const docId = docIdMatch[1];
+            fetchUrl = `https://docs.google.com/document/d/${docId}/export?format=pdf`;
+            return { fetchUrl, headers };
+        }
+    }
+
+    // Google Drive file share links (e.g. https://drive.google.com/file/d/FILE_ID/view)
+    if (fetchUrl.includes('drive.google.com')) {
+        const fileIdMatch = fetchUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || fetchUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
         if (fileIdMatch && fileIdMatch[1]) {
             const fileId = fileIdMatch[1];
             if (accessToken) {
                 fetchUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
             } else {
-                fetchUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                fetchUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
             }
         }
     }
     // Dropbox share links
-    else if (url.includes('dropbox.com')) {
-        fetchUrl = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '?dl=1');
+    else if (fetchUrl.includes('dropbox.com')) {
+        if (fetchUrl.includes('?dl=0') || fetchUrl.includes('&dl=0')) {
+            fetchUrl = fetchUrl.replace('dl=0', 'raw=1');
+        } else if (fetchUrl.includes('?dl=1') || fetchUrl.includes('&dl=1')) {
+            fetchUrl = fetchUrl.replace('dl=1', 'raw=1');
+        } else if (!fetchUrl.includes('raw=1')) {
+            fetchUrl += fetchUrl.includes('?') ? '&raw=1' : '?raw=1';
+        }
+        fetchUrl = fetchUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
     }
 
     return { fetchUrl, headers };
@@ -62,13 +81,27 @@ export async function POST(request: Request) {
 
             const { fetchUrl, headers } = normalizeCloudUrl(fileUrl, accessToken);
 
-            const res = await fetch(fetchUrl, { headers });
+            const res = await fetch(fetchUrl, { headers, redirect: 'follow' });
             if (!res.ok) {
-                return NextResponse.json({ error: `Failed to download file from cloud storage (${res.status})` }, { status: 400 });
+                return NextResponse.json({ error: `Failed to download file from cloud link (${res.status}). Please check link permissions or upload the document directly.` }, { status: 400 });
             }
 
             const arrayBuffer = await res.arrayBuffer();
             buffer = Buffer.from(arrayBuffer);
+
+            // Check if response is an HTML page (Google Drive Access Denied, Sign in, 404 page, etc.)
+            const snippet = buffer.slice(0, 150).toString('utf8').trim().toLowerCase();
+            if (snippet.startsWith('<!doctype html') || snippet.startsWith('<html')) {
+                const htmlText = buffer.toString('utf8');
+                if (htmlText.includes('Access Denied') || htmlText.includes('You need access') || htmlText.includes('Sign in')) {
+                    return NextResponse.json({
+                        error: 'The Google Drive or Cloud file is private. Please update access permissions to "Anyone with the link can view", or upload the file directly.'
+                    }, { status: 422 });
+                }
+                return NextResponse.json({
+                    error: 'The cloud link returned a web page instead of a document file. Please ensure it is a public link to a PDF, DOCX, or TXT file, or upload the file directly.'
+                }, { status: 422 });
+            }
         } else {
             const formData = await request.formData();
             const file = formData.get('file') as File;
@@ -82,27 +115,47 @@ export async function POST(request: Request) {
         }
 
         let rawText = '';
+        const lowerName = fileName.toLowerCase();
+        const isPdf = buffer.slice(0, 5).toString('ascii') === '%PDF-';
+        const isDocx = buffer.slice(0, 4).toString('hex') === '504b0304';
 
-        if (fileName.toLowerCase().endsWith('.docx') || contentType.includes('wordprocessingml')) {
+        if (lowerName.endsWith('.doc')) {
+            return NextResponse.json({
+                error: 'Legacy .doc Word files are not supported. Please convert your resume to PDF or .docx format and try again.'
+            }, { status: 400 });
+        } else if (isDocx || lowerName.endsWith('.docx') || contentType.includes('wordprocessingml')) {
             try {
                 const result = await mammoth.extractRawText({ buffer });
                 rawText = result.value || '';
             } catch (err: any) {
                 console.warn('DOCX raw text extraction failed:', err.message);
-                rawText = buffer.toString('utf8');
             }
-        } else {
+        } else if (isPdf || lowerName.endsWith('.pdf')) {
             try {
                 const pdfData = await pdfParse(buffer);
                 rawText = pdfData.text || '';
             } catch (err: any) {
                 console.warn('PDF raw text extraction failed:', err.message);
-                rawText = buffer.toString('utf8');
+            }
+        } else if (lowerName.endsWith('.txt') || lowerName.endsWith('.md')) {
+            rawText = buffer.toString('utf8');
+        } else {
+            // Attempt PDF parse then mammoth fallback
+            try {
+                const pdfData = await pdfParse(buffer);
+                rawText = pdfData.text || '';
+            } catch {
+                try {
+                    const result = await mammoth.extractRawText({ buffer });
+                    rawText = result.value || '';
+                } catch {
+                    rawText = buffer.toString('utf8');
+                }
             }
         }
 
         if (!rawText.trim()) {
-            return NextResponse.json({ error: 'Could not extract text from the file.' }, { status: 422 });
+            return NextResponse.json({ error: 'Could not extract text from the file. Please try uploading a clean PDF or .docx resume.' }, { status: 422 });
         }
 
         const prompt = `You are an expert resume parser. I am providing you with text extracted from a candidate's resume.
