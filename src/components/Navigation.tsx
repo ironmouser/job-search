@@ -9,6 +9,8 @@ import { useHelp } from '@/contexts/HelpContext';
 import { getAssetUrl } from '@/lib/assets';
 import FeedbackModal from '@/components/FeedbackModal';
 
+import { UserAvatar } from '@/components/common/UserAvatar';
+
 export default function Navigation() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
@@ -140,13 +142,12 @@ export default function Navigation() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }} className="user-profile-container">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }} className="user-profile-row">
                   <Link href="/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', textDecoration: 'none', borderRadius: '8px', flex: 1, minWidth: 0 }} title="Profile" className="user-profile-link">
-                    {session.user?.image ? (
-                      <img src={session.user.image} alt="Avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                    ) : (
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
-                        {(session.user?.name || session.user?.email || 'U')[0].toUpperCase()}
-                      </div>
-                    )}
+                    <UserAvatar
+                      src={session.user?.image}
+                      name={session.user?.name}
+                      email={session.user?.email}
+                      size={32}
+                    />
                     <div className="user-profile-info" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
                       <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {session.user?.name || session.user?.email}

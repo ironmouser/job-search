@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
+import { UserAvatar } from "@/components/common/UserAvatar";
 
 interface ProfileFormProps {
   initialName: string;
@@ -319,17 +320,13 @@ export default function ProfileForm({
             <label style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Profile Photo</label>
             <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
               <div style={{ position: "relative" }}>
-                {image ? (
-                  <img
-                    src={image}
-                    alt="Profile"
-                    style={{ width: "48px", height: "48px", borderRadius: "50%", objectFit: "cover", border: "1px solid var(--border-glass)" }}
-                  />
-                ) : (
-                  <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-glass)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <ImageIcon size={20} color="var(--text-secondary)" />
-                  </div>
-                )}
+                <UserAvatar
+                  src={image}
+                  name={name}
+                  email={email}
+                  size={48}
+                  showIconFallback={true}
+                />
               </div>
               
               <div style={{ display: "flex", gap: "0.5rem", flex: 1, alignItems: "center" }}>

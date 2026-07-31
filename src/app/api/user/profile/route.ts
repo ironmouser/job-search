@@ -18,9 +18,11 @@ export async function POST(req: Request) {
       await logSuspiciousActivity({ type: 'PROFILE_PAYLOAD_TOO_LARGE', message: 'Name exceeds max length', userId: session.user.id, metadata: { length: name?.length } });
       return new NextResponse("Invalid name length", { status: 400 });
     }
-    if (image !== undefined && (typeof image !== 'string' || image.length > 1000 || !image.startsWith('http'))) {
-      await logSuspiciousActivity({ type: 'PROFILE_PAYLOAD_TOO_LARGE', message: 'Image URL exceeds max length or is invalid', userId: session.user.id, metadata: { length: image?.length } });
-      return new NextResponse("Invalid image URL", { status: 400 });
+    if (image !== undefined && image !== null && image !== "") {
+      if (typeof image !== 'string' || image.length > 2000 || (!image.startsWith('http://') && !image.startsWith('https://') && !image.startsWith('data:image/'))) {
+        await logSuspiciousActivity({ type: 'PROFILE_PAYLOAD_TOO_LARGE', message: 'Image URL exceeds max length or is invalid', userId: session.user.id, metadata: { length: image?.length } });
+        return new NextResponse("Invalid image URL", { status: 400 });
+      }
     }
 
     const user = await prisma.user.update({
@@ -29,7 +31,7 @@ export async function POST(req: Request) {
       },
       data: {
         name: name !== undefined ? name : undefined,
-        image: image !== undefined ? image : undefined,
+        image: image !== undefined ? (image === "" ? null : image) : undefined,
       },
     });
 
