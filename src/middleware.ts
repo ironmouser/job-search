@@ -19,12 +19,22 @@ export default withAuth(
       return null;
     }
 
-    if (isAuth && !token.isOnboarded && !isOnboardingPage && !isApiRoute) {
+    const userRole = token?.role as string | undefined;
+
+    // Organization admins do not need candidate onboarding and are redirected to /org-admin
+    if (isAuth && userRole === 'ORGANIZATION_ADMIN') {
+      if (isOnboardingPage || pathname === '/dashboard' || pathname.startsWith('/pipeline') || pathname.startsWith('/assets') || pathname.startsWith('/analytics')) {
+        return NextResponse.redirect(new URL('/org-admin', req.url));
+      }
+    }
+
+    if (isAuth && !token.isOnboarded && !isOnboardingPage && !isApiRoute && userRole !== 'ORGANIZATION_ADMIN') {
       return NextResponse.redirect(new URL('/onboarding', req.url));
     }
 
     if (isAuth && token.isOnboarded && isOnboardingPage) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+      const target = userRole === 'ORGANIZATION_ADMIN' ? '/org-admin' : '/dashboard';
+      return NextResponse.redirect(new URL(target, req.url));
     }
 
     // System Admin routes — SYSTEM_ADMIN only

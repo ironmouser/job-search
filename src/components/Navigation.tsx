@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, MessageSquareHeart } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, MessageSquareHeart, Users, Mail, Cpu, Activity } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useHelp } from '@/contexts/HelpContext';
 import { getAssetUrl } from '@/lib/assets';
@@ -35,11 +35,14 @@ export default function Navigation() {
     return null;
   }
 
+  const userRole = (session.user as any)?.role;
+  const isOrgAdminOnly = userRole === 'ORGANIZATION_ADMIN';
+
   return (
     <>
       <aside className={`sidebar ${isMinimized ? 'minimized' : ''}`}>
         <div className="mobile-nav-header">
-          <div className="sidebar-logo">
+          <Link href={isOrgAdminOnly ? "/org-admin" : "/dashboard"} className="sidebar-logo" style={{ textDecoration: 'none' }} onClick={closeMenu}>
             <div className="logo-icon" style={{ background: 'transparent', padding: 0 }}>
               <img 
                 src={getAssetUrl('/icon-logo.png')} 
@@ -54,7 +57,7 @@ export default function Navigation() {
                 style={{ height: '28px', width: 'auto', display: 'block' }} 
               />
             </div>
-          </div>
+          </Link>
           <div className="header-actions">
             <button 
               onClick={toggleMinimize} 
@@ -70,63 +73,106 @@ export default function Navigation() {
         </div>
         
         <nav className={`nav-menu ${isOpen ? 'open' : ''}`}>
-          <li className="nav-item">
-            <Link href="/dashboard" className={pathname === '/dashboard' ? 'active' : ''} onClick={closeMenu} title="Dashboard">
-              <LayoutDashboard size={20} />
-              <span className="nav-text">Dashboard</span>
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link href="/pipeline" className={pathname === '/pipeline' ? 'active' : ''} onClick={closeMenu} title="Pipeline">
-              <Briefcase size={20} />
-              <span className="nav-text">Pipeline</span>
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link href="/assets" className={pathname === '/assets' ? 'active' : ''} onClick={closeMenu} title="My Profile">
-              <FileText size={20} />
-              <span className="nav-text">My Profile</span>
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link href="/analytics" className={pathname === '/analytics' ? 'active' : ''} onClick={closeMenu} title="Analytics">
-              <BarChart2 size={20} />
-              <span className="nav-text">Analytics</span>
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link href="/settings" className={pathname === '/settings' ? 'active' : ''} onClick={closeMenu} data-tour="settings-menu" title="Settings">
-              <Settings size={20} />
-              <span className="nav-text">Settings</span>
-            </Link>
-          </li>
-          {(session.user as any)?.role === 'SYSTEM_ADMIN' && (
-            <li className="nav-item">
-              <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={closeMenu} title="Admin Panel">
-                <Shield size={20} />
-                <span className="nav-text">Admin Panel</span>
-              </Link>
-            </li>
-          )}
-          {((session.user as any)?.role === 'ORGANIZATION_ADMIN' || (session.user as any)?.role === 'SYSTEM_ADMIN') && (
-            <li className="nav-item">
-              <Link href="/org-admin" className={pathname === '/org-admin' ? 'active' : ''} onClick={closeMenu} title="Org Admin">
-                <Shield size={20} />
-                <span className="nav-text">Org Admin</span>
-              </Link>
-            </li>
+          {isOrgAdminOnly ? (
+            <>
+              <li className="nav-item">
+                <Link href="/org-admin" className={pathname === '/org-admin' ? 'active' : ''} onClick={closeMenu} title="Dashboard">
+                  <LayoutDashboard size={20} />
+                  <span className="nav-text">Dashboard</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/org-admin/members" className={pathname === '/org-admin/members' ? 'active' : ''} onClick={closeMenu} title="Members">
+                  <Users size={20} />
+                  <span className="nav-text">Members</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/org-admin/invitations" className={pathname === '/org-admin/invitations' ? 'active' : ''} onClick={closeMenu} title="Invitations">
+                  <Mail size={20} />
+                  <span className="nav-text">Invitations</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/org-admin/seats" className={pathname === '/org-admin/seats' ? 'active' : ''} onClick={closeMenu} title="Pass Management">
+                  <Cpu size={20} />
+                  <span className="nav-text">Pass Management</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/org-admin/settings" className={pathname === '/org-admin/settings' ? 'active' : ''} onClick={closeMenu} title="Org Settings">
+                  <Settings size={20} />
+                  <span className="nav-text">Org Settings</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/org-admin/activity" className={pathname === '/org-admin/activity' ? 'active' : ''} onClick={closeMenu} title="Activity Log">
+                  <Activity size={20} />
+                  <span className="nav-text">Activity Log</span>
+                </Link>
+              </li>
+            </>
+          ) : (
+            <>
+              <li className="nav-item">
+                <Link href="/dashboard" className={pathname === '/dashboard' ? 'active' : ''} onClick={closeMenu} title="Dashboard">
+                  <LayoutDashboard size={20} />
+                  <span className="nav-text">Dashboard</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/pipeline" className={pathname === '/pipeline' ? 'active' : ''} onClick={closeMenu} title="Pipeline">
+                  <Briefcase size={20} />
+                  <span className="nav-text">Pipeline</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/assets" className={pathname === '/assets' ? 'active' : ''} onClick={closeMenu} title="My Profile">
+                  <FileText size={20} />
+                  <span className="nav-text">My Profile</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/analytics" className={pathname === '/analytics' ? 'active' : ''} onClick={closeMenu} title="Analytics">
+                  <BarChart2 size={20} />
+                  <span className="nav-text">Analytics</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/settings" className={pathname === '/settings' ? 'active' : ''} onClick={closeMenu} data-tour="settings-menu" title="Settings">
+                  <Settings size={20} />
+                  <span className="nav-text">Settings</span>
+                </Link>
+              </li>
+              {userRole === 'SYSTEM_ADMIN' && (
+                <>
+                  <li className="nav-item">
+                    <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={closeMenu} title="Admin Panel">
+                      <Shield size={20} />
+                      <span className="nav-text">Admin Panel</span>
+                    </Link>
+                  </li>
+                  <li className="nav-item">
+                    <Link href="/org-admin" className={pathname.startsWith('/org-admin') ? 'active' : ''} onClick={closeMenu} title="Org Admin">
+                      <Shield size={20} />
+                      <span className="nav-text">Org Admin</span>
+                    </Link>
+                  </li>
+                </>
+              )}
+              <li className="nav-item">
+                <button 
+                  onClick={() => { closeMenu(); openHelpPanel(); }} 
+                  className="help-btn"
+                  title="Help & Tours"
+                >
+                  <HelpCircle size={20} />
+                  <span className="nav-text">Help & Tours</span>
+                </button>
+              </li>
+            </>
           )}
 
-          <li className="nav-item">
-            <button 
-              onClick={() => { closeMenu(); openHelpPanel(); }} 
-              className="help-btn"
-              title="Help & Tours"
-            >
-              <HelpCircle size={20} />
-              <span className="nav-text">Help & Tours</span>
-            </button>
-          </li>
           <li className="nav-item">
             <button 
               onClick={() => { closeMenu(); setIsFeedbackOpen(true); }} 
