@@ -172,7 +172,7 @@ export default function PricingPage() {
             {[
               "Multi-seat pass management dashboard",
               "Batch candidate & student email invitations",
-              "90-day (or custom) access per activated pass",
+              "30-day (or custom) access per activated pass",
               "Full Pro features for all assigned members",
               "Centralized activity logs & seat usage metrics",
               "Consolidated pay-as-you-go block purchasing"

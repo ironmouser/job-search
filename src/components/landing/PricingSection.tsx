@@ -206,7 +206,7 @@ export default function PricingSection() {
               {[
                 'Multi-seat pass management dashboard',
                 'Batch email invites for staff, candidates, or students',
-                '90-day (or custom) access per activated pass',
+                '30-day (or custom) access per activated pass',
                 'Full Pro features for all active assigned members',
                 'Centralized activity logs & seat metrics',
                 'Pay-as-you-go one-time block seat purchases',
