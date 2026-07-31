@@ -203,14 +203,13 @@ export default function PricingSection() {
             >
               Get Started for Orgs
             </Link>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {[
                 'Multi-seat pass management dashboard',
                 'Batch email invites for staff, candidates, or students',
                 '30-day (or custom) access per activated pass',
                 'Full Pro features for all active assigned members',
                 'Centralized activity logs & seat metrics',
-                'Pay-as-you-go one-time block seat purchases',
               ].map((item) => (
                 <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontSize: '0.9rem' }}>
                   <Check size={18} color="#2563eb" style={{ flexShrink: 0 }} />
@@ -218,6 +217,9 @@ export default function PricingSection() {
                 </li>
               ))}
             </ul>
+            <p style={{ color: '#64748b', fontSize: '0.75rem', margin: 0, fontStyle: 'italic', borderTop: '1px solid #e2e8f0', paddingTop: '0.75rem', lineHeight: 1.4 }}>
+              * Unassigned organization seat passes expire 1 year (365 days) after purchase.
+            </p>
           </div>
         </div>
       </div>

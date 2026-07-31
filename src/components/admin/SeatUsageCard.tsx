@@ -164,6 +164,10 @@ export function SeatUsageCard({
                <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "#f9fafb" }}>{stats?.purchased365Days || 0}</div>
              </div>
           </div>
+
+          <p style={{ fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", margin: 0, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 10, lineHeight: 1.4 }}>
+            * Notice: Organization seat passes expire 1 year (365 days) from the purchase date if left unassigned.
+          </p>
         </>
       )}
     </div>
