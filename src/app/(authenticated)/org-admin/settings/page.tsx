@@ -107,7 +107,7 @@ export default function OrgAdminSettingsPage() {
               style={{
                 fontSize: "0.8rem",
                 color: "var(--text-secondary)",
-                background: "rgba(0,0,0,0.2)",
+                background: "rgba(0, 0, 0, 0.07)",
                 padding: "6px 12px",
                 borderRadius: 6,
                 border: "1px solid var(--border-glass)",

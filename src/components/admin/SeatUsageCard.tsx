@@ -138,19 +138,19 @@ export function SeatUsageCard({
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 4 }}>
-             <div style={{ background: "rgba(0,0,0,0.2)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
+             <div style={{ background: "rgba(0, 0, 0, 0.07)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
                <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Active Users</div>
                <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{activeUnexpiredSeats}</div>
              </div>
-             <div style={{ background: "rgba(0,0,0,0.2)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
+             <div style={{ background: "rgba(0, 0, 0, 0.07)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
                <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Purchased (Last 30 Days)</div>
                <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{stats?.purchased30Days || 0}</div>
              </div>
-             <div style={{ background: "rgba(0,0,0,0.2)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
+             <div style={{ background: "rgba(0, 0, 0, 0.07)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
                <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Purchased (This Year)</div>
                <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{stats?.purchasedThisYear || 0}</div>
              </div>
-             <div style={{ background: "rgba(0,0,0,0.2)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
+             <div style={{ background: "rgba(0, 0, 0, 0.07)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
                <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Purchased (365 Days)</div>
                <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{stats?.purchased365Days || 0}</div>
              </div>

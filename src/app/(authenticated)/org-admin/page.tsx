@@ -182,7 +182,7 @@ export default function OrgAdminDashboard() {
             >
               <div
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "rgba(0, 0, 0, 0.07)",
                   border: "1px solid var(--border-glass)",
                   borderRadius: 12,
                   padding: "1.25rem",

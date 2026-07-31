@@ -231,7 +231,7 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
           minHeight: 96,
           width: "100%",
           padding: 12,
-          background: "rgba(0, 0, 0, 0.2)",
+          background: "rgba(0, 0, 0, 0.07)",
           border: invalidCount > 0 ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid var(--border-glass)",
           borderRadius: 8,
           display: "flex",
