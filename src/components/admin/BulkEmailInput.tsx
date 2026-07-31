@@ -147,32 +147,32 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
       {/* Counters & Info Bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
-            Email Recipient Count: <span style={{ color: "#3695e3" }}>{validCount}</span>
+          <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)" }}>
+            Email Recipient Count: <span style={{ color: "#3695e3", fontWeight: 600 }}>{validCount}</span>
           </span>
           {invalidCount > 0 && (
             <span
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 4,
-                color: "#ef4444",
-                fontSize: "0.8rem",
+                gap: 6,
+                color: "#dc2626",
+                fontSize: "0.825rem",
                 fontWeight: 600,
-                background: "rgba(239, 68, 68, 0.15)",
-                padding: "2px 8px",
-                borderRadius: 4,
-                border: "1px solid rgba(239, 68, 68, 0.3)",
+                background: "#fee2e2",
+                padding: "4px 10px",
+                borderRadius: 6,
+                border: "1px solid #fecaca",
               }}
             >
-              <AlertCircle size={14} />
+              <AlertCircle size={15} color="#dc2626" />
               {invalidCount} invalid email address{invalidCount > 1 ? "es" : ""}
             </span>
           )}
         </div>
 
         {/* CSV Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             type="button"
             onClick={downloadSampleCsv}
@@ -183,7 +183,7 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
               background: "transparent",
               border: "none",
               color: "var(--text-secondary)",
-              fontSize: "0.78rem",
+              fontSize: "0.825rem",
               fontWeight: 500,
               cursor: "pointer",
               textDecoration: "underline",
@@ -209,14 +209,15 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid var(--border-glass)",
-              borderRadius: 6,
+              background: "var(--bg-glass, rgba(255,255,255,0.06))",
+              border: "1px solid var(--border-glass, #cbd5e1)",
+              borderRadius: 8,
               color: "var(--text-primary)",
-              padding: "6px 12px",
-              fontSize: "0.78rem",
+              padding: "6px 14px",
+              fontSize: "0.825rem",
               fontWeight: 600,
               cursor: disabled ? "not-allowed" : "pointer",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
             }}
           >
             <Upload size={14} /> Upload CSV
@@ -228,12 +229,12 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
       <div
         onClick={() => inputRef.current?.focus()}
         style={{
-          minHeight: 96,
+          minHeight: 100,
           width: "100%",
-          padding: 12,
-          background: "rgba(0, 0, 0, 0.07)",
-          border: invalidCount > 0 ? "1px solid rgba(239, 68, 68, 0.5)" : "1px solid var(--border-glass)",
-          borderRadius: 8,
+          padding: "12px 14px",
+          background: "rgba(0, 0, 0, 0.05)",
+          border: invalidCount > 0 ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid var(--border-glass)",
+          borderRadius: 12,
           display: "flex",
           flexWrap: "wrap",
           alignContent: "flex-start",
@@ -252,11 +253,11 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 4,
-                  background: "rgba(0,0,0,0.6)",
+                  gap: 6,
+                  background: "rgba(0,0,0,0.08)",
                   border: "1px solid #3695e3",
-                  borderRadius: 6,
-                  padding: "2px 6px",
+                  borderRadius: 9999,
+                  padding: "4px 12px",
                 }}
               >
                 <input
@@ -299,14 +300,14 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "4px 10px",
-                borderRadius: 6,
+                padding: "6px 14px",
+                borderRadius: 9999,
                 fontSize: "0.85rem",
                 fontWeight: 500,
                 transition: "all 0.15s ease",
-                background: chip.isValid ? "rgba(255, 255, 255, 0.1)" : "rgba(239, 68, 68, 0.3)",
-                color: chip.isValid ? "var(--text-primary)" : "#fca5a5",
-                border: chip.isValid ? "1px solid var(--border-glass)" : "1px solid rgba(239, 68, 68, 0.5)",
+                background: chip.isValid ? "#e2e8f0" : "#fecaca",
+                color: chip.isValid ? "#1e293b" : "#991b1b",
+                border: chip.isValid ? "1px solid transparent" : "1px solid #ef4444",
               }}
             >
               <span
@@ -321,10 +322,10 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
                 <button
                   type="button"
                   onClick={() => startEditing(chip)}
-                  style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: 0 }}
+                  style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}
                   title="Edit invalid email"
                 >
-                  <Edit2 size={12} />
+                  <Edit2 size={13} />
                 </button>
               )}
 
@@ -337,7 +338,7 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
                 style={{
                   background: "none",
                   border: "none",
-                  color: chip.isValid ? "var(--text-secondary)" : "#fca5a5",
+                  color: chip.isValid ? "#64748b" : "#ef4444",
                   cursor: "pointer",
                   padding: 0,
                   display: "flex",
@@ -370,7 +371,7 @@ export function BulkEmailInput({ chips, onChange, disabled }: BulkEmailInputProp
             color: "var(--text-primary)",
             fontSize: "0.875rem",
             outline: "none",
-            padding: "4px 0",
+            padding: "6px 0",
           }}
         />
       </div>
