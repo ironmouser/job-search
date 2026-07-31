@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Sparkles, Zap } from "lucide-react";
+import { Check, Loader2, Sparkles, Zap, Building2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +9,9 @@ export default function PricingPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  const sessionUser = session?.user as any;
+  const isOrgUser = !!sessionUser?.organizationId || sessionUser?.role === "ORGANIZATION_ADMIN" || sessionUser?.role === "SYSTEM_ADMIN";
 
   const handleSubscribe = async () => {
     if (!session) {
@@ -55,10 +58,10 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", justifyContent: "center", position: "relative", zIndex: 10, maxWidth: "1000px", width: "100%" }}>
+      <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", justifyContent: "center", position: "relative", zIndex: 10, maxWidth: "1150px", width: "100%" }}>
         
         {/* Free Tier */}
-        <div className="glass-card" style={{ flex: "1 1 350px", display: "flex", flexDirection: "column" }}>
+        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column" }}>
           <h3 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.5rem" }}>
             Starter
           </h3>
@@ -87,7 +90,7 @@ export default function PricingPage() {
         </div>
 
         {/* Pro Tier */}
-        <div className="glass-card" style={{ flex: "1 1 350px", display: "flex", flexDirection: "column", border: "2px solid #3695e3", background: "rgba(54, 149, 227, 0.05)", position: "relative", overflow: "hidden" }}>
+        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", border: "2px solid #3695e3", background: "rgba(54, 149, 227, 0.05)", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: "-40px", right: "-40px", opacity: 0.1, transform: "rotate(12deg)", pointerEvents: "none" }}>
             <Sparkles size={160} color="#3695e3" />
           </div>
@@ -126,6 +129,53 @@ export default function PricingPage() {
             ].map((feature) => (
               <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--text-primary)", fontSize: "0.95rem", fontWeight: 500 }}>
                 <Check size={20} color="#3695e3" style={{ flexShrink: 0 }} />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Organization Plan */}
+        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", border: "1px solid var(--border-glass)", position: "relative" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+            <h3 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              Organization <Building2 size={20} color="#8b5cf6" />
+            </h3>
+            <span style={{ background: "rgba(139, 92, 246, 0.15)", color: "#a78bfa", padding: "0.25rem 0.75rem", borderRadius: "99px", fontSize: "0.75rem", fontWeight: 600 }}>
+              Teams & Orgs
+            </span>
+          </div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
+            Multi-seat passes for businesses, career centers & agencies.
+          </p>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginBottom: "2rem" }}>
+            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--text-primary)" }}>$20</span>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>/ seat pass</span>
+          </div>
+          <button
+            onClick={() => {
+              if (isOrgUser) {
+                router.push("/org-admin");
+              } else {
+                window.location.href = "mailto:support@jobagenthq.com?subject=Organization%20Account%20Inquiry";
+              }
+            }}
+            className="btn-outline"
+            style={{ width: "100%", marginBottom: "2rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
+          >
+            {isOrgUser ? "Manage Org Passes" : "Contact Sales / Buy Passes"}
+          </button>
+          <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "1rem", padding: 0 }}>
+            {[
+              "Multi-seat pass management dashboard",
+              "Batch candidate & student email invitations",
+              "90-day (or custom) access per activated pass",
+              "Full Pro features for all assigned members",
+              "Centralized activity logs & seat usage metrics",
+              "Consolidated pay-as-you-go block purchasing"
+            ].map((feature) => (
+              <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--text-primary)", fontSize: "0.95rem", fontWeight: 500 }}>
+                <Check size={20} color="#8b5cf6" style={{ flexShrink: 0 }} />
                 <span>{feature}</span>
               </li>
             ))}
