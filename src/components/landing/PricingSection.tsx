@@ -176,12 +176,13 @@ export default function PricingSection() {
             <p style={{ color: '#475569', fontSize: '0.95rem', marginBottom: '1.5rem', minHeight: '2.8rem' }}>
               Multi-seat passes for businesses, career centers, agencies & universities.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
-                <span style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0f172a' }}>$10 – $20</span>
-                <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.95rem' }}>/ pass</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Starting at</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>$10</span>
+                <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.95rem' }}>/ seat pass</span>
               </div>
-              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>depending on quantity purchased</span>
+              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>Based on access duration & quantity purchased</span>
             </div>
             <Link 
               href="/login" 

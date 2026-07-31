@@ -148,12 +148,13 @@ export default function PricingPage() {
           <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
             Multi-seat passes for businesses, career centers & agencies.
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", marginBottom: "2rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginBottom: "2rem" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "0.35rem" }}>
-              <span style={{ fontSize: "2.4rem", fontWeight: 700, color: "var(--text-primary)" }}>$10 – $20</span>
-              <span style={{ color: "var(--text-secondary)", fontWeight: 600, fontSize: "0.95rem" }}>/ pass</span>
+              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Starting at</span>
+              <span style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>$10</span>
+              <span style={{ color: "var(--text-secondary)", fontWeight: 600, fontSize: "0.95rem" }}>/ seat pass</span>
             </div>
-            <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem", fontWeight: 500 }}>depending on quantity purchased</span>
+            <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem", fontWeight: 500 }}>Based on access duration & quantity purchased</span>
           </div>
           <button
             onClick={() => {
