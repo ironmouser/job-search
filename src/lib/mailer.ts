@@ -231,3 +231,101 @@ export async function sendOrganizationInvitation(
   }
 }
 
+export async function sendEnterpriseInquiryEmail({
+  orgName,
+  orgId,
+  contactName,
+  contactEmail,
+  phone,
+  requestedSeats,
+  notes,
+}: {
+  orgName: string;
+  orgId: string;
+  contactName: string;
+  contactEmail: string;
+  phone?: string;
+  requestedSeats: number;
+  notes?: string;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent <onboarding@resend.dev>';
+    const to = 'support@jobagenthq.com';
+
+    const htmlMessage = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+        <h2 style="color: #4f46e5; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
+          🏢 Enterprise Pass Inquiry (5,000+ Seats)
+        </h2>
+        <p>A new enterprise seat pass purchase inquiry was submitted via Job Agent HQ.</p>
+
+        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 4px 0;"><strong>Organization Name:</strong> ${orgName}</p>
+          <p style="margin: 4px 0;"><strong>Organization ID:</strong> <code>${orgId}</code></p>
+          <p style="margin: 4px 0;"><strong>Contact Name:</strong> ${contactName}</p>
+          <p style="margin: 4px 0;"><strong>Contact Email:</strong> <a href="mailto:${contactEmail}">${contactEmail}</a></p>
+          ${phone ? `<p style="margin: 4px 0;"><strong>Phone:</strong> ${phone}</p>` : ''}
+          <p style="margin: 4px 0;"><strong>Requested Passes:</strong> <strong style="color: #4f46e5; font-size: 1.1em;">${requestedSeats.toLocaleString()} seats</strong></p>
+        </div>
+
+        ${notes ? `
+          <h3>Additional Notes:</h3>
+          <p style="white-space: pre-wrap; background: #fff; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">${notes}</p>
+        ` : ''}
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #6b7280;">Submitted on ${new Date().toLocaleString('en-US')}</p>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pass}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from,
+          to,
+          reply_to: contactEmail,
+          subject: `[Enterprise Inquiry] ${orgName} - ${requestedSeats.toLocaleString()} Seats`,
+          html: htmlMessage,
+        }),
+      });
+
+      if (response.ok) {
+        console.log(`Enterprise inquiry sent via Resend API to ${to}`);
+        return { success: true };
+      }
+      const errText = await response.text();
+      console.warn('Resend API HTTP error:', errText);
+    }
+
+    const host = process.env.EMAIL_SERVER_HOST;
+    const port = parseInt(process.env.EMAIL_SERVER_PORT || '587', 10);
+    const user = process.env.EMAIL_SERVER_USER;
+
+    if (!host || !user || !pass) {
+      console.log('DEV FALLBACK - Enterprise Inquiry Details:', { orgName, contactEmail, requestedSeats, notes, to });
+      return { success: true, devMode: true };
+    }
+
+    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    await transporter.sendMail({
+      from,
+      to,
+      replyTo: contactEmail,
+      subject: `[Enterprise Inquiry] ${orgName} - ${requestedSeats.toLocaleString()} Seats`,
+      html: htmlMessage,
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to send enterprise inquiry email:', err);
+    throw new Error(err.message || 'Failed to send enterprise inquiry email');
+  }
+}
+
+

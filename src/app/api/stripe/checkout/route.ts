@@ -34,6 +34,30 @@ export async function POST(request: Request) {
       const org = await prisma.organization.findUnique({ where: { id: organizationId } });
       if (!org) return new NextResponse("Organization not found", { status: 404 });
 
+      // Validate price metadata quantity requirements if configured in Stripe
+      if (priceId && quantity) {
+        try {
+          const stripePrice = await stripe.prices.retrieve(priceId);
+          const minQty = stripePrice.metadata?.min_quantity ? parseInt(stripePrice.metadata.min_quantity, 10) : null;
+          const maxQty = stripePrice.metadata?.max_quantity ? parseInt(stripePrice.metadata.max_quantity, 10) : null;
+
+          if (minQty !== null && quantity < minQty) {
+            return NextResponse.json(
+              { error: `This tier requires a minimum purchase of ${minQty} seats.` },
+              { status: 400 }
+            );
+          }
+          if (maxQty !== null && quantity > maxQty) {
+            return NextResponse.json(
+              { error: `This tier supports up to ${maxQty} seats. For higher quantities, please select a higher tier.` },
+              { status: 400 }
+            );
+          }
+        } catch (e) {
+          console.warn("Could not retrieve price metadata from Stripe:", e);
+        }
+      }
+
       const checkoutSession = await createOrgCheckoutSession({
         organizationId,
         orgName: org.name,

@@ -24,6 +24,7 @@ import { UserTable, OrgMember } from "@/components/admin/UserTable";
 import { InvitationsTable, Invitation } from "@/components/admin/InvitationsTable";
 import { SeatUsageCard } from "@/components/admin/SeatUsageCard";
 import { ActivityLogTable, ActivityLogEntry } from "@/components/admin/ActivityLogTable";
+import { BuySeatsModal } from "@/components/admin/BuySeatsModal";
 
 type Tab = "dashboard" | "users" | "invitations" | "seats" | "billing" | "settings" | "activity";
 
@@ -96,6 +97,9 @@ export default function OrgAdminDashboard() {
   // Remove user modal
   const [userToRemove, setUserToRemove] = useState<OrgMember | null>(null);
   const [removing, setRemoving] = useState(false);
+
+  // Buy seats modal
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
 
   const sessionUser = session?.user as any;
   const orgId = sessionUser?.organizationId as string | null;
@@ -269,20 +273,8 @@ export default function OrgAdminDashboard() {
     loadInvitations();
   };
 
-  const handlePurchaseMoreSeats = async () => {
-    if (!orgId) return;
-    const priceId = process.env.NEXT_PUBLIC_STRIPE_ORG_PRICE_ID;
-    if (!priceId) {
-      alert("Seat purchase is not configured yet. Contact support.");
-      return;
-    }
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId, organizationId: orgId, quantity: 10 }),
-    });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
+  const handlePurchaseMoreSeats = () => {
+    setIsBuyModalOpen(true);
   };
 
   if (!orgId && !loadingOrg) {
@@ -730,6 +722,15 @@ export default function OrgAdminDashboard() {
           </div>,
           document.body
         )}
+
+      <BuySeatsModal
+        isOpen={isBuyModalOpen}
+        onClose={() => setIsBuyModalOpen(false)}
+        orgId={orgId ?? ""}
+        orgName={org?.name ?? "Organization"}
+        userEmail={sessionUser?.email ?? ""}
+        userName={sessionUser?.name ?? ""}
+      />
     </div>
   );
 }

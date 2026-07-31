@@ -35,11 +35,20 @@ export async function POST(req: Request) {
         const item = lineItems.data[0];
         const quantity = item?.quantity ?? 0;
         
-        let validityDays = 90; // Default
-        if (item?.price?.product) {
-          const product = await stripe.products.retrieve(item.price.product as string);
-          if (product.metadata?.validity_days) {
-            validityDays = parseInt(product.metadata.validity_days, 10);
+        let validityDays = 30; // Default (1 Month)
+        if (item?.price) {
+          if (item.price.metadata?.validity_days) {
+            validityDays = parseInt(item.price.metadata.validity_days, 10);
+          } else if (item.price.product) {
+            const product = typeof item.price.product === "string" 
+              ? await stripe.products.retrieve(item.price.product) 
+              : item.price.product;
+            if (!("deleted" in product && product.deleted)) {
+              const prod = product as Stripe.Product;
+              if (prod.metadata?.validity_days) {
+                validityDays = parseInt(prod.metadata.validity_days, 10);
+              }
+            }
           }
         }
 
