@@ -17,9 +17,11 @@ export default function LandingPage() {
       <ProductShowcase />
       <Comparison />
       
-      <section style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'center' }}>
-        <StoryFeatures />
-        <StatsFunnel />
+      <section style={{ background: '#ffffff' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'center' }}>
+          <StoryFeatures />
+          <StatsFunnel />
+        </div>
       </section>
 
       <PricingSection />

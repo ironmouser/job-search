@@ -60,9 +60,9 @@ export default function ProductShowcase() {
       .slide-in-right { animation: slideInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
       .slide-in-left  { animation: slideInLeft  0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
     `}</style>
-    <section style={{ padding: '6rem 0', overflow: 'hidden' }}>
+    <section style={{ padding: '6rem 0', overflow: 'hidden', background: '#ffffff' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 var(--section-px)', position: 'relative' }}>
-        <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', marginBottom: '2.5rem', textAlign: 'center' }}>See it in Action</h2>
+        <h2 style={{ fontSize: '2.5rem', color: '#0f172a', marginBottom: '2.5rem', textAlign: 'center', fontWeight: 700 }}>See it in Action</h2>
 
         {/* Tab Navigation */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -78,8 +78,8 @@ export default function ProductShowcase() {
                 fontWeight: 600,
                 fontSize: '0.95rem',
                 transition: 'all 0.25s ease',
-                background: activeIdx === idx ? slide.accent : 'var(--bg-surface)',
-                color: activeIdx === idx ? '#fff' : 'var(--text-secondary)',
+                background: activeIdx === idx ? slide.accent : '#f1f5f9',
+                color: activeIdx === idx ? '#fff' : '#475569',
                 boxShadow: activeIdx === idx ? `0 4px 12px ${slide.accent}55` : 'none',
               }}
             >
@@ -92,7 +92,7 @@ export default function ProductShowcase() {
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.5rem' }}>
 
           {/* Prev Arrow */}
-          <button onClick={prev} style={{ position: 'absolute', left: '0.5rem', zIndex: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-glass)', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)', boxShadow: 'rgba(0,0,0,0.2) 0px 4px 12px' }}>
+          <button onClick={prev} style={{ position: 'absolute', left: '0.5rem', zIndex: 10, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#0f172a', boxShadow: 'rgba(0,0,0,0.08) 0px 4px 12px' }}>
             <ChevronLeft size={20} />
           </button>
 
@@ -105,7 +105,7 @@ export default function ProductShowcase() {
           <div
             key={animKey}
             className={direction === 'right' ? 'slide-in-right' : 'slide-in-left'}
-            style={{ flex: '0 0 auto', width: 'min(640px, 80vw)', borderRadius: '10px', overflow: 'hidden', boxShadow: `0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px ${slides[activeIdx].accent}44`, transition: 'box-shadow 0.4s ease, background 0.4s ease', display: 'flex', alignItems: 'center' }}
+            style={{ flex: '0 0 auto', width: 'min(640px, 80vw)', borderRadius: '10px', overflow: 'hidden', boxShadow: `0 25px 60px rgba(0,0,0,0.15), 0 0 0 1px ${slides[activeIdx].accent}44`, transition: 'box-shadow 0.4s ease, background 0.4s ease', display: 'flex', alignItems: 'center' }}
           >
             <img src={getAssetUrl(slides[activeIdx].image)} alt={slides[activeIdx].label} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '10px', objectFit: 'contain' }} />
           </div>
@@ -116,7 +116,7 @@ export default function ProductShowcase() {
           </div>
 
           {/* Next Arrow */}
-          <button onClick={next} style={{ position: 'absolute', right: '0.5rem', zIndex: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-glass)', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)', boxShadow: 'rgba(0,0,0,0.2) 0px 4px 12px' }}>
+          <button onClick={next} style={{ position: 'absolute', right: '0.5rem', zIndex: 10, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#0f172a', boxShadow: 'rgba(0,0,0,0.08) 0px 4px 12px' }}>
             <ChevronRight size={20} />
           </button>
         </div>
@@ -124,7 +124,7 @@ export default function ProductShowcase() {
         {/* Dot indicators */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '2rem' }}>
           {slides.map((_, idx) => (
-            <button key={idx} onClick={() => goTo(idx)} style={{ width: idx === activeIdx ? '24px' : '8px', height: '8px', borderRadius: '4px', border: 'none', cursor: 'pointer', transition: 'all 0.35s cubic-bezier(0.22, 1, 0.36, 1)', background: idx === activeIdx ? slides[activeIdx].accent : 'var(--border-glass)' }} />
+            <button key={idx} onClick={() => goTo(idx)} style={{ width: idx === activeIdx ? '24px' : '8px', height: '8px', borderRadius: '4px', border: 'none', cursor: 'pointer', transition: 'all 0.35s cubic-bezier(0.22, 1, 0.36, 1)', background: idx === activeIdx ? slides[activeIdx].accent : '#cbd5e1' }} />
           ))}
         </div>
       </div>
@@ -132,4 +132,3 @@ export default function ProductShowcase() {
     </>
   );
 }
-

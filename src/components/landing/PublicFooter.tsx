@@ -12,7 +12,7 @@ export default function PublicFooter() {
       <footer style={{ 
         borderTop: '1px solid var(--border-glass)',
         padding: '4rem var(--section-px)',
-        marginTop: '4rem',
+        marginTop: 0,
         textAlign: 'center'
       }}>
         <div style={{ 
@@ -21,6 +21,7 @@ export default function PublicFooter() {
           gap: '2rem',
           marginBottom: '2rem'
         }}>
+          <Link href="/about" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>About Us</Link>
           <Link href="/privacy" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Privacy</Link>
           <Link href="/terms" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Terms</Link>
           <button 

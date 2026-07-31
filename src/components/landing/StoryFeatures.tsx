@@ -14,7 +14,7 @@ export default function StoryFeatures() {
 
   return (
     <div style={{ padding: '4rem var(--section-px)', flex: '1 1 350px' }}>
-      <h3 style={{ fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '2rem' }}>
+      <h3 style={{ fontSize: '2rem', color: '#0f172a', marginBottom: '2rem', fontWeight: 700 }}>
         Meet Your AI Job Agent
       </h3>
       
@@ -22,7 +22,7 @@ export default function StoryFeatures() {
         {features.map((feature, idx) => (
           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ 
-              background: 'rgba(37, 99, 235, 0.15)', 
+              background: 'rgba(37, 99, 235, 0.12)', 
               borderRadius: '50%', 
               width: '28px',
               height: '28px',
@@ -34,7 +34,7 @@ export default function StoryFeatures() {
             }}>
               <Check size={14} strokeWidth={3} />
             </div>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>{feature}</span>
+            <span style={{ color: '#334155', fontSize: '1.1rem', fontWeight: 500 }}>{feature}</span>
           </div>
         ))}
       </div>

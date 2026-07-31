@@ -10,7 +10,7 @@ export default function StatsFunnel() {
 
   return (
     <div style={{ flex: '1 1 350px', padding: '4rem var(--section-px)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <h3 style={{ fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '3rem', textAlign: 'center' }}>
+      <h3 style={{ fontSize: '2rem', color: '#0f172a', marginBottom: '3rem', textAlign: 'center', fontWeight: 700 }}>
         Statistics Funnel
       </h3>
       
@@ -31,7 +31,7 @@ export default function StatsFunnel() {
               {stat.value} {stat.label}
             </div>
             {idx < stats.length - 1 && (
-              <div style={{ color: 'var(--text-secondary)', opacity: 0.5, margin: '0.25rem 0' }}>↓</div>
+              <div style={{ color: '#94a3b8', margin: '0.25rem 0' }}>↓</div>
             )}
           </div>
         ))}

@@ -15,21 +15,21 @@ export default function FAQ() {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   return (
-    <section id="faq" style={{ padding: '6rem var(--section-px)' }}>
+    <section id="faq" style={{ padding: '6rem var(--section-px)', background: '#ffffff' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', marginBottom: '1rem' }}>Frequently Asked Questions</h2>
+          <h2 style={{ fontSize: '2.5rem', color: '#0f172a', marginBottom: '1rem', fontWeight: 700 }}>Frequently Asked Questions</h2>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {faqs.map((faq, idx) => (
-            <div key={idx} className="glass-card" style={{ padding: '0', overflow: 'hidden', cursor: 'pointer' }} onClick={() => setOpenIdx(openIdx === idx ? null : idx)}>
+            <div key={idx} style={{ padding: '0', overflow: 'hidden', cursor: 'pointer', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', transition: 'border-color 0.2s ease, box-shadow 0.2s ease' }} onClick={() => setOpenIdx(openIdx === idx ? null : idx)}>
               <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0, fontWeight: 500 }}>{faq.q}</h4>
-                <ChevronDown size={20} color="var(--text-secondary)" style={{ transform: openIdx === idx ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                <h4 style={{ fontSize: '1.1rem', color: '#0f172a', margin: 0, fontWeight: 600 }}>{faq.q}</h4>
+                <ChevronDown size={20} color="#64748b" style={{ transform: openIdx === idx ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
               </div>
               {openIdx === idx && (
-                <div style={{ padding: '0 1.5rem 1.5rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                <div style={{ padding: '0 1.5rem 1.5rem', color: '#475569', lineHeight: 1.6 }}>
                   {faq.a}
                 </div>
               )}

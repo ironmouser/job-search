@@ -7,7 +7,7 @@ export default withAuth(
     const isAuth = !!token;
     const pathname = req.nextUrl.pathname;
     const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/worker') || pathname.startsWith('/api/webhooks') || pathname === '/api/support';
-    const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms';
+    const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms' || pathname === '/about';
     const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webmanifest|json)$/);
     const isApiRoute = pathname.startsWith('/api');
     const isOnboardingPage = pathname.startsWith('/onboarding');
@@ -49,7 +49,7 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const pathname = req.nextUrl.pathname;
         const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/worker') || pathname === '/api/support';
-        const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms';
+        const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms' || pathname === '/about';
         const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webmanifest|json)$/);
         const isPublicInvite = pathname.startsWith('/api/org/invite/accept');
         if (isPublicPage || isPublicAsset || isPublicApi || isPublicInvite) return true;
