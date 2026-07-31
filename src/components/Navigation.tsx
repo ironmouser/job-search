@@ -98,7 +98,7 @@ export default function Navigation() {
               <span className="nav-text">Settings</span>
             </Link>
           </li>
-          {((session.user as any)?.role === 'SYSTEM_ADMIN' || (session.user as any)?.role === 'ADMIN') && (
+          {(session.user as any)?.role === 'SYSTEM_ADMIN' && (
             <li className="nav-item">
               <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={closeMenu} title="Admin Panel">
                 <Shield size={20} />

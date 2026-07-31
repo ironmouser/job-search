@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 // ─── Role predicates ─────────────────────────────────────────────────────────
 
 export function isSystemAdmin(role: string) {
-  return role === "SYSTEM_ADMIN" || role === "ADMIN";
+  return role === "SYSTEM_ADMIN";
 }
 
 export function isOrgAdmin(role: string) {

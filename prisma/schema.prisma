@@ -130,7 +130,6 @@ model ScraperLog {
 
 enum Role {
   USER
-  ADMIN
   ORGANIZATION_ADMIN
   SYSTEM_ADMIN
 }
