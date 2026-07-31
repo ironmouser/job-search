@@ -27,19 +27,19 @@ export default withAuth(
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
 
-    // System Admin routes — SYSTEM_ADMIN only
+    // System Admin routes — SYSTEM_ADMIN or ADMIN
     const isSystemAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api/admin');
     if (isSystemAdminRoute) {
-      if (token?.role !== 'SYSTEM_ADMIN') {
+      if (token?.role !== 'SYSTEM_ADMIN' && token?.role !== 'ADMIN') {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
     }
 
-    // Organization Admin routes — ORGANIZATION_ADMIN or SYSTEM_ADMIN
+    // Organization Admin routes — ORGANIZATION_ADMIN or SYSTEM_ADMIN or ADMIN
     const isOrgAdminRoute = pathname.startsWith('/org-admin') || pathname.startsWith('/api/org');
     if (isOrgAdminRoute) {
       const role = token?.role as string | undefined;
-      if (role !== 'ORGANIZATION_ADMIN' && role !== 'SYSTEM_ADMIN') {
+      if (role !== 'ORGANIZATION_ADMIN' && role !== 'SYSTEM_ADMIN' && role !== 'ADMIN') {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
     }
