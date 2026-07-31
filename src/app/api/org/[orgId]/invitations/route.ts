@@ -36,8 +36,47 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (error) return error;
 
   try {
-    const { email } = await request.json();
-    if (!email) return NextResponse.json({ error: "email is required" }, { status: 400 });
+    const body = await request.json();
+    
+    // Bulk invitation support
+    if (Array.isArray(body.emails) && body.emails.length > 0) {
+      const emails: string[] = body.emails.map((e: string) => e.trim()).filter(Boolean);
+      const results: { email: string; success: boolean; error?: string }[] = [];
+      let successCount = 0;
+
+      for (const email of emails) {
+        try {
+          await inviteUser({
+            organizationId: orgId,
+            email,
+            invitedBy: user!.id,
+          });
+          results.push({ email, success: true });
+          successCount++;
+        } catch (e: any) {
+          let errorMsg = e.message;
+          if (e.message === "NO_SEATS_AVAILABLE") {
+            errorMsg = "No available seats remaining";
+          } else if (e.message === "INVITATION_ALREADY_PENDING") {
+            errorMsg = "Invitation already pending";
+          }
+          results.push({ email, success: false, error: errorMsg });
+          // If out of seats, stop attempting further invitations in bulk
+          if (e.message === "NO_SEATS_AVAILABLE") {
+            break;
+          }
+        }
+      }
+
+      return NextResponse.json({
+        successCount,
+        total: emails.length,
+        results,
+      }, { status: 201 });
+    }
+
+    const { email } = body;
+    if (!email) return NextResponse.json({ error: "email or emails array is required" }, { status: 400 });
 
     const invitation = await inviteUser({
       organizationId: orgId,

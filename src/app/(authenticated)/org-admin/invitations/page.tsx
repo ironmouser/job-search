@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Plus, Mail, AlertCircle, Check, Loader2 } from "lucide-react";
+import { Send, AlertCircle, Check, Loader2 } from "lucide-react";
 
 import { OrgHeader } from "@/components/admin/OrgHeader";
 import { InvitationsTable, Invitation } from "@/components/admin/InvitationsTable";
+import { BulkEmailInput, EmailChip } from "@/components/admin/BulkEmailInput";
 
 export default function OrgAdminInvitationsPage() {
   const { data: session } = useSession();
@@ -17,10 +18,15 @@ export default function OrgAdminInvitationsPage() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loadingInvitations, setLoadingInvitations] = useState(true);
 
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [chips, setChips] = useState<EmailChip[]>([]);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
-  const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [inviteSuccessMsg, setInviteSuccessMsg] = useState<string | null>(null);
+
+  const validChips = chips.filter((c) => c.isValid);
+  const invalidChips = chips.filter((c) => !c.isValid);
+  const hasInvalid = invalidChips.length > 0;
+  const canSend = validChips.length > 0 && !hasInvalid && !inviting;
 
   useEffect(() => {
     if (
@@ -53,26 +59,41 @@ export default function OrgAdminInvitationsPage() {
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteEmail || !orgId) return;
+    if (!canSend || !orgId) return;
+
     setInviting(true);
     setInviteError(null);
-    setInviteSuccess(false);
+    setInviteSuccessMsg(null);
+
+    const emailList = validChips.map((c) => c.email);
+
     try {
       const res = await fetch(`/api/org/${orgId}/invitations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail }),
+        body: JSON.stringify({ emails: emailList }),
       });
+
+      const data = await res.json();
+
       if (res.ok) {
-        setInviteSuccess(true);
-        setInviteEmail("");
+        const successCount = data.successCount ?? emailList.length;
+        setInviteSuccessMsg(`Successfully sent ${successCount} invitation${successCount > 1 ? "s" : ""}!`);
+        setChips([]);
         loadInvitations();
+
+        // Check if some failed (e.g., out of seats mid-way)
+        if (data.results && Array.isArray(data.results)) {
+          const failed = data.results.filter((r: any) => !r.success);
+          if (failed.length > 0) {
+            setInviteError(`Sent ${successCount} invite(s), but ${failed.length} failed: ${failed.map((f: any) => f.email + ' (' + f.error + ')').join(', ')}`);
+          }
+        }
       } else {
-        const data = await res.json();
-        setInviteError(data.error ?? "Failed to send invitation");
+        setInviteError(data.error ?? "Failed to send invitations.");
       }
     } catch {
-      setInviteError("Failed to send invitation");
+      setInviteError("Failed to send invitations.");
     } finally {
       setInviting(false);
     }
@@ -90,61 +111,49 @@ export default function OrgAdminInvitationsPage() {
 
   return (
     <div style={{ minHeight: "100vh", padding: "1.5rem" }}>
-      <OrgHeader title="Organization Invitations" subtitle="Invite new team members and manage pending invitation links." />
+      <OrgHeader title="Organization Invitations" subtitle="Invite team members in bulk and manage pending invitation links." />
 
-      <div style={{ maxWidth: 640 }}>
+      <div style={{ maxWidth: 720 }}>
         <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem", fontWeight: 600, color: "#f9fafb" }}>
-          Invite Member
+          Invite Members
         </h2>
-        <form
-          onSubmit={handleSendInvite}
-          style={{ display: "flex", gap: 12, marginBottom: 16 }}
-        >
-          <div style={{ position: "relative", flex: 1 }}>
-            <Mail
-              size={16}
-              color="#9ca3af"
-              style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}
-            />
-            <input
-              type="email"
-              placeholder="colleague@company.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              required
+
+        <form onSubmit={handleSendInvite} style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
+          <BulkEmailInput
+            chips={chips}
+            onChange={setChips}
+            disabled={inviting}
+          />
+
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="submit"
+              disabled={!canSend}
               style={{
-                width: "100%",
-                padding: "9px 12px 9px 36px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: canSend ? "#3695e3" : "rgba(255,255,255,0.08)",
+                border: "none",
                 borderRadius: 8,
-                color: "#f9fafb",
+                color: canSend ? "#ffffff" : "#9ca3af",
+                padding: "10px 24px",
                 fontSize: "0.875rem",
-                outline: "none",
+                fontWeight: 600,
+                cursor: canSend ? (inviting ? "wait" : "pointer") : "not-allowed",
+                transition: "all 0.15s ease",
               }}
-            />
+            >
+              {inviting ? (
+                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+              ) : (
+                <Send size={16} />
+              )}
+              {inviting
+                ? "Sending..."
+                : `Send ${validChips.length} Invite${validChips.length === 1 ? "" : "s"}`}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={inviting || !inviteEmail}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "#3695e3",
-              border: "none",
-              borderRadius: 8,
-              color: "#fff",
-              padding: "9px 18px",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              cursor: inviting ? "wait" : "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {inviting ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Plus size={16} />}
-            Send Invite
-          </button>
         </form>
 
         {inviteError && (
@@ -167,7 +176,7 @@ export default function OrgAdminInvitationsPage() {
           </div>
         )}
 
-        {inviteSuccess && (
+        {inviteSuccessMsg && (
           <div
             style={{
               display: "flex",
@@ -183,11 +192,11 @@ export default function OrgAdminInvitationsPage() {
             }}
           >
             <Check size={16} />
-            Invitation sent successfully!
+            {inviteSuccessMsg}
           </div>
         )}
 
-        <h3 style={{ margin: "24px 0 12px", fontSize: "0.95rem", fontWeight: 600, color: "#9ca3af" }}>
+        <h3 style={{ margin: "32px 0 12px", fontSize: "0.95rem", fontWeight: 600, color: "#9ca3af" }}>
           All Invitations
         </h3>
         {loadingInvitations ? (
