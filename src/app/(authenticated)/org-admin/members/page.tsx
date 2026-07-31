@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Loader2, X } from "lucide-react";
+import { Plus, Loader2, X, Users } from "lucide-react";
 
 import { OrgHeader } from "@/components/admin/OrgHeader";
 import { UserTable, OrgMember } from "@/components/admin/UserTable";
@@ -86,12 +86,14 @@ export default function OrgAdminMembersPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "1.5rem" }}>
+    <div style={{ minHeight: "100vh", padding: "1.5rem 0" }}>
       <OrgHeader title="Organization Members" subtitle="View and manage team member access and administrative roles." />
 
-      <div>
-        <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 600, color: "#f9fafb" }}>Members</h2>
+      <div className="glass-card" style={{ padding: "1.75rem" }}>
+        <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <h3 style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: 0, fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)" }}>
+            <Users size={22} color="#3695e3" /> Active Members ({members.length})
+          </h3>
           <Link
             href="/org-admin/invitations"
             style={{
@@ -102,19 +104,19 @@ export default function OrgAdminMembersPage() {
               border: "1px solid rgba(54,149,227,0.3)",
               borderRadius: 8,
               color: "#3695e3",
-              padding: "6px 14px",
-              fontSize: "0.8rem",
+              padding: "8px 16px",
+              fontSize: "0.875rem",
               fontWeight: 600,
               cursor: "pointer",
               textDecoration: "none",
             }}
           >
-            <Plus size={14} /> Invite Member
+            <Plus size={16} /> Invite Members
           </Link>
         </div>
 
         {loadingMembers ? (
-          <div style={{ textAlign: "center", padding: "3rem", color: "#9ca3af" }}>
+          <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)" }}>
             <Loader2 size={24} style={{ animation: "spin 1s linear infinite" }} />
           </div>
         ) : (

@@ -39,8 +39,8 @@ export function OrgHeader({ title, subtitle }: OrgHeaderProps) {
   return (
     <div style={{ marginBottom: "2rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-        <Building2 size={24} color="#3695e3" />
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0, color: "#f9fafb" }}>
+        <Building2 size={26} color="#3695e3" />
+        <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
           {title || orgName}
         </h1>
         {orgType && (
@@ -49,8 +49,8 @@ export function OrgHeader({ title, subtitle }: OrgHeaderProps) {
               background: "rgba(54,149,227,0.15)",
               color: "#3695e3",
               border: "1px solid rgba(54,149,227,0.3)",
-              padding: "2px 10px",
-              borderRadius: 4,
+              padding: "3px 10px",
+              borderRadius: 6,
               fontSize: "0.75rem",
               fontWeight: 600,
             }}
@@ -59,7 +59,7 @@ export function OrgHeader({ title, subtitle }: OrgHeaderProps) {
           </span>
         )}
       </div>
-      <p style={{ color: "#9ca3af", margin: 0, fontSize: "0.875rem" }}>
+      <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0 0", fontSize: "0.9rem" }}>
         {subtitle || "Manage your organization's members, seats, and billing."}
       </p>
     </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Activity } from "lucide-react";
 
 import { OrgHeader } from "@/components/admin/OrgHeader";
 import { ActivityLogTable, ActivityLogEntry } from "@/components/admin/ActivityLogTable";
@@ -50,13 +51,13 @@ export default function OrgAdminActivityPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "1.5rem" }}>
+    <div style={{ minHeight: "100vh", padding: "1.5rem 0" }}>
       <OrgHeader title="Organization Activity Log" subtitle="Audit activity history, seat assignments, invitations, and configuration changes." />
 
-      <div>
-        <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem", fontWeight: 600, color: "#f9fafb" }}>
-          Audit Events
-        </h2>
+      <div className="glass-card" style={{ padding: "1.75rem" }}>
+        <h3 style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1.5rem" }}>
+          <Activity size={22} color="#ec4899" /> Audit Events ({activityTotal})
+        </h3>
         <ActivityLogTable
           entries={activityEntries}
           total={activityTotal}

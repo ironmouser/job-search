@@ -57,13 +57,10 @@ export default function OrgAdminSeatsPage() {
   }, [orgId]);
 
   return (
-    <div style={{ minHeight: "100vh", padding: "1.5rem" }}>
+    <div style={{ minHeight: "100vh", padding: "1.5rem 0" }}>
       <OrgHeader title="Pass Management" subtitle="Manage organization pass allocations, seat counts, and purchase additional seats." />
 
-      <div style={{ maxWidth: 640 }}>
-        <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem", fontWeight: 600, color: "#f9fafb" }}>
-          Pass Allocation & Usage
-        </h2>
+      <div style={{ maxWidth: 720 }}>
         <SeatUsageCard
           seatCount={org?.seatCount ?? 0}
           consumedSeats={org?.consumedSeats ?? 0}

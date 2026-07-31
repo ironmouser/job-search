@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, ShoppingCart, TrendingUp } from "lucide-react";
+import { Users, ShoppingCart } from "lucide-react";
 
 interface SeatUsageCardProps {
   seatCount: number;
@@ -33,33 +33,23 @@ export function SeatUsageCard({
   const barColor = isEmpty ? "#ef4444" : isNearEmpty ? "#f59e0b" : "#10b981";
 
   return (
-    <div
-      style={{
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 12,
-        padding: "1.5rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-      }}
-    >
+    <div className="glass-card" style={{ padding: "1.75rem", display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
+              width: 40,
+              height: 40,
+              borderRadius: 10,
               background: "rgba(54,149,227,0.15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Users size={18} color="#3695e3" />
+            <Users size={20} color="#3695e3" />
           </div>
-          <span style={{ fontWeight: 600, fontSize: "1rem" }}>Pass Inventory</span>
+          <span style={{ fontWeight: 600, fontSize: "1.25rem", color: "var(--text-primary)" }}>Pass Inventory</span>
         </div>
         {onPurchaseMore && (
           <button
@@ -72,19 +62,20 @@ export function SeatUsageCard({
               border: "1px solid rgba(54,149,227,0.3)",
               borderRadius: 8,
               color: "#3695e3",
-              padding: "6px 14px",
-              fontSize: "0.8rem",
+              padding: "8px 16px",
+              fontSize: "0.875rem",
               fontWeight: 600,
               cursor: "pointer",
+              transition: "all 0.15s ease",
             }}
           >
-            <ShoppingCart size={14} /> Buy More Passes
+            <ShoppingCart size={16} /> Buy More Passes
           </button>
         )}
       </div>
 
       {loading ? (
-        <div style={{ color: "#9ca3af", fontSize: "0.875rem" }}>Loading...</div>
+        <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>Loading...</div>
       ) : (
         <>
           <div>
@@ -94,12 +85,12 @@ export function SeatUsageCard({
                 justifyContent: "space-between",
                 marginBottom: 8,
                 fontSize: "0.875rem",
-                color: "#9ca3af",
+                color: "var(--text-secondary)",
               }}
             >
               <span>
-                <strong style={{ color: "#f9fafb" }}>{consumedSeats}</strong> of{" "}
-                <strong style={{ color: "#f9fafb" }}>{seatCount}</strong> passes consumed
+                <strong style={{ color: "var(--text-primary)" }}>{consumedSeats}</strong> of{" "}
+                <strong style={{ color: "var(--text-primary)" }}>{seatCount}</strong> passes consumed
               </span>
               <span style={{ color: isEmpty ? "#ef4444" : isNearEmpty ? "#f59e0b" : "#10b981", fontWeight: 600 }}>
                 {remainingSeats} available
@@ -133,7 +124,7 @@ export function SeatUsageCard({
           {isEmpty && (
             <p
               style={{
-                fontSize: "0.8rem",
+                fontSize: "0.85rem",
                 color: "#ef4444",
                 background: "rgba(239,68,68,0.1)",
                 border: "1px solid rgba(239,68,68,0.2)",
@@ -146,26 +137,26 @@ export function SeatUsageCard({
             </p>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 8 }}>
-             <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
-               <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginBottom: 4 }}>Active Users (Not Expired)</div>
-               <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "#f9fafb" }}>{activeUnexpiredSeats}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 4 }}>
+             <div style={{ background: "rgba(0,0,0,0.2)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
+               <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Active Users</div>
+               <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{activeUnexpiredSeats}</div>
              </div>
-             <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
-               <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginBottom: 4 }}>Passes Purchased (Last 30 Days)</div>
-               <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "#f9fafb" }}>{stats?.purchased30Days || 0}</div>
+             <div style={{ background: "rgba(0,0,0,0.2)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
+               <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Purchased (Last 30 Days)</div>
+               <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{stats?.purchased30Days || 0}</div>
              </div>
-             <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
-               <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginBottom: 4 }}>Passes Purchased (This Year)</div>
-               <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "#f9fafb" }}>{stats?.purchasedThisYear || 0}</div>
+             <div style={{ background: "rgba(0,0,0,0.2)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
+               <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Purchased (This Year)</div>
+               <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{stats?.purchasedThisYear || 0}</div>
              </div>
-             <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
-               <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginBottom: 4 }}>Passes Purchased (Past 365 Days)</div>
-               <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "#f9fafb" }}>{stats?.purchased365Days || 0}</div>
+             <div style={{ background: "rgba(0,0,0,0.2)", padding: "1rem", borderRadius: 10, border: "1px solid var(--border-glass)" }}>
+               <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Purchased (365 Days)</div>
+               <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{stats?.purchased365Days || 0}</div>
              </div>
           </div>
 
-          <p style={{ fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", margin: 0, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 10, lineHeight: 1.4 }}>
+          <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", fontStyle: "italic", margin: 0, borderTop: "1px solid var(--border-glass)", paddingTop: 12, lineHeight: 1.4 }}>
             * Notice: Organization seat passes expire 1 year (365 days) from the purchase date if left unassigned.
           </p>
         </>

@@ -12,6 +12,8 @@ import {
   Activity,
   ArrowRight,
   Building2,
+  LayoutDashboard,
+  ShieldAlert,
 } from "lucide-react";
 
 import { OrgHeader } from "@/components/admin/OrgHeader";
@@ -44,7 +46,6 @@ export default function OrgAdminDashboard() {
   const [loadingOrg, setLoadingOrg] = useState(true);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
 
-  // Auth guard — client-side backup
   useEffect(() => {
     if (
       session &&
@@ -74,10 +75,10 @@ export default function OrgAdminDashboard() {
 
   if (!orgId && !loadingOrg) {
     return (
-      <div style={{ padding: "4rem 2rem", textAlign: "center" }}>
-        <Building2 size={48} color="#9ca3af" style={{ marginBottom: 16 }} />
-        <h2 style={{ color: "#f9fafb" }}>No Organization Found</h2>
-        <p style={{ color: "#9ca3af" }}>You are not currently a member of any organization.</p>
+      <div className="glass-card" style={{ padding: "4rem 2rem", textAlign: "center", maxWidth: 500, margin: "4rem auto" }}>
+        <Building2 size={48} color="var(--text-secondary)" style={{ marginBottom: 16 }} />
+        <h2 style={{ color: "var(--text-primary)", fontSize: "1.5rem" }}>No Organization Found</h2>
+        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>You are not currently a member of any organization.</p>
       </div>
     );
   }
@@ -92,7 +93,7 @@ export default function OrgAdminDashboard() {
     },
     {
       title: "Invitations",
-      description: "Invite new users to your organization.",
+      description: "Invite new users in bulk to your organization.",
       href: "/org-admin/invitations",
       Icon: Mail,
       color: "#10b981",
@@ -121,11 +122,11 @@ export default function OrgAdminDashboard() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", padding: "1.5rem" }}>
+    <div style={{ minHeight: "100vh", padding: "1.5rem 0" }}>
       <OrgHeader />
 
       {/* Metric Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16, marginBottom: "2rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: "2rem" }}>
         {[
           {
             label: "Passes Consumed",
@@ -145,21 +146,17 @@ export default function OrgAdminDashboard() {
         ].map(({ label, value, color }) => (
           <div
             key={label}
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 12,
-              padding: "1.5rem",
-            }}
+            className="glass-card"
+            style={{ padding: "1.5rem" }}
           >
-            <p style={{ margin: 0, fontSize: "0.8rem", color: "#9ca3af", marginBottom: 8 }}>{label}</p>
+            <p style={{ margin: 0, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)", marginBottom: 8, fontWeight: 600 }}>{label}</p>
             <p style={{ margin: 0, fontSize: "2rem", fontWeight: 700, color }}>{value}</p>
           </div>
         ))}
       </div>
 
       {/* Seat Usage Overview */}
-      <div style={{ marginBottom: "2.5rem" }}>
+      <div style={{ marginBottom: "2rem" }}>
         <SeatUsageCard
           seatCount={org?.seatCount ?? 0}
           consumedSeats={org?.consumedSeats ?? 0}
@@ -172,11 +169,11 @@ export default function OrgAdminDashboard() {
       </div>
 
       {/* Quick Navigation Cards */}
-      <div>
-        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#f9fafb", marginBottom: "1rem" }}>
-          Quick Management Actions
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+      <div className="glass-card" style={{ padding: "1.75rem" }}>
+        <h3 style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1.5rem" }}>
+          <LayoutDashboard size={22} color="#3695e3" /> Quick Management Actions
+        </h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
           {quickLinks.map(({ title, description, href, Icon, color }) => (
             <Link
               key={title}
@@ -185,8 +182,8 @@ export default function OrgAdminDashboard() {
             >
               <div
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
                   borderRadius: 12,
                   padding: "1.25rem",
                   transition: "all 0.2s ease",
@@ -212,11 +209,11 @@ export default function OrgAdminDashboard() {
                     >
                       <Icon size={20} />
                     </div>
-                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#f9fafb" }}>
+                    <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)", textTransform: "none", letterSpacing: "normal" }}>
                       {title}
-                    </h3>
+                    </h4>
                   </div>
-                  <p style={{ margin: 0, fontSize: "0.85rem", color: "#9ca3af", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
                     {description}
                   </p>
                 </div>

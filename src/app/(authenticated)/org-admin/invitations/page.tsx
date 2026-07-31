@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Send, AlertCircle, Check, Loader2 } from "lucide-react";
+import { Send, AlertCircle, Check, Loader2, Mail } from "lucide-react";
 
 import { OrgHeader } from "@/components/admin/OrgHeader";
 import { InvitationsTable, Invitation } from "@/components/admin/InvitationsTable";
@@ -82,7 +82,6 @@ export default function OrgAdminInvitationsPage() {
         setChips([]);
         loadInvitations();
 
-        // Check if some failed (e.g., out of seats mid-way)
         if (data.results && Array.isArray(data.results)) {
           const failed = data.results.filter((r: any) => !r.success);
           if (failed.length > 0) {
@@ -110,103 +109,107 @@ export default function OrgAdminInvitationsPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "1.5rem" }}>
+    <div style={{ minHeight: "100vh", padding: "1.5rem 0" }}>
       <OrgHeader title="Organization Invitations" subtitle="Invite team members in bulk and manage pending invitation links." />
 
-      <div style={{ maxWidth: 720 }}>
-        <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem", fontWeight: 600, color: "#f9fafb" }}>
-          Invite Members
-        </h2>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 800 }}>
+        <div className="glass-card" style={{ padding: "1.75rem" }}>
+          <h3 style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1.5rem" }}>
+            <Mail size={22} color="#3695e3" /> Send Bulk Invitations
+          </h3>
 
-        <form onSubmit={handleSendInvite} style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
-          <BulkEmailInput
-            chips={chips}
-            onChange={setChips}
-            disabled={inviting}
-          />
+          <form onSubmit={handleSendInvite} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <BulkEmailInput
+              chips={chips}
+              onChange={setChips}
+              disabled={inviting}
+            />
 
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button
-              type="submit"
-              disabled={!canSend}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <button
+                type="submit"
+                disabled={!canSend}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: canSend ? "#3695e3" : "rgba(255,255,255,0.08)",
+                  border: "none",
+                  borderRadius: 8,
+                  color: canSend ? "#ffffff" : "var(--text-secondary)",
+                  padding: "10px 24px",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  cursor: canSend ? (inviting ? "wait" : "pointer") : "not-allowed",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {inviting ? (
+                  <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                ) : (
+                  <Send size={16} />
+                )}
+                {inviting
+                  ? "Sending..."
+                  : `Send ${validChips.length} Invite${validChips.length === 1 ? "" : "s"}`}
+              </button>
+            </div>
+          </form>
+
+          {inviteError && (
+            <div
               style={{
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
                 gap: 8,
-                background: canSend ? "#3695e3" : "rgba(255,255,255,0.08)",
-                border: "none",
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.2)",
                 borderRadius: 8,
-                color: canSend ? "#ffffff" : "#9ca3af",
-                padding: "10px 24px",
+                padding: "10px 14px",
+                marginTop: 16,
+                color: "#ef4444",
                 fontSize: "0.875rem",
-                fontWeight: 600,
-                cursor: canSend ? (inviting ? "wait" : "pointer") : "not-allowed",
-                transition: "all 0.15s ease",
               }}
             >
-              {inviting ? (
-                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-              ) : (
-                <Send size={16} />
-              )}
-              {inviting
-                ? "Sending..."
-                : `Send ${validChips.length} Invite${validChips.length === 1 ? "" : "s"}`}
-            </button>
-          </div>
-        </form>
+              <AlertCircle size={16} />
+              {inviteError}
+            </div>
+          )}
 
-        {inviteError && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.2)",
-              borderRadius: 8,
-              padding: "10px 14px",
-              marginBottom: 16,
-              color: "#ef4444",
-              fontSize: "0.875rem",
-            }}
-          >
-            <AlertCircle size={16} />
-            {inviteError}
-          </div>
-        )}
+          {inviteSuccessMsg && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "rgba(16,185,129,0.1)",
+                border: "1px solid rgba(16,185,129,0.2)",
+                borderRadius: 8,
+                padding: "10px 14px",
+                marginTop: 16,
+                color: "#10b981",
+                fontSize: "0.875rem",
+              }}
+            >
+              <Check size={16} />
+              {inviteSuccessMsg}
+            </div>
+          )}
+        </div>
 
-        {inviteSuccessMsg && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "rgba(16,185,129,0.1)",
-              border: "1px solid rgba(16,185,129,0.2)",
-              borderRadius: 8,
-              padding: "10px 14px",
-              marginBottom: 16,
-              color: "#10b981",
-              fontSize: "0.875rem",
-            }}
-          >
-            <Check size={16} />
-            {inviteSuccessMsg}
-          </div>
-        )}
-
-        <h3 style={{ margin: "32px 0 12px", fontSize: "0.95rem", fontWeight: 600, color: "#9ca3af" }}>
-          All Invitations
-        </h3>
-        {loadingInvitations ? (
-          <p style={{ color: "#9ca3af", textAlign: "center" }}>Loading invitations...</p>
-        ) : (
-          <InvitationsTable
-            invitations={invitations}
-            onCancel={handleCancelInvitation}
-          />
-        )}
+        <div className="glass-card" style={{ padding: "1.75rem" }}>
+          <h4 style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)", marginBottom: "1rem", fontWeight: 600 }}>
+            Pending & Past Invitations
+          </h4>
+          {loadingInvitations ? (
+            <p style={{ color: "var(--text-secondary)", textAlign: "center", padding: "2rem" }}>Loading invitations...</p>
+          ) : (
+            <InvitationsTable
+              invitations={invitations}
+              onCancel={handleCancelInvitation}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
