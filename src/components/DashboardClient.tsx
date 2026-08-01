@@ -888,18 +888,19 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
           <div className="filter-controls-group">
             <div ref={locationDropdownRef} className="filter-control-item location-dropdown-container">
+              <span className="control-label">Location:</span>
               <button 
                 type="button"
                 onClick={() => setIsLocationDropdownOpen(prev => !prev)}
                 className="filter-select-btn"
               >
-                <Filter size={16} className="control-icon" style={{ color: 'var(--text-secondary)' }} />
+                <Filter size={14} className="control-icon" style={{ color: 'var(--text-secondary)' }} />
                 <span className="control-text">
                   {locationFilter.length === 0 
                     ? 'All Locations' 
                     : locationFilter.length === 1 
                       ? locationFilter[0] 
-                      : `${locationFilter.length} Locations Selected`}
+                      : `${locationFilter.length} Selected`}
                 </span>
                 <ChevronDown size={14} className={`control-chevron ${isLocationDropdownOpen ? 'open' : ''}`} />
               </button>
