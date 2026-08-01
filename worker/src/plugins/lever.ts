@@ -416,10 +416,11 @@ export class LeverPlugin extends ATSPlugin {
    */
   private async answerCustomQuestions(
     browser: BrowserSession,
-    _context: WorkflowContext,
+    context: WorkflowContext,
     logger: ExecutionLogger
   ): Promise<void> {
     const page = browser.page;
+    const profile = context.userProfile;
 
     const questionContainers = await page
       .locator('.application-question, .custom-question')
