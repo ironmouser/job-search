@@ -50,10 +50,10 @@ async function ensureAndScoreJob(userId: string, job: { id: string; title: strin
         return { jobId: job.id, skipped: true, reason: 'Description could not be downloaded.' };
     }
 
-    // 3. Score the job! (Wrap scoring in 8s timeout)
+    // 3. Score the job! (Wrap scoring in 25s timeout)
     const score = await withTimeout(
       scoreJob(userId, job.id, job.title, description),
-      8000,
+      25000,
       null
     );
 

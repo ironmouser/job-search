@@ -92,6 +92,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
   const scoringInProgress = useRef(new Set<string>());
+  const attemptedScoringJobs = useRef(new Set<string>());
   const isPageInitialized = useRef(false);
 
   // Trigger confetti on the card of the job the user just applied to
@@ -621,16 +622,18 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     const isUnscored = (j: any) => (!j.opportunity_scores || j.opportunity_scores.length === 0);
     const hasDescription = (j: any) => !!(j.description && j.description.trim().length > 50);
 
-    const unscoredCurrentJobs = currentJobs.filter(j => isUnscored(j) && hasDescription(j) && !scoringInProgress.current.has(j.id));
-    const otherUnscoredJobs = filteredAndSortedJobs.filter(j => isUnscored(j) && hasDescription(j) && !currentJobs.find(cj => cj.id === j.id) && !scoringInProgress.current.has(j.id));
+    // Only attempt scoring for unscored jobs on the active page that haven't been attempted in this browser session
+    const unscoredCurrentJobs = currentJobs.filter(
+      j => isUnscored(j) && hasDescription(j) && !attemptedScoringJobs.current.has(j.id)
+    );
 
-    if (unscoredCurrentJobs.length === 0 && otherUnscoredJobs.length === 0) return;
+    if (unscoredCurrentJobs.length === 0) return;
 
     // Debounce: wait 500ms before firing to avoid overlapping calls on rapid re-renders
     const timer = setTimeout(() => {
       if (unscoredCurrentJobs.length > 0) {
-        const chunk = unscoredCurrentJobs.slice(0, 10);
-        chunk.forEach(j => scoringInProgress.current.add(j.id));
+        const chunk = unscoredCurrentJobs.slice(0, 5);
+        chunk.forEach(j => attemptedScoringJobs.current.add(j.id));
         
         const scoreCurrent = async () => {
           try {
@@ -650,43 +653,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             router.refresh();
           } catch (e) {
             console.error('Failed to score current jobs:', e);
-          } finally {
-            chunk.forEach(j => scoringInProgress.current.delete(j.id));
           }
         };
         scoreCurrent();
-      } else if (otherUnscoredJobs.length > 0) {
-        const chunk = otherUnscoredJobs.slice(0, 10);
-        chunk.forEach(j => scoringInProgress.current.add(j.id));
-
-        const scoreBackground = async () => {
-          try {
-            const res = await fetch('/api/score', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
-            });
-            if (!res.ok) {
-              if (res.status === 403) {
-                setScoresExhausted(true);
-                return;
-              }
-              const errorData = await res.json().catch(() => ({}));
-              throw new Error(`Status ${res.status}: ${errorData.message || JSON.stringify(errorData)}`);
-            }
-            router.refresh();
-          } catch (e) {
-            console.error('Failed to background score jobs:', e);
-          } finally {
-            chunk.forEach(j => scoringInProgress.current.delete(j.id));
-          }
-        };
-        scoreBackground();
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [currentJobs, filteredAndSortedJobs, router, userPlanTier, scoresExhausted]);
+  }, [currentJobs, router, userPlanTier, scoresExhausted]);
 
   return (
     <>
