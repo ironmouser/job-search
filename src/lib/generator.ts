@@ -200,7 +200,7 @@ CRITICAL GUARDRAILS:
    - FORBIDDEN OPENINGS: NEVER write "deeply resonates with", "resonates with my own experience", "I'm applying because ... resonates", "I am thrilled/excited to apply because", or "inspired me to apply".
    - PREFERRED DIRECT OPENINGS: State the exact role and company clearly, connecting the company's primary focus to your specific background (e.g. "I am applying to the [Role] position at [Company]. [Company]'s approach to [Core Product/Challenge] directly aligns with my background in [Field].", or "My background in [Field] closely mirrors [Company]'s commitment to [Mission].").
    - FORBIDDEN WORDS: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," "leverage," or "deeply resonates."
-5. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing directly to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement about the opportunity while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
+5. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing directly to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement about the opportunity while remaining professional. Force the AI to use natural sentence variations, commas, and periods to maintain a human tone.
 
 COVER LETTER STRUCTURE (CRITICAL):
 Split into exactly three short paragraphs:
@@ -216,6 +216,8 @@ Return the result as a JSON object with EXACTLY these keys:
   "portfolio_recommendation": "A 1-2 sentence recommendation on which project from the resume to highlight in interviews"
 }`;
 
+    const profile = settings.profile || '';
+
     const userPrompt = `
 COMPANY: ${cleanCompany}
 JOB TITLE: ${jobTitle}
@@ -223,6 +225,7 @@ JOB TITLE: ${jobTitle}
 JOB DESCRIPTION:
 ${jobDescription}
 
+${profile ? `TARGET PROFILE:\n${profile}\n` : ''}
 BASE RESUME:
 ${baseResume}
 
