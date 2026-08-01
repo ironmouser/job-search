@@ -6,7 +6,7 @@ I am applying to the Sr. Product Manager position at Ontra. Ontra’s AI-powered
 
 In my recent role at Acme Corp, I led the redesign of our core data platform, driving a 35% reduction in customer onboarding time while partnering closely with legal and compliance teams. My background in product management closely mirrors Ontra's commitment to streamlining high-stakes workflows for enterprise clients.
 
-I would welcome the opportunity to connect and discuss how my product development experience can support your team's upcoming roadmap.
+I'd love the opportunity to discuss how my background in zero-to-one AI product launches, customer discovery, and rapid experimentation can help Ontra continue to push the boundaries of legal tech. I'm available to connect at your earliest convenience.
 
 --- EXAMPLE 1 (IT Project Manager - Citing Conversational Context & Clear Financial Metrics) ---
 I'm writing to apply for the IT Project Manager position at Systems, as advertised on LinkedIn. I am confident that my 3 years of solid experience and diverse capabilities in project management make me an ideal candidate to fulfill this position.

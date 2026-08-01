@@ -206,7 +206,7 @@ COVER LETTER STRUCTURE (CRITICAL):
 Split into exactly three short paragraphs:
 - Paragraph 1: Direct application stating the role and company, explaining how the company's core focus directly aligns with or mirrors my background.
 - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
-- Paragraph 3: A direct call to action for an interview.
+- Paragraph 3: Direct, polished call to action for an interview (e.g. "I'd love the opportunity to discuss how my background in [skills/experience] can help [Company] continue to [Company Goal]. I am available to connect at your earliest convenience."). Avoid casual phrasing like "I'd love to talk about" or "at your convenience".
 
 Return the result as a JSON object with EXACTLY these keys:
 {
