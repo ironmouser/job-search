@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Image as ImageIcon, CreditCard, Save, Shield } from "lucide-react";
+import { User, Image as ImageIcon, CreditCard, Save, Shield, Key } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { createPortal } from "react-dom";
@@ -76,6 +76,23 @@ export default function ProfileForm({
   const [saving, setSaving] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const [settings, setSettings] = useState<any>({});
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/settings', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        setSettings(data || {});
+        setLoadingSettings(false);
+      })
+      .catch(() => setLoadingSettings(false));
+  }, []);
+
+  const handleSettingsChange = (key: string, value: any) => {
+    setSettings((prev: any) => ({ ...prev, [key]: value }));
+  };
 
   useEffect(() => {
     setMounted(true);
