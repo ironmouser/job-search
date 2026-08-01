@@ -28,13 +28,13 @@ const DETECTION_RULES: DetectionRule[] = [
   },
   {
     platform: ATSPlatform.GREENHOUSE,
-    automationSupported: false,
+    automationSupported: true,
     hostnamePatterns: [/^boards\.greenhouse\.io$/i, /\.greenhouse\.io$/i],
     urlKeywords: ['greenhouse.io', 'greenhouse', 'gh_jid'],
   },
   {
     platform: ATSPlatform.LEVER,
-    automationSupported: false,
+    automationSupported: true,
     hostnamePatterns: [/^jobs\.lever\.co$/i, /\.lever\.co$/i],
     urlKeywords: ['lever.co', '/lever/'],
   },
