@@ -91,6 +91,14 @@ export async function GET(request: NextRequest) {
       location: extractLocation(prefs?.resumeMarkdown),
       linkedinUrl: undefined as string | undefined,
       websiteUrl: undefined as string | undefined,
+      usWorkAuthorization: prefs?.usWorkAuthorization ?? undefined,
+      workingRemotelyFrom: prefs?.workingRemotelyFrom ?? undefined,
+      visaSponsorship: prefs?.visaSponsorship ?? undefined,
+      country: prefs?.country ?? undefined,
+      eeocRace: prefs?.eeocRace ?? undefined,
+      eeocGender: prefs?.eeocGender ?? undefined,
+      eeocVeteran: prefs?.eeocVeteran ?? undefined,
+      eeocDisability: prefs?.eeocDisability ?? undefined,
     };
 
     const payload = {

@@ -85,6 +85,14 @@ export async function GET(
         email: session.user.email ?? '',
         phone: phoneMatch?.[0],
         location: locationMatch?.[0],
+        usWorkAuthorization: prefs?.usWorkAuthorization ?? undefined,
+        workingRemotelyFrom: prefs?.workingRemotelyFrom ?? undefined,
+        visaSponsorship: prefs?.visaSponsorship ?? undefined,
+        country: prefs?.country ?? undefined,
+        eeocRace: prefs?.eeocRace ?? undefined,
+        eeocGender: prefs?.eeocGender ?? undefined,
+        eeocVeteran: prefs?.eeocVeteran ?? undefined,
+        eeocDisability: prefs?.eeocDisability ?? undefined,
       },
     };
 

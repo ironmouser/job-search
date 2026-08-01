@@ -92,6 +92,14 @@ export interface UserProfile {
   location?: string;
   linkedinUrl?: string;
   websiteUrl?: string;
+  usWorkAuthorization?: string;
+  workingRemotelyFrom?: string;
+  visaSponsorship?: string;
+  country?: string;
+  eeocRace?: string;
+  eeocGender?: string;
+  eeocVeteran?: string;
+  eeocDisability?: string;
 }
 
 export interface WorkflowContext {
