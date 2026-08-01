@@ -848,6 +848,291 @@ body.light-theme .email-job-title {
   cursor: pointer;
 }
 
+/* Dashboard Filter Card & Responsive Toolbar */
+.dashboard-filter-card {
+  background: var(--bg-surface);
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-glass);
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.filter-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.filter-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-section-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.filter-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.view-mode-toggle {
+  display: flex;
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-color);
+}
+
+.view-toggle-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.view-toggle-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-primary);
+}
+
+.filter-card-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+@media (min-width: 1025px) {
+  .filter-card-controls {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+}
+
+.filter-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+
+.filter-search-box .search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.filter-search-input {
+  width: 100%;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-glass);
+  padding: 0.45rem 2.2rem 0.45rem 2.2rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  height: 38px;
+  transition: border-color 0.2s ease;
+}
+
+.filter-search-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.filter-controls-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.filter-control-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.control-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.filter-select {
+  background: var(--bg-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-glass);
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  height: 38px;
+  cursor: pointer;
+}
+
+.filter-select-btn {
+  background: var(--bg-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-glass);
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  height: 38px;
+  transition: border-color 0.2s ease;
+}
+
+.control-chevron {
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.control-chevron.open {
+  transform: rotate(180deg);
+}
+
+.location-dropdown-container {
+  position: relative;
+}
+
+.location-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-color);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  padding: 0.5rem;
+  z-index: 100;
+  min-width: 220px;
+  max-height: 280px;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-range-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.date-inputs-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.date-separator {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.date-placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+/* Tablet & Mobile Layout Rules for Dashboard Filter Bar */
+@media (max-width: 1024px) {
+  .dashboard-filter-card {
+    padding: 1rem;
+  }
+  
+  .filter-controls-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .date-range-group {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .filter-control-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    width: 100%;
+  }
+
+  .filter-select,
+  .filter-select-btn,
+  .location-dropdown-container {
+    width: 100%;
+  }
+
+  .date-inputs-wrapper {
+    width: 100%;
+  }
+
+  .date-inputs-wrapper .date-picker-custom {
+    flex: 1;
+    width: 100%;
+  }
+
+  .filter-search-box {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter-card-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .filter-controls-group {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+
 .job-meta-item {
   font-size: 0.85rem;
   color: var(--text-secondary);

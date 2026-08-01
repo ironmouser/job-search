@@ -828,50 +828,57 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
       <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Matches ({filteredAndSortedJobs.length})</h3>
-          <DashboardCleanup 
-            checkedJobs={Array.from(checkedJobs)}
-            onCleanupComplete={() => {
-              router.refresh();
-              setCheckedJobs(new Set());
-            }} 
-          />
+      <div className="dashboard-filter-card">
+        <div className="filter-card-header">
+          <div className="filter-header-left">
+            <h3 className="filter-section-title">Matches ({filteredAndSortedJobs.length})</h3>
+            <DashboardCleanup 
+              checkedJobs={Array.from(checkedJobs)}
+              onCleanupComplete={() => {
+                router.refresh();
+                setCheckedJobs(new Set());
+              }} 
+            />
+          </div>
+
+          <div className="filter-header-right">
+            <div className="view-mode-toggle">
+              <button 
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                title="Grid View"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button 
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                title="Table View"
+                style={{ borderLeft: '1px solid var(--border-glass)' }}
+              >
+                <List size={16} />
+              </button>
+            </div>
+          </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={14} style={{ position: 'absolute', left: '0.6rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+
+        <div className="filter-card-controls">
+          <div className="filter-search-box">
+            <Search size={14} className="search-icon" />
             <input
               type="text"
               placeholder="Filter words or description..."
               value={keywordFilter}
               onChange={(e) => setKeywordFilter(e.target.value)}
-              style={{
-                background: 'var(--bg-color)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-glass)',
-                padding: '0.4rem 2rem 0.4rem 2rem',
-                borderRadius: '4px',
-                fontSize: '0.85rem',
-                minWidth: '200px'
-              }}
+              className="filter-search-input"
             />
             {keywordFilter && (
               <button
+                type="button"
                 onClick={() => setKeywordFilter('')}
-                style={{
-                  position: 'absolute',
-                  right: '0.5rem',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
+                className="search-clear-btn"
                 title="Clear filter"
               >
                 <X size={14} />
@@ -879,193 +886,153 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Source:</span>
-            <select 
-              value={sourceFilter} 
-              onChange={(e) => setSourceFilter(e.target.value as any)}
-              style={{ background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-glass)', padding: '0.4rem', borderRadius: '4px' }}
-            >
-              <option value="both">Both</option>
-              <option value="email">Email Only</option>
-              <option value="scraped">Scraped Only</option>
-            </select>
-          </div>
+          <div className="filter-controls-group">
+            <div ref={locationDropdownRef} className="filter-control-item location-dropdown-container">
+              <button 
+                type="button"
+                onClick={() => setIsLocationDropdownOpen(prev => !prev)}
+                className="filter-select-btn"
+              >
+                <Filter size={16} className="control-icon" style={{ color: 'var(--text-secondary)' }} />
+                <span className="control-text">
+                  {locationFilter.length === 0 
+                    ? 'All Locations' 
+                    : locationFilter.length === 1 
+                      ? locationFilter[0] 
+                      : `${locationFilter.length} Locations Selected`}
+                </span>
+                <ChevronDown size={14} className={`control-chevron ${isLocationDropdownOpen ? 'open' : ''}`} />
+              </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Date:</span>
-            <div className="date-picker-custom" title="Start Date">
-              <Calendar size={14} color={startDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-              {startDate && <span>{safeFormatDate(startDate)}</span>}
-              <input 
-                type="date" 
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>to</span>
-            
-            <div className="date-picker-custom" title="End Date">
-              <Calendar size={14} color={endDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-              {endDate && <span>{safeFormatDate(endDate)}</span>}
-              <input 
-                type="date" 
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div ref={locationDropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <button 
-              type="button"
-              onClick={() => setIsLocationDropdownOpen(prev => !prev)}
-              style={{ 
-                background: 'var(--bg-color)', 
-                color: 'var(--text-primary)', 
-                border: '1px solid var(--border-glass)', 
-                padding: '0.4rem 0.65rem', 
-                borderRadius: '4px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
-              }}
-            >
-              <Filter size={16} color="var(--text-secondary)" />
-              <span>
-                {locationFilter.length === 0 
-                  ? 'All Locations' 
-                  : locationFilter.length === 1 
-                    ? locationFilter[0] 
-                    : `${locationFilter.length} Locations Selected`}
-              </span>
-              <ChevronDown size={14} color="var(--text-secondary)" style={{ transform: isLocationDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
-            </button>
+              {isLocationDropdownOpen && (
+                <div className="location-dropdown-menu">
+                  <div 
+                    onClick={() => { setLocationFilter([]); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.4rem 0.6rem',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: locationFilter.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                      background: locationFilter.length === 0 ? 'rgba(102, 252, 241, 0.08)' : 'transparent'
+                    }}
+                  >
+                    <span>All Locations</span>
+                    {locationFilter.length > 0 && (
+                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Clear</span>
+                    )}
+                  </div>
 
-            {isLocationDropdownOpen && (
-              <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 4px)',
-                left: 0,
-                background: 'var(--bg-color)',
-                border: '1px solid var(--border-glass)',
-                borderRadius: '8px',
-                padding: '0.5rem',
-                zIndex: 100,
-                minWidth: '220px',
-                maxHeight: '280px',
-                overflowY: 'auto',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.25rem'
-              }}>
-                <div 
-                  onClick={() => { setLocationFilter([]); }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.4rem 0.6rem',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: locationFilter.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                    background: locationFilter.length === 0 ? 'rgba(102, 252, 241, 0.08)' : 'transparent'
-                  }}
-                >
-                  <span>All Locations</span>
-                  {locationFilter.length > 0 && (
-                    <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Clear</span>
-                  )}
-                </div>
+                  <div style={{ borderBottom: '1px solid var(--border-glass)', margin: '0.25rem 0' }} />
 
-                <div style={{ borderBottom: '1px solid var(--border-glass)', margin: '0.25rem 0' }} />
-
-                {uniqueLocations.map(loc => {
-                  const isChecked = locationFilter.includes(loc);
-                  return (
-                    <label 
-                      key={loc}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.6rem',
-                        padding: '0.35rem 0.6rem',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        color: isChecked ? 'var(--accent-primary)' : 'var(--text-primary)',
-                        background: isChecked ? 'rgba(102, 252, 241, 0.05)' : 'transparent',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <input 
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {
-                          setLocationFilter(prev => 
-                            prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc]
-                          );
+                  {uniqueLocations.map(loc => {
+                    const isChecked = locationFilter.includes(loc);
+                    return (
+                      <label 
+                        key={loc}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.6rem',
+                          padding: '0.35rem 0.6rem',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          color: isChecked ? 'var(--accent-primary)' : 'var(--text-primary)',
+                          background: isChecked ? 'rgba(102, 252, 241, 0.05)' : 'transparent',
+                          userSelect: 'none'
                         }}
-                        style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)', width: '15px', height: '15px' }}
-                      />
-                      <span>{loc}</span>
-                    </label>
-                  );
-                })}
+                      >
+                        <input 
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            setLocationFilter(prev => 
+                              prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc]
+                            );
+                          }}
+                          style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)', width: '15px', height: '15px' }}
+                        />
+                        <span>{loc}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="filter-control-item">
+              <span className="control-label">Source:</span>
+              <select 
+                value={sourceFilter} 
+                onChange={(e) => setSourceFilter(e.target.value as any)}
+                className="filter-select"
+              >
+                <option value="both">Both</option>
+                <option value="email">Email Only</option>
+                <option value="scraped">Scraped Only</option>
+              </select>
+            </div>
+
+            <div className="filter-control-item date-range-group">
+              <span className="control-label">Date:</span>
+              <div className="date-inputs-wrapper">
+                <div className="date-picker-custom" title="Start Date">
+                  <Calendar size={14} color={startDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
+                  {startDate && <span>{safeFormatDate(startDate)}</span>}
+                  <input 
+                    type="date" 
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                
+                <span className="date-separator">to</span>
+                
+                <div className="date-picker-custom" title="End Date">
+                  <Calendar size={14} color={endDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
+                  {endDate && <span>{safeFormatDate(endDate)}</span>}
+                  <input 
+                    type="date" 
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
               </div>
-            )}
-          </div>
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Sort by:</span>
-            <select 
-              value={sortOption} 
-              onChange={(e) => setSortOption(e.target.value as any)}
-              style={{ background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-glass)', padding: '0.4rem', borderRadius: '4px' }}
-            >
-              <option value="newest">Newest First</option>
-              <option value="score">Score (High to Low)</option>
-              <option value="salary">Salary (High to Low)</option>
-              <option value="remote">Remote First</option>
-              <option value="auto_apply">Auto Apply Confidence</option>
-            </select>
-          </div>
+            <div className="filter-control-item">
+              <span className="control-label">Sort by:</span>
+              <select 
+                value={sortOption} 
+                onChange={(e) => setSortOption(e.target.value as any)}
+                className="filter-select"
+              >
+                <option value="newest">Newest First</option>
+                <option value="score">Score (High to Low)</option>
+                <option value="salary">Salary (High to Low)</option>
+                <option value="remote">Remote First</option>
+                <option value="auto_apply">Auto Apply Confidence</option>
+              </select>
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Per page:</span>
-            <select 
-              value={itemsPerPage} 
-              onChange={(e) => changeItemsPerPage(Number(e.target.value))}
-              style={{ background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-glass)', padding: '0.4rem', borderRadius: '4px' }}
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          
-          <div style={{ display: 'flex', border: '1px solid var(--border-glass)', borderRadius: '4px', overflow: 'hidden' }}>
-            <button 
-              onClick={() => setViewMode('grid')}
-              style={{ background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'grid' ? 'var(--accent-primary)' : 'var(--text-secondary)', border: 'none', padding: '0.4rem 0.6rem', cursor: 'pointer' }}
-              title="Grid View"
-            >
-              <LayoutGrid size={16} />
-            </button>
-            <button 
-              onClick={() => setViewMode('table')}
-              style={{ background: viewMode === 'table' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'table' ? 'var(--accent-primary)' : 'var(--text-secondary)', border: 'none', padding: '0.4rem 0.6rem', cursor: 'pointer', borderLeft: '1px solid var(--border-glass)' }}
-              title="Table View"
-            >
-              <List size={16} />
-            </button>
+            <div className="filter-control-item">
+              <span className="control-label">Per page:</span>
+              <select 
+                value={itemsPerPage} 
+                onChange={(e) => changeItemsPerPage(Number(e.target.value))}
+                className="filter-select"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
