@@ -19,3 +19,7 @@ When writing or rewriting content for resumes, cover letters, networking message
   - Paragraph 3: A direct call to action for an interview.
 - **Creativity / Temperature**: Set creativity/temperature to 1.5 to ensure natural sentence variation.
 - **Tone and Energy (CRITICAL)**: Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
+
+# Infrastructure & Deployment Conventions
+- **Auto Apply Worker**: Hosted on a DigitalOcean droplet accessible via `ssh root@167.99.55.186`.
+

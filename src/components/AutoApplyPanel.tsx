@@ -7,7 +7,7 @@ import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
-import { Bot, Building2, Clock } from 'lucide-react';
+import { Bot, Building2, Clock, CheckCircle2 } from 'lucide-react';
 
 interface AutoApplyPanelProps {
   jobId: string;
@@ -181,6 +181,28 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
               {session.failureDetails.length > 60 ? session.failureDetails.slice(0, 57) + '…' : session.failureDetails}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Simulation Success Banner */}
+      {session?.status === AutoApplyStatus.SIMULATED && (
+        <div style={{
+          background: 'rgba(16, 185, 129, 0.08)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          borderRadius: '0.5rem',
+          padding: '0.85rem 1rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.35rem',
+          marginTop: '0.25rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontWeight: 600, fontSize: '0.9rem' }}>
+            <CheckCircle2 size={18} />
+            <span>Simulation Passed — Ready to Apply</span>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.45 }}>
+            The dry run completed with zero validation issues. Your resume and cover letter were mapped successfully. Click below to execute live submission.
+          </p>
         </div>
       )}
 

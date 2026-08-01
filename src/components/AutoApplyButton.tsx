@@ -82,13 +82,14 @@ export function AutoApplyButton({
       .finally(() => setLoading(false));
   }, [showModal, jobUrl]);
 
-  async function handleStart() {
+  async function handleStart(simOverride?: boolean) {
+    const simMode = simOverride !== undefined ? simOverride : simulationMode;
     setStarting(true);
     try {
       const res = await fetch(`/api/auto-apply/${jobId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ simulationMode }),
+        body: JSON.stringify({ simulationMode: simMode }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -106,6 +107,8 @@ export function AutoApplyButton({
     await fetch(`/api/auto-apply/${jobId}/cancel`, { method: 'POST' });
   }
 
+  const isSimulated = currentStatus === AutoApplyStatus.SIMULATED || currentStatus === 'simulated';
+
   if (isActive) {
     return (
       <button
@@ -116,6 +119,55 @@ export function AutoApplyButton({
       >
         <Square size={14} /> Cancel Auto Apply
       </button>
+    );
+  }
+
+  if (isSimulated) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+        <button
+          className="btn-auto-apply"
+          disabled={isDisabled || starting}
+          onClick={() => handleStart(false)}
+          id={`auto-apply-btn-${jobId}`}
+          title="Submit your application live to the employer"
+          style={{
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: '#ffffff',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            padding: '0.75rem 1.25rem',
+            fontWeight: 600,
+            fontSize: '0.95rem',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+          }}
+        >
+          {starting ? (
+            'Submitting Application…'
+          ) : (
+            <>
+              <Send size={16} /> Submit Application Live
+            </>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowModal(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted, #94a3b8)',
+            fontSize: '0.75rem',
+            cursor: 'pointer',
+            textAlign: 'center',
+            textDecoration: 'underline',
+          }}
+        >
+          Open pre-flight options or re-run simulation
+        </button>
+      </div>
     );
   }
 
@@ -217,7 +269,7 @@ export function AutoApplyButton({
                   </button>
                   <button
                     className="btn-primary"
-                    onClick={handleStart}
+                    onClick={() => handleStart()}
                     disabled={starting}
                     style={{ flex: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
                     id="auto-apply-start-btn"
