@@ -467,20 +467,63 @@ export class GreenhousePlugin extends ATSPlugin {
           label.includes('authorized') ||
           label.includes('eligible to work') ||
           label.includes('legally') ||
-          label.includes('remotely') ||
-          label.includes('state')
+          label.includes('remotely')
         ) {
-          targetValue = 'Yes';
+          if (!profile.usWorkAuthorization) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Work Authorization answer is required for: "${label.trim()}". Please provide your details.`
+            );
+          }
+          targetValue = profile.usWorkAuthorization;
         } else if (label.includes('sponsorship') || label.includes('visa')) {
-          targetValue = 'No';
+          if (!profile.visaSponsorship) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Visa Sponsorship answer is required for: "${label.trim()}". Please provide your details.`
+            );
+          }
+          targetValue = profile.visaSponsorship;
         } else if (label.includes('country')) {
-          targetValue = 'United States';
+          if (!profile.country) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Country answer is required for: "${label.trim()}". Please provide your details.`
+            );
+          }
+          targetValue = profile.country;
         } else if (label.includes('gender') || label.includes('sex')) {
-          targetValue = 'Decline';
+          if (!profile.eeocGender) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Gender answer is required for EEOC section. Please provide your details.`
+            );
+          }
+          targetValue = profile.eeocGender;
+        } else if (label.includes('race') || label.includes('ethnicity')) {
+          if (!profile.eeocRace) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Race/Ethnicity answer is required for EEOC section. Please provide your details.`
+            );
+          }
+          targetValue = profile.eeocRace;
         } else if (label.includes('veteran')) {
-          targetValue = 'not a protected veteran';
+          if (!profile.eeocVeteran) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Veteran status answer is required for EEOC section. Please provide your details.`
+            );
+          }
+          targetValue = profile.eeocVeteran;
         } else if (label.includes('disability')) {
-          targetValue = 'No';
+          if (!profile.eeocDisability) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Disability status answer is required for EEOC section. Please provide your details.`
+            );
+          }
+          targetValue = profile.eeocDisability;
         }
 
         if (targetValue) {
@@ -532,20 +575,36 @@ export class GreenhousePlugin extends ATSPlugin {
       const radioGroup = container.locator('input[type="radio"]');
       if (await radioGroup.count() > 0) {
         if (label.includes('authorized') || label.includes('eligible to work') || label.includes('legally') || label.includes('remotely')) {
-          const yesLabel = container.locator('label').filter({ hasText: /^yes$/i }).first();
-          const yesRadio = container.locator('input[type="radio"][value="Yes"], input[type="radio"][value="true"]').first();
-          if (await yesLabel.count() > 0) {
-            await yesLabel.click().catch(() => null);
-            await logger.info('question_answered', 'Work auth / Remote: Yes');
-          } else if (await yesRadio.count() > 0) {
-            await yesRadio.click().catch(() => null);
-            await logger.info('question_answered', 'Work auth / Remote: Yes (radio)');
+          if (!profile.usWorkAuthorization) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Work Authorization answer is required for: "${label.trim()}". Please provide your details.`
+            );
+          }
+          const isYes = profile.usWorkAuthorization.toLowerCase() === 'yes';
+          const targetRegex = isYes ? /^yes$/i : /^no$/i;
+          const targetLabel = container.locator('label').filter({ hasText: targetRegex }).first();
+          const targetRadio = container.locator(`input[type="radio"][value="${isYes ? 'Yes' : 'No'}"], input[type="radio"][value="${isYes}"]`).first();
+          if (await targetLabel.count() > 0) {
+            await targetLabel.click().catch(() => null);
+            await logger.info('question_answered', `Work auth / Remote: ${profile.usWorkAuthorization}`);
+          } else if (await targetRadio.count() > 0) {
+            await targetRadio.click().catch(() => null);
+            await logger.info('question_answered', `Work auth / Remote: ${profile.usWorkAuthorization} (radio)`);
           }
         } else if (label.includes('sponsorship') || label.includes('visa')) {
-          const noLabel = container.locator('label').filter({ hasText: /^no$/i }).first();
-          if (await noLabel.count() > 0) {
-            await noLabel.click().catch(() => null);
-            await logger.info('question_answered', 'Visa sponsorship required: No');
+          if (!profile.visaSponsorship) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Visa Sponsorship answer is required for: "${label.trim()}". Please provide your details.`
+            );
+          }
+          const isYes = profile.visaSponsorship.toLowerCase() === 'yes';
+          const targetRegex = isYes ? /^yes$/i : /^no$/i;
+          const targetLabel = container.locator('label').filter({ hasText: targetRegex }).first();
+          if (await targetLabel.count() > 0) {
+            await targetLabel.click().catch(() => null);
+            await logger.info('question_answered', `Visa sponsorship required: ${profile.visaSponsorship}`);
           }
         }
       }

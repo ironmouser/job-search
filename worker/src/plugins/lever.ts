@@ -437,16 +437,34 @@ export class LeverPlugin extends ATSPlugin {
           label.includes('eligible to work') ||
           label.includes('legally permitted')
         ) {
-          const yesLabel = container.locator('label').filter({ hasText: /^yes$/i }).first();
-          if (await yesLabel.count() > 0) {
-            await yesLabel.click();
-            await logger.info('question_answered', 'Work authorization: Yes');
+          if (!profile.usWorkAuthorization) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Work Authorization answer is required for: "${label.trim()}". Please provide your details.`,
+              page.url()
+            );
+          }
+          const isYes = profile.usWorkAuthorization.toLowerCase() === 'yes';
+          const targetRegex = isYes ? /^yes$/i : /^no$/i;
+          const targetLabel = container.locator('label').filter({ hasText: targetRegex }).first();
+          if (await targetLabel.count() > 0) {
+            await targetLabel.click();
+            await logger.info('question_answered', `Work authorization: ${profile.usWorkAuthorization}`);
           }
         } else if (label.includes('sponsorship') || label.includes('visa')) {
-          const noLabel = container.locator('label').filter({ hasText: /^no$/i }).first();
-          if (await noLabel.count() > 0) {
-            await noLabel.click();
-            await logger.info('question_answered', 'Visa sponsorship required: No');
+          if (!profile.visaSponsorship) {
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Visa Sponsorship answer is required for: "${label.trim()}". Please provide your details.`,
+              page.url()
+            );
+          }
+          const isYes = profile.visaSponsorship.toLowerCase() === 'yes';
+          const targetRegex = isYes ? /^yes$/i : /^no$/i;
+          const targetLabel = container.locator('label').filter({ hasText: targetRegex }).first();
+          if (await targetLabel.count() > 0) {
+            await targetLabel.click();
+            await logger.info('question_answered', `Visa sponsorship required: ${profile.visaSponsorship}`);
           }
         } else if (label) {
           await logger.warn('unknown_question', `Unknown Lever radio question: "${label.substring(0, 100)}"`);
