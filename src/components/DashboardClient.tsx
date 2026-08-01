@@ -828,10 +828,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
       <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
 
-      <div className="dashboard-filter-card">
-        <div className="filter-card-header">
-          <div className="filter-header-left">
-            <h3 className="filter-section-title">Matches ({filteredAndSortedJobs.length})</h3>
+      <div className="dashboard-controls-container">
+        <div className="dashboard-controls-header">
+          <div className="dashboard-matches-title">
+            <h3>Matches ({filteredAndSortedJobs.length})</h3>
             <DashboardCleanup 
               checkedJobs={Array.from(checkedJobs)}
               onCleanupComplete={() => {
@@ -840,45 +840,38 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               }} 
             />
           </div>
-
-          <div className="filter-header-right">
-            <div className="view-mode-toggle">
-              <button 
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                title="Grid View"
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button 
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                title="Table View"
-                style={{ borderLeft: '1px solid var(--border-glass)' }}
-              >
-                <List size={16} />
-              </button>
-            </div>
+          
+          <div className="dashboard-view-toggles">
+            <button 
+              onClick={() => setViewMode('grid')}
+              style={{ background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'grid' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
+              title="Grid View"
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button 
+              onClick={() => setViewMode('table')}
+              style={{ background: viewMode === 'table' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'table' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
+              title="Table View"
+            >
+              <List size={16} />
+            </button>
           </div>
         </div>
-
-        <div className="filter-card-controls">
-          <div className="filter-search-box">
-            <Search size={14} className="search-icon" />
+        
+        <div className="dashboard-filters-bar">
+          <div className="filter-search-wrapper">
+            <Search size={14} className="filter-search-icon" />
             <input
               type="text"
               placeholder="Filter words or description..."
               value={keywordFilter}
               onChange={(e) => setKeywordFilter(e.target.value)}
-              className="filter-search-input"
             />
             {keywordFilter && (
               <button
-                type="button"
                 onClick={() => setKeywordFilter('')}
-                className="search-clear-btn"
+                className="filter-search-clear"
                 title="Clear filter"
               >
                 <X size={14} />
@@ -886,27 +879,86 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             )}
           </div>
 
-          <div className="filter-controls-group">
-            <div ref={locationDropdownRef} className="filter-control-item location-dropdown-container">
-              <span className="control-label">Location:</span>
-              <button 
-                type="button"
-                onClick={() => setIsLocationDropdownOpen(prev => !prev)}
-                className="filter-select-btn"
+          <div className="filter-dropdowns-wrapper">
+            <div className="filter-item">
+              <span className="filter-item-label">Source:</span>
+              <select 
+                value={sourceFilter} 
+                onChange={(e) => setSourceFilter(e.target.value as any)}
               >
-                <Filter size={14} className="control-icon" style={{ color: 'var(--text-secondary)' }} />
-                <span className="control-text">
-                  {locationFilter.length === 0 
-                    ? 'All Locations' 
-                    : locationFilter.length === 1 
-                      ? locationFilter[0] 
-                      : `${locationFilter.length} Selected`}
-                </span>
-                <ChevronDown size={14} className={`control-chevron ${isLocationDropdownOpen ? 'open' : ''}`} />
-              </button>
+                <option value="both">Both</option>
+                <option value="email">Email Only</option>
+                <option value="scraped">Scraped Only</option>
+              </select>
+            </div>
+
+            <div className="filter-item">
+              <span className="filter-item-label">Date:</span>
+              <div className="date-range-wrapper">
+                <div className="date-picker-custom" title="Start Date">
+                  <Calendar size={14} color={startDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
+                  {startDate && <span>{safeFormatDate(startDate)}</span>}
+                  <input 
+                    type="date" 
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                
+                <span className="date-range-separator">to</span>
+                
+                <div className="date-picker-custom" title="End Date">
+                  <Calendar size={14} color={endDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
+                  {endDate && <span>{safeFormatDate(endDate)}</span>}
+                  <input 
+                    type="date" 
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div ref={locationDropdownRef} style={{ position: 'relative' }}>
+              <div className="filter-item">
+                <span className="filter-item-label">Location:</span>
+                <button 
+                  type="button"
+                  onClick={() => setIsLocationDropdownOpen(prev => !prev)}
+                  className="filter-dropdown-btn"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Filter size={14} color="var(--text-secondary)" />
+                    <span>
+                      {locationFilter.length === 0 
+                        ? 'All Locations' 
+                        : locationFilter.length === 1 
+                          ? locationFilter[0] 
+                          : `${locationFilter.length} Locations Selected`}
+                    </span>
+                  </div>
+                  <ChevronDown size={14} color="var(--text-secondary)" style={{ transform: isLocationDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                </button>
+              </div>
 
               {isLocationDropdownOpen && (
-                <div className="location-dropdown-menu">
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  left: 0,
+                  background: 'var(--bg-color)',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '8px',
+                  padding: '0.5rem',
+                  zIndex: 100,
+                  minWidth: '220px',
+                  maxHeight: '280px',
+                  overflowY: 'auto',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem'
+                }}>
                   <div 
                     onClick={() => { setLocationFilter([]); }}
                     style={{
@@ -966,52 +1018,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               )}
             </div>
 
-            <div className="filter-control-item">
-              <span className="control-label">Source:</span>
-              <select 
-                value={sourceFilter} 
-                onChange={(e) => setSourceFilter(e.target.value as any)}
-                className="filter-select"
-              >
-                <option value="both">Both</option>
-                <option value="email">Email Only</option>
-                <option value="scraped">Scraped Only</option>
-              </select>
-            </div>
-
-            <div className="filter-control-item date-range-group">
-              <span className="control-label">Date:</span>
-              <div className="date-inputs-wrapper">
-                <div className="date-picker-custom" title="Start Date">
-                  <Calendar size={14} color={startDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-                  {startDate && <span>{safeFormatDate(startDate)}</span>}
-                  <input 
-                    type="date" 
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                
-                <span className="date-separator">to</span>
-                
-                <div className="date-picker-custom" title="End Date">
-                  <Calendar size={14} color={endDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-                  {endDate && <span>{safeFormatDate(endDate)}</span>}
-                  <input 
-                    type="date" 
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="filter-control-item">
-              <span className="control-label">Sort by:</span>
+            <div className="filter-item">
+              <span className="filter-item-label">Sort by:</span>
               <select 
                 value={sortOption} 
                 onChange={(e) => setSortOption(e.target.value as any)}
-                className="filter-select"
               >
                 <option value="newest">Newest First</option>
                 <option value="score">Score (High to Low)</option>
@@ -1021,12 +1032,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
               </select>
             </div>
 
-            <div className="filter-control-item">
-              <span className="control-label">Per page:</span>
+            <div className="filter-item">
+              <span className="filter-item-label">Per page:</span>
               <select 
                 value={itemsPerPage} 
                 onChange={(e) => changeItemsPerPage(Number(e.target.value))}
-                className="filter-select"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
