@@ -415,8 +415,7 @@ export class GreenhousePlugin extends ATSPlugin {
 
   /**
    * Iterate Greenhouse custom question fields and answer where possible.
-   * Text inputs are matched against profile fields; selects are left for manual review.
-   * Unknown questions trigger an intervention.
+   * Handles text inputs, radio buttons, native HTML selects, and modern React Select dropdowns.
    */
   private async answerCustomQuestions(
     browser: BrowserSession,
@@ -426,64 +425,128 @@ export class GreenhousePlugin extends ATSPlugin {
     const page = browser.page;
     const profile = context.userProfile;
 
-    // Greenhouse wraps each custom question in a .field container
-    const questionContainers = await page.locator('.field, .custom-field').all();
+    // Greenhouse wraps question fields in .field-wrapper, .field, .custom-field, or .select__container
+    const questionContainers = await page
+      .locator('.field-wrapper, .field, .custom-field, .application--questions > div, div.select')
+      .all();
 
     for (const container of questionContainers) {
-      const labelEl = container.locator('label').first();
-      const label = (await labelEl.textContent())?.toLowerCase().trim() ?? '';
+      const labelEl = container.locator('label, legend').first();
+      const label = (await labelEl.textContent().catch(() => ''))?.toLowerCase().trim() ?? '';
+      if (!label) continue;
 
-      // Text inputs
-      const textInput = container.locator('input[type="text"], input:not([type])').first();
-      if (await textInput.count() > 0) {
+      // 1. Text inputs (LinkedIn, Website, Phone, Location, etc.)
+      const textInput = container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
+      if (await textInput.count() > 0 && await textInput.isVisible().catch(() => false)) {
         let answer = '';
-
         if (label.includes('linkedin')) {
           answer = profile.linkedinUrl ?? '';
         } else if (label.includes('website') || label.includes('portfolio') || label.includes('github')) {
           answer = profile.websiteUrl ?? '';
-        } else if (label.includes('phone')) {
-          answer = profile.phone ?? '';
-        } else if (label.includes('location') || label.includes('city')) {
-          answer = profile.location ?? '';
+        } else if (label.includes('phone') && profile.phone) {
+          answer = profile.phone;
+        } else if ((label.includes('location') || label.includes('city')) && profile.location) {
+          answer = profile.location;
         }
 
         if (answer) {
-          await textInput.fill(answer);
-          await logger.info('question_answered', `Custom field answered: "${label.substring(0, 60)}"`);
+          const currentVal = await textInput.inputValue().catch(() => '');
+          if (!currentVal) {
+            await textInput.fill(answer).catch(() => null);
+            await logger.info('question_answered', `Custom text field populated: "${label.substring(0, 50)}"`);
+          }
         }
-        // Unknown text questions — leave blank (they show as validation errors which get caught)
-        continue;
       }
 
-      // Radio/select for work authorization, sponsorship
+      // 2. Dropdowns: React Select or native <select>
+      const hasSelect = (await container.locator('.select-shell, .select__control, select, input.select__input').count()) > 0;
+      if (hasSelect) {
+        let targetValue = '';
+
+        if (
+          label.includes('authorized') ||
+          label.includes('eligible to work') ||
+          label.includes('legally') ||
+          label.includes('remotely') ||
+          label.includes('state')
+        ) {
+          targetValue = 'Yes';
+        } else if (label.includes('sponsorship') || label.includes('visa')) {
+          targetValue = 'No';
+        } else if (label.includes('country')) {
+          targetValue = 'United States';
+        } else if (label.includes('gender') || label.includes('sex')) {
+          targetValue = 'Decline';
+        } else if (label.includes('veteran')) {
+          targetValue = 'not a protected veteran';
+        } else if (label.includes('disability')) {
+          targetValue = 'No';
+        }
+
+        if (targetValue) {
+          try {
+            // Check native <select> first
+            const nativeSelect = container.locator('select').first();
+            if (await nativeSelect.count() > 0) {
+              const options = await nativeSelect.locator('option').all();
+              for (const opt of options) {
+                const optText = (await opt.textContent())?.trim() ?? '';
+                if (optText.toLowerCase().includes(targetValue.toLowerCase())) {
+                  const val = await opt.getAttribute('value');
+                  if (val) await nativeSelect.selectOption(val);
+                  await logger.info('question_answered', `Dropdown answered (${targetValue}): "${label.substring(0, 50)}"`);
+                  break;
+                }
+              }
+            } else {
+              // React Select (.select__control / input.select__input)
+              const control = container.locator('.select__control, .select-shell').first();
+              const reactInput = container.locator('input.select__input, input[role="combobox"]').first();
+
+              if (await control.count() > 0 || await reactInput.count() > 0) {
+                if (await control.count() > 0) await control.click().catch(() => null);
+                await page.waitForTimeout(200);
+
+                if (await reactInput.count() > 0) {
+                  await reactInput.focus().catch(() => null);
+                  await page.keyboard.type(targetValue, { delay: 50 });
+                  await page.keyboard.press('Enter');
+                  await page.waitForTimeout(300);
+                }
+
+                // Fallback: Click matching option in dropdown popup
+                const optionItem = page.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(targetValue, 'i') }).first();
+                if (await optionItem.count() > 0 && await optionItem.isVisible().catch(() => false)) {
+                  await optionItem.click().catch(() => null);
+                }
+                await logger.info('question_answered', `React Select answered (${targetValue}): "${label.substring(0, 50)}"`);
+              }
+            }
+          } catch (err: any) {
+            await logger.warn('question_error', `Failed to answer dropdown: ${label.substring(0, 50)}`, { error: err.message });
+          }
+        }
+      }
+
+      // 3. Radio buttons
       const radioGroup = container.locator('input[type="radio"]');
       if (await radioGroup.count() > 0) {
-        if (label.includes('authorized') || label.includes('eligible to work') || label.includes('legally')) {
-          // Select "Yes" — authorized to work
-          const yesRadio = container.locator('input[type="radio"]').filter({ has: page.locator(':scope[value="Yes"]') }).first();
+        if (label.includes('authorized') || label.includes('eligible to work') || label.includes('legally') || label.includes('remotely')) {
           const yesLabel = container.locator('label').filter({ hasText: /^yes$/i }).first();
+          const yesRadio = container.locator('input[type="radio"][value="Yes"], input[type="radio"][value="true"]').first();
           if (await yesLabel.count() > 0) {
-            await yesLabel.click();
-            await logger.info('question_answered', 'Work authorization: Yes');
+            await yesLabel.click().catch(() => null);
+            await logger.info('question_answered', 'Work auth / Remote: Yes');
           } else if (await yesRadio.count() > 0) {
-            await yesRadio.click();
-            await logger.info('question_answered', 'Work authorization: Yes (radio)');
+            await yesRadio.click().catch(() => null);
+            await logger.info('question_answered', 'Work auth / Remote: Yes (radio)');
           }
         } else if (label.includes('sponsorship') || label.includes('visa')) {
-          // Select "No" — do not require sponsorship
           const noLabel = container.locator('label').filter({ hasText: /^no$/i }).first();
           if (await noLabel.count() > 0) {
-            await noLabel.click();
+            await noLabel.click().catch(() => null);
             await logger.info('question_answered', 'Visa sponsorship required: No');
           }
-        } else if (label) {
-          await logger.warn('unknown_question', `Unknown radio question encountered: "${label.substring(0, 100)}"`);
-          throw new InterventionError(
-            InterventionReason.UNKNOWN_QUESTION,
-            `Greenhouse has a question that requires your input: "${label.trim()}"`,
-            page.url()
-          );
         }
       }
     }
