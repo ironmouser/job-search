@@ -342,14 +342,35 @@ export class GreenhousePlugin extends ATSPlugin {
       );
     }
 
-    // Wait for confirmation page
-    await page.waitForTimeout(4000);
-    const confirmationText = await page.textContent('body') ?? '';
+    // Wait for submission request to finish and confirmation page/DOM update to render
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => null);
+    } catch {}
+    await page.waitForTimeout(2000);
+
+    const currentUrl = page.url().toLowerCase();
+    const bodyText = ((await page.textContent('body')) ?? '').toLowerCase();
+
+    // Check for Greenhouse confirmation container elements
+    const thanksContainerCount = await page.locator('#thanks_container, .thanks-container, #application_confirmed, .application-confirmed, div#flash_notice').count().catch(() => 0);
+
+    // Check if the original form has been hidden or removed after submission
+    const formVisible = await page.locator('#application_form, form#application, #main_fields').isVisible().catch(() => false);
+
     const confirmationFound =
-      confirmationText.toLowerCase().includes('application submitted') ||
-      confirmationText.toLowerCase().includes('thank you') ||
-      confirmationText.toLowerCase().includes('successfully applied') ||
-      page.url().includes('/confirmation');
+      thanksContainerCount > 0 ||
+      (!formVisible && submitted) ||
+      currentUrl.includes('thanks') ||
+      currentUrl.includes('confirmation') ||
+      bodyText.includes('application submitted') ||
+      bodyText.includes('thank you') ||
+      bodyText.includes('thanks for applying') ||
+      bodyText.includes('thanks for your interest') ||
+      bodyText.includes('successfully applied') ||
+      bodyText.includes('we have received your application') ||
+      bodyText.includes('your application has been received') ||
+      bodyText.includes('application received') ||
+      bodyText.includes('submitted successfully');
 
     if (!confirmationFound) {
       throw new InterventionError(
