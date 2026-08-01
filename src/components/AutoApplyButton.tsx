@@ -202,7 +202,17 @@ export function AutoApplyButton({
         >
           <div
             className="glass-card"
-            style={{ maxWidth: '480px', width: '100%', padding: '1.5rem', gap: '1rem', display: 'flex', flexDirection: 'column' }}
+            style={{
+              maxWidth: '480px',
+              width: '100%',
+              padding: '1.5rem',
+              gap: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'var(--bg-glass, #ffffff)',
+              color: 'var(--text-primary, #0f172a)',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            }}
             id="auto-apply-modal"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
