@@ -297,7 +297,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       const res = await fetch(`/api/jobs/${jobItem.id}/fetch-details`, { method: 'POST' });
       if (res.ok) {
         if (userPlanTier === 'PRO') {
-          await fetch('/api/score', { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
+          await fetch('/api/score', { method: 'POST', body: JSON.stringify({ jobId: jobItem.id }) }).catch(() => {});
         }
         setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'success' }));
         router.refresh();
