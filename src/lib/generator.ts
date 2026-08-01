@@ -185,12 +185,15 @@ CRITICAL GUARDRAILS:
    - NO DASHES AS PUNCTUATION: Do NOT use em-dashes ("—" or "--") or hyphens ("-") as punctuation between clauses. Use commas, periods, or natural sentence transitions instead.
    - ALLOWED ENTERPRISE TERMS: Standard industry expressions like "customer-centric" and "cross-functional" are fully allowed and encouraged! Use them where natural and appropriate.
    - AVOID HYPHEN OVERUSE & BUZZWORD STACKING: Using hyphens occasionally is natural, but chaining multiple hyphenated compound modifiers in the same sentence draws attention as AI-generated text. Do not over-rely on repeating formulas like "AI-enabled," "results-oriented," or "high-impact" in every bullet point. Vary your phrasing (e.g., specifying actual teams rather than repeating "cross-functional" everywhere, or saying "products built with AI"). Keep the rhythm conversational, natural, and authentically human.
-4. NO CLICHÉ AI FILLER: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," or "leverage."
+4. NO CLICHÉ AI FILLER OR ROBOTIC FLUFF (CRITICAL):
+   - FORBIDDEN OPENINGS: NEVER write "deeply resonates with", "resonates with my own experience", "I'm applying because ... resonates", "I am thrilled/excited to apply because", or "inspired me to apply".
+   - PREFERRED DIRECT OPENINGS: State the exact role and company clearly, connecting the company's primary focus to your specific background (e.g. "I am applying to the [Role] position at [Company]. [Company]'s approach to [Core Product/Challenge] directly aligns with my background in [Field].", or "My background in [Field] closely mirrors [Company]'s commitment to [Mission].").
+   - FORBIDDEN WORDS: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," "leverage," or "deeply resonates."
 5. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing directly to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement about the opportunity while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
 
 COVER LETTER STRUCTURE (CRITICAL):
 Split into exactly three short paragraphs:
-- Paragraph 1: Why I am applying and my highest-level qualification.
+- Paragraph 1: Direct application stating the role and company, explaining how the company's core focus directly aligns with or mirrors my background.
 - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
 - Paragraph 3: A direct call to action for an interview.
 

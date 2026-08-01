@@ -1,6 +1,13 @@
 export const COVER_LETTER_REFERENCE_EXAMPLES = `
 HUMAN WRITING REFERENCE EXAMPLES (Study these real, human-written cover letters for tone, structure, concrete metrics, and conversational enthusiasm. Adopt this exact human rhythm and confidence without ever using forbidden AI filler words, em-dashes, or hyphenated buzzwords):
 
+--- EXAMPLE 0 (Senior Product Manager - Direct Role Application & Direct Alignment Phrasing) ---
+I am applying to the Sr. Product Manager position at Ontra. Ontra’s AI-powered approach to legal workflow automation directly aligns with my background in product development, where I have spent the last six years shipping complex SaaS tools.
+
+In my recent role at Acme Corp, I led the redesign of our core data platform, driving a 35% reduction in customer onboarding time while partnering closely with legal and compliance teams. My background in product management closely mirrors Ontra's commitment to streamlining high-stakes workflows for enterprise clients.
+
+I would welcome the opportunity to connect and discuss how my product development experience can support your team's upcoming roadmap.
+
 --- EXAMPLE 1 (IT Project Manager - Citing Conversational Context & Clear Financial Metrics) ---
 I'm writing to apply for the IT Project Manager position at Systems, as advertised on LinkedIn. I am confident that my 3 years of solid experience and diverse capabilities in project management make me an ideal candidate to fulfill this position.
 
