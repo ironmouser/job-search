@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { AlertTriangle, Check, ShieldAlert, Smartphone, HelpCircle, FileText, Paperclip, Key, ClipboardList, ExternalLink } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, Check, ShieldAlert, Smartphone, HelpCircle, FileText, Paperclip, Key, ClipboardList, ExternalLink, Save } from 'lucide-react';
 
 interface InterventionPanelProps {
   interventionId: string;
@@ -48,6 +48,45 @@ export function InterventionPanel({
   const [resolving, setResolving] = useState(false);
   const [resolution, setResolution] = useState<'completed' | 'skipped' | 'cancelled' | null>(null);
 
+  const [settings, setSettings] = useState<any>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/settings', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        setSettings(data);
+        setLoadingSettings(false);
+      })
+      .catch(() => setLoadingSettings(false));
+  }, []);
+
+  const isMissingAuth = settings && (
+    !settings.usWorkAuthorization || 
+    !settings.visaSponsorship || 
+    !settings.workingRemotelyFrom || 
+    !settings.country || 
+    !settings.eeocGender || 
+    !settings.eeocRace || 
+    !settings.eeocVeteran || 
+    !settings.eeocDisability
+  );
+
+  const showAuthForm = reason === 'unknown_question' && isMissingAuth;
+
+  const handleSettingsChange = (key: string, value: any) => {
+    setSettings((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  async function saveSettings() {
+    if (!settings) return;
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+  }
+
   const isUnsupportedOrFatal =
     reason === 'unexpected_page' ||
     reason === 'resume_rejected' ||
@@ -60,6 +99,9 @@ export function InterventionPanel({
     setResolving(true);
     setResolution(res);
     try {
+      if (res === 'completed' && showAuthForm) {
+        await saveSettings();
+      }
       await fetch(`/api/auto-apply/interventions/${interventionId}/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -153,6 +195,85 @@ export function InterventionPanel({
             2. Once verified, click <strong>Resume Automation</strong> below so the worker can retry this step.<br />
             3. If the step cannot be completed remotely, click <strong>Continue Manually</strong> to finish applying yourself.
           </div>
+
+          {showAuthForm && !loadingSettings && (
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Key size={16} className="text-accent" /> Complete Authorization Settings
+              </h4>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                You are missing required authorization and demographic data. Please fill this out so the AI can answer related application questions. This will be saved to your profile for future applications.
+              </p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
+                    <select value={settings?.usWorkAuthorization || ''} onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
+                        <option value="">Select...</option>
+                        <option value="Yes">Yes, I am authorized to work in the US</option>
+                        <option value="No">No, I am not authorized</option>
+                    </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Visa Sponsorship</label>
+                    <select value={settings?.visaSponsorship || ''} onChange={(e) => handleSettingsChange('visaSponsorship', e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
+                        <option value="">Select...</option>
+                        <option value="Yes">Yes, I require sponsorship</option>
+                        <option value="No">No, I do not require sponsorship</option>
+                    </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Working Remotely From</label>
+                    <input type="text" value={settings?.workingRemotelyFrom || ''} onChange={(e) => handleSettingsChange('workingRemotelyFrom', e.target.value)} placeholder="e.g. New York, NY" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Country</label>
+                    <input type="text" value={settings?.country || ''} onChange={(e) => handleSettingsChange('country', e.target.value)} placeholder="e.g. United States" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Gender</label>
+                    <select value={settings?.eeocGender || ''} onChange={(e) => handleSettingsChange('eeocGender', e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Decline">Decline</option>
+                    </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Race/Ethnicity</label>
+                    <select value={settings?.eeocRace || ''} onChange={(e) => handleSettingsChange('eeocRace', e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
+                        <option value="">Select...</option>
+                        <option value="Hispanic or Latino">Hispanic or Latino</option>
+                        <option value="White">White</option>
+                        <option value="Black or African American">Black or African American</option>
+                        <option value="Asian">Asian</option>
+                        <option value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</option>
+                        <option value="American Indian or Alaska Native">American Indian or Alaska Native</option>
+                        <option value="Two or More Races">Two or More Races</option>
+                        <option value="Decline">Decline</option>
+                    </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Veteran Status</label>
+                    <select value={settings?.eeocVeteran || ''} onChange={(e) => handleSettingsChange('eeocVeteran', e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
+                        <option value="">Select...</option>
+                        <option value="Yes">Yes, protected veteran</option>
+                        <option value="No">No, not a veteran</option>
+                        <option value="Decline">Decline</option>
+                    </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Disability Status</label>
+                    <select value={settings?.eeocDisability || ''} onChange={(e) => handleSettingsChange('eeocDisability', e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
+                        <option value="">Select...</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                        <option value="Decline">Decline</option>
+                    </select>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button

@@ -707,6 +707,142 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </div>
+                {/* Authorization / Auto Apply Settings */}
+                <div className="glass-card" style={{ padding: '2rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
+                        <Key size={22} className="text-accent" /> Authorization & Demographics
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                        Used for Auto Applying. This information is saved securely and injected into applications when required.
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
+                                <select 
+                                    value={settings.usWorkAuthorization || ''}
+                                    onChange={(e) => handleChange('usWorkAuthorization', e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                >
+                                    <option value="">Select...</option>
+                                    <option value="Yes">Yes, I am authorized to work in the US</option>
+                                    <option value="No">No, I am not authorized</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Visa Sponsorship Required</label>
+                                <select 
+                                    value={settings.visaSponsorship || ''}
+                                    onChange={(e) => handleChange('visaSponsorship', e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                >
+                                    <option value="">Select...</option>
+                                    <option value="Yes">Yes, I require sponsorship now or in the future</option>
+                                    <option value="No">No, I do not require sponsorship</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Working Remotely From</label>
+                                <input 
+                                    type="text"
+                                    value={settings.workingRemotelyFrom || ''}
+                                    onChange={(e) => handleChange('workingRemotelyFrom', e.target.value)}
+                                    placeholder='e.g. "New York, NY", "California"'
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Country</label>
+                                <input 
+                                    type="text"
+                                    value={settings.country || ''}
+                                    onChange={(e) => handleChange('country', e.target.value)}
+                                    placeholder='e.g. "United States"'
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ height: '1px', background: 'var(--border-glass)', margin: '0.5rem 0' }} />
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Voluntary Self-ID (EEOC)</h4>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Gender</label>
+                                <select 
+                                    value={settings.eeocGender || ''}
+                                    onChange={(e) => handleChange('eeocGender', e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                >
+                                    <option value="">Select...</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Decline">Decline to Self-Identify</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Race/Ethnicity</label>
+                                <select 
+                                    value={settings.eeocRace || ''}
+                                    onChange={(e) => handleChange('eeocRace', e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                >
+                                    <option value="">Select...</option>
+                                    <option value="Hispanic or Latino">Hispanic or Latino</option>
+                                    <option value="White">White</option>
+                                    <option value="Black or African American">Black or African American</option>
+                                    <option value="Asian">Asian</option>
+                                    <option value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</option>
+                                    <option value="American Indian or Alaska Native">American Indian or Alaska Native</option>
+                                    <option value="Two or More Races">Two or More Races</option>
+                                    <option value="Decline">Decline to Self-Identify</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Veteran Status</label>
+                                <select 
+                                    value={settings.eeocVeteran || ''}
+                                    onChange={(e) => handleChange('eeocVeteran', e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                >
+                                    <option value="">Select...</option>
+                                    <option value="Yes">I identify as one or more of the classifications of protected veteran</option>
+                                    <option value="No">I am not a protected veteran</option>
+                                    <option value="Decline">Decline to Self-Identify</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Disability Status</label>
+                                <select 
+                                    value={settings.eeocDisability || ''}
+                                    onChange={(e) => handleChange('eeocDisability', e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                >
+                                    <option value="">Select...</option>
+                                    <option value="Yes">Yes, I have a disability (or previously had one)</option>
+                                    <option value="No">No, I don't have a disability</option>
+                                    <option value="Decline">Decline to Self-Identify</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)' }}>
+                            <button 
+                                onClick={() => handleSave()} 
+                                disabled={saving}
+                                className="btn-primary" 
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            >
+                                <Save size={18} />
+                                {saving ? 'Saving...' : 'Save Settings'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 {/* PDF Styling Customizer */}
                 <PdfCustomizerSection settings={settings} onChange={handleChange} />

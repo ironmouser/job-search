@@ -345,6 +345,16 @@ model UserPreferences {
   imapHost          String?  @default("imap.gmail.com")
   imapPort          Int?     @default(993)
 
+  // Authorization / Auto Apply Settings
+  usWorkAuthorization String? @map("us_work_authorization")
+  workingRemotelyFrom String? @map("working_remotely_from")
+  visaSponsorship     String? @map("visa_sponsorship")
+  country             String?
+  eeocRace            String? @map("eeoc_race")
+  eeocGender          String? @map("eeoc_gender")
+  eeocVeteran         String? @map("eeoc_veteran")
+  eeocDisability      String? @map("eeoc_disability")
+
   // PDF Styling Customization
   resumePdfTemplate         String? @default("classic") @map("resume_pdf_template")
   resumePdfFontFamily       String? @default("Helvetica, Arial, sans-serif") @map("resume_pdf_font_family")
