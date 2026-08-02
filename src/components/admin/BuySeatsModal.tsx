@@ -252,6 +252,9 @@ export function BuySeatsModal({ isOpen, onClose, orgId, orgName, userEmail = "",
             <div
               style={{
                 marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
                 background: "rgba(59, 130, 246, 0.1)",
                 border: "1px solid rgba(59, 130, 246, 0.2)",
                 borderRadius: 8,
@@ -260,8 +263,11 @@ export function BuySeatsModal({ isOpen, onClose, orgId, orgName, userEmail = "",
                 fontSize: "0.8rem",
               }}
             >
-              💡 <strong>Save more:</strong> Add {nextUpgrade.seatsNeeded} more seats to unlock{" "}
-              <strong>{nextUpgrade.nextTier.name}</strong> (${nextUpgrade.nextTier.monthlyRatePerSeat}/seat/mo)!
+              <Sparkles size={16} style={{ flexShrink: 0, color: "#f59e0b" }} />
+              <span>
+                <strong>Save more:</strong> Add {nextUpgrade.seatsNeeded} more seats to unlock{" "}
+                <strong>{nextUpgrade.nextTier.name}</strong> (${nextUpgrade.nextTier.monthlyRatePerSeat}/seat/mo)!
+              </span>
             </div>
           )}
         </div>
@@ -439,8 +445,8 @@ export function BuySeatsModal({ isOpen, onClose, orgId, orgName, userEmail = "",
           </button>
         )}
 
-        <p style={{ textAlign: "center", fontSize: "0.75rem", color: "#6b7280", marginTop: 12, marginBottom: 0 }}>
-          🔒 Secure 256-bit encrypted checkout via Stripe
+        <p style={{ textAlign: "center", fontSize: "0.75rem", color: "#6b7280", marginTop: 12, marginBottom: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}>
+          <ShieldCheck size={15} style={{ color: "#10b981" }} /> Secure 256-bit encrypted checkout via Stripe
         </p>
 
         <ContactSalesModal

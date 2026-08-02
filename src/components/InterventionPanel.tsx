@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Check, ShieldAlert, Smartphone, HelpCircle, FileText, Paperclip, Key, ClipboardList, ExternalLink, Save } from 'lucide-react';
+import { AlertTriangle, Check, ShieldAlert, Smartphone, HelpCircle, FileText, Paperclip, Key, ClipboardList, ExternalLink, Save, ArrowRight, Zap } from 'lucide-react';
 
 interface InterventionPanelProps {
   interventionId: string;
@@ -175,7 +175,7 @@ export function InterventionPanel({
           >
             <div>
               <strong style={{ color: '#f97316', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
-                👉 What to do next
+                <ArrowRight size={16} /> What to do next
               </strong>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
                 Click <strong>Open Job & Finish Manually</strong> below to open this application directly in your browser.
@@ -184,7 +184,7 @@ export function InterventionPanel({
 
             <div>
               <strong style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
-                ⚡ What will happen next
+                <Zap size={16} className="text-accent" /> What will happen next
               </strong>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                 The job application will launch in a new tab so you can complete the final submission directly. The automated runner will step aside and mark this task as completed.
@@ -231,7 +231,7 @@ export function InterventionPanel({
           >
             <div>
               <strong style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
-                👉 What to do next
+                <ArrowRight size={16} /> What to do next
               </strong>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
                 {showAuthForm 
@@ -242,7 +242,7 @@ export function InterventionPanel({
 
             <div>
               <strong style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
-                ⚡ What will happen next
+                <Zap size={16} className="text-accent" /> What will happen next
               </strong>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                 Once verified, click <strong>Resume Automation</strong> so the AI agent can continue submitting your application automatically.
