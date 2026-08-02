@@ -83,14 +83,15 @@ export async function GET(request: NextRequest) {
 
     const prefs = session.user.userPreferences;
 
-    // Extract user profile from preferences (no full PII — only what's needed for forms)
+    // Extract user profile from preferences (prefer explicit prefs, fallback to resume extractors)
     const userProfile = {
       name: session.user.name ?? '',
       email: session.user.email ?? '',
-      phone: extractPhone(prefs?.resumeMarkdown),
-      location: extractLocation(prefs?.resumeMarkdown),
-      linkedinUrl: undefined as string | undefined,
-      websiteUrl: undefined as string | undefined,
+      phone: prefs?.phone || extractPhone(prefs?.resumeMarkdown) || undefined,
+      location: prefs?.location || extractLocation(prefs?.resumeMarkdown) || undefined,
+      linkedinUrl: prefs?.linkedinUrl || undefined,
+      githubUrl: prefs?.githubUrl || undefined,
+      websiteUrl: prefs?.websiteUrl || undefined,
       usWorkAuthorization: prefs?.usWorkAuthorization ?? undefined,
       workingRemotelyFrom: prefs?.workingRemotelyFrom ?? undefined,
       visaSponsorship: prefs?.visaSponsorship ?? undefined,

@@ -1,7 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Image as ImageIcon, CreditCard, Save, Shield, Key } from "lucide-react";
+import {
+  User,
+  Image as ImageIcon,
+  CreditCard,
+  Save,
+  Shield,
+  Key,
+  Sparkles,
+  Info,
+  CheckCircle2,
+  Phone,
+  MapPin,
+  Globe,
+  Linkedin,
+  Github,
+  FileText,
+  Loader2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { createPortal } from "react-dom";
@@ -74,6 +91,8 @@ export default function ProfileForm({
   const [name, setName] = useState(initialName);
   const [image, setImage] = useState(initialImage);
   const [saving, setSaving] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractSuccess, setExtractSuccess] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -167,6 +186,30 @@ export default function ProfileForm({
     }
   };
 
+  const handleExtractFromResume = async () => {
+    setExtracting(true);
+    setExtractSuccess(false);
+    try {
+      const res = await fetch('/api/user/extract-from-resume', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to extract resume data');
+
+      if (data.name) setName(data.name);
+      if (data.phone) handleSettingsChange('phone', data.phone);
+      if (data.location) handleSettingsChange('location', data.location);
+      if (data.linkedinUrl) handleSettingsChange('linkedinUrl', data.linkedinUrl);
+      if (data.githubUrl) handleSettingsChange('githubUrl', data.githubUrl);
+      if (data.websiteUrl) handleSettingsChange('websiteUrl', data.websiteUrl);
+
+      setExtractSuccess(true);
+      setTimeout(() => setExtractSuccess(false), 5000);
+    } catch (e: any) {
+      alert(e.message || 'Could not extract info from resume.');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -186,7 +229,7 @@ export default function ProfileForm({
         });
       }
 
-      alert("Profile and authorization settings updated successfully!");
+      alert("Profile and auto-apply settings updated successfully!");
       update({ image, name });
       router.refresh();
     } catch (e) {
@@ -299,86 +342,214 @@ export default function ProfileForm({
         document.body
       )}
 
-      {/* Profile Section */}
+      {/* ── My Info & Auto-Fill Information Section ───────────────────────────── */}
       <div className="glass-card">
-        <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
-          <User size={20} className="text-accent" /> Personal Information
-        </h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <label style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Email Address</label>
-            <input
-              type="text"
-              value={email || ""}
-              disabled
-              style={{
-                background: "rgba(0,0,0,0.1)",
-                border: "1px solid var(--border-glass)",
-                color: "var(--text-secondary)",
-                padding: "0.75rem",
-                borderRadius: "8px",
-                cursor: "not-allowed",
-              }}
-            />
-            <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-              <Shield size={12} /> Securely managed via Passwordless Login
-            </span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+          <div>
+            <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
+              <User size={20} className="text-accent" /> My Info & Auto-Fill Settings
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0.25rem 0 0 0" }}>
+              Your contact details used to automatically complete job applications.
+            </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <label style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Display Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Jane Doe"
-              style={{
-                background: "rgba(0,0,0,0.2)",
-                border: "1px solid var(--border-glass)",
-                color: "var(--text-primary)",
-                padding: "0.75rem",
-                borderRadius: "8px",
-              }}
-            />
+          <button
+            type="button"
+            onClick={handleExtractFromResume}
+            disabled={extracting}
+            className="btn-outline"
+            style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", padding: "0.5rem 0.9rem" }}
+          >
+            {extracting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Extracting...
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} className="text-accent" /> Auto-Fill from Resume
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Informational Banner */}
+        <div
+          style={{
+            background: "rgba(59, 130, 246, 0.08)",
+            border: "1px solid rgba(59, 130, 246, 0.25)",
+            padding: "0.85rem 1rem",
+            borderRadius: "10px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "0.75rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <Info size={18} style={{ color: "#3b82f6", flexShrink: 0, marginTop: "2px" }} />
+          <p style={{ margin: 0, fontSize: "0.83rem", color: "var(--text-primary)", lineHeight: 1.45 }}>
+            <strong>Auto Apply Notice:</strong> The contact details in this section are saved securely and injected directly into application forms (Workday, Greenhouse, Lever, Ashby, Workable, etc.) when running Auto Apply on your behalf.
+          </p>
+        </div>
+
+        {extractSuccess && (
+          <div
+            style={{
+              background: "rgba(34, 197, 94, 0.1)",
+              border: "1px solid rgba(34, 197, 94, 0.3)",
+              padding: "0.75rem 1rem",
+              borderRadius: "8px",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginBottom: "1.5rem",
+              fontSize: "0.85rem",
+              color: "#22c55e",
+            }}
+          >
+            <CheckCircle2 size={16} /> Successfully extracted contact information from your resume! Review and click Save.
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {/* Row 1: Display Name & Email */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Full Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Jane Doe"
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Email Address</label>
+              <input
+                type="text"
+                value={email || ""}
+                disabled
+                style={{
+                  background: "rgba(0,0,0,0.1)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-secondary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                  cursor: "not-allowed",
+                }}
+              />
+              <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                <Shield size={12} /> Managed via Passwordless Login
+              </span>
+            </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <label style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Profile Photo</label>
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ position: "relative" }}>
-                <UserAvatar
-                  src={image}
-                  name={name}
-                  email={email}
-                  size={48}
-                  showIconFallback={true}
-                />
-              </div>
-              
-              <div style={{ display: "flex", gap: "0.5rem", flex: 1, alignItems: "center" }}>
-                <label className="btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1rem", cursor: "pointer", margin: 0 }}>
-                  Upload Image
-                  <input type="file" accept="image/jpeg, image/png, image/gif" style={{ display: "none" }} onChange={handleFileChange} />
-                </label>
-                
-                <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "0 0.5rem" }}>OR</span>
+          {/* Row 2: Phone Number & Location */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <Phone size={14} className="text-accent" /> Phone Number
+              </label>
+              <input
+                type="tel"
+                value={settings.phone || ''}
+                onChange={(e) => handleSettingsChange('phone', e.target.value)}
+                placeholder='e.g. "+1 (555) 019-2834"'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
 
-                <input
-                  type="text"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                  placeholder="https://example.com/my-photo.jpg"
-                  style={{
-                    background: "rgba(0,0,0,0.2)",
-                    border: "1px solid var(--border-glass)",
-                    color: "var(--text-primary)",
-                    padding: "0.75rem",
-                    borderRadius: "8px",
-                    flex: 1,
-                    minWidth: "200px"
-                  }}
-                />
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <MapPin size={14} className="text-accent" /> Location (City, State)
+              </label>
+              <input
+                type="text"
+                value={settings.location || ''}
+                onChange={(e) => handleSettingsChange('location', e.target.value)}
+                placeholder='e.g. "San Francisco, CA"'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Row 3: LinkedIn, GitHub, Website URLs */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.25rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <Linkedin size={14} className="text-accent" /> LinkedIn Profile URL
+              </label>
+              <input
+                type="url"
+                value={settings.linkedinUrl || ''}
+                onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)}
+                placeholder='https://linkedin.com/in/janedoe'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <Github size={14} className="text-accent" /> GitHub URL
+              </label>
+              <input
+                type="url"
+                value={settings.githubUrl || ''}
+                onChange={(e) => handleSettingsChange('githubUrl', e.target.value)}
+                placeholder='https://github.com/janedoe'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <Globe size={14} className="text-accent" /> Portfolio / Personal Website
+              </label>
+              <input
+                type="url"
+                value={settings.websiteUrl || ''}
+                onChange={(e) => handleSettingsChange('websiteUrl', e.target.value)}
+                placeholder='https://janedoe.com'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
             </div>
           </div>
 
@@ -389,18 +560,18 @@ export default function ProfileForm({
             style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "fit-content", marginTop: "0.5rem" }}
           >
             <Save size={18} />
-            {saving ? "Saving..." : "Save Profile"}
+            {saving ? "Saving..." : "Save My Info"}
           </button>
         </div>
       </div>
 
-      {/* Authorization & Demographics Section */}
+      {/* ── Authorization & Demographics Section ─────────────────────────────── */}
       <div className="glass-card">
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
           <Key size={20} className="text-accent" /> Authorization & Demographics
         </h3>
         <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
-          Used for Auto Applying. This information is saved securely and injected into applications when required.
+          Required for Auto Applying. These settings are injected into application questionnaires (work authorization, visa sponsorship, and voluntary EEOC self-identification).
         </p>
 
         {loadingSettings ? (
@@ -527,13 +698,71 @@ export default function ProfileForm({
               style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "fit-content", marginTop: "0.5rem" }}
             >
               <Save size={18} />
-              {saving ? "Saving..." : "Save Authorization"}
+              {saving ? "Saving..." : "Save Authorization & Demographics"}
             </button>
           </div>
         )}
       </div>
 
-      {/* Subscription Section */}
+      {/* ── Profile Avatar & Display Name Section ──────────────────────────────── */}
+      <div className="glass-card">
+        <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
+          <ImageIcon size={20} className="text-accent" /> Profile Avatar & Display Settings
+        </h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <label style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Profile Photo</label>
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ position: "relative" }}>
+                <UserAvatar
+                  src={image}
+                  name={name}
+                  email={email}
+                  size={48}
+                  showIconFallback={true}
+                />
+              </div>
+              
+              <div style={{ display: "flex", gap: "0.5rem", flex: 1, alignItems: "center" }}>
+                <label className="btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1rem", cursor: "pointer", margin: 0 }}>
+                  Upload Image
+                  <input type="file" accept="image/jpeg, image/png, image/gif" style={{ display: "none" }} onChange={handleFileChange} />
+                </label>
+                
+                <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "0 0.5rem" }}>OR</span>
+
+                <input
+                  type="text"
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  placeholder="https://example.com/my-photo.jpg"
+                  style={{
+                    background: "rgba(0,0,0,0.2)",
+                    border: "1px solid var(--border-glass)",
+                    color: "var(--text-primary)",
+                    padding: "0.75rem",
+                    borderRadius: "8px",
+                    flex: 1,
+                    minWidth: "200px"
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className="btn-primary"
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "fit-content", marginTop: "0.5rem" }}
+          >
+            <Save size={18} />
+            {saving ? "Saving..." : "Save Photo Settings"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Subscription Section ────────────────────────────────────────────── */}
       <div className="glass-card">
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
           <CreditCard size={20} className="text-accent" /> Subscription

@@ -343,7 +343,12 @@ model UserPreferences {
   emailAddress      String?
   emailAppPassword  String?
   imapHost          String?  @default("imap.gmail.com")
-  imapPort          Int?     @default(993)
+  // Contact & Personal Info
+  phone             String?
+  location          String?
+  linkedinUrl       String?  @map("linkedin_url")
+  githubUrl         String?  @map("github_url")
+  websiteUrl        String?  @map("website_url")
 
   // Authorization / Auto Apply Settings
   usWorkAuthorization String? @map("us_work_authorization")
