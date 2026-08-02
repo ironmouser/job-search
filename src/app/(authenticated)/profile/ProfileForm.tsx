@@ -271,7 +271,7 @@ export default function ProfileForm({
       const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, image }),
+        body: JSON.stringify({ name, email, image }),
       });
 
       if (!res.ok) throw new Error("Failed to save profile");
@@ -470,7 +470,7 @@ export default function ProfileForm({
         >
           <Info size={18} style={{ color: "#3b82f6", flexShrink: 0, marginTop: "2px" }} />
           <p style={{ margin: 0, fontSize: "0.83rem", color: "var(--text-primary)", lineHeight: 1.45 }}>
-            <strong>Auto Apply Notice:</strong> The contact details in this section are saved securely and injected directly into application forms (Workday, Greenhouse, Lever, Ashby, Workable, etc.) when running Auto Apply on your behalf.
+            <strong>Auto Apply Notice:</strong> The contact details in this section are saved securely and injected directly into application forms (Workday, Greenhouse, Lever, Ashby, Workable, etc.) when running Auto Apply on your behalf. We do not sell or share your information with any 3rd party companies.
           </p>
         </div>
 

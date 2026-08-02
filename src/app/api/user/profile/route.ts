@@ -12,11 +12,16 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { name, image } = await req.json();
+    const { name, email, image } = await req.json();
 
     if (name !== undefined && (typeof name !== 'string' || name.length > 100)) {
       await logSuspiciousActivity({ type: 'PROFILE_PAYLOAD_TOO_LARGE', message: 'Name exceeds max length', userId: session.user.id, metadata: { length: name?.length } });
       return new NextResponse("Invalid name length", { status: 400 });
+    }
+    if (email !== undefined && email !== null && email !== "") {
+      if (typeof email !== 'string' || email.length > 100 || !email.includes('@')) {
+        return new NextResponse("Invalid email address", { status: 400 });
+      }
     }
     if (image !== undefined && image !== null && image !== "") {
       if (typeof image !== 'string' || image.length > 2000 || (!image.startsWith('http://') && !image.startsWith('https://') && !image.startsWith('data:image/'))) {
@@ -27,10 +32,11 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.update({
       where: {
-        email: session.user.email,
+        id: session.user.id,
       },
       data: {
         name: name !== undefined ? name : undefined,
+        email: email !== undefined && email.trim() !== '' ? email.trim() : undefined,
         image: image !== undefined ? (image === "" ? null : image) : undefined,
       },
     });

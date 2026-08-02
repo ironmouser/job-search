@@ -82,13 +82,26 @@ export async function GET(request: NextRequest) {
     }
 
     const prefs = session.user.userPreferences;
+    const resumeText = prefs?.resumeMarkdown ?? assets.tailoredResumeMarkdown ?? '';
+
+    let userName = session.user.name?.trim() ?? '';
+    if (!userName && resumeText) {
+      const nameMatch = resumeText.match(/^#\s+([^\n]+)/) || resumeText.match(/^([^\n]+)/);
+      if (nameMatch) userName = nameMatch[1].trim();
+    }
+
+    const emailMatch = resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    let userEmail = session.user.email?.trim() ?? '';
+    if (!userEmail && emailMatch?.[0]) {
+      userEmail = emailMatch[0].trim();
+    }
 
     // Extract user profile from preferences (prefer explicit prefs, fallback to resume extractors)
     const userProfile = {
-      name: session.user.name ?? '',
-      email: session.user.email ?? '',
-      phone: prefs?.phone || extractPhone(prefs?.resumeMarkdown) || undefined,
-      location: prefs?.location || extractLocation(prefs?.resumeMarkdown) || undefined,
+      name: userName,
+      email: userEmail,
+      phone: prefs?.phone || extractPhone(resumeText) || undefined,
+      location: prefs?.location || extractLocation(resumeText) || undefined,
       linkedinUrl: prefs?.linkedinUrl || undefined,
       githubUrl: prefs?.githubUrl || undefined,
       websiteUrl: prefs?.websiteUrl || undefined,

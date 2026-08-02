@@ -64,14 +64,17 @@ export async function GET(
     const resumeText = prefs?.resumeMarkdown ?? assets.tailoredResumeMarkdown ?? '';
 
     // Extract contact info needed for form-filling
-    let userName = session.user.name ?? '';
+    let userName = session.user.name?.trim() ?? '';
     if (!userName && resumeText) {
-      const nameMatch = resumeText.match(/^#\s+([^\n]+)/);
+      const nameMatch = resumeText.match(/^#\s+([^\n]+)/) || resumeText.match(/^([^\n]+)/);
       if (nameMatch) userName = nameMatch[1].trim();
     }
 
     const emailMatch = resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    const userEmail = session.user.email ?? emailMatch?.[0] ?? '';
+    let userEmail = session.user.email?.trim() ?? '';
+    if (!userEmail && emailMatch?.[0]) {
+      userEmail = emailMatch[0].trim();
+    }
 
     const phoneMatch = resumeText.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
     const locationMatch = resumeText.match(/[A-Z][a-zA-Z\s]+,\s*[A-Z]{2}(?:\s+\d{5})?/);
