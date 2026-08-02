@@ -1,4 +1,4 @@
-import { chromium, Browser, Page, BrowserContext } from 'playwright';
+import { chromium, Browser, Page, BrowserContext, Frame } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
@@ -11,6 +11,7 @@ import * as os from 'os';
  *  - Navigate to URLs
  *  - Write markdown content to a temp PDF file for upload
  *  - Expose the raw Playwright Page for plugin use
+ *  - Handle iframe detection for embedded ATS forms
  *  - Close cleanly on shutdown or error
  */
 export class BrowserSession {
@@ -87,6 +88,28 @@ export class BrowserSession {
   /** Returns the URL chain of all redirects that occurred since last navigation */
   async getRedirectChain(): Promise<string[]> {
     return [this.page.url()];
+  }
+
+  /**
+   * Finds the frame (or main page) containing any of the specified selectors.
+   * Enables seamless automation on custom sites embedding ATS forms in iframes (e.g. Ashby/Greenhouse/Lever).
+   */
+  async findFormFrame(selectors: string[]): Promise<Frame | Page> {
+    const page = this.page;
+    for (const selector of selectors) {
+      if (await page.$(selector).catch(() => null)) {
+        return page;
+      }
+    }
+    for (const frame of page.frames()) {
+      if (frame === page.mainFrame()) continue;
+      for (const selector of selectors) {
+        if (await frame.$(selector).catch(() => null)) {
+          return frame;
+        }
+      }
+    }
+    return page;
   }
 
   // ─── Screenshots ──────────────────────────────────────────────────────────

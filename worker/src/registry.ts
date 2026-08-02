@@ -70,6 +70,7 @@ import './plugins/workday';
 import './plugins/greenhouse';
 import './plugins/lever';
 import './plugins/ashby';
+import './plugins/workable';
 import './plugins/smartrecruiters';
 import './plugins/taleo';
 import './plugins/icims';

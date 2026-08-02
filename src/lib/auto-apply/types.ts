@@ -29,6 +29,7 @@ export enum ATSPlatform {
   GREENHOUSE = 'greenhouse',
   LEVER = 'lever',
   ASHBY = 'ashby',
+  WORKABLE = 'workable',
   SMARTRECRUITERS = 'smartrecruiters',
   TALEO = 'taleo',
   ICIMS = 'icims',

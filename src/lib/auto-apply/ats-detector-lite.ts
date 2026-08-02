@@ -40,27 +40,33 @@ const DETECTION_RULES: DetectionRule[] = [
   },
   {
     platform: ATSPlatform.ASHBY,
-    automationSupported: false,
+    automationSupported: true,
     hostnamePatterns: [/^jobs\.ashbyhq\.com$/i, /\.ashbyhq\.com$/i],
-    urlKeywords: ['ashbyhq.com', 'ashbyhq', '/ashby/'],
+    urlKeywords: ['ashbyhq.com', 'ashbyhq', '/ashby/', 'ashby_jid', 'ashby_embed'],
+  },
+  {
+    platform: ATSPlatform.WORKABLE,
+    automationSupported: true,
+    hostnamePatterns: [/^apply\.workable\.com$/i, /\.workable\.com$/i],
+    urlKeywords: ['workable.com', 'workable'],
   },
   {
     platform: ATSPlatform.SMARTRECRUITERS,
-    automationSupported: false,
+    automationSupported: true,
     hostnamePatterns: [/\.smartrecruiters\.com$/i, /^careers\.smartrecruiters\.com$/i],
-    urlKeywords: ['smartrecruiters.com', 'smartrecruiters'],
+    urlKeywords: ['smartrecruiters.com', 'smartrecruiters', 'smartrecruiter'],
   },
   {
     platform: ATSPlatform.TALEO,
-    automationSupported: false,
+    automationSupported: true,
     hostnamePatterns: [/\.taleo\.net$/i, /\.taleo\.com$/i],
-    urlKeywords: ['taleo.net', 'taleo'],
+    urlKeywords: ['taleo.net', 'taleo.com', 'taleo'],
   },
   {
     platform: ATSPlatform.ICIMS,
-    automationSupported: false,
+    automationSupported: true,
     hostnamePatterns: [/\.icims\.com$/i, /^careers-\w+\.icims\.com$/i],
-    urlKeywords: ['icims.com', 'icims'],
+    urlKeywords: ['icims.com', 'icims_jid', 'icims'],
   },
 ];
 
