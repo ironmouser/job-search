@@ -81,21 +81,24 @@ export class AshbyPlugin extends ATSPlugin {
 
     const profile = context.userProfile;
 
+    const BROAD_NAME_SELECTOR = 'input[name="name"], input[name="_name_"], input[autocomplete="name"], input[placeholder*="Name" i], input[id*="name" i], input[aria-label*="Name" i]';
+    const BROAD_EMAIL_SELECTOR = 'input[name="email"], input[type="email"], input[autocomplete="email"], input[placeholder*="Email" i], input[id*="email" i], input[aria-label*="Email" i]';
+
     // 1. Full Name
-    const nameInput = await targetContext.$(
-      'input[name="name"], input[autocomplete="name"], input[placeholder*="Full Name" i], input[id*="name" i]'
-    );
+    const nameInput = await targetContext.$(BROAD_NAME_SELECTOR);
     if (nameInput && profile.name) {
       await nameInput.fill(profile.name);
+      await nameInput.dispatchEvent('input').catch(() => {});
+      await nameInput.dispatchEvent('change').catch(() => {});
       await logger.info('field_filled', `Filled name: ${profile.name}`);
     }
 
     // 2. Email
-    const emailInput = await targetContext.$(
-      'input[name="email"], input[type="email"], input[autocomplete="email"], input[placeholder*="Email" i]'
-    );
+    const emailInput = await targetContext.$(BROAD_EMAIL_SELECTOR);
     if (emailInput && profile.email) {
       await emailInput.fill(profile.email);
+      await emailInput.dispatchEvent('input').catch(() => {});
+      await emailInput.dispatchEvent('change').catch(() => {});
       await logger.info('field_filled', `Filled email: ${profile.email}`);
     }
 
@@ -151,14 +154,40 @@ export class AshbyPlugin extends ATSPlugin {
 
   async validate(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<{ valid: boolean; issues: string[] }> {
     const issues: string[] = [];
-    const targetContext = await browser.findFormFrame(['input[name="name"]', 'form']);
+    const targetContext = await browser.findFormFrame(['input[name="name"]', 'input[type="email"]', 'form']);
+    const profile = context.userProfile;
+
+    const BROAD_NAME_SELECTOR = 'input[name="name"], input[name="_name_"], input[autocomplete="name"], input[placeholder*="Name" i], input[id*="name" i], input[aria-label*="Name" i]';
+    const BROAD_EMAIL_SELECTOR = 'input[name="email"], input[type="email"], input[autocomplete="email"], input[placeholder*="Email" i], input[id*="email" i], input[aria-label*="Email" i]';
 
     // Check for mandatory name/email fields
-    const nameVal = await targetContext.$eval('input[name="name"], input[autocomplete="name"]', (el: any) => el.value).catch(() => null);
-    if (!nameVal) issues.push('Name field is empty');
+    let nameVal = await targetContext.$eval(BROAD_NAME_SELECTOR, (el: any) => el.value).catch(() => null);
+    if (!nameVal && profile.name) {
+      const nameInput = await targetContext.$(BROAD_NAME_SELECTOR);
+      if (nameInput) {
+        await nameInput.fill(profile.name);
+        await nameInput.dispatchEvent('input').catch(() => {});
+        await nameInput.dispatchEvent('change').catch(() => {});
+        nameVal = profile.name;
+      }
+    }
+    if (!nameVal && !profile.name) {
+      issues.push('Name field is empty');
+    }
 
-    const emailVal = await targetContext.$eval('input[name="email"], input[type="email"]', (el: any) => el.value).catch(() => null);
-    if (!emailVal) issues.push('Email field is empty');
+    let emailVal = await targetContext.$eval(BROAD_EMAIL_SELECTOR, (el: any) => el.value).catch(() => null);
+    if (!emailVal && profile.email) {
+      const emailInput = await targetContext.$(BROAD_EMAIL_SELECTOR);
+      if (emailInput) {
+        await emailInput.fill(profile.email);
+        await emailInput.dispatchEvent('input').catch(() => {});
+        await emailInput.dispatchEvent('change').catch(() => {});
+        emailVal = profile.email;
+      }
+    }
+    if (!emailVal && !profile.email) {
+      issues.push('Email field is empty');
+    }
 
     return { valid: issues.length === 0, issues };
   }
