@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { AutoApplyButton } from './AutoApplyButton';
 import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
@@ -52,6 +53,10 @@ const ACTIVE_STATUSES = new Set([
 const POLL_INTERVAL = 3000;
 
 export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps) {
+  const { data: authSession } = useSession();
+  const userRole = (authSession?.user as any)?.role;
+  const isAdmin = userRole === 'SYSTEM_ADMIN' || userRole === 'ORGANIZATION_ADMIN' || userRole === 'ADMIN';
+
   const [session, setSession] = useState<SessionData | null>(null);
   const [showLogs, setShowLogs] = useState(false);
   const [bgConfidence, setBgConfidence] = useState<{ platform: string; confidence: number } | null>(null);
@@ -229,8 +234,8 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
         />
       )}
 
-      {/* Log viewer toggle */}
-      {session && (
+      {/* Log viewer toggle — ONLY for admins */}
+      {isAdmin && session && (
         <div>
           <button
             onClick={() => setShowLogs((v) => !v)}
@@ -247,7 +252,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
             }}
             id={`toggle-logs-${jobId}`}
           >
-            {showLogs ? '▲' : '▼'} Execution Logs
+            {showLogs ? '▲' : '▼'} Execution Logs (Admin Only)
           </button>
           {showLogs && (
             <AutoApplyLogViewer

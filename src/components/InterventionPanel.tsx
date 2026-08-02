@@ -159,10 +159,37 @@ export function InterventionPanel({
 
       {isUnsupportedOrFatal ? (
         <>
-          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '0.85rem', borderLeft: '3px solid #f97316', lineHeight: 1.5 }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Why automation paused:</strong> Automated background runners cannot autonomously bypass complex assessments, unmapped application questionnaires, or unrecognized tracking platforms. Because automated workers run in isolated cloud sessions, manual actions taken in your desktop browser do not transfer back to the automated worker.
-            <br /><br />
-            <strong style={{ color: 'var(--text-primary)' }}>What to do next:</strong> Click below to open the job application in your browser and complete your submission manually.
+          <div
+            style={{
+              fontSize: '0.85rem',
+              color: 'var(--text-primary)',
+              background: 'rgba(249, 115, 22, 0.06)',
+              borderRadius: '0.6rem',
+              padding: '1rem',
+              borderLeft: '4px solid #f97316',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.65rem',
+              lineHeight: 1.55,
+            }}
+          >
+            <div>
+              <strong style={{ color: '#f97316', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
+                👉 What to do next
+              </strong>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                Click <strong>Open Job & Finish Manually</strong> below to open this application directly in your browser.
+              </span>
+            </div>
+
+            <div>
+              <strong style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
+                ⚡ What will happen next
+              </strong>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                The job application will launch in a new tab so you can complete the final submission directly. The automated runner will step aside and mark this task as completed.
+              </span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -170,16 +197,16 @@ export function InterventionPanel({
               className="btn-primary"
               onClick={handleManualContinue}
               disabled={resolving}
-              style={{ flex: 2, minWidth: '200px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', padding: '0.6rem 1rem' }}
+              style={{ flex: 2, minWidth: '200px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', padding: '0.65rem 1.25rem', fontSize: '0.9rem', fontWeight: 600 }}
               id={`intervention-manual-continue-${interventionId}`}
             >
-              {resolving && resolution === 'skipped' ? 'Switching to Manual…' : <><ExternalLink size={15} /> Open Job & Continue Manually</>}
+              {resolving && resolution === 'skipped' ? 'Opening Job…' : <><ExternalLink size={16} /> Open Job & Finish Manually</>}
             </button>
             <button
               className="btn-outline"
               onClick={() => resolve('cancelled')}
               disabled={resolving}
-              style={{ flex: 1, minWidth: '120px', padding: '0.6rem 1rem' }}
+              style={{ flex: 1, minWidth: '120px', padding: '0.65rem 1rem', fontSize: '0.85rem' }}
               id={`intervention-cancel-${interventionId}`}
             >
               {resolving && resolution === 'cancelled' ? '…' : 'Cancel Auto Apply'}
@@ -188,12 +215,39 @@ export function InterventionPanel({
         </>
       ) : (
         <>
-          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '0.85rem', borderLeft: '3px solid #fbbf24', lineHeight: 1.5 }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Verification Required:</strong> The automated process paused because the platform requires additional verification or credentials.
-            <br /><br />
-            1. If you are using an active local session or extension, complete the verification directly on the job page.<br />
-            2. Once verified, click <strong>Resume Automation</strong> below so the worker can retry this step.<br />
-            3. If the step cannot be completed remotely, click <strong>Continue Manually</strong> to finish applying yourself.
+          <div
+            style={{
+              fontSize: '0.85rem',
+              color: 'var(--text-primary)',
+              background: 'rgba(251, 191, 36, 0.06)',
+              borderRadius: '0.6rem',
+              padding: '1rem',
+              borderLeft: '4px solid #fbbf24',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.65rem',
+              lineHeight: 1.55,
+            }}
+          >
+            <div>
+              <strong style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
+                👉 What to do next
+              </strong>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                {showAuthForm 
+                  ? 'Fill out your missing authorization details below or complete verification directly on the company site.' 
+                  : 'Complete the verification or login directly on the job application page.'}
+              </span>
+            </div>
+
+            <div>
+              <strong style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
+                ⚡ What will happen next
+              </strong>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                Once verified, click <strong>Resume Automation</strong> so the AI agent can continue submitting your application automatically.
+              </span>
+            </div>
           </div>
 
           {showAuthForm && !loadingSettings && (
@@ -280,28 +334,28 @@ export function InterventionPanel({
               className="btn-primary"
               onClick={() => resolve('completed')}
               disabled={resolving}
-              style={{ flex: 2, minWidth: '160px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem 1rem' }}
+              style={{ flex: 2, minWidth: '160px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.65rem 1.25rem', fontSize: '0.9rem', fontWeight: 600 }}
               id={`intervention-resolve-${interventionId}`}
             >
-              {resolving && resolution === 'completed' ? 'Resuming…' : <><Check size={15} /> Resume Automation</>}
+              {resolving && resolution === 'completed' ? 'Resuming…' : <><Check size={16} /> Resume Automation</>}
             </button>
             {pageUrl && (
               <button
                 className="btn-outline"
                 onClick={handleManualContinue}
                 disabled={resolving}
-                style={{ flex: 1, minWidth: '150px', padding: '0.6rem 1rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+                style={{ flex: 1, minWidth: '150px', padding: '0.65rem 1rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', fontSize: '0.85rem' }}
                 title="Stop automated execution and apply directly in your browser"
                 id={`intervention-switch-manual-${interventionId}`}
               >
-                {resolving && resolution === 'skipped' ? 'Switching…' : <><ExternalLink size={14} /> Continue Manually</>}
+                {resolving && resolution === 'skipped' ? 'Opening Job…' : <><ExternalLink size={14} /> Finish Manually</>}
               </button>
             )}
             <button
               className="btn-outline"
               onClick={() => resolve('cancelled')}
               disabled={resolving}
-              style={{ flex: 1, minWidth: '100px', padding: '0.6rem 1rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444' }}
+              style={{ flex: 1, minWidth: '100px', padding: '0.65rem 1rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444', fontSize: '0.85rem' }}
               id={`intervention-cancel-${interventionId}`}
             >
               {resolving && resolution === 'cancelled' ? '…' : 'Cancel'}
