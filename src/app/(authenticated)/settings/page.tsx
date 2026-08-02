@@ -272,20 +272,9 @@ export default function SettingsPage() {
 
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '4rem', maxWidth: '800px' }}>
-            <div style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <h1 className="page-title">Settings</h1>
-                    <p className="page-subtitle">Manage your connections and AI agent preferences</p>
-                </div>
-                <button 
-                    onClick={() => handleSave()} 
-                    disabled={saving}
-                    className="btn-primary" 
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                    <Save size={18} />
-                    {saving ? 'Saving...' : 'Save Settings'}
-                </button>
+            <div style={{ marginBottom: '3rem' }}>
+                <h1 className="page-title">Settings</h1>
+                <p className="page-subtitle">Manage your connections and AI agent preferences</p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -625,17 +614,7 @@ export default function SettingsPage() {
                             </span>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)' }}>
-                            <button 
-                                onClick={() => handleSave()} 
-                                disabled={saving}
-                                className="btn-primary" 
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                            >
-                                <Save size={18} />
-                                {saving ? 'Saving...' : 'Save Settings'}
-                            </button>
-                        </div>
+
                     </div>
                 </div>
 
@@ -694,17 +673,7 @@ export default function SettingsPage() {
                             </Link>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)' }}>
-                            <button 
-                                onClick={() => handleSave()} 
-                                disabled={saving}
-                                className="btn-primary" 
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                            >
-                                <Save size={18} />
-                                {saving ? 'Saving...' : 'Save Settings'}
-                            </button>
-                        </div>
+
                     </div>
                 </div>
                 {/* Authorization / Auto Apply Settings Shortcut */}
@@ -899,17 +868,7 @@ export default function SettingsPage() {
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)' }}>
-                            <button 
-                                onClick={() => handleSave()} 
-                                disabled={saving}
-                                className="btn-primary" 
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                            >
-                                <Save size={18} />
-                                {saving ? 'Saving...' : 'Save Settings'}
-                            </button>
-                        </div>
+
                     </div>
                 </div>
 
@@ -926,6 +885,34 @@ export default function SettingsPage() {
                 </div>
                 )}
 
+            </div>
+
+            {/* Floating Save Button Bar at Bottom */}
+            <div
+                style={{
+                    position: "sticky",
+                    bottom: "1.5rem",
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    padding: "1rem 1.5rem",
+                    background: "rgba(15, 23, 42, 0.85)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid var(--border-glass)",
+                    borderRadius: "12px",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+                    zIndex: 100,
+                    marginTop: "2rem",
+                }}
+            >
+                <button
+                    onClick={() => handleSave()}
+                    disabled={saving}
+                    className="btn-primary"
+                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.65rem 1.5rem", fontSize: "0.95rem" }}
+                >
+                    <Save size={18} />
+                    {saving ? "Saving All Changes..." : "Save All Changes"}
+                </button>
             </div>
 
             {/* Unsaved Changes Dialog Modal */}
