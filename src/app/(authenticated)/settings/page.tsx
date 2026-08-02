@@ -681,7 +681,7 @@ export default function SettingsPage() {
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
                                 Manage your target job criteria, ideal roles, and scoring rubric on the My Profile page.
                             </p>
-                            <Link href="/assets#target-profile" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
+                            <Link href="/profile#target-profile" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
                                 <Target size={16} /> Target & Profile
                             </Link>
                         </div>
@@ -689,7 +689,7 @@ export default function SettingsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }} data-tour="resume-upload">
                             <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Base Resume</label>
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>To update the base resume the AI uses as a template, visit your My Profile page.</p>
-                            <Link href="/assets" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
+                            <Link href="/profile#base-resume" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
                                 <FileText size={16} /> Manage Base Resume
                             </Link>
                         </div>

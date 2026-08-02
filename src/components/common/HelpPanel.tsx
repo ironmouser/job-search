@@ -27,7 +27,7 @@ export default function HelpPanel() {
         else if (pathname.includes('/settings')) setPageId('settings');
         else if (pathname.includes('/pipeline')) setPageId('pipeline');
         else if (pathname.includes('/analytics')) setPageId('analytics');
-        else if (pathname.includes('/assets')) setPageId('assets');
+        else if (pathname.includes('/profile')) setPageId('profile');
         else if (pathname.includes('/job/')) setPageId('job_details');
         else setPageId('*');
     }, [pathname, isHelpPanelOpen]);

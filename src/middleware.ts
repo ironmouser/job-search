@@ -23,7 +23,7 @@ export default withAuth(
 
     // Organization admins do not need candidate onboarding and are redirected to /org-admin
     if (isAuth && userRole === 'ORGANIZATION_ADMIN') {
-      if (isOnboardingPage || pathname === '/dashboard' || pathname.startsWith('/pipeline') || pathname.startsWith('/assets') || pathname.startsWith('/analytics')) {
+      if (isOnboardingPage || pathname === '/dashboard' || pathname.startsWith('/pipeline') || pathname.startsWith('/profile') || pathname.startsWith('/analytics')) {
         return NextResponse.redirect(new URL('/org-admin', req.url));
       }
     }

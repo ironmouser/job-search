@@ -135,7 +135,7 @@
                 }
             ]
         },
-        "assets": {
+        "profile": {
             "name": "My Profile",
             "description": "Learn how to manage your target profile, scoring rubric, and master resume for AI generation.",
             "roles": ["*"],

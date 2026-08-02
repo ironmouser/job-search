@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   User,
   Image as ImageIcon,
@@ -17,6 +17,9 @@ import {
   Link as LinkIcon,
   FileText,
   Loader2,
+  Target,
+  Upload,
+  Clipboard,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -92,11 +95,14 @@ export default function ProfileForm({
   const [saving, setSaving] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractSuccess, setExtractSuccess] = useState(false);
+  const [parsingResume, setParsingResume] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   const [settings, setSettings] = useState<any>({});
   const [loadingSettings, setLoadingSettings] = useState(true);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
@@ -115,6 +121,17 @@ export default function ProfileForm({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Smooth scroll to hash anchor on load (e.g., #target-profile or #base-resume)
+  useEffect(() => {
+    if (!loadingSettings && typeof window !== 'undefined' && window.location.hash) {
+      const targetId = window.location.hash.replace('#', '');
+      const el = document.getElementById(targetId);
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+      }
+    }
+  }, [loadingSettings]);
 
   // Cropper state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -209,6 +226,45 @@ export default function ProfileForm({
     }
   };
 
+  const handleResumeFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setParsingResume(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/parse-resume', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.markdown) {
+        handleSettingsChange('resumeMarkdown', data.markdown);
+        alert('Resume parsed and imported into editor! Click "Save Changes" to apply.');
+      } else {
+        throw new Error(data.error || 'Failed to parse resume');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error parsing file.');
+    } finally {
+      setParsingResume(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePasteResume = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        handleSettingsChange('resumeMarkdown', text);
+      }
+    } catch (err) {
+      alert('Could not read from clipboard. Please ensure you have granted permission, or manually paste into the text area.');
+    }
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -226,9 +282,19 @@ export default function ProfileForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(settings),
         });
+
+        // Also save base assets (resumeMarkdown & profile)
+        await fetch('/api/assets/base', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: settings.resumeMarkdown || '',
+            profile: settings.profile || '',
+          }),
+        });
       }
 
-      alert("Profile and auto-apply settings updated successfully!");
+      alert("Profile, target profile, and base resume saved successfully!");
       update({ image, name });
       router.refresh();
     } catch (e) {
@@ -341,7 +407,24 @@ export default function ProfileForm({
         document.body
       )}
 
-      {/* ── My Info & Auto-Fill Information Section ───────────────────────────── */}
+      {/* Top Header Controls */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 className="page-title">My Profile</h1>
+          <p className="page-subtitle">Manage your personal information, auto-apply settings, target profile, and base resume.</p>
+        </div>
+        <button
+          onClick={handleSaveProfile}
+          disabled={saving}
+          className="btn-primary"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <Save size={18} />
+          {saving ? 'Saving...' : 'Save All Changes'}
+        </button>
+      </div>
+
+      {/* ── 1. My Info & Auto-Fill Information Section ───────────────────────────── */}
       <div className="glass-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
           <div>
@@ -551,20 +634,10 @@ export default function ProfileForm({
               />
             </div>
           </div>
-
-          <button
-            onClick={handleSaveProfile}
-            disabled={saving}
-            className="btn-primary"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "fit-content", marginTop: "0.5rem" }}
-          >
-            <Save size={18} />
-            {saving ? "Saving..." : "Save My Info"}
-          </button>
         </div>
       </div>
 
-      {/* ── Authorization & Demographics Section ─────────────────────────────── */}
+      {/* ── 2. Authorization & Demographics Section ─────────────────────────────── */}
       <div className="glass-card">
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
           <Key size={20} className="text-accent" /> Authorization & Demographics
@@ -689,21 +762,91 @@ export default function ProfileForm({
                 </select>
               </div>
             </div>
-
-            <button
-              onClick={handleSaveProfile}
-              disabled={saving}
-              className="btn-primary"
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "fit-content", marginTop: "0.5rem" }}
-            >
-              <Save size={18} />
-              {saving ? "Saving..." : "Save Authorization & Demographics"}
-            </button>
           </div>
         )}
       </div>
 
-      {/* ── Profile Avatar & Display Name Section ──────────────────────────────── */}
+      {/* ── 3. Target Profile & Scoring Rubric Section ───────────────────────────── */}
+      <div className="glass-card" id="target-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} data-tour="target-profile">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
+            <Target size={20} /> Target Profile & Scoring Rubric
+          </h3>
+        </div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+          This text is used by AI automation to score, rank, and evaluate match quality for job opportunities. Update it to reflect your ideal target roles and criteria.
+        </p>
+        <textarea
+          value={settings.profile || ''}
+          onChange={(e) => handleSettingsChange('profile', e.target.value)}
+          placeholder="Enter target job titles, key skills, industry preferences, and scoring rubric..."
+          style={{
+            width: '100%',
+            minHeight: '180px',
+            background: 'rgba(0,0,0,0.2)',
+            border: '1px solid var(--border-glass)',
+            borderRadius: '8px',
+            color: 'var(--text-primary)',
+            padding: '1rem',
+            fontSize: '0.9rem',
+            resize: 'vertical'
+          }}
+        />
+      </div>
+
+      {/* ── 4. Base Resume Section ─────────────────────────────────────────────── */}
+      <div className="glass-card" id="base-resume" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} data-tour="assets-editor">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
+            <FileText size={20} /> Base Resume
+          </h3>
+          <div style={{ display: 'flex', gap: '0.5rem' }} data-tour="assets-upload">
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={parsingResume}
+              className="btn-outline"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              {parsingResume ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} 
+              {parsingResume ? 'Parsing...' : 'Upload PDF/DOC'}
+            </button>
+            <input 
+              type="file" 
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+              style={{ display: 'none' }} 
+              ref={fileInputRef}
+              onChange={handleResumeFileUpload}
+            />
+            <button 
+              type="button"
+              onClick={handlePasteResume}
+              className="btn-outline"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Clipboard size={16} /> Paste
+            </button>
+          </div>
+        </div>
+        <textarea
+          value={settings.resumeMarkdown || ''}
+          onChange={(e) => handleSettingsChange('resumeMarkdown', e.target.value)}
+          placeholder="Paste or write your master base resume in Markdown format..."
+          style={{
+            width: '100%',
+            minHeight: '400px',
+            background: 'rgba(0,0,0,0.2)',
+            border: '1px solid var(--border-glass)',
+            borderRadius: '8px',
+            color: 'var(--text-primary)',
+            padding: '1.25rem',
+            fontSize: '0.95rem',
+            resize: 'vertical'
+          }}
+        />
+      </div>
+
+      {/* ── 5. Profile Avatar & Display Settings ────────────────────────────────── */}
       <div className="glass-card">
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
           <ImageIcon size={20} className="text-accent" /> Profile Avatar & Display Settings
@@ -748,20 +891,10 @@ export default function ProfileForm({
               </div>
             </div>
           </div>
-
-          <button
-            onClick={handleSaveProfile}
-            disabled={saving}
-            className="btn-primary"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "fit-content", marginTop: "0.5rem" }}
-          >
-            <Save size={18} />
-            {saving ? "Saving..." : "Save Photo Settings"}
-          </button>
         </div>
       </div>
 
-      {/* ── Subscription Section ────────────────────────────────────────────── */}
+      {/* ── 6. Subscription Section ────────────────────────────────────────────── */}
       <div className="glass-card">
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
           <CreditCard size={20} className="text-accent" /> Subscription
@@ -793,6 +926,33 @@ export default function ProfileForm({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Floating Save Button Bar at Bottom */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: "1.5rem",
+          display: "flex",
+          justifyContent: "flex-end",
+          padding: "1rem 1.5rem",
+          background: "rgba(15, 23, 42, 0.85)",
+          backdropFilter: "blur(12px)",
+          border: "1px solid var(--border-glass)",
+          borderRadius: "12px",
+          boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+          zIndex: 100,
+        }}
+      >
+        <button
+          onClick={handleSaveProfile}
+          disabled={saving}
+          className="btn-primary"
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.65rem 1.5rem", fontSize: "0.95rem" }}
+        >
+          <Save size={18} />
+          {saving ? "Saving All Changes..." : "Save All Changes"}
+        </button>
       </div>
     </div>
   );
