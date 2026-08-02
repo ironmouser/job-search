@@ -14,8 +14,7 @@ import {
   Phone,
   MapPin,
   Globe,
-  Linkedin,
-  Github,
+  Link as LinkIcon,
   FileText,
   Loader2,
 } from "lucide-react";
@@ -497,7 +496,7 @@ export default function ProfileForm({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.25rem" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <Linkedin size={14} className="text-accent" /> LinkedIn Profile URL
+                <LinkIcon size={14} className="text-accent" /> LinkedIn Profile URL
               </label>
               <input
                 type="url"
@@ -516,7 +515,7 @@ export default function ProfileForm({
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <Github size={14} className="text-accent" /> GitHub URL
+                <LinkIcon size={14} className="text-accent" /> GitHub URL
               </label>
               <input
                 type="url"

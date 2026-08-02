@@ -343,6 +343,7 @@ model UserPreferences {
   emailAddress      String?
   emailAppPassword  String?
   imapHost          String?  @default("imap.gmail.com")
+  imapPort          Int?     @default(993)
   // Contact & Personal Info
   phone             String?
   location          String?
