@@ -153,9 +153,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
       };
     }
 
-    const submitBtn = await targetContext.$(
-      'button[type="submit"], button:has-text("Submit"), button:has-text("Send")'
-    );
+    const submitBtn = await this.findSubmitButton(targetContext, logger);
     if (!submitBtn) {
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Submit button not found on SmartRecruiters form', context.jobUrl);
     }

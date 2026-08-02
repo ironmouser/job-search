@@ -166,7 +166,7 @@ export class WorkablePlugin extends ATSPlugin {
       };
     }
 
-    const submitBtn = await targetContext.$('button[type="submit"], button:has-text("Submit application")');
+    const submitBtn = await this.findSubmitButton(targetContext, logger);
     if (!submitBtn) {
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Could not find submit button on Workable form', context.jobUrl);
     }

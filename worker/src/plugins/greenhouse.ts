@@ -316,31 +316,23 @@ export class GreenhousePlugin extends ATSPlugin {
       };
     }
 
-    // Live mode — click the submit button
-    const submitSelectors = [
-      'input[type="submit"]#submit_app',
-      'input[type="submit"][value*="Submit"]',
-      'button[type="submit"]',
-      '#submit_app',
-    ];
+    // Live mode — click the submit button.
+    // Greenhouse's stable semantic selectors are passed as Tier 1; the base-class
+    // helper falls back through fuzzy attribute matching and text scanning.
+    const submitBtn = await this.findSubmitButton(
+      page,
+      logger,
+      ['input[type="submit"]#submit_app', '#submit_app', 'input[type="submit"][value*="Submit" i]']
+    );
 
-    let submitted = false;
-    for (const sel of submitSelectors) {
-      const btn = page.locator(sel).first();
-      if (await btn.count() > 0) {
-        await btn.click();
-        submitted = true;
-        await logger.info('submit_clicked', `Submit button clicked via: ${sel}`);
-        break;
-      }
-    }
-
-    if (!submitted) {
+    if (!submitBtn) {
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
         'Could not find the submit button on the Greenhouse application form.'
       );
     }
+
+    await submitBtn.click();
 
     // Wait for submission request to finish and confirmation page/DOM update to render
     try {
@@ -359,7 +351,7 @@ export class GreenhousePlugin extends ATSPlugin {
 
     const confirmationFound =
       thanksContainerCount > 0 ||
-      (!formVisible && submitted) ||
+      (!formVisible) ||
       currentUrl.includes('thanks') ||
       currentUrl.includes('confirmation') ||
       bodyText.includes('application submitted') ||

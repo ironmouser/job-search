@@ -171,9 +171,7 @@ export class ICIMSPlugin extends ATSPlugin {
       };
     }
 
-    const submitBtn = await targetContext.$(
-      'button[type="submit"], input[type="submit"], button:has-text("Submit")'
-    );
+    const submitBtn = await this.findSubmitButton(targetContext, logger);
     if (!submitBtn) {
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Submit button not found on iCIMS form', context.jobUrl);
     }

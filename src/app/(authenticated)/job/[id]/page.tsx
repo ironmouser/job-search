@@ -288,6 +288,16 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   userEmail={user?.email || undefined}
                   companyName={cleanCompanyName(job.company)}
                   companyLocation={job.location || undefined}
+                  initialPdfSettings={{
+                    template: preferences?.coverLetterPdfTemplate || 'classic',
+                    fontFamily: preferences?.coverLetterPdfFontFamily || 'Helvetica, Arial, sans-serif',
+                    fontSize: preferences?.coverLetterPdfFontSize || '11pt',
+                    lineHeight: preferences?.coverLetterPdfLineHeight || '1.5',
+                    primaryColor: preferences?.coverLetterPdfPrimaryColor || '#1e3a8a',
+                    textColor: preferences?.coverLetterPdfTextColor || '#111827',
+                    margin: preferences?.coverLetterPdfMargin || '0.5in',
+                    headerLayout: preferences?.coverLetterPdfHeaderLayout || 'left',
+                  }}
                 />
                 
                 <ResumeAssetCard 
@@ -297,6 +307,16 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   initialRegensUsed={assets.resumeRegensUsed || 0} 
                   planTier={planTier} 
                   initialCustomization={preferences?.resumeCustomizationMaxPercentage || 50} 
+                  initialPdfSettings={{
+                    template: preferences?.resumePdfTemplate || 'classic',
+                    fontFamily: preferences?.resumePdfFontFamily || 'Helvetica, Arial, sans-serif',
+                    fontSize: preferences?.resumePdfFontSize || '11pt',
+                    lineHeight: preferences?.resumePdfLineHeight || '1.5',
+                    primaryColor: preferences?.resumePdfPrimaryColor || '#1e3a8a',
+                    textColor: preferences?.resumePdfTextColor || '#111827',
+                    margin: preferences?.resumePdfMargin || '0.5in',
+                    headerLayout: preferences?.resumePdfHeaderLayout || 'left',
+                  }}
                 />
               </div>
             ) : (

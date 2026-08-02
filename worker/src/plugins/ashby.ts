@@ -218,7 +218,15 @@ export class AshbyPlugin extends ATSPlugin {
   }
 
   async finalize(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<WorkflowResult> {
-    const targetContext = await browser.findFormFrame(['button[type="submit"]', 'form']);
+    // The Ashby submit button has no type="submit" — it uses the class
+    // `ashby-application-form-submit-button`. Include that class in the probe
+    // selectors so findFormFrame resolves to the embedded iframe rather than
+    // falling back to the main page where the button doesn't exist.
+    const targetContext = await browser.findFormFrame([
+      '.ashby-application-form-submit-button',
+      'button[type="submit"]',
+      'form',
+    ]);
 
     if (context.simulationMode) {
       const screenshotPath = await browser.screenshot('ashby-review.png');
@@ -235,8 +243,14 @@ export class AshbyPlugin extends ATSPlugin {
       };
     }
 
-    // Live submission
-    const submitBtn = await targetContext.$('button[type="submit"], input[type="submit"], button:has-text("Submit Application")');
+    // Live submission — use the shared priority-ordered search from ATSPlugin.
+    // Ashby's stable semantic class is passed as Tier 1 so we survive CSS Module
+    // hash rotations on the obfuscated class names.
+    const submitBtn = await this.findSubmitButton(
+      targetContext,
+      logger,
+      ['.ashby-application-form-submit-button']
+    );
     if (!submitBtn) {
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Could not find submit button on Ashby application form', context.jobUrl);
     }
@@ -258,6 +272,8 @@ export class AshbyPlugin extends ATSPlugin {
       estimatedSubmissionTime: null,
     };
   }
+
 }
+
 
 pluginRegistry.register(new AshbyPlugin());

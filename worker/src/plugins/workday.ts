@@ -249,30 +249,26 @@ export class WorkdayPlugin extends ATSPlugin {
       };
     }
 
-    // Live mode — click submit
-    const submitSelectors = [
-      '[data-automation-id="bottom-navigation-next-button"]',
-      '[data-automation-id="submit-button"]',
-      'button:has-text("Submit")',
-    ];
+    // Live mode — click submit.
+    // Workday uses data-automation-id attributes as stable semantic identifiers;
+    // pass them as Tier 1 so the base-class helper tries them first.
+    const submitBtn = await this.findSubmitButton(
+      page,
+      logger,
+      [
+        '[data-automation-id="bottom-navigation-next-button"]',
+        '[data-automation-id="submit-button"]',
+      ]
+    );
 
-    let submitted = false;
-    for (const selector of submitSelectors) {
-      const btn = page.locator(selector);
-      if (await btn.count() > 0) {
-        await btn.click();
-        submitted = true;
-        await logger.info('submit_clicked', 'Submit button clicked');
-        break;
-      }
-    }
-
-    if (!submitted) {
+    if (!submitBtn) {
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
         'Could not find submit button on final Workday page'
       );
     }
+
+    await submitBtn.click();
 
     // Verify confirmation
     await page.waitForTimeout(3000);

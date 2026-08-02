@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { marked } from 'marked';
+import { generateStyledPdfHtml, PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
 import ResumeActions from './ResumeActions';
 import DownloadPdfButton from './DownloadPdfButton';
 import CopyToClipboardButton from './CopyToClipboardButton';
@@ -14,7 +15,8 @@ export default function ResumeAssetCard({
     initialPreviousContent,
     initialRegensUsed,
     planTier,
-    initialCustomization
+    initialCustomization,
+    initialPdfSettings
 }: {
     jobId: string;
     initialContent: string;
@@ -22,6 +24,7 @@ export default function ResumeAssetCard({
     initialRegensUsed: number;
     planTier: string;
     initialCustomization: number;
+    initialPdfSettings?: PdfStyleOptions;
 }) {
     const [content, setContent] = useState(initialContent);
     const [previousContent, setPreviousContent] = useState<string | undefined>(initialPreviousContent);
@@ -29,6 +32,17 @@ export default function ResumeAssetCard({
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
     const [customizationAmount, setCustomizationAmount] = useState(initialCustomization || 50);
     const [selectedColor, setSelectedColor] = useState('#06af9e');
+
+    const [pdfSettings, setPdfSettings] = useState<PdfStyleOptions>({
+        template: initialPdfSettings?.template || 'classic',
+        fontFamily: initialPdfSettings?.fontFamily || 'Helvetica, Arial, sans-serif',
+        fontSize: initialPdfSettings?.fontSize || '11pt',
+        lineHeight: initialPdfSettings?.lineHeight || '1.5',
+        primaryColor: initialPdfSettings?.primaryColor || '#1e3a8a',
+        textColor: initialPdfSettings?.textColor || '#111827',
+        margin: initialPdfSettings?.margin || '0.5in',
+        headerLayout: initialPdfSettings?.headerLayout || 'left',
+    });
 
     useEffect(() => {
         const storedColor = localStorage.getItem('theme-selected-color');
@@ -42,6 +56,25 @@ export default function ResumeAssetCard({
         };
 
         window.addEventListener('theme-color-change', handleGlobalColorChange);
+
+        fetch('/api/settings')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.resumePdfTemplate) {
+                    setPdfSettings({
+                        template: data.resumePdfTemplate,
+                        fontFamily: data.resumePdfFontFamily,
+                        fontSize: data.resumePdfFontSize,
+                        lineHeight: data.resumePdfLineHeight,
+                        primaryColor: data.resumePdfPrimaryColor,
+                        textColor: data.resumePdfTextColor,
+                        margin: data.resumePdfMargin,
+                        headerLayout: data.resumePdfHeaderLayout,
+                    });
+                }
+            })
+            .catch(err => console.error("Could not fetch user PDF settings:", err));
+
         return () => {
             window.removeEventListener('theme-color-change', handleGlobalColorChange);
         };
@@ -197,6 +230,7 @@ export default function ResumeAssetCard({
         extractedName = nameMatch[1].trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
     }
     const resumeFilename = `${extractedName}_Resume.pdf`;
+    const styledResumeHtml = generateStyledPdfHtml(content || '', pdfSettings);
 
     return (
         <details className="glass-card" style={{ cursor: 'pointer' }}>
@@ -205,7 +239,7 @@ export default function ResumeAssetCard({
                     <CheckCircle size={20} /> Tailored Resume Extract
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} onClick={(e) => e.stopPropagation()}>
-                    <DownloadPdfButton markdownText={content} filename={resumeFilename} type="resume" />
+                    <DownloadPdfButton markdownText={content} filename={resumeFilename} type="resume" styleOptions={pdfSettings} />
                     <CopyToClipboardButton textToCopy={content || ''} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
@@ -278,20 +312,6 @@ export default function ResumeAssetCard({
                     )}
                 </div>
 
-                <style dangerouslySetInnerHTML={{ __html: `
-                    .custom-resume-preview h1, 
-                    .custom-resume-preview h2, 
-                    .custom-resume-preview h3, 
-                    .custom-resume-preview h4, 
-                    .custom-resume-preview h5, 
-                    .custom-resume-preview h6 {
-                        color: ${selectedColor} !important;
-                    }
-                    .custom-resume-preview a {
-                        color: ${selectedColor} !important;
-                    }
-                `}} />
-
                 {isEditing ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
                         <textarea 
@@ -320,13 +340,20 @@ export default function ResumeAssetCard({
                     </div>
                 ) : (
                     <div 
-                        className="markdown-body custom-resume-preview"
-                        style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.6 }}
-                        dangerouslySetInnerHTML={{ __html: marked.parse((content || '').replace(/(^|\n)--(?=\n|$)/g, '$1---')) as string }}
+                        className="custom-resume-preview-container"
+                        style={{ 
+                            background: '#ffffff', 
+                            borderRadius: '6px', 
+                            border: '1px solid var(--border-glass)', 
+                            overflow: 'hidden', 
+                            marginBottom: '1.5rem',
+                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)'
+                        }}
+                        dangerouslySetInnerHTML={{ __html: styledResumeHtml }}
                     />
                 )}
                 
-                <ResumeActions jobId={jobId} markdownText={content} selectedColor={selectedColor} />
+                <ResumeActions jobId={jobId} markdownText={content} selectedColor={pdfSettings.primaryColor || selectedColor} pdfSettings={pdfSettings} />
 
                 {error && (
                     <div style={{ padding: '1rem', background: 'rgba(255, 77, 77, 0.1)', color: 'var(--danger)', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '1rem', marginTop: '1rem' }}>

@@ -7,6 +7,7 @@ import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadPdfButton from './DownloadPdfButton';
 import { cleanCompanyName, cleanCompanyLocation } from '@/lib/cleaners';
+import { PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
 
 const cleanContent = (text: string) => {
     if (!text) return '';
@@ -33,6 +34,7 @@ export default function CoverLetterAssetCard({
     userEmail,
     companyName,
     companyLocation,
+    initialPdfSettings,
 }: {
     jobId: string;
     initialContent: string;
@@ -46,6 +48,7 @@ export default function CoverLetterAssetCard({
     userEmail?: string;
     companyName?: string;
     companyLocation?: string;
+    initialPdfSettings?: PdfStyleOptions;
 }) {
     const today = new Date().toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' });
     const initialCompany = cleanCompanyName(companyName);
@@ -63,6 +66,17 @@ export default function CoverLetterAssetCard({
     const [savedPref, setSavedPref] = useState(false);
     const [error, setError] = useState('');
     const [selectedColor, setSelectedColor] = useState('#06af9e');
+
+    const [pdfSettings, setPdfSettings] = useState<PdfStyleOptions>({
+        template: initialPdfSettings?.template || 'classic',
+        fontFamily: initialPdfSettings?.fontFamily || 'Helvetica, Arial, sans-serif',
+        fontSize: initialPdfSettings?.fontSize || '11pt',
+        lineHeight: initialPdfSettings?.lineHeight || '1.5',
+        primaryColor: initialPdfSettings?.primaryColor || '#1e3a8a',
+        textColor: initialPdfSettings?.textColor || '#111827',
+        margin: initialPdfSettings?.margin || '0.5in',
+        headerLayout: initialPdfSettings?.headerLayout || 'left',
+    });
 
     // Custom prompt state
     const [showCustomPrompt, setShowCustomPrompt] = useState(false);
@@ -92,6 +106,25 @@ export default function CoverLetterAssetCard({
         };
 
         window.addEventListener('theme-color-change', handleGlobalColorChange);
+
+        fetch('/api/settings')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.coverLetterPdfTemplate) {
+                    setPdfSettings({
+                        template: data.coverLetterPdfTemplate,
+                        fontFamily: data.coverLetterPdfFontFamily,
+                        fontSize: data.coverLetterPdfFontSize,
+                        lineHeight: data.coverLetterPdfLineHeight,
+                        primaryColor: data.coverLetterPdfPrimaryColor,
+                        textColor: data.coverLetterPdfTextColor,
+                        margin: data.coverLetterPdfMargin,
+                        headerLayout: data.coverLetterPdfHeaderLayout,
+                    });
+                }
+            })
+            .catch(err => console.error("Could not fetch cover letter PDF settings:", err));
+
         return () => {
             window.removeEventListener('theme-color-change', handleGlobalColorChange);
         };
@@ -258,27 +291,35 @@ export default function CoverLetterAssetCard({
     const senderLastName = nameParts.slice(1).join(' ') || '';
     const letterBodyHtml = marked.parse(content || '') as string;
 
+    const activePrimaryColor = pdfSettings.primaryColor || selectedColor || '#1e3a8a';
+    const activeTextColor = pdfSettings.textColor || '#111827';
+    const activeFontFamily = pdfSettings.fontFamily || 'Helvetica, Arial, sans-serif';
+    const activeFontSize = pdfSettings.fontSize || '11pt';
+    const activeLineHeight = pdfSettings.lineHeight || '1.5';
+    const activeMargin = pdfSettings.margin || '0.5in';
+    const isHeaderCentered = pdfSettings.headerLayout === 'centered';
+
     const customCoverLetterHtml = `
-    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.5; color: #000; padding: 40px; font-size: 11pt;">
+    <div style="font-family: ${activeFontFamily}; line-height: ${activeLineHeight}; color: ${activeTextColor}; padding: ${activeMargin}; font-size: ${activeFontSize}; background-color: #ffffff; box-sizing: border-box; width: 100%;">
         <!-- Header: Name left, contact right -->
-        <table style="width: 100%; border-bottom: 2px solid #e0e0e0; padding-bottom: 12px; margin-bottom: 20px;">
+        <table style="width: 100%; border-bottom: 2px solid ${activePrimaryColor}; padding-bottom: 12px; margin-bottom: 20px;">
             <tr>
-                <td style="vertical-align: top;">
+                <td style="vertical-align: top; ${isHeaderCentered ? 'text-align: center;' : ''}">
                     ${senderName ? `
-                    <span style="font-size: 16pt; font-weight: bold; letter-spacing: 0.04em; font-family: Arial, sans-serif; text-transform: uppercase;">
-                        <span style="color: ${selectedColor};">${senderFirstName}</span>
-                        ${senderLastName ? `<span style="color: #1a1a1a;"> ${senderLastName}</span>` : ''}
+                    <span style="font-size: 16pt; font-weight: bold; letter-spacing: 0.04em; font-family: ${activeFontFamily}; text-transform: uppercase;">
+                        <span style="color: ${activePrimaryColor};">${senderFirstName}</span>
+                        ${senderLastName ? `<span style="color: ${activeTextColor};"> ${senderLastName}</span>` : ''}
                     </span>
                     ` : ''}
                 </td>
-                <td style="text-align: right; vertical-align: top; font-size: 9pt; color: #444; line-height: 1.6; font-family: Arial, sans-serif;">
+                <td style="text-align: right; vertical-align: top; font-size: 9pt; color: ${activeTextColor}; opacity: 0.85; line-height: 1.6; font-family: ${activeFontFamily};">
                     ${senderContact ? `<div>${senderContact}</div>` : ''}
                 </td>
             </tr>
         </table>
 
         <!-- Date + recipient block -->
-        <div style="margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 9.5pt; color: #333; line-height: 1.6;">
+        <div style="margin-bottom: 20px; font-family: ${activeFontFamily}; font-size: 9.5pt; color: ${activeTextColor}; opacity: 0.9; line-height: 1.6; ${isHeaderCentered ? 'text-align: center;' : ''}">
             ${headerDate ? `<div style="margin-bottom: 10px;">${headerDate}</div>` : ''}
             ${recipientDept ? `<div>${recipientDept}</div>` : ''}
             ${customCompany ? `<div>${customCompany}</div>` : ''}
@@ -287,19 +328,19 @@ export default function CoverLetterAssetCard({
 
         <!-- Salutation -->
         ${salutation ? `
-        <div style="margin-bottom: 15px; font-family: Arial, sans-serif; font-weight: bold; font-size: 10pt; color: #1a1a1a;">
+        <div style="margin-bottom: 15px; font-family: ${activeFontFamily}; font-weight: bold; font-size: 10pt; color: ${activeTextColor};">
             ${salutation}
         </div>
         ` : ''}
 
         <!-- Body -->
-        <div style="font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.7; color: #1a1a1a;">
+        <div style="font-family: ${activeFontFamily}; font-size: ${activeFontSize}; line-height: ${activeLineHeight}; color: ${activeTextColor};">
             <style>
-                h1, h2, h3, h4, h5, h6 { color: ${selectedColor} !important; margin-top: 15px; margin-bottom: 10px; page-break-inside: avoid; break-inside: avoid; }
-                p { margin-bottom: 15px; page-break-inside: avoid; break-inside: avoid; }
-                ul { margin-bottom: 15px; padding-left: 20px; }
-                li { margin-bottom: 5px; page-break-inside: avoid; break-inside: avoid; }
-                a { color: ${selectedColor} !important; }
+                h1, h2, h3, h4, h5, h6 { color: ${activePrimaryColor} !important; margin-top: 15px; margin-bottom: 10px; page-break-inside: avoid; break-inside: avoid; }
+                p { margin-bottom: 15px; page-break-inside: avoid; break-inside: avoid; color: ${activeTextColor}; }
+                ul { margin-bottom: 15px; padding-left: 20px; color: ${activeTextColor}; }
+                li { margin-bottom: 5px; page-break-inside: avoid; break-inside: avoid; color: ${activeTextColor}; }
+                a { color: ${activePrimaryColor} !important; }
             </style>
             ${letterBodyHtml}
             <div style="margin-top: 30px;">
@@ -323,8 +364,7 @@ export default function CoverLetterAssetCard({
         '',
         salutation || '',
         '',
-        content,
-        '',
+        content || '',
         '',
         signOff || '',
         senderName || '',
@@ -349,13 +389,12 @@ export default function CoverLetterAssetCard({
                     <CheckCircle size={20} /> Cover Letter
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.pdf`} type="coverLetter" />
+                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.pdf`} type="coverLetter" styleOptions={pdfSettings} />
                     <CopyToClipboardButton textToCopy={fullLetterText} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
             </summary>
             <div className="asset-card-body" style={{ background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-glass)', marginTop: '1.5rem', cursor: 'auto' }}>
-
                 {/* Tone + Edit Controls */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
                     <select
@@ -582,70 +621,23 @@ export default function CoverLetterAssetCard({
                         </div>
                     ) : (
                         /* VIEW MODE */
-                        <div>
-                            {/* Header row: name left, contact right */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '2px solid #e0e0e0' }}>
-                                <div>
-                                    {senderName && (
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.04em', color: '#1a1a1a', fontFamily: 'Arial, Helvetica, sans-serif', textTransform: 'uppercase' }}>
-                                            <span style={{ color: selectedColor }}>{senderFirstName}</span>
-                                            {senderLastName ? <span style={{ color: '#1a1a1a' }}> {senderLastName}</span> : null}
-                                        </div>
-                                    )}
-                                </div>
-                                <div style={{ textAlign: 'right', fontSize: '0.82rem', color: '#444', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-                                    {senderContact && <div>{senderContact}</div>}
-                                </div>
-                            </div>
-
-                            {/* Date + recipient block */}
-                            <div style={{ marginBottom: '1.5rem', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.88rem', color: '#333', lineHeight: 1.7 }}>
-                                {headerDate && <div style={{ marginBottom: '0.75rem' }}>{headerDate}</div>}
-                                {recipientDept && <div>{recipientDept}</div>}
-                                {customCompany && <div>{customCompany}</div>}
-                                {customLocation && <div>{customLocation}</div>}
-                            </div>
-
-                            {/* Salutation */}
-                            {salutation && (
-                                <div style={{ marginBottom: '1rem', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: '#1a1a1a' }}>
-                                    {salutation}
-                                </div>
-                            )}
-
-                            {/* Letter body */}
-                            <style dangerouslySetInnerHTML={{ __html: `
-                                .custom-coverletter-preview h1, 
-                                .custom-coverletter-preview h2, 
-                                .custom-coverletter-preview h3, 
-                                .custom-coverletter-preview h4, 
-                                .custom-coverletter-preview h5, 
-                                .custom-coverletter-preview h6 {
-                                    color: ${selectedColor} !important;
-                                }
-                                .custom-coverletter-preview a {
-                                    color: ${selectedColor} !important;
-                                }
-                            `}} />
-
-                            <div
-                                className="custom-coverletter-preview"
-                                style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a' }}
-                                dangerouslySetInnerHTML={{ __html: marked.parse(content || '') as string }}
-                            />
-
-                            {/* Footer */}
-                            <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.95rem', lineHeight: 1.8, color: '#1a1a1a', marginTop: '2rem' }}>
-                                {signOff && <div>{signOff}</div>}
-                                {senderName && <div>{senderName}</div>}
-                            </div>
-                        </div>
+                        <div 
+                            className="custom-coverletter-preview-container"
+                            style={{ 
+                                background: '#ffffff', 
+                                borderRadius: '6px', 
+                                border: '1px solid var(--border-glass)', 
+                                overflow: 'hidden', 
+                                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: customCoverLetterHtml }}
+                        />
                     )}
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
                     <CopyToClipboardButton textToCopy={fullLetterText} label="Copy Text" />
-                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.pdf`} label="Download PDF" type="coverLetter" />
+                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.pdf`} label="Download PDF" type="coverLetter" styleOptions={pdfSettings} />
                 </div>
 
                 {error && (

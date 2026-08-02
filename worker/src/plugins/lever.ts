@@ -313,30 +313,19 @@ export class LeverPlugin extends ATSPlugin {
       };
     }
 
-    // Live mode — click submit
-    const submitSelectors = [
-      'button[type="submit"]',
-      'button:has-text("Submit application")',
-      'input[type="submit"]',
-    ];
+    // Live mode — click submit.
+    // No Lever-specific semantic class is known, so Tier 1 is skipped and the
+    // base-class helper falls through to type="submit", then fuzzy/text tiers.
+    const submitBtn = await this.findSubmitButton(page, logger);
 
-    let submitted = false;
-    for (const sel of submitSelectors) {
-      const btn = page.locator(sel).first();
-      if (await btn.count() > 0) {
-        await btn.click();
-        submitted = true;
-        await logger.info('submit_clicked', `Submit button clicked via: ${sel}`);
-        break;
-      }
-    }
-
-    if (!submitted) {
+    if (!submitBtn) {
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
         'Could not find the submit button on the Lever application form.'
       );
     }
+
+    await submitBtn.click();
 
     // Wait for confirmation — Lever redirects to a /thanks page or shows a success message
     await page.waitForTimeout(4000);
