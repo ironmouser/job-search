@@ -94,12 +94,20 @@ export class AshbyPlugin extends ATSPlugin {
     }
 
     // 2. Email
-    const emailInput = await targetContext.$(BROAD_EMAIL_SELECTOR);
-    if (emailInput && profile.email) {
-      await emailInput.fill(profile.email);
-      await emailInput.dispatchEvent('input').catch(() => {});
-      await emailInput.dispatchEvent('change').catch(() => {});
-      await logger.info('field_filled', `Filled email: ${profile.email}`);
+    try {
+      const emailInput = await targetContext.$(BROAD_EMAIL_SELECTOR);
+      if (emailInput && profile.email) {
+        await emailInput.fill(profile.email);
+        await emailInput.dispatchEvent('input').catch(() => {});
+        await emailInput.dispatchEvent('change').catch(() => {});
+        await logger.info('field_filled', `Filled email: ${profile.email}`);
+      } else if (!profile.email) {
+        await logger.warn('field_skipped', 'No email in user profile — skipping email field');
+      } else {
+        await logger.warn('field_skipped', 'Email input not found in form context');
+      }
+    } catch (err: any) {
+      await logger.warn('field_error', `Email field fill failed: ${err.message}`);
     }
 
     // 3. Phone Number
@@ -129,11 +137,28 @@ export class AshbyPlugin extends ATSPlugin {
     }
 
     // 5. Resume Upload
-    const fileInput = await targetContext.$('input[type="file"]');
-    if (fileInput && context.resumeMarkdown) {
-      const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
-      await fileInput.setInputFiles(pdfPath);
-      await logger.info('file_uploaded', `Uploaded generated PDF resume: Resume.pdf`);
+    try {
+      const fileInput = await targetContext.$('input[type="file"]');
+      if (fileInput && context.resumeMarkdown) {
+        const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
+        try {
+          // Primary: use the frame/page context directly
+          await fileInput.setInputFiles(pdfPath);
+          await logger.info('file_uploaded', `Uploaded generated PDF resume: Resume.pdf`);
+        } catch (frameErr: any) {
+          // Fallback: cross-origin iframes block setInputFiles — use the main page locator instead
+          await logger.warn('file_upload_retry', `Frame upload failed (${frameErr.message}) — retrying via main page context`);
+          const mainPageInput = browser.page.locator('input[type="file"]').first();
+          await mainPageInput.setInputFiles(pdfPath);
+          await logger.info('file_uploaded', 'Uploaded generated PDF resume via main page context fallback');
+        }
+      } else if (!context.resumeMarkdown) {
+        await logger.warn('file_skipped', 'No resume markdown available — skipping file upload');
+      } else {
+        await logger.warn('file_skipped', 'No file input found in form — skipping resume upload');
+      }
+    } catch (err: any) {
+      await logger.warn('file_error', `Resume upload failed: ${err.message} — continuing without upload`);
     }
 
     // 6. Common Work Authorization & Sponsorship radio/dropdown fields
