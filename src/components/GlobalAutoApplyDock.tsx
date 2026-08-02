@@ -68,7 +68,7 @@ export function GlobalAutoApplyDock() {
   const pendingIntervention = activeSession.interventions?.[0];
 
   const handleNavigateToJob = () => {
-    router.push(`/pipeline?jobId=${activeSession.jobId}`);
+    router.push(`/job/${activeSession.jobId}`);
   };
 
   const handleDismiss = () => {

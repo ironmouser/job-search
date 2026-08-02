@@ -61,11 +61,21 @@ export async function GET(
     }
 
     const prefs = session.user.userPreferences;
-    const resumeText = prefs?.resumeMarkdown ?? '';
+    const resumeText = prefs?.resumeMarkdown ?? assets.tailoredResumeMarkdown ?? '';
 
-    // Extract minimal contact info needed for form-filling
+    // Extract contact info needed for form-filling
+    let userName = session.user.name ?? '';
+    if (!userName && resumeText) {
+      const nameMatch = resumeText.match(/^#\s+([^\n]+)/);
+      if (nameMatch) userName = nameMatch[1].trim();
+    }
+
+    const emailMatch = resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    const userEmail = session.user.email ?? emailMatch?.[0] ?? '';
+
     const phoneMatch = resumeText.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
     const locationMatch = resumeText.match(/[A-Z][a-zA-Z\s]+,\s*[A-Z]{2}(?:\s+\d{5})?/);
+    const linkedinMatch = resumeText.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/i);
 
     const payload = {
       session: {
@@ -81,10 +91,11 @@ export async function GET(
         coverLetterMarkdown: assets.coverLetterMarkdown,
       },
       userProfile: {
-        name: session.user.name ?? '',
-        email: session.user.email ?? '',
+        name: userName,
+        email: userEmail,
         phone: phoneMatch?.[0],
         location: locationMatch?.[0],
+        linkedinUrl: linkedinMatch?.[0],
         usWorkAuthorization: prefs?.usWorkAuthorization ?? undefined,
         workingRemotelyFrom: prefs?.workingRemotelyFrom ?? undefined,
         visaSponsorship: prefs?.visaSponsorship ?? undefined,
