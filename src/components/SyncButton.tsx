@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 
 interface SyncButtonProps {
-  onSyncStateChange?: (isLoading: boolean, statusText: string) => void;
+  onSyncStateChange?: (isLoading: boolean, statusText: string, jobsFoundCount?: number, isRefining?: boolean) => void;
   onSyncComplete?: (newJobsCount: number) => void;
 }
 
@@ -14,25 +14,71 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
 
   const handleSync = async () => {
     setIsLoading(true);
-    onSyncStateChange?.(true, 'Scraping Jobs...');
+    setStatusText('Scraping Jobs...');
+    onSyncStateChange?.(true, 'Initiating Omni-Scrape across job boards...', 0);
+    
     try {
-      // 1. Scrape
-      setStatusText('Scraping Jobs...');
-      onSyncStateChange?.(true, 'Scraping Jobs...');
       const response = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       });
-      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
         const errorMessage = data.error || 'Failed to sync jobs across active platforms.';
         setStatusText('Sync Error');
         onSyncStateChange?.(false, 'Error Syncing');
         alert(`Could not complete job sync: ${errorMessage}`);
         setTimeout(() => setStatusText('Sync Jobs'), 3500);
         return;
+      }
+
+      let data: any = {};
+      let runningCount = 0;
+
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            try {
+              const payload = JSON.parse(trimmed);
+              if (typeof payload.foundCount === 'number') {
+                runningCount = payload.foundCount;
+                const isRefining = payload.type === 'normalization';
+                onSyncStateChange?.(true, payload.message || `Found ${runningCount} possible matches...`, runningCount, isRefining);
+              }
+              if (payload.type === 'complete' || payload.new_jobs_saved !== undefined) {
+                data = payload;
+              }
+            } catch (e) {}
+          }
+        }
+
+        if (buffer.trim()) {
+          try {
+            const payload = JSON.parse(buffer.trim());
+            if (typeof payload.foundCount === 'number') {
+              runningCount = payload.foundCount;
+            }
+            if (payload.type === 'complete' || payload.new_jobs_saved !== undefined) {
+              data = payload;
+            }
+          } catch (e) {}
+        }
+      } else {
+        data = await response.json().catch(() => ({}));
       }
 
       // Record successful job sync in localStorage
@@ -52,7 +98,7 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
       } else {
         const label = newJobsCount === 1 ? 'Added 1 Job!' : `Added ${newJobsCount} Jobs!`;
         setStatusText(label);
-        onSyncStateChange?.(true, label);
+        onSyncStateChange?.(true, label, runningCount);
         setTimeout(() => {
           window.location.reload();
         }, 1200);

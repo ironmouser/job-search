@@ -17,7 +17,11 @@ const JOB_BOARDS = [
   'lever.co',
 ];
 
-export async function fetchEmailsAndExtractJobs(userId: string) {
+export async function fetchEmailsAndExtractJobs(
+  userId: string,
+  onProgress?: (foundCount: number, message: string) => void
+) {
+  onProgress?.(0, 'Connecting to IMAP mail server...');
   const prefs = await prisma.userPreferences.findUnique({
     where: { userId }
   });
@@ -44,6 +48,7 @@ export async function fetchEmailsAndExtractJobs(userId: string) {
 
   try {
     await client.connect();
+    onProgress?.(0, 'Connected to mail server. Checking inbox...');
 
     // 1. Get last sync time
     const syncLog = await prisma.syncLog.findFirst({
@@ -72,6 +77,7 @@ export async function fetchEmailsAndExtractJobs(userId: string) {
       }
 
       console.log(`Fetched ${messages.length} emails. Parsing recent job messages with AI in parallel...`);
+      onProgress?.(0, `Fetched ${messages.length} email messages. Extracting job postings...`);
       const recentMessages = messages.slice(-5);
       const candidatePayloads = [];
 
@@ -120,16 +126,22 @@ ${uniqueUrls.join('\n')}
         });
       }
 
-      // Parallel AI extractions to keep processing fast and avoid HTTP 502 timeouts
+      let runningFoundCount = 0;
+      // AI extractions
       const extractedJobBatches = await Promise.all(
         candidatePayloads.map(async ({ emailContentForAI }) => {
           try {
-            return await extractJobsFromEmailText(emailContentForAI, {
+            const extracted = await extractJobsFromEmailText(emailContentForAI, {
               searchKeyword: prefs.searchKeyword || undefined,
               jobLevel: prefs.jobLevel || undefined,
               includeKeywords: prefs.includeKeywords || undefined,
               excludeKeywords: prefs.excludeKeywords || undefined,
             });
+            if (Array.isArray(extracted) && extracted.length > 0) {
+              runningFoundCount += extracted.length;
+              onProgress?.(runningFoundCount, `Extracted ${runningFoundCount} job listing${runningFoundCount === 1 ? '' : 's'} from email...`);
+            }
+            return extracted;
           } catch (e) {
             console.error('Error extracting jobs from email text:', e);
             return [];

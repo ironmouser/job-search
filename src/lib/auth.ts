@@ -150,7 +150,9 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       if (!token.id) {
-        return null as any;
+        // Token has no id (user deleted/disabled) — return a session with no user so the client
+        // treats it as unauthenticated without crashing on Object.keys(null).
+        return { ...session, user: undefined, expires: new Date(0).toISOString() } as any;
       }
       if (session.user) {
         session.user.id = token.id as string;

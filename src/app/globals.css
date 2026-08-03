@@ -326,6 +326,7 @@ body.light-theme .top-stat-card.active {
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s ease;
   z-index: 40;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 body.light-theme .sidebar {

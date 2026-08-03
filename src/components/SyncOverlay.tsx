@@ -21,11 +21,15 @@ function getNextRandomIndex(currentIndex: number, total: number): number {
 export default function SyncOverlay({ 
   isSyncing, 
   syncMessage, 
+  jobsFoundCount,
+  isRefining = false,
   title = "Syncing in Progress",
   subtext = "This could take up to 3 minutes to complete.\nPlease do not close or refresh this page."
 }: { 
   isSyncing: boolean; 
   syncMessage: string;
+  jobsFoundCount?: number | null;
+  isRefining?: boolean;
   title?: string;
   subtext?: React.ReactNode;
 }) {
@@ -116,11 +120,69 @@ export default function SyncOverlay({
 
   if (!isSyncing || !mounted) return null;
 
+  const displayCount = (jobsFoundCount !== undefined && jobsFoundCount !== null) ? jobsFoundCount : null;
+
   return createPortal(
     <div className={`sync-overlay-backdrop ${isSyncing ? 'active' : ''}`}>
       <div className="sync-overlay-content">
         <div className="sync-overlay-header">
           <h2>{title}</h2>
+          
+          {displayCount !== null && (
+            <div 
+              style={{
+                margin: '1rem auto 1.25rem auto',
+                padding: '0.75rem 1.25rem',
+                background: 'linear-gradient(135deg, rgba(0, 112, 243, 0.12) 0%, rgba(16, 185, 129, 0.14) 100%)',
+                border: '1px solid rgba(0, 112, 243, 0.25)',
+                borderRadius: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.85rem',
+                boxShadow: '0 4px 16px rgba(0, 112, 243, 0.15)',
+                maxWidth: '90%'
+              }}
+            >
+              <div 
+                style={{
+                  minWidth: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: 'var(--accent-primary)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '1.15rem',
+                  boxShadow: '0 0 14px rgba(0, 112, 243, 0.4)',
+                  transition: 'transform 0.2s ease',
+                  transform: displayCount > 0 ? 'scale(1.08)' : 'scale(1)'
+                }}
+              >
+                {displayCount}
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                  {isRefining
+                    ? 'Refining your matches...'
+                    : (displayCount === 1 ? '1 Possible Match Found' : `${displayCount} Possible Matches Found`)
+                  }
+                </div>
+                {!isRefining && displayCount === 0 && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    Scanning job sources and active feeds...
+                  </div>
+                )}
+                {isRefining && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    Removing duplicates, poor matches, and roles you already have
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <p className="sync-overlay-text">{syncMessage}</p>
           <div className="sync-overlay-subtext" style={{ whiteSpace: 'pre-line' }}>
             {typeof subtext === 'string' ? subtext.replace(/\\n/g, '\n') : subtext}

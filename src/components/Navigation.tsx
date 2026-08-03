@@ -210,7 +210,7 @@ export default function Navigation() {
           <li className="nav-item" style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--sidebar-border)' }}>
             {session ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }} className="user-profile-container">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }} className="user-profile-row">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minWidth: 0, overflow: 'hidden' }} className="user-profile-row">
                   <Link
                     href="/profile"
                     style={{
@@ -233,24 +233,26 @@ export default function Navigation() {
                       email={session.user?.email}
                       size={28}
                     />
-                    <div className="user-profile-info" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, gap: '0.0625rem' }}>
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--foreground)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
-                        {session.user?.name || session.user?.email}
-                      </span>
-                      <span style={{
-                        fontSize: '0.6875rem',
-                        color: isPro ? '#60a5fa' : 'var(--muted-foreground)',
-                        fontWeight: isPro ? 600 : 400,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.2rem',
-                      }}>
-                        {isPro && <Zap size={10} />}
-                        {isPro ? 'Pro' : 'Free'}
-                      </span>
-                    </div>
+                    {!isMinimized && (
+                      <div className="user-profile-info" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, gap: '0.0625rem' }}>
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--foreground)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
+                          {session.user?.name || session.user?.email}
+                        </span>
+                        <span style={{
+                          fontSize: '0.6875rem',
+                          color: isPro ? '#60a5fa' : 'var(--muted-foreground)',
+                          fontWeight: isPro ? 600 : 400,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.2rem',
+                        }}>
+                          {isPro && <Zap size={10} />}
+                          {isPro ? 'Pro' : 'Free'}
+                        </span>
+                      </div>
+                    )}
                   </Link>
-                  {!isPro && (
+                  {!isPro && !isMinimized && (
                     <Link
                       href="/upgrade"
                       style={{
@@ -264,6 +266,7 @@ export default function Navigation() {
                         textDecoration: 'none',
                         whiteSpace: 'nowrap',
                         flexShrink: 0,
+                        width: 'fit-content',
                         transition: 'background 0.15s ease',
                         marginLeft: '0.375rem',
                       }}

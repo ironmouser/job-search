@@ -19,25 +19,52 @@ export async function POST() {
     if (emailsSyncIsPro && (session.user as any).planTier !== 'PRO') {
       return NextResponse.json({ error: 'Email synchronization is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
     }
-    const newJobsCount = await fetchEmailsAndExtractJobs(session.user.id);
-    return NextResponse.json({ success: true, count: newJobsCount });
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const sendEvent = (data: any) => {
+          try {
+            controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'));
+          } catch (e) {}
+        };
+
+        try {
+          sendEvent({ type: 'progress', foundCount: 0, message: 'Scanning email inbox for job postings...' });
+
+          const newJobsCount = await fetchEmailsAndExtractJobs(session.user.id, (foundCount, message) => {
+            sendEvent({ type: 'progress', foundCount, message });
+          });
+
+          sendEvent({
+            type: 'complete',
+            success: true,
+            count: newJobsCount,
+            foundCount: newJobsCount,
+            message: `Email sync complete! Found ${newJobsCount} new job opportunities.`
+          });
+        } catch (error: any) {
+          console.error('Error syncing emails:', error);
+          let clientMessage = error.message || 'Failed to sync emails';
+          if (clientMessage.includes('AUTHENTICATIONFAILED') || clientMessage.includes('Invalid credentials')) {
+            clientMessage = 'IMAP authentication failed. Please check your email address and App Password in Settings.';
+          }
+          sendEvent({ type: 'error', error: clientMessage, success: false });
+        } finally {
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive'
+      }
+    });
   } catch (error: any) {
     console.error('Error syncing emails:', error);
-
-    let clientMessage = error.message || 'Failed to sync emails';
-    if (clientMessage.includes('AUTHENTICATIONFAILED') || clientMessage.includes('Invalid credentials')) {
-      clientMessage = 'IMAP authentication failed. Please check your email address and App Password in Settings.';
-    }
-
-    const isUserError = clientMessage.includes('credentials') || 
-                        clientMessage.includes('authentication') || 
-                        clientMessage.includes('configured') || 
-                        clientMessage.includes('IMAP') ||
-                        clientMessage.includes('Settings');
-
-    return NextResponse.json(
-      { success: false, error: clientMessage },
-      { status: isUserError ? 400 : 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || 'Failed to sync emails' }, { status: 500 });
   }
 }

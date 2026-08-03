@@ -14,7 +14,7 @@ export async function POST(request: Request) {
         }
         const userId = session.user.id;
 
-        const body = await request.json();
+        const body = await request.json().catch(() => ({}));
         const settings: any = await getUserSettings(userId);
         
         const keyword = body.keyword || settings.searchKeyword || 'Software Engineer';
@@ -65,110 +65,117 @@ export async function POST(request: Request) {
         const customUrls = isPro ? (settings.customCareerPages || []) : [];
 
 
-        const scrapePromises: Promise<any[]>[] = [];
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+            async start(controller) {
+                const sendEvent = (data: any) => {
+                    try {
+                        controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'));
+                    } catch (e) {}
+                };
 
-        if (sources.indeed) {
-            scrapePromises.push(scrapeIndeed(keyword, location).catch(e => {
-                console.error("Indeed native scrape failed", e);
-                return [];
-            }));
-        }
+                try {
+                    sendEvent({ type: 'progress', foundCount: 0, message: 'Initiating Omni-Scrape across job boards...' });
 
-        if (sources.glassdoor) {
-            scrapePromises.push(scrapeGlassdoor(keyword, location).catch(e => {
-                console.error("Glassdoor native scrape failed", e);
-                return [];
-            }));
-        }
+                    let totalRawJobsFound = 0;
+                    const allRawJobs: any[] = [];
 
-        if (sources.himalayas) {
-            scrapePromises.push(scrapeHimalayas(keyword).catch(e => {
-                console.error("Himalayas scrape failed", e);
-                return [];
-            }));
-        }
+                    const runScraperTask = async (sourceName: string, fn: () => Promise<any[]>) => {
+                        try {
+                            const jobs = await fn();
+                            if (Array.isArray(jobs) && jobs.length > 0) {
+                                allRawJobs.push(...jobs);
+                                totalRawJobsFound += jobs.length;
+                                sendEvent({
+                                    type: 'progress',
+                                    source: sourceName,
+                                    foundCount: totalRawJobsFound,
+                                    message: `Discovered ${jobs.length} job${jobs.length === 1 ? '' : 's'} from ${sourceName} (${totalRawJobsFound} total)...`
+                                });
+                            } else {
+                                sendEvent({
+                                    type: 'progress',
+                                    source: sourceName,
+                                    foundCount: totalRawJobsFound,
+                                    message: `Scanned ${sourceName} (${totalRawJobsFound} total found so far)...`
+                                });
+                            }
+                        } catch (e) {
+                            console.error(`${sourceName} scrape failed`, e);
+                        }
+                    };
 
-        if (sources.linkedin) {
-            scrapePromises.push(scrapeLinkedIn(keyword, location).catch(e => {
-                console.error("LinkedIn scrape failed", e);
-                return [];
-            }));
-        }
+                    const tasks: Promise<void>[] = [];
+                    if (sources.indeed) tasks.push(runScraperTask('Indeed', () => scrapeIndeed(keyword, location)));
+                    if (sources.glassdoor) tasks.push(runScraperTask('Glassdoor', () => scrapeGlassdoor(keyword, location)));
+                    if (sources.himalayas) tasks.push(runScraperTask('Himalayas', () => scrapeHimalayas(keyword)));
+                    if (sources.linkedin) tasks.push(runScraperTask('LinkedIn', () => scrapeLinkedIn(keyword, location)));
+                    if (sources.ziprecruiter) tasks.push(runScraperTask('ZipRecruiter', () => scrapeZipRecruiter(keyword, location)));
+                    if (customUrls.length > 0) tasks.push(runScraperTask('Custom Career Pages', () => scrapeCustomPages(customUrls)));
+                    if (sources.weworkremotely || sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.jobspresso || sources.justremote) {
+                        tasks.push(runScraperTask('Remote Aggregators', () => scrapeRemoteAggregators(keyword, sources)));
+                    }
+                    if (sources.remotepoc && (isPro || !globalSettings?.remotepocIsPro)) {
+                        tasks.push(runScraperTask('RemotePOC', () => scrapeRemotePOC(keyword)));
+                    }
+                    const INTERNATIONAL_SOURCE_KEYS = ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank'];
+                    if (isPro && INTERNATIONAL_SOURCE_KEYS.some((s: string) => sources[s])) {
+                        tasks.push(runScraperTask('International Boards', () => scrapeInternational(keyword, sources)));
+                    }
 
-        if (sources.ziprecruiter) {
-            scrapePromises.push(scrapeZipRecruiter(keyword, location).catch(e => {
-                console.error("ZipRecruiter scrape failed", e);
-                return [];
-            }));
-        }
+                    const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 15000));
+                    await Promise.race([Promise.all(tasks), timeoutPromise]);
 
-        const urlsToCrawl = customUrls.filter((url: string) => {
-            if (url.includes('greenhouse.io') && sources.greenhouse) return true;
-            if (url.includes('lever.co') && sources.lever) return true;
-            if (url.includes('ashbyhq.com') && sources.ashby) return true;
-            if (url.includes('workable.com') && sources.workable) return true;
-            if (url.includes('smartrecruiters.com') && sources.smartrecruiters) return true;
-            if (url.includes('breezy.hr') && sources.breezy) return true;
-            return false;
-        });
+                    if (allRawJobs.length === 0) {
+                        sendEvent({
+                            type: 'complete',
+                            foundCount: 0,
+                            raw_jobs_found: 0,
+                            new_jobs_saved: 0,
+                            message: 'No jobs found for the given criteria across active sources.'
+                        });
+                        return;
+                    }
 
-        if (urlsToCrawl.length > 0) {
-            scrapePromises.push(scrapeCustomPages(urlsToCrawl).catch(e => {
-                console.error("Crawlee custom page scrape failed", e);
-                return [];
-            }));
-        }
+                    sendEvent({
+                        type: 'progress',
+                        foundCount: totalRawJobsFound,
+                        message: `Saving and normalizing ${totalRawJobsFound} discovered jobs...`
+                    });
 
-        if (sources.weworkremotely || sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.jobspresso || sources.justremote) {
-            scrapePromises.push(scrapeRemoteAggregators(keyword, sources).catch(e => {
-                console.error("Crawlee remote aggregators scrape failed", e);
-                return [];
-            }));
-        }
+                    const savedJobs = await normalizeAndSaveJobs(allRawJobs, userId, {
+                        onProgress: (count, message) => {
+                            sendEvent({ type: 'normalization', foundCount: count, message });
+                        }
+                    });
+                    const newJobsSaved = savedJobs?.length || 0;
 
-        if (sources.remotepoc) {
-            if (isPro || !globalSettings?.remotepocIsPro) {
-                scrapePromises.push(scrapeRemotePOC(keyword).catch(e => {
-                    console.error("Crawlee RemotePOC scrape failed", e);
-                    return [];
-                }));
+                    sendEvent({
+                        type: 'complete',
+                        foundCount: totalRawJobsFound,
+                        raw_jobs_found: totalRawJobsFound,
+                        new_jobs_saved: newJobsSaved,
+                        jobs: savedJobs,
+                        message: `Scraping complete! Added ${newJobsSaved} new jobs.`
+                    });
+                } catch (err: any) {
+                    console.error('Omni-Scrape stream error:', err);
+                    sendEvent({ type: 'error', error: err.message || 'An error occurred during scraping.' });
+                } finally {
+                    try {
+                        controller.close();
+                    } catch (e) {}
+                }
             }
-        }
-
-
-        const INTERNATIONAL_SOURCE_KEYS = ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank'];
-        if (isPro && INTERNATIONAL_SOURCE_KEYS.some(s => sources[s])) {
-            scrapePromises.push(scrapeInternational(keyword, sources).catch(e => {
-                console.error('International scrape failed', e);
-                return [];
-            }));
-        }
-
-        const timeoutPromise = new Promise<any[]>((resolve) => {
-            setTimeout(() => {
-                console.warn('Scrape route max timeout (15s) reached. Returning available results so far.');
-                resolve([]);
-            }, 15000);
         });
 
-        const results = await Promise.race([
-            Promise.all(scrapePromises),
-            timeoutPromise
-        ]);
-        let rawJobs = (results || []).flat();
-
-        if (!rawJobs || rawJobs.length === 0) {
-             return NextResponse.json({ message: 'No jobs found for the given criteria across active sources.' }, { status: 200 });
-        }
-
-        const savedJobs = await normalizeAndSaveJobs(rawJobs, userId);
-
-        return NextResponse.json({ 
-            message: 'Omni-Scraping and normalization complete.', 
-            raw_jobs_found: rawJobs.length,
-            new_jobs_saved: savedJobs?.length || 0,
-            jobs: savedJobs
-        }, { status: 200 });
+        return new Response(stream, {
+            headers: {
+                'Content-Type': 'application/x-ndjson',
+                'Cache-Control': 'no-cache, no-transform',
+                'Connection': 'keep-alive'
+            }
+        });
 
     } catch (error: any) {
         console.error('Scrape API Error:', error);

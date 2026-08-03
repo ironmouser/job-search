@@ -5,8 +5,13 @@ import { cleanJobUrl } from './urlUtils';
 import { callDeepSeek } from './deepseek';
 import { isInternationalLocation, isRemoteLocation } from './locationUtils';
 
-export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, options: { isEmailSync?: boolean } = {}) {
+export async function normalizeAndSaveJobs(
+    rawJobs: any[],
+    userId: string,
+    options: { isEmailSync?: boolean; onProgress?: (count: number, message: string) => void } = {}
+) {
     if (!rawJobs || rawJobs.length === 0) return [];
+    const { onProgress, isEmailSync } = options;
     const settings: any = await getUserSettings(userId);
     const remoteOnly = settings.remoteOnly || false;
     const noInternational = settings.noInternational || false;
@@ -15,6 +20,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
     const searchKeyword: string = (settings.searchKeyword || '').trim();
     const profileText: string = (settings.profile || settings.resumeMarkdown || '').slice(0, 800);
 
+    const rawCount = rawJobs.length;
     let normalizedJobs = rawJobs.map((job) => {
         const title = job.title?.trim() || 'Untitled Position';
         const company = job.company?.trim() || 'Unknown Company';
@@ -32,13 +38,23 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
             source: job.source || 'Direct',
         };
     }).filter(j => j.url && j.title);
+    const droppedInvalid = rawCount - normalizedJobs.length;
+    if (droppedInvalid > 0) {
+        onProgress?.(normalizedJobs.length, `Removed ${droppedInvalid} listing${droppedInvalid === 1 ? '' : 's'} with invalid or missing URLs`);
+    }
 
     if (remoteOnly) {
+        const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => isRemoteLocation(j.location || ''));
+        const dropped = before - normalizedJobs.length;
+        if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} non-remote listing${dropped === 1 ? '' : 's'} based on your location preferences`);
     }
 
     if (noInternational) {
+        const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => !isInternationalLocation(j.location || ''));
+        const dropped = before - normalizedJobs.length;
+        if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} international listing${dropped === 1 ? '' : 's'} based on your location preferences`);
     }
 
     // Tier 1: Deterministic Keyword Exclusion & Inclusion Filter
@@ -46,6 +62,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
     const includeTerms = includeKeywordsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
     if (excludeTerms.length > 0) {
+        const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => {
             const contentLower = `${j.title} ${j.company} ${j.description || ''}`.toLowerCase();
             const hit = excludeTerms.find(term => contentLower.includes(term));
@@ -55,9 +72,12 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
             }
             return true;
         });
+        const dropped = before - normalizedJobs.length;
+        if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} listing${dropped === 1 ? '' : 's'} matching your excluded keywords`);
     }
 
     if (includeTerms.length > 0) {
+        const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => {
             const desc = j.description || '';
             const isStubOnly = /^found via email link:\s*https?:/i.test(desc.trim());
@@ -68,13 +88,15 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
 
             // If it's an email job with only a bare URL stub, pass open so we don't discard
             // before the full URL is scraped in the background.
-            if (options.isEmailSync && isStubOnly) {
+            if (isEmailSync && isStubOnly) {
                 return true;
             }
 
             console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to missing required keywords.`);
             return false;
         });
+        const dropped = before - normalizedJobs.length;
+        if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} listing${dropped === 1 ? '' : 's'} missing your required keywords`);
     }
 
     // URL cleaning and deduplication
@@ -94,6 +116,10 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
         seenUrls.add(cleanedUrl);
         seenTitleCompany.add(titleCompanyKey);
         deduplicatedJobs.push({ ...job, url: cleanedUrl });
+    }
+    const droppedDupes = normalizedJobs.length - deduplicatedJobs.length;
+    if (droppedDupes > 0) {
+        onProgress?.(deduplicatedJobs.length, `Removed ${droppedDupes} duplicate listing${droppedDupes === 1 ? '' : 's'} found across multiple sources`);
     }
 
     // Check existing jobs in DB to separate truly new candidates from already discovered jobs
@@ -129,6 +155,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
 
     const knownGoodJobs: any[] = [];
     const brandNewCandidates: any[] = [];
+    let dbDedupDropped = 0;
 
     for (const jobData of deduplicatedJobs) {
         const match = existingJobs.find(e => e.url === jobData.url);
@@ -139,10 +166,15 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
             const titleCompanyKey = `${jobData.title.toLowerCase().trim()}|${jobData.company.toLowerCase().trim()}`;
             if (!match && userExistingTitleCompany.has(titleCompanyKey)) {
                 console.log(`[DB Dedup] Skipping "${jobData.title}" at "${jobData.company}" — user already has this role under a different URL.`);
+                dbDedupDropped++;
                 continue;
             }
             brandNewCandidates.push(jobData);
         }
+    }
+    if (dbDedupDropped > 0) {
+        const remaining = knownGoodJobs.length + brandNewCandidates.length;
+        onProgress?.(remaining, `Skipped ${dbDedupDropped} role${dbDedupDropped === 1 ? '' : 's'} you already have in your list`);
     }
 
     // Tier 2: Batched Rapid Triage via DeepSeek (Lite Pass)
@@ -150,6 +182,7 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
 
     if (brandNewCandidates.length > 0 && searchKeyword) {
         console.log(`[AI Triage] Running DeepSeek rapid pre-screening on ${brandNewCandidates.length} new candidate jobs for keyword "${searchKeyword}"...`);
+        onProgress?.(knownGoodJobs.length + brandNewCandidates.length, `Running AI quality check on ${brandNewCandidates.length} new listing${brandNewCandidates.length === 1 ? '' : 's'}...`);
         
         const chunkSize = 20;
         for (let i = 0; i < brandNewCandidates.length; i += chunkSize) {
@@ -205,12 +238,19 @@ export async function normalizeAndSaveJobs(rawJobs: any[], userId: string, optio
                 approvedCandidates.push(...chunk);
             }
         }
+        const droppedByAI = brandNewCandidates.length - approvedCandidates.length;
+        if (droppedByAI > 0) {
+            onProgress?.(knownGoodJobs.length + approvedCandidates.length, `AI filtered out ${droppedByAI} poor match${droppedByAI === 1 ? '' : 'es'} based on your profile`);
+        }
     } else {
         approvedCandidates.push(...brandNewCandidates);
     }
 
     // Tier 3: Persistence
     const finalJobsToSave = [...knownGoodJobs, ...approvedCandidates];
+    if (finalJobsToSave.length > 0) {
+        onProgress?.(finalJobsToSave.length, `Saving ${finalJobsToSave.length} qualified job${finalJobsToSave.length === 1 ? '' : 's'} to your list...`);
+    }
     const processedUrls: string[] = [];
 
     for (const jobData of finalJobsToSave) {

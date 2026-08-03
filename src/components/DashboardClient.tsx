@@ -85,6 +85,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   const [showQueueOverlay, setShowQueueOverlay] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+  const [jobsFoundCount, setJobsFoundCount] = useState<number | null>(null);
+  const [isRefiningJobs, setIsRefiningJobs] = useState(false);
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -375,19 +377,68 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
 
     setIsEmailSyncing(true);
     setIsSyncing(true);
-    setSyncMessage('Syncing Emails...');
+    setJobsFoundCount(0);
+    setSyncMessage('Scanning email inbox for job postings...');
     try {
       const res = await fetch('/api/sync/email', { method: 'POST' });
-      const data = await res.json().catch(() => ({ error: 'Failed to parse response' }));
+      let data: any = {};
+      let runningCount = 0;
 
-      if (res.ok && data.success) {
-        if (data.count === 0) {
+      if (res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            try {
+              const payload = JSON.parse(trimmed);
+              if (typeof payload.foundCount === 'number') {
+                runningCount = payload.foundCount;
+                setJobsFoundCount(runningCount);
+                if (payload.message) setSyncMessage(payload.message);
+              }
+              if (payload.type === 'complete' || payload.success !== undefined) {
+                data = payload;
+              }
+            } catch (e) {}
+          }
+        }
+
+        if (buffer.trim()) {
+          try {
+            const payload = JSON.parse(buffer.trim());
+            if (typeof payload.foundCount === 'number') {
+              runningCount = payload.foundCount;
+              setJobsFoundCount(runningCount);
+            }
+            if (payload.type === 'complete' || payload.success !== undefined) {
+              data = payload;
+            }
+          } catch (e) {}
+        }
+      } else {
+        data = await res.json().catch(() => ({ error: 'Failed to parse response' }));
+      }
+
+      if (res.ok && data.success !== false) {
+        const finalCount = data.count ?? runningCount;
+        if (finalCount === 0) {
           alert('Email sync complete! We scanned your inbox and found 0 new job opportunities since your last sync.');
         } else {
-          setSyncMessage(`Found ${data.count} new opportunit${data.count === 1 ? 'y' : 'ies'}! Updating dashboard...`);
+          setSyncMessage(`Found ${finalCount} new opportunit${finalCount === 1 ? 'y' : 'ies'}! Updating dashboard...`);
           // Refresh dashboard IMMEDIATELY so new email jobs display on dashboard right away!
           setIsEmailSyncing(false);
           setIsSyncing(false);
+          setJobsFoundCount(null);
           router.refresh();
 
           // Fire background scoring call (non-blocking)
@@ -413,6 +464,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
     } finally {
       setIsEmailSyncing(false);
       setIsSyncing(false);
+      setJobsFoundCount(null);
       setSyncMessage('');
     }
   };
@@ -685,9 +737,16 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             </Button>
             <div data-tour="dashboard-sync-jobs">
               <SyncButton 
-                onSyncStateChange={(loading, text) => {
+                onSyncStateChange={(loading, text, count, isRefining) => {
                   setIsSyncing(loading);
                   setSyncMessage(text);
+                  if (loading) {
+                    if (count !== undefined) setJobsFoundCount(count);
+                    setIsRefiningJobs(!!isRefining);
+                  } else {
+                    setJobsFoundCount(null);
+                    setIsRefiningJobs(false);
+                  }
                 }}
                 onSyncComplete={() => {
                   setTimeout(() => {
@@ -1401,6 +1460,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
       <SyncOverlay 
         isSyncing={isSyncing} 
         syncMessage={syncMessage} 
+        jobsFoundCount={jobsFoundCount}
+        isRefining={isRefiningJobs}
         title="Syncing in Progress"
         subtext="This could take up to 3 minutes to complete. Please do not close or refresh this page."
       />
