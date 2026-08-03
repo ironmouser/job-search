@@ -12,6 +12,7 @@ import { ExecutionLogger } from './execution-logger';
 import { InterventionManager, InterventionCancelledError, InterventionTimeoutError } from './intervention-manager';
 import { pluginRegistry } from './registry';
 import { InterventionError } from './plugins/base-plugin';
+import { AggregatorHandler } from './plugins/aggregator-handler';
 
 /**
  * WorkflowEngine — finite state machine for Auto Apply automation.
@@ -81,18 +82,37 @@ export class WorkflowEngine {
       await logger.info('page_navigated', `Navigating to ${context.jobUrl}`);
       await browser.navigate(context.jobUrl);
 
-      const html = await browser.getHtml();
-      const redirectChain = await browser.getRedirectChain();
-      const currentUrl = browser.page.url();
+      let html = await browser.getHtml();
+      let redirectChain = await browser.getRedirectChain();
+      let currentUrl = browser.page.url();
 
-      const match = pluginRegistry.detect(currentUrl, html, redirectChain);
-      const plugin = match?.plugin ?? pluginRegistry.get(ATSPlatform.UNKNOWN)!;
-      const detection = match?.result ?? {
+      let match = pluginRegistry.detect(currentUrl, html, redirectChain);
+      let plugin = match?.plugin ?? pluginRegistry.get(ATSPlatform.UNKNOWN)!;
+      let detection = match?.result ?? {
         platform: ATSPlatform.UNKNOWN,
         confidence: 10,
         detectedFeatures: [],
         automationSupported: false,
       };
+
+      // ─── Intercept Aggregators ───────────────────────────────────────────
+      if (plugin.platform === ATSPlatform.UNKNOWN) {
+        await this.updateStatus(session.sessionId, AutoApplyStatus.NAVIGATING_TO_ATS, {
+          currentStep: 'navigating_aggregator',
+          stepsCompleted: 1,
+        });
+
+        const navigated = await AggregatorHandler.attemptClickThrough(browser, logger);
+        if (navigated) {
+          html = await browser.getHtml();
+          redirectChain = await browser.getRedirectChain();
+          currentUrl = browser.page.url();
+          
+          match = pluginRegistry.detect(currentUrl, html, redirectChain);
+          plugin = match?.plugin ?? pluginRegistry.get(ATSPlatform.UNKNOWN)!;
+          detection = match?.result ?? detection;
+        }
+      }
 
       // Formatted ATS detection banner
       await logger.info('ats_detected', [

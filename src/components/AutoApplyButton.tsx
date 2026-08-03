@@ -1,13 +1,10 @@
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { AutoApplyStatus, ATSPlatform, ConfidenceResult } from '@/lib/auto-apply/types';
-import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
-import { Bot, Square, X, AlertTriangle, Clock, Play, Send } from 'lucide-react';
-
+import { useState } from 'react';
+import { AutoApplyStatus } from '@/lib/auto-apply/types';
+import { Bot, Square, Play } from 'lucide-react';
 
 interface AutoApplyButtonProps {
   jobId: string;
-  jobUrl: string;
+  jobUrl: string; // Kept for prop compatibility though not used for detect anymore
   hasAssets: boolean;
   currentStatus?: AutoApplyStatus | string | null;
   onSessionStarted?: (sessionId: string) => void;
@@ -16,6 +13,7 @@ interface AutoApplyButtonProps {
 const ACTIVE_STATUSES = new Set([
   AutoApplyStatus.QUEUED,
   AutoApplyStatus.PROCESSING,
+  AutoApplyStatus.NAVIGATING_TO_ATS,
   AutoApplyStatus.DETECTING_ATS,
   AutoApplyStatus.PREPARING,
   AutoApplyStatus.APPLYING,
@@ -25,75 +23,26 @@ const ACTIVE_STATUSES = new Set([
 
 export function AutoApplyButton({
   jobId,
-  jobUrl,
   hasAssets,
   currentStatus,
   onSessionStarted,
 }: AutoApplyButtonProps) {
-  const [showModal, setShowModal] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [detection, setDetection] = useState<{ platform: ATSPlatform; confidence: number; automationSupported: boolean } | null>(null);
-  const [confidenceResult, setConfidenceResult] = useState<ConfidenceResult | null>(null);
-  const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [simulationMode, setSimulationMode] = useState(true);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
 
   const isActive = currentStatus && ACTIVE_STATUSES.has(currentStatus as AutoApplyStatus);
   const isDisabled = !hasAssets || !!isActive;
 
-  // Pre-flight: detect ATS + score confidence when modal opens
-  useEffect(() => {
-    if (!showModal) return;
-    setLoading(true);
-
-    const detect = fetch('/api/auto-apply/detect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobUrl }),
-    }).then((r) => r.json());
-
-    detect.then((d) => {
-      setDetection(d);
-
-      // Score confidence based on detected platform
-      return fetch('/api/auto-apply/confidence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          platform: d.platform,
-          requiresLogin: false,
-          hasResumeUpload: true,
-          hasCoverLetterUpload: true,
-          hasCaptcha: false,
-          hasAssessments: false,
-          hasDynamicQuestionnaire: false,
-          hasWorkAuthQuestions: true,
-          hasSalaryQuestions: false,
-          previousSuccessRate: 0,
-        }),
-      }).then((r) => r.json());
-    })
-      .then(setConfidenceResult)
-      .finally(() => setLoading(false));
-  }, [showModal, jobUrl]);
-
-  async function handleStart(simOverride?: boolean) {
-    const simMode = simOverride !== undefined ? simOverride : simulationMode;
+  async function handleStart() {
     setStarting(true);
     try {
       const res = await fetch(`/api/auto-apply/${jobId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ simulationMode: simMode }),
+        // Always run live mode (simulationMode is being phased out)
+        body: JSON.stringify({ simulationMode: false }),
       });
       const data = await res.json();
       if (res.ok) {
-        setShowModal(false);
         onSessionStarted?.(data.sessionId);
       } else {
         alert(data.error ?? 'Failed to start Auto Apply');
@@ -106,8 +55,6 @@ export function AutoApplyButton({
   async function handleCancel() {
     await fetch(`/api/auto-apply/${jobId}/cancel`, { method: 'POST' });
   }
-
-  const isSimulated = currentStatus === AutoApplyStatus.SIMULATED || currentStatus === 'simulated';
 
   if (isActive) {
     return (
@@ -122,178 +69,23 @@ export function AutoApplyButton({
     );
   }
 
-  if (isSimulated) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-        <button
-          className="btn-auto-apply"
-          disabled={isDisabled || starting}
-          onClick={() => handleStart(false)}
-          id={`auto-apply-btn-${jobId}`}
-          title="Submit your application live to the employer"
-          style={{
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: '#ffffff',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1.25rem',
-            fontWeight: 600,
-            fontSize: '0.95rem',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
-          }}
-        >
-          {starting ? (
-            'Submitting Application…'
-          ) : (
-            <>
-              <Send size={16} /> Submit Application Live
-            </>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowModal(true)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-muted, #94a3b8)',
-            fontSize: '0.75rem',
-            cursor: 'pointer',
-            textAlign: 'center',
-            textDecoration: 'underline',
-          }}
-        >
-          Open pre-flight options or re-run simulation
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <>
-      <button
-        className="btn-auto-apply"
-        disabled={isDisabled}
-        onClick={() => setShowModal(true)}
-        id={`auto-apply-btn-${jobId}`}
-        title={!hasAssets ? 'Generate resume and cover letter first' : 'Start Auto Apply'}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-      >
-        <Bot size={16} /> Auto Apply
-        {!hasAssets && <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginLeft: '0.25rem' }}>(generate assets first)</span>}
-      </button>
-
-      {mounted && showModal && createPortal(
-        <div
-          className="modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && setShowModal(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.6)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1rem',
-          }}
-        >
-          <div
-            className="glass-card"
-            style={{
-              maxWidth: '480px',
-              width: '100%',
-              padding: '1.5rem',
-              gap: '1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              background: 'var(--bg-glass, #ffffff)',
-              color: 'var(--text-primary, #0f172a)',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-            }}
-            id="auto-apply-modal"
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Bot size={20} color="var(--accent-primary, #4f46e5)" />
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Auto Apply Pre-Flight</h3>
-              </div>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            {loading ? (
-              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>Analyzing job application…</p>
-            ) : (
-              <>
-                {/* ATS Detection */}
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Platform Detected</span>
-                  <span style={{ fontWeight: 700, textTransform: 'capitalize', display: 'inline-flex', alignItems: 'center' }}>
-                    {detection?.platform ?? 'Unknown'}
-                    {!detection?.automationSupported && (
-                      <span style={{ fontSize: '0.7rem', color: '#fbbf24', marginLeft: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-                        <AlertTriangle size={12} /> Limited support
-                      </span>
-                    )}
-                  </span>
-                </div>
-
-                {/* Confidence */}
-                {confidenceResult && (
-                  <div style={{ background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Automation Confidence</span>
-                      <AutoApplyConfidenceBadge confidence={confidenceResult.confidence} />
-                    </div>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{confidenceResult.explanation}</p>
-                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <Clock size={13} /> Est. time: {confidenceResult.estimatedCompletionTime}
-                    </p>
-                  </div>
-                )}
-
-                {/* Simulation mode toggle */}
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={simulationMode}
-                    onChange={(e) => setSimulationMode(e.target.checked)}
-                    id="simulation-mode-toggle"
-                    style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Simulation Mode</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                      Test the flow without submitting. Recommended for first run.
-                    </div>
-                  </div>
-                </label>
-
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
-                  <button className="btn-outline" onClick={() => setShowModal(false)} style={{ flex: 1 }}>
-                    Cancel
-                  </button>
-                  <button
-                    className="btn-primary"
-                    onClick={() => handleStart()}
-                    disabled={starting}
-                    style={{ flex: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
-                    id="auto-apply-start-btn"
-                  >
-                    {starting ? 'Starting…' : simulationMode ? <><Play size={14} /> Run Simulation</> : <><Send size={14} /> Submit Application</>}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>,
-        document.body
+    <button
+      className="btn-auto-apply"
+      disabled={isDisabled || starting}
+      onClick={handleStart}
+      id={`auto-apply-btn-${jobId}`}
+      title={!hasAssets ? 'Generate resume and cover letter first' : 'Start Auto Apply'}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+    >
+      {starting ? (
+        'Starting…'
+      ) : (
+        <>
+          <Bot size={16} /> Auto Apply
+          {!hasAssets && <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginLeft: '0.25rem' }}>(generate assets first)</span>}
+        </>
       )}
-    </>
+    </button>
   );
-
 }

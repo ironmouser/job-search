@@ -11,6 +11,7 @@ interface AutoApplyStatusBadgeProps {
 const STATUS_LABELS: Record<string, string> = {
   [AutoApplyStatus.QUEUED]:               'Queued',
   [AutoApplyStatus.PROCESSING]:           'Starting…',
+  [AutoApplyStatus.NAVIGATING_TO_ATS]:    'Navigating…',
   [AutoApplyStatus.DETECTING_ATS]:        'Detecting ATS…',
   [AutoApplyStatus.PREPARING]:            'Preparing…',
   [AutoApplyStatus.APPLYING]:             'Applying…',

@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "worker/dist/**",
     // Ignore scratch scripts and test files at the root
     "*.js",
     "*.mjs",

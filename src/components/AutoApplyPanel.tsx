@@ -129,8 +129,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
   // When auto-apply succeeds (real or simulation), mark this job for confetti on the dashboard
   useEffect(() => {
     if (
-      session?.status === AutoApplyStatus.APPLIED ||
-      session?.status === AutoApplyStatus.SIMULATED
+      session?.status === AutoApplyStatus.APPLIED
     ) {
       sessionStorage.setItem('just_applied_job_id', jobId);
     }
@@ -149,14 +148,6 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
               status={session.status}
               failureReason={session.failureReason ?? undefined}
             />
-          )}
-          {session?.simulationMode && session.status !== AutoApplyStatus.QUEUED && (
-            <span
-              style={{ fontSize: '0.65rem', color: '#8b5cf6', border: '1px solid #8b5cf6', borderRadius: '9999px', padding: '0 0.35rem' }}
-              title="Simulation mode — application was not submitted"
-            >
-              SIM
-            </span>
           )}
         </span>
 
@@ -189,27 +180,6 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
         </div>
       )}
 
-      {/* Simulation Success Banner */}
-      {session?.status === AutoApplyStatus.SIMULATED && (
-        <div style={{
-          background: 'rgba(16, 185, 129, 0.08)',
-          border: '1px solid rgba(16, 185, 129, 0.3)',
-          borderRadius: '0.5rem',
-          padding: '0.85rem 1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.35rem',
-          marginTop: '0.25rem',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontWeight: 600, fontSize: '0.9rem' }}>
-            <CheckCircle2 size={18} />
-            <span>Simulation Passed — Ready to Apply</span>
-          </div>
-          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted, #94a3b8)', lineHeight: 1.45 }}>
-            The dry run completed with zero validation issues. Your resume and cover letter were mapped successfully. Click below to execute live submission.
-          </p>
-        </div>
-      )}
 
       {/* Intervention Panel — takes over when worker is blocked */}
       {session?.status === AutoApplyStatus.NEEDS_INTERVENTION && pendingIntervention && (

@@ -12,6 +12,7 @@ export enum AutoApplyStatus {
   IDLE = 'idle',
   QUEUED = 'queued',
   PROCESSING = 'processing',
+  NAVIGATING_TO_ATS = 'navigating_to_ats',
   DETECTING_ATS = 'detecting_ats',
   PREPARING = 'preparing',
   APPLYING = 'applying',
