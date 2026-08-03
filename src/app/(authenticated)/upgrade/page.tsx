@@ -5,6 +5,11 @@ import { Check, Loader2, Sparkles, Zap, Building2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
+import { PageHeader, PageHeaderHeading, PageHeaderDescription } from '@/components/ui/page-header';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+
 export default function PricingPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -44,19 +49,13 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="animate-fade-in" style={{ padding: "4rem 2rem", minHeight: "100vh", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center" }}>
-      
-      <div style={{ textAlign: "center", marginBottom: "4rem", position: "relative", zIndex: 10 }}>
-        <h2 className="page-title" style={{ fontSize: "1.25rem", color: "#3695e3", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>
-          Pricing
-        </h2>
-        <p style={{ fontSize: "3rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.2, marginBottom: "1rem" }}>
-          Supercharge your job search
-        </p>
-        <p className="page-subtitle" style={{ fontSize: "1.1rem", maxWidth: "600px", margin: "0 auto" }}>
-          Choose the right plan to get AI-powered insights, automated resume tailoring, and advanced market analysis.
-        </p>
-      </div>
+    <div className="animate-fade-in" style={{ paddingBottom: "4rem" }}>
+      <PageHeader>
+        <div>
+          <PageHeaderHeading>Subscription Plans</PageHeaderHeading>
+          <PageHeaderDescription>Choose the right plan to get AI-powered match scoring, automated asset generation, and execution tools</PageHeaderDescription>
+        </div>
+      </PageHeader>
 
       <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", justifyContent: "center", position: "relative", zIndex: 10, maxWidth: "1150px", width: "100%" }}>
         

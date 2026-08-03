@@ -929,31 +929,20 @@ export default function ProfileForm({
       </div>
 
       {/* Floating Save Button Bar at Bottom */}
-      <div
-        style={{
-          position: "sticky",
-          bottom: "1.5rem",
-          display: "flex",
-          justifyContent: "flex-end",
-          padding: "1rem 1.5rem",
-          background: "rgba(15, 23, 42, 0.85)",
-          backdropFilter: "blur(12px)",
-          border: "1px solid var(--border-glass)",
-          borderRadius: "12px",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-          zIndex: 100,
-        }}
-      >
-        <button
-          onClick={handleSaveProfile}
-          disabled={saving}
-          className="btn-primary"
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.65rem 1.5rem", fontSize: "0.95rem" }}
-        >
-          <Save size={18} />
-          {saving ? "Saving All Changes..." : "Save All Changes"}
-        </button>
-      </div>
+      {mounted && createPortal(
+        <div className="floating-save-bar">
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className="btn-primary floating-save-btn"
+            title={saving ? "Saving All Changes..." : "Save All Changes"}
+          >
+            {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+            <span className="save-btn-text">{saving ? "Saving All Changes..." : "Save All Changes"}</span>
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

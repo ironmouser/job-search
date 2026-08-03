@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail, AlertTriangle, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Filter, Calendar } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { PageHeader, PageHeaderHeading, PageHeaderDescription } from '@/components/ui/page-header';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 
 interface UserRecord {
   id: string;
@@ -405,13 +407,15 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", padding: "1rem" }}>
-      <div>
-        <h2 className="page-title" style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontSize: "2rem" }}>
-          <Shield size={28} className="text-accent" /> System Administration
-        </h2>
-        <p className="page-subtitle">Manage user accounts, subscription overrides, and global feature gates.</p>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <PageHeader>
+        <div>
+          <PageHeaderHeading style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Shield size={24} style={{ color: "var(--primary)" }} /> System Administration
+          </PageHeaderHeading>
+          <PageHeaderDescription>Manage user accounts, subscription overrides, system alerts, and global feature gates</PageHeaderDescription>
+        </div>
+      </PageHeader>
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: "1rem", borderBottom: "1px solid var(--border-glass)", paddingBottom: "0.5rem" }}>

@@ -11,6 +11,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
 import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation } from '@/lib/locationUtils';
+import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 import SyncOverlay from './SyncOverlay';
 import { useHelp } from '@/contexts/HelpContext';
@@ -665,36 +668,36 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
   return (
     <>
       <div className="animate-fade-in">
-        <div className="flex-stack-mobile" style={{ marginBottom: '2rem' }}>
-        <div>
-          <h1 className="page-title">Mission Control</h1>
-          <p className="page-subtitle">Your central hub for opportunity management</p>
-        </div>
-        <div className="header-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <button 
-            onClick={handleEmailSync} 
-            disabled={isEmailSyncing || isSyncing}
-            className="btn-outline" 
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            <Mail size={16} />
-            {isEmailSyncing ? 'Syncing...' : 'Sync Emails'}
-          </button>
-          <div data-tour="dashboard-sync-jobs">
-            <SyncButton 
-              onSyncStateChange={(loading, text) => {
-                setIsSyncing(loading);
-                setSyncMessage(text);
-              }}
-              onSyncComplete={() => {
-                setTimeout(() => {
-                  checkAndTriggerDiscoveryNudge();
-                }, 600);
-              }}
-            />
+        <PageHeader>
+          <div>
+            <PageHeaderHeading>Mission Control</PageHeaderHeading>
+            <PageHeaderDescription>Your central hub for opportunity management and application tracking</PageHeaderDescription>
           </div>
-        </div>
-      </div>
+          <PageHeaderActions>
+            <Button 
+              onClick={handleEmailSync} 
+              disabled={isEmailSyncing || isSyncing}
+              variant="outline"
+              size="sm"
+            >
+              <Mail size={15} />
+              {isEmailSyncing ? 'Syncing...' : 'Sync Emails'}
+            </Button>
+            <div data-tour="dashboard-sync-jobs">
+              <SyncButton 
+                onSyncStateChange={(loading, text) => {
+                  setIsSyncing(loading);
+                  setSyncMessage(text);
+                }}
+                onSyncComplete={() => {
+                  setTimeout(() => {
+                    checkAndTriggerDiscoveryNudge();
+                  }, 600);
+                }}
+              />
+            </div>
+          </PageHeaderActions>
+        </PageHeader>
 
         {userPlanTier !== 'PRO' && (
           <div 

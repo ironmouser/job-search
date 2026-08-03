@@ -2,12 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink } from 'lucide-react';
+import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 const PdfCustomizerSection = dynamic(() => import('@/components/PdfCustomizerSection'), { ssr: false, loading: () => null });
+import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 // Video instructions for email client setup
 const EMAIL_VIDEO_LINKS: Record<string, string> = {
@@ -271,11 +276,13 @@ export default function SettingsPage() {
                          emailProvider === 'icloud' ? 'icloud.com' : 'example.com';
 
     return (
-        <div className="animate-fade-in" style={{ paddingBottom: '4rem', maxWidth: '800px' }}>
-            <div style={{ marginBottom: '3rem' }}>
-                <h1 className="page-title">Settings</h1>
-                <p className="page-subtitle">Manage your connections and AI agent preferences</p>
-            </div>
+        <div className="animate-fade-in" style={{ paddingBottom: '4rem', maxWidth: '850px' }}>
+            <PageHeader>
+                <div>
+                    <PageHeaderHeading>Settings</PageHeaderHeading>
+                    <PageHeaderDescription>Manage your integrations, email connections, automation, and PDF preferences</PageHeaderDescription>
+                </div>
+            </PageHeader>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
@@ -888,32 +895,20 @@ export default function SettingsPage() {
             </div>
 
             {/* Floating Save Button Bar at Bottom */}
-            <div
-                style={{
-                    position: "sticky",
-                    bottom: "1.5rem",
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    padding: "1rem 1.5rem",
-                    background: "rgba(15, 23, 42, 0.85)",
-                    backdropFilter: "blur(12px)",
-                    border: "1px solid var(--border-glass)",
-                    borderRadius: "12px",
-                    boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-                    zIndex: 100,
-                    marginTop: "2rem",
-                }}
-            >
-                <button
-                    onClick={() => handleSave()}
-                    disabled={saving}
-                    className="btn-primary"
-                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.65rem 1.5rem", fontSize: "0.95rem" }}
-                >
-                    <Save size={18} />
-                    {saving ? "Saving All Changes..." : "Save All Changes"}
-                </button>
-            </div>
+            {mounted && createPortal(
+                <div className="floating-save-bar">
+                    <button
+                        onClick={() => handleSave()}
+                        disabled={saving}
+                        className="btn-primary floating-save-btn"
+                        title={saving ? "Saving All Changes..." : "Save All Changes"}
+                    >
+                        {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                        <span className="save-btn-text">{saving ? "Saving All Changes..." : "Save All Changes"}</span>
+                    </button>
+                </div>,
+                document.body
+            )}
 
             {/* Unsaved Changes Dialog Modal */}
             {mounted && showDialog && createPortal(

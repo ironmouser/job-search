@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from '@/lib/prisma';
 import PipelineBoard from './PipelineBoard';
+import { PageHeader, PageHeaderHeading, PageHeaderDescription } from '@/components/ui/page-header';
 
 export const revalidate = 0;
 
@@ -11,8 +12,10 @@ export default async function PipelinePage() {
   if (!session?.user?.id) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-        <h1 className="page-title">Active Pipeline</h1>
-        <p className="page-subtitle">Please log in to view your pipeline.</p>
+        <PageHeader>
+          <PageHeaderHeading>Active Pipeline</PageHeaderHeading>
+          <PageHeaderDescription>Please log in to view your pipeline.</PageHeaderDescription>
+        </PageHeader>
       </div>
     );
   }
@@ -47,10 +50,12 @@ export default async function PipelinePage() {
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '4rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 className="page-title">Active Pipeline</h1>
-        <p className="page-subtitle">Track your ongoing applications and interviews</p>
-      </div>
+      <PageHeader>
+        <div>
+          <PageHeaderHeading>Active Pipeline</PageHeaderHeading>
+          <PageHeaderDescription>Track your active applications, interview rounds, and offers in real-time</PageHeaderDescription>
+        </div>
+      </PageHeader>
 
       <PipelineBoard initialJobs={mappedJobs} />
     </div>

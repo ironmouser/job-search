@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { PlusCircle, Sparkles, Globe, Loader2, AlertCircle, Clipboard, FileText, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, FileText, CheckCircle2 } from 'lucide-react';
 
 interface AddJobUrlBarProps {
   userPlanTier?: string;
@@ -111,7 +111,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMsg(data.message || data.error || 'Failed to submit manual job details');
+        setErrorMsg(data.message || data.error || 'Failed to submit job details');
         setIsSubmittingManual(false);
         return;
       }
@@ -135,13 +135,12 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
   return (
     <div style={{
       marginBottom: '1.5rem',
-      background: 'rgba(255, 255, 255, 0.7)',
-      backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(226, 232, 240, 0.8)',
-      borderRadius: '16px',
+      background: 'var(--card)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-lg, 0.625rem)',
       padding: '1.25rem 1.5rem',
-      boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-      transition: 'all 0.2s ease-in-out'
+      boxShadow: 'var(--shadow-sm)',
+      transition: 'all 0.15s ease-in-out'
     }}>
       {/* Banner / Helper Text */}
       <div style={{
@@ -152,7 +151,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
         fontSize: '0.875rem',
         fontWeight: 500
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: isPro ? '#4f46e5' : '#059669' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: isPro ? '#60a5fa' : 'var(--success)' }}>
           {isPro ? (
             <span>Paste any job URL to scrape, score & add to pipeline. <strong>Private submission (not shared with global feed)</strong>.</span>
           ) : (
@@ -176,13 +175,15 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
             required
             style={{
               width: '100%',
-              padding: '0.65rem 2.75rem 0.65rem 1rem',
-              borderRadius: '10px',
-              border: '1px solid #cbd5e1',
-              fontSize: '0.9rem',
+              height: '38px',
+              padding: '0 2.75rem 0 0.875rem',
+              borderRadius: 'var(--radius, 6px)',
+              border: '1px solid var(--input-border, var(--border))',
+              fontSize: '0.875rem',
               outline: 'none',
-              transition: 'border-color 0.2s ease',
-              background: '#fff'
+              transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+              background: 'var(--input, var(--card))',
+              color: 'var(--foreground)'
             }}
           />
           <button
@@ -198,7 +199,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              color: '#64748b',
+              color: 'var(--muted-foreground)',
               padding: '4px',
               display: 'flex',
               alignItems: 'center'
@@ -214,28 +215,30 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
           style={{
             display: 'inline-flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '0.5rem',
-            padding: '0.65rem 1.25rem',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: '0.9rem',
+            padding: '0 1.25rem',
+            height: '38px',
+            borderRadius: 'var(--radius, 6px)',
+            background: 'var(--primary)',
+            color: 'var(--primary-foreground)',
+            fontWeight: 500,
+            fontSize: '0.875rem',
             border: 'none',
             cursor: isLoading || !url.trim() ? 'not-allowed' : 'pointer',
-            opacity: isLoading || !url.trim() ? 0.7 : 1,
-            boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
-            transition: 'all 0.2s ease'
+            opacity: isLoading || !url.trim() ? 0.6 : 1,
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap'
           }}
         >
           {isLoading ? (
             <>
-              <Loader2 className="animate-spin" style={{ width: 18, height: 18 }} />
+              <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
               <span>Scraping...</span>
             </>
           ) : (
             <>
-              <PlusCircle style={{ width: 18, height: 18 }} />
+              <PlusCircle style={{ width: 16, height: 16 }} />
               <span>Scrape & Add Job</span>
             </>
           )}
@@ -244,21 +247,21 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
 
       {/* Progress & Alert Indicators */}
       {isLoading && statusStep && (
-        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#4f46e5' }}>
+        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#60a5fa' }}>
           <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} />
           <span>{statusStep}</span>
         </div>
       )}
 
       {errorMsg && !showManualModal && (
-        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#ef4444' }}>
+        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--danger)' }}>
           <AlertCircle style={{ width: 16, height: 16 }} />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#10b981', fontWeight: 500 }}>
+        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 500 }}>
           <CheckCircle2 style={{ width: 16, height: 16 }} />
           <span>{successMsg}</span>
         </div>
@@ -277,71 +280,105 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
           padding: '1rem'
         }}>
           <div style={{
-            background: '#ffffff',
-            borderRadius: '16px',
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg, 0.625rem)',
             maxWidth: '550px',
             width: '100%',
             padding: '1.75rem',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            color: '#1e293b'
+            boxShadow: 'var(--shadow-lg)',
+            color: 'var(--foreground)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: '#4f46e5' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--primary)' }}>
               <FileText style={{ width: 22, height: 22 }} />
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Paste Job Description</h2>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--foreground)' }}>Paste Job Description</h2>
             </div>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.25rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '1.25rem' }}>
               We couldn't automatically scrape text from this URL. Please paste the job description text manually below to add it to your pipeline & generate assets.
             </p>
 
             <form onSubmit={handleManualSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Job Title</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Job Title</label>
                   <input
                     type="text"
                     value={manualTitle}
                     onChange={(e) => setManualTitle(e.target.value)}
                     placeholder="e.g. Senior Software Engineer"
-                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: 'var(--radius, 6px)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--input)',
+                      color: 'var(--foreground)',
+                      fontSize: '0.875rem'
+                    }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Company</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Company</label>
                   <input
                     type="text"
                     value={manualCompany}
                     onChange={(e) => setManualCompany(e.target.value)}
                     placeholder="e.g. Acme Corp"
-                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: 'var(--radius, 6px)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--input)',
+                      color: 'var(--foreground)',
+                      fontSize: '0.875rem'
+                    }}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Location (Optional)</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Location (Optional)</label>
                 <input
                   type="text"
                   value={manualLocation}
                   onChange={(e) => setManualLocation(e.target.value)}
                   placeholder="e.g. Remote / New York, NY"
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: 'var(--radius, 6px)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--input)',
+                    color: 'var(--foreground)',
+                    fontSize: '0.875rem'
+                  }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Job Description Text *</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Job Description Text *</label>
                 <textarea
                   value={manualDescription}
                   onChange={(e) => setManualDescription(e.target.value)}
                   rows={6}
                   required
                   placeholder="Paste the full job posting requirements & description here..."
-                  style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', resize: 'vertical' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.75rem',
+                    borderRadius: 'var(--radius, 6px)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--input)',
+                    color: 'var(--foreground)',
+                    fontSize: '0.875rem',
+                    resize: 'vertical'
+                  }}
                 />
               </div>
 
               {errorMsg && (
-                <div style={{ fontSize: '0.85rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <AlertCircle style={{ width: 15, height: 15 }} />
                   <span>{errorMsg}</span>
                 </div>
@@ -351,7 +388,16 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
                 <button
                   type="button"
                   onClick={() => setShowManualModal(false)}
-                  style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: 'var(--radius, 6px)',
+                    border: '1px solid var(--border)',
+                    background: 'transparent',
+                    color: 'var(--foreground)',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: 'pointer'
+                  }}
                 >
                   Cancel
                 </button>
@@ -360,12 +406,12 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
                   disabled={isSubmittingManual || !manualDescription.trim()}
                   style={{
                     padding: '0.5rem 1.25rem',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius, 6px)',
                     border: 'none',
-                    background: '#4f46e5',
-                    color: '#fff',
+                    background: 'var(--primary)',
+                    color: 'var(--primary-foreground)',
                     fontSize: '0.875rem',
-                    fontWeight: 600,
+                    fontWeight: 500,
                     cursor: isSubmittingManual || !manualDescription.trim() ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
