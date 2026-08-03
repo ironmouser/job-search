@@ -38,7 +38,7 @@
             "title": "Phase 2: Refining your job search",
             "tasks": [
                 {
-                    "id": "job_search",
+                    "id": "refine_search",
                     "title": "Refine Search",
                     "description": "Improve your automated job matching by refining keywords and goals.",
                     "route": "/settings",

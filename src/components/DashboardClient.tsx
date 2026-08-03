@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import SyncOverlay from './SyncOverlay';
 import { useHelp } from '@/contexts/HelpContext';
 import DiscoveryNudgeOverlay from '@/components/DiscoveryNudgeOverlay';
+import OnboardingWidget from '@/components/common/OnboardingWidget';
 
 const safeFormatDate = (dateVal: any) => {
   if (!dateVal) return '';
@@ -821,6 +822,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
             </div>
           </div>
         )}
+
+        <OnboardingWidget />
 
       <div className="responsive-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
         <div 

@@ -45,7 +45,7 @@ const scrollToStepTarget = (targetSelector: string) => {
 };
 
 const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
-    const { activeTour, activeTourId, endTour, startTour, hasSeenTour, markOnboardingTaskComplete, openHelpPanel } = useHelp();
+    const { activeTour, activeTourId, endTour, startTour, hasSeenTour, markOnboardingTaskComplete, openHelpPanel, onboardingTasks } = useHelp();
     const router = useRouter();
     const pathname = usePathname();
     
@@ -128,7 +128,16 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
     useEffect(() => {
         if ([STATUS.FINISHED, STATUS.SKIPPED].includes(state.status as any)) {
             if (state.status === STATUS.FINISHED && activeTourId) {
-                markOnboardingTaskComplete(activeTourId);
+                const targetTask = onboardingTasks?.phases
+                    ?.flatMap(p => p.tasks)
+                    ?.find(t => t.tourId === activeTourId || t.id === activeTourId);
+
+                const taskIdToComplete = targetTask ? targetTask.id : activeTourId;
+                markOnboardingTaskComplete(taskIdToComplete);
+                if (activeTourId !== taskIdToComplete) {
+                    markOnboardingTaskComplete(activeTourId);
+                }
+
                 setTimeout(() => {
                     openHelpPanel(0);
                 }, 300);
@@ -137,7 +146,7 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
                 endTour();
             }, 100);
         }
-    }, [state.status, endTour, activeTourId, markOnboardingTaskComplete, openHelpPanel]);
+    }, [state.status, endTour, activeTourId, markOnboardingTaskComplete, openHelpPanel, onboardingTasks]);
 
     return <>{Tour}</>;
 };
