@@ -123,6 +123,7 @@ export class WorkflowEngine {
         session.sessionId,
         browser,
         logger,
+        context,
         async () => plugin.prepare(browser, context, logger)
       );
 
@@ -136,6 +137,7 @@ export class WorkflowEngine {
         session.sessionId,
         browser,
         logger,
+        context,
         async () => plugin.apply(browser, context, logger)
       );
 
@@ -225,28 +227,54 @@ export class WorkflowEngine {
 
   /**
    * Run a plugin step, catching InterventionError and routing to the intervention manager.
+   * On resolution, re-fetches updated user profile context from database before retrying.
    */
   private async runWithIntervention(
     sessionId: string,
     browser: BrowserSession,
     logger: ExecutionLogger,
+    context: WorkflowContext,
     fn: () => Promise<void>
   ): Promise<void> {
-    try {
-      await fn();
-    } catch (err) {
-      if (err instanceof InterventionError) {
-        const interventionManager = new InterventionManager(sessionId, this.apiClient, logger);
-        await interventionManager.requestIntervention(
-          browser,
-          err.reason as InterventionReason,
-          err.description,
-          err.pageUrl
-        );
-        // After resolution, retry the step once
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    while (attempts < maxAttempts) {
+      try {
         await fn();
-      } else {
-        throw err;
+        return;
+      } catch (err) {
+        if (err instanceof InterventionError) {
+          attempts++;
+          const interventionManager = new InterventionManager(sessionId, this.apiClient, logger);
+          await interventionManager.requestIntervention(
+            browser,
+            err.reason as InterventionReason,
+            err.description,
+            err.pageUrl
+          );
+
+          // User resolved intervention — re-fetch session context to pull newly saved user profile data
+          try {
+            const freshSessionContext = await this.apiClient.getSessionContext(sessionId);
+            if (freshSessionContext?.userProfile) {
+              context.userProfile = {
+                ...context.userProfile,
+                ...freshSessionContext.userProfile,
+              };
+              await logger.info(
+                'context_refreshed',
+                'Refreshed user profile data from database after intervention resolution'
+              );
+            }
+          } catch (refreshErr) {
+            await logger.warn('context_refresh_failed', `Could not refresh context: ${refreshErr}`);
+          }
+
+          // Loop will retry fn() with fresh userProfile context
+        } else {
+          throw err;
+        }
       }
     }
   }

@@ -69,10 +69,13 @@ export function InterventionPanel({
     !settings.eeocGender || 
     !settings.eeocRace || 
     !settings.eeocVeteran || 
-    !settings.eeocDisability
+    !settings.eeocDisability ||
+    !settings.phone ||
+    !settings.location ||
+    !settings.linkedinUrl
   );
 
-  const showAuthForm = reason === 'unknown_question' && isMissingAuth;
+  const showAuthForm = reason === 'unknown_question' || isMissingAuth;
 
   const handleSettingsChange = (key: string, value: any) => {
     setSettings((prev: any) => ({ ...prev, [key]: value }));
@@ -80,11 +83,15 @@ export function InterventionPanel({
 
   async function saveSettings() {
     if (!settings) return;
-    await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings)
-    });
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+    } catch (e) {
+      console.error('[InterventionPanel] Failed to save settings:', e);
+    }
   }
 
   const isUnsupportedOrFatal =
@@ -99,7 +106,7 @@ export function InterventionPanel({
     setResolving(true);
     setResolution(res);
     try {
-      if (res === 'completed' && showAuthForm) {
+      if (res === 'completed' && settings) {
         await saveSettings();
       }
       await fetch(`/api/auto-apply/interventions/${interventionId}/resolve`, {
@@ -324,6 +331,18 @@ export function InterventionPanel({
                         <option value="No">No</option>
                         <option value="Decline">Decline</option>
                     </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Phone Number</label>
+                    <input type="tel" value={settings?.phone || ''} onChange={(e) => handleSettingsChange('phone', e.target.value)} placeholder="e.g. +1 (555) 000-0000" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Location</label>
+                    <input type="text" value={settings?.location || ''} onChange={(e) => handleSettingsChange('location', e.target.value)} placeholder="e.g. New York, NY" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>LinkedIn URL</label>
+                    <input type="url" value={settings?.linkedinUrl || ''} onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)} placeholder="e.g. https://linkedin.com/in/username" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
                 </div>
               </div>
             </div>
