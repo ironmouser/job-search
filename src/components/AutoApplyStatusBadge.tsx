@@ -1,12 +1,22 @@
 'use client';
 
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
-import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 interface AutoApplyStatusBadgeProps {
   status: AutoApplyStatus | string;
   failureReason?: string | null;
 }
+
+const RUNNING_STATUSES = new Set([
+  AutoApplyStatus.QUEUED,
+  AutoApplyStatus.PROCESSING,
+  AutoApplyStatus.NAVIGATING_TO_ATS,
+  AutoApplyStatus.DETECTING_ATS,
+  AutoApplyStatus.PREPARING,
+  AutoApplyStatus.APPLYING,
+  AutoApplyStatus.VALIDATING,
+]);
 
 const STATUS_LABELS: Record<string, string> = {
   [AutoApplyStatus.QUEUED]:               'Queued',
@@ -29,6 +39,9 @@ export function AutoApplyStatusBadge({ status, failureReason }: AutoApplyStatusB
   const badgeClass = `badge badge-${status}`;
 
   const renderIcon = () => {
+    if (RUNNING_STATUSES.has(status as AutoApplyStatus)) {
+      return <Loader2 size={12} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />;
+    }
     if (status === AutoApplyStatus.NEEDS_INTERVENTION) return <AlertTriangle size={12} />;
     if (status === AutoApplyStatus.APPLIED || status === AutoApplyStatus.SIMULATED) return <CheckCircle2 size={12} />;
     if (status === AutoApplyStatus.FAILED) return <XCircle size={12} />;

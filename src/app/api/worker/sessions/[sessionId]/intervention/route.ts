@@ -88,9 +88,9 @@ export async function GET(
   const { sessionId } = await context.params;
 
   try {
-    // Return the most recent unresolved intervention for this session
+    // Return the most recent intervention for this session
     const intervention = await prisma.interventionRequest.findFirst({
-      where: { sessionId, resolvedAt: null },
+      where: { sessionId },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

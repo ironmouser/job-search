@@ -284,12 +284,9 @@ export function ApplyStepAccordion({
               ) : (
                 <div>
                   {confidenceData && (
-                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Automation Confidence:</span>
                       <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        ({confidenceData.platform !== 'unknown' ? confidenceData.platform.charAt(0).toUpperCase() + confidenceData.platform.slice(1) : 'Custom Form'})
-                      </span>
                     </div>
                   )}
                   <AutoApplyPanel

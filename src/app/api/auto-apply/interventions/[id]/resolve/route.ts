@@ -60,14 +60,22 @@ export async function POST(
       },
     });
 
-    // If cancelled, also cancel the session
-    if (body.resolution === 'cancelled') {
+    // Update autoApplySession status accordingly
+    if (body.resolution === 'completed') {
+      await prisma.autoApplySession.update({
+        where: { id: intervention.sessionId },
+        data: {
+          status: 'applying',
+          currentStep: 'resuming',
+        },
+      });
+    } else {
       await prisma.autoApplySession.update({
         where: { id: intervention.sessionId },
         data: {
           status: 'cancelled',
           completedAt: new Date(),
-          failureReason: 'user_cancelled_at_intervention',
+          failureReason: body.resolution === 'skipped' ? 'switched_to_manual_apply' : 'user_cancelled_at_intervention',
         },
       });
     }

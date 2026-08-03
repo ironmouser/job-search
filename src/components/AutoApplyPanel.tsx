@@ -153,33 +153,11 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
 
         {/* Progress indicator */}
         {isActive && session?.stepsTotal && (
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Step {session.stepsCompleted}/{session.stepsTotal}
           </span>
         )}
       </div>
-
-      {/* Platform + timing for completed sessions */}
-      {session && !isActive && session.status !== AutoApplyStatus.QUEUED && (
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {session.atsPlatform && session.atsPlatform !== 'unknown' && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-              <Building2 size={13} /> {session.atsPlatform.charAt(0).toUpperCase() + session.atsPlatform.slice(1)}
-            </span>
-          )}
-          {session.completedAt && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-              <Clock size={13} /> {new Date(session.completedAt).toLocaleString()}
-            </span>
-          )}
-          {session.failureDetails && (
-            <span style={{ color: '#ef4444' }} title={session.failureDetails}>
-              {session.failureDetails.length > 60 ? session.failureDetails.slice(0, 57) + '…' : session.failureDetails}
-            </span>
-          )}
-        </div>
-      )}
-
 
       {/* Intervention Panel — takes over when worker is blocked */}
       {session?.status === AutoApplyStatus.NEEDS_INTERVENTION && pendingIntervention && (
@@ -206,7 +184,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
 
       {/* Log viewer toggle — ONLY for admins */}
       {isAdmin && session && (
-        <div>
+        <div style={{ marginTop: '0.5rem' }}>
           <button
             onClick={() => setShowLogs((v) => !v)}
             style={{
@@ -215,7 +193,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
               cursor: 'pointer',
               color: 'var(--text-muted)',
               fontSize: '0.75rem',
-              padding: '0.1rem 0',
+              padding: '0.2rem 0',
               display: 'flex',
               alignItems: 'center',
               gap: '0.25rem',
@@ -225,11 +203,31 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
             {showLogs ? '▲' : '▼'} Execution Logs (Admin Only)
           </button>
           {showLogs && (
-            <AutoApplyLogViewer
-              jobId={jobId}
-              sessionId={session.id}
-              isActive={isActive}
-            />
+            <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {/* Technical Session Metadata for Admin */}
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', background: 'var(--bg-primary)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
+                {session.atsPlatform && session.atsPlatform !== 'unknown' && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Building2 size={13} /> {session.atsPlatform.charAt(0).toUpperCase() + session.atsPlatform.slice(1)}
+                  </span>
+                )}
+                {session.completedAt && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Clock size={13} /> {new Date(session.completedAt).toLocaleString()}
+                  </span>
+                )}
+                {session.failureDetails && (
+                  <span style={{ color: '#ef4444' }} title={session.failureDetails}>
+                    {session.failureDetails.length > 60 ? session.failureDetails.slice(0, 57) + '...' : session.failureDetails}
+                  </span>
+                )}
+              </div>
+              <AutoApplyLogViewer
+                jobId={jobId}
+                sessionId={session.id}
+                isActive={isActive}
+              />
+            </div>
           )}
         </div>
       )}
