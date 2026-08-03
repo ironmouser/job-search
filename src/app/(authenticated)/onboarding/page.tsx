@@ -359,7 +359,42 @@ ${goal}
                                             { level: 'important', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Star size={16} /> Important</span>, desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
                                             { level: 'niceToHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Sparkles size={16} /> Nice-to-Haves</span>, desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
                                         ] as const).map(bucket => (
-                                            <Droppable key={bucket.level} droppableId={bucket.level}>
+                                            <Droppable 
+                                                key={bucket.level} 
+                                                droppableId={bucket.level}
+                                                renderClone={(provided, snapshot, rubric) => {
+                                                    const c = criteriaList.find(item => item.id === rubric.draggableId);
+                                                    if (!c) return null;
+                                                    const calculatedWeights = getCalculatedWeights();
+                                                    const pct = calculatedWeights[c.id];
+                                                    return (
+                                                        <div
+                                                            ref={provided.innerRef}
+                                                            {...provided.draggableProps}
+                                                            {...provided.dragHandleProps}
+                                                            style={{
+                                                                background: 'var(--card)',
+                                                                color: 'var(--text-primary)',
+                                                                padding: '0.75rem',
+                                                                borderRadius: '6px',
+                                                                border: '1px solid var(--accent-primary)',
+                                                                cursor: 'grabbing',
+                                                                boxShadow: '0 12px 24px -4px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--accent-primary)',
+                                                                width: '100%',
+                                                                boxSizing: 'border-box',
+                                                                userSelect: 'none',
+                                                                ...provided.draggableProps.style
+                                                            }}
+                                                        >
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{c.label}</span>
+                                                                <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)', fontSize: '0.85rem' }}>{pct}%</span>
+                                                            </div>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{c.desc}</div>
+                                                        </div>
+                                                    );
+                                                }}
+                                            >
                                                 {(provided, snapshot) => (
                                                     <div 
                                                         ref={provided.innerRef}
@@ -396,15 +431,17 @@ ${goal}
                                                                                 {...draggableProvided.draggableProps}
                                                                                 {...draggableProvided.dragHandleProps}
                                                                                 style={{ 
-                                                                                    background: draggableSnapshot.isDragging ? 'var(--bg-surface-hover, #1e293b)' : 'var(--bg-color)', 
+                                                                                    background: 'var(--card)', 
+                                                                                    color: 'var(--text-primary)',
                                                                                     padding: '0.75rem', 
                                                                                     borderRadius: '6px', 
                                                                                     border: `1px solid ${draggableSnapshot.isDragging ? 'var(--accent-primary)' : 'var(--border-glass)'}`,
-                                                                                    cursor: 'grab',
-                                                                                    boxShadow: draggableSnapshot.isDragging ? '0 10px 25px -5px rgba(0,0,0,0.5), 0 0 10px rgba(99,102,241,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+                                                                                    cursor: draggableSnapshot.isDragging ? 'grabbing' : 'grab',
+                                                                                    boxShadow: draggableSnapshot.isDragging 
+                                                                                        ? '0 12px 24px -4px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--accent-primary)' 
+                                                                                        : 'var(--shadow-sm)',
                                                                                     width: '100%',
                                                                                     boxSizing: 'border-box',
-                                                                                    touchAction: 'manipulation',
                                                                                     userSelect: 'none',
                                                                                     ...draggableProvided.draggableProps.style
                                                                                 }}
@@ -420,19 +457,24 @@ ${goal}
                                                                                     style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}
                                                                                     onPointerDown={(e) => e.stopPropagation()}
                                                                                     onTouchStart={(e) => e.stopPropagation()}
+                                                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                                                    onKeyDown={(e) => e.stopPropagation()}
                                                                                     onClick={(e) => e.stopPropagation()}
                                                                                 >
                                                                                     {(['mustHave', 'important', 'niceToHave'] as PriorityLevel[]).map(lvl => (
                                                                                         <button
                                                                                             key={lvl}
                                                                                             type="button"
-                                                                                            onClick={() => setBucketState(prev => ({ ...prev, [c.id]: lvl }))}
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                setBucketState(prev => ({ ...prev, [c.id]: lvl }));
+                                                                                            }}
                                                                                             style={{
                                                                                                 padding: '0.2rem 0.45rem',
                                                                                                 fontSize: '0.7rem',
                                                                                                 borderRadius: '4px',
                                                                                                 border: '1px solid var(--border-glass)',
-                                                                                                background: bucketState[c.id] === lvl ? 'var(--accent-primary)' : 'rgba(0,0,0,0.2)',
+                                                                                                background: bucketState[c.id] === lvl ? 'var(--accent-primary)' : 'var(--input)',
                                                                                                 color: bucketState[c.id] === lvl ? '#ffffff' : 'var(--text-secondary)',
                                                                                                 cursor: 'pointer',
                                                                                                 fontWeight: bucketState[c.id] === lvl ? 600 : 400,
