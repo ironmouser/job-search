@@ -78,6 +78,8 @@ export default async function Dashboard() {
   });
 
   const hasEmailCredentials = !!(userPrefs?.emailAddress && userPrefs?.emailAppPassword);
+  const hasSeenNonUsPrompt = userPrefs?.hasSeenNonUsPrompt || false;
+  const noInternational = userPrefs?.noInternational || false;
 
   let initialScoresExhausted = false;
   if (planTier !== 'PRO') {
@@ -95,6 +97,6 @@ export default async function Dashboard() {
   }
 
   return (
-    <DashboardClient jobs={jobs} userPlanTier={planTier} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} />
+    <DashboardClient jobs={jobs} userPlanTier={planTier} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} />
   );
 }

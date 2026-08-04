@@ -333,6 +333,7 @@ model UserPreferences {
   sources           Json?    @default("{}")
   remoteOnly        Boolean  @default(false)
   noInternational   Boolean  @default(false) @map("no_international")
+  hasSeenNonUsPrompt Boolean @default(false) @map("has_seen_non_us_prompt")
   theme             String   @default("light")
   aiStrictness      String   @default("Standard")
   coverLetterTone       String?  @default("Confident and strategic") @map("cover_letter_tone")

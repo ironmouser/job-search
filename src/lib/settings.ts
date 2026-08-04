@@ -37,6 +37,7 @@ export async function getUserSettings(userId: string): Promise<any> {
                     sources: row.sources || {},
                     remoteOnly: row.remote_only || false,
                     noInternational: row.no_international || false,
+                    hasSeenNonUsPrompt: row.has_seen_non_us_prompt || false,
                     theme: row.theme || 'light',
                     aiStrictness: row.ai_strictness || 'Standard',
                     resumeMarkdown: row.resume_markdown || '',
@@ -88,7 +89,8 @@ export const INTERNATIONAL_SOURCES = [
     'eures',
     'bumeran',
     'workopolis',
-    'workana'
+    'workana',
+    'arbeitnow'
 ];
 
 export const ALL_PRO_SOURCES = [
@@ -120,7 +122,7 @@ export async function handleUserUpgradeToPro(userId: string) {
         workingnomads: true,
         remotive: true,
         remotepoc: true,
-        arbeitnow: true,
+        arbeitnow: false,
         ycombinator: true
     };
 

@@ -10,7 +10,7 @@ import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
-import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation } from '@/lib/locationUtils';
+import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInternationalLocation } from '@/lib/locationUtils';
 import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import SyncOverlay from './SyncOverlay';
 import { useHelp } from '@/contexts/HelpContext';
 import DiscoveryNudgeOverlay from '@/components/DiscoveryNudgeOverlay';
 import OnboardingWidget from '@/components/common/OnboardingWidget';
+import NonUsJobsFocusModal from '@/components/NonUsJobsFocusModal';
 
 const safeFormatDate = (dateVal: any) => {
   if (!dateVal) return '';
@@ -34,13 +35,27 @@ const getConfidenceBadge = (score?: number) => {
     return null;
 };
 
-export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false, initialScoresExhausted = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean, initialScoresExhausted?: boolean }) {
+export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailCredentials = false, initialScoresExhausted = false, hasSeenNonUsPrompt = false, noInternational = false }: { jobs: any[], userPlanTier?: string, hasEmailCredentials?: boolean, initialScoresExhausted?: boolean, hasSeenNonUsPrompt?: boolean, noInternational?: boolean }) {
   const router = useRouter();
   const [jobList, setJobList] = useState<any[]>(jobs || []);
   const [scoresExhausted, setScoresExhausted] = useState(initialScoresExhausted);
+  const [showNonUsModal, setShowNonUsModal] = useState(false);
+  const [intlJobCount, setIntlJobCount] = useState(0);
 
   useEffect(() => {
     setJobList(jobs || []);
+  }, [jobs]);
+
+  // Detect international jobs and show the focus prompt once
+  useEffect(() => {
+    if (hasSeenNonUsPrompt || noInternational) return;
+    const intlJobs = (jobs || []).filter((j: any) => isInternationalLocation(j.location || ''));
+    if (intlJobs.length > 0) {
+      setIntlJobCount(intlJobs.length);
+      setShowNonUsModal(true);
+    }
+  // Run only on first render / when jobs list changes after a sync
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs]);
 
   const { getOnboardingProgress } = useHelp();
@@ -1570,6 +1585,17 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', hasEmailC
         isOpen={showDiscoveryNudge}
         onClose={handleCloseDiscoveryNudge}
       />
+
+      {showNonUsModal && (
+        <NonUsJobsFocusModal
+          intlJobCount={intlJobCount}
+          onKeepAll={() => setShowNonUsModal(false)}
+          onUsOnly={(deletedIds) => {
+            setJobList((prev: any[]) => prev.filter((j: any) => !deletedIds.includes(j.id)));
+            setShowNonUsModal(false);
+          }}
+        />
+      )}
     </>
   );
 }

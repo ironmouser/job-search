@@ -18,7 +18,6 @@ export const DEFAULT_FREE_SOURCES: Record<string, boolean> = {
     workingnomads: true,
     remotive: true,
     remotepoc: true,
-    arbeitnow: true,
     ycombinator: true,
 };
 
@@ -53,6 +52,7 @@ export async function GET() {
             justremote: false,
             themuse: false,
             arbeitsagentur: false,
+            arbeitnow: false,
             computrabajo: false,
             jobbank: false,
         };
@@ -70,6 +70,7 @@ export async function GET() {
                 excludeKeywords: '',
                 remoteOnly: false,
                 noInternational: false,
+                hasSeenNonUsPrompt: false,
                 theme: 'light',
                 aiStrictness: 'Standard',
                 resumeCustomizationMaxPercentage: 50,
@@ -109,6 +110,7 @@ export async function GET() {
             excludeKeywords: (prefs as any).excludeKeywords || '',
             remoteOnly: prefs.remoteOnly,
             noInternational: (prefs as any).noInternational || false,
+            hasSeenNonUsPrompt: (prefs as any).hasSeenNonUsPrompt || false,
             theme: prefs.theme,
             aiStrictness: prefs.aiStrictness,
             usWorkAuthorization: (prefs as any).usWorkAuthorization || '',
@@ -215,6 +217,7 @@ export async function POST(request: Request) {
             excludeKeywords: data.excludeKeywords,
             remoteOnly: data.remoteOnly,
             noInternational: data.noInternational || false,
+            hasSeenNonUsPrompt: data.hasSeenNonUsPrompt ?? undefined,
             theme: data.theme,
             aiStrictness: data.aiStrictness,
             usWorkAuthorization: data.usWorkAuthorization,
@@ -278,6 +281,7 @@ export async function POST(request: Request) {
                 excludeKeywords: data.excludeKeywords || '',
                 remoteOnly: data.remoteOnly || false,
                 noInternational: data.noInternational || false,
+                hasSeenNonUsPrompt: data.hasSeenNonUsPrompt || false,
                 theme: data.theme || 'light',
                 aiStrictness: data.aiStrictness || 'Standard',
                 usWorkAuthorization: data.usWorkAuthorization || '',
