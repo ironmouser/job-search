@@ -10,33 +10,54 @@ interface TourGuideProps {
 }
 
 /**
- * Scrolls so the target element sits at ~28% from the top of the viewport.
- * This leaves the lower ~72% for the Joyride tooltip, which places the
- * tooltip roughly in the center of the visible area.
+ * Scrolls the viewport so the Joyride step tooltip card (housing the text & action buttons)
+ * is vertically centered in the viewport.
  */
-const scrollToStepTarget = (targetSelector: string) => {
-    if (!targetSelector) return;
+const scrollToCenterTooltip = (targetSelector?: string) => {
     try {
-        const el = document.querySelector(targetSelector);
-        if (!el) return;
+        const tooltipEl =
+            document.querySelector('.react-joyride__tooltip') ||
+            document.querySelector('[data-joyride="tooltip"]') ||
+            document.querySelector('div[id^="react-joyride-step-"]') ||
+            document.querySelector('.__floater');
 
-        const rect = el.getBoundingClientRect();
         const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-
-        // Desired distance from the top of the viewport to the top of the element.
-        // 28% gives the tooltip (~200–240 px) room to sit in the visual center.
-        const desiredTopOffset = viewportHeight * 0.28;
-
         const currentScrollY = window.scrollY || document.documentElement.scrollTop;
-        const targetScrollY = currentScrollY + rect.top - desiredTopOffset;
 
-        window.scrollTo({
-            top: Math.max(0, targetScrollY),
-            behavior: 'smooth',
-        });
+        if (tooltipEl) {
+            const rect = tooltipEl.getBoundingClientRect();
+            if (rect.height > 0) {
+                const tooltipCenterY = rect.top + rect.height / 2;
+                const desiredCenterY = viewportHeight / 2;
+                const targetScrollY = currentScrollY + tooltipCenterY - desiredCenterY;
+
+                window.scrollTo({
+                    top: Math.max(0, targetScrollY),
+                    behavior: 'smooth',
+                });
+                return true;
+            }
+        }
+
+        // Fallback: If tooltip element is not rendered yet, center the target element
+        if (targetSelector) {
+            const targetEl = document.querySelector(targetSelector);
+            if (targetEl) {
+                const rect = targetEl.getBoundingClientRect();
+                const targetCenterY = rect.top + rect.height / 2;
+                const desiredCenterY = viewportHeight / 2;
+                const targetScrollY = currentScrollY + targetCenterY - desiredCenterY;
+
+                window.scrollTo({
+                    top: Math.max(0, targetScrollY),
+                    behavior: 'smooth',
+                });
+            }
+        }
     } catch (err) {
-        console.error('Error scrolling to step target:', err);
+        console.error('Error scrolling tooltip into center:', err);
     }
+    return false;
 };
 
 const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
@@ -100,23 +121,23 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
         }
     }, [state.index, state.status, activeTour, pathname, router, steps.length]);
 
-    // Scroll to target element if it is outside the viewport when step or route changes
+    // Scroll to center the step tooltip modal in the viewport when step or route changes
     useEffect(() => {
         if (state.status === 'running' && activeTour && state.index >= 0 && state.index < steps.length) {
             const target = steps[state.index]?.target;
-            if (target) {
-                scrollToStepTarget(target);
+            scrollToCenterTooltip(target);
 
-                const t1 = setTimeout(() => scrollToStepTarget(target), 150);
-                const t2 = setTimeout(() => scrollToStepTarget(target), 400);
-                const t3 = setTimeout(() => scrollToStepTarget(target), 800);
+            const t1 = setTimeout(() => scrollToCenterTooltip(target), 50);
+            const t2 = setTimeout(() => scrollToCenterTooltip(target), 150);
+            const t3 = setTimeout(() => scrollToCenterTooltip(target), 300);
+            const t4 = setTimeout(() => scrollToCenterTooltip(target), 600);
 
-                return () => {
-                    clearTimeout(t1);
-                    clearTimeout(t2);
-                    clearTimeout(t3);
-                };
-            }
+            return () => {
+                clearTimeout(t1);
+                clearTimeout(t2);
+                clearTimeout(t3);
+                clearTimeout(t4);
+            };
         }
     }, [state.index, state.status, activeTour, pathname, steps]);
 
