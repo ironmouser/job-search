@@ -113,6 +113,7 @@ export async function GET(request: NextRequest) {
       eeocGender: prefs?.eeocGender ?? undefined,
       eeocVeteran: prefs?.eeocVeteran ?? undefined,
       eeocDisability: prefs?.eeocDisability ?? undefined,
+      skipSelfId: (prefs as any)?.skipSelfId ?? false,
     };
 
     const payload = {

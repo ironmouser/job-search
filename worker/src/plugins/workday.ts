@@ -356,13 +356,21 @@ export class WorkdayPlugin extends ATSPlugin {
         await group.locator('[value="No"], [data-automation-id="No"]').first().click();
         await logger.info('question_answered', 'Visa sponsorship required: No');
       } else if (label) {
-        // Unknown question — log it and signal for intervention
-        await logger.warn('unknown_question', `Unknown question encountered: ${label.substring(0, 100)}`);
-        throw new InterventionError(
-          InterventionReason.UNKNOWN_QUESTION,
-          `Workday has a question that requires your input: "${label.trim()}"`,
-          page.url()
-        );
+        // Check if this looks like a Self-ID / EEOC question that can be skipped
+        const eeocKeywords = ['gender', 'sex', 'race', 'ethnicity', 'veteran', 'disability', 'self-id', 'self identify', 'voluntary disclosure'];
+        const isEeocQuestion = eeocKeywords.some((kw) => label.toLowerCase().includes(kw));
+
+        if (isEeocQuestion && context.userProfile.skipSelfId) {
+          await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 80)}" (skipSelfId=true)`);
+        } else {
+          // Unknown question — log it and signal for intervention
+          await logger.warn('unknown_question', `Unknown question encountered: ${label.substring(0, 100)}`);
+          throw new InterventionError(
+            InterventionReason.UNKNOWN_QUESTION,
+            `Workday has a question that requires your input: "${label.trim()}"`,
+            page.url()
+          );
+        }
       }
     }
   }

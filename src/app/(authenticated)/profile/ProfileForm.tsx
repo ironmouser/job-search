@@ -701,7 +701,44 @@ export default function ProfileForm({
             </div>
 
             <div style={{ height: "1px", background: "var(--border-glass)", margin: "0.5rem 0" }} />
-            <h4 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Voluntary Self-ID (EEOC)</h4>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+              <h4 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Voluntary Self-ID (EEOC)</h4>
+              <label
+                htmlFor="skipSelfId"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  cursor: "pointer",
+                  padding: "0.35rem 0.75rem",
+                  borderRadius: "8px",
+                  background: settings.skipSelfId ? "rgba(59, 130, 246, 0.12)" : "rgba(0,0,0,0.1)",
+                  border: `1px solid ${settings.skipSelfId ? "rgba(59, 130, 246, 0.35)" : "var(--border-glass)"}`,
+                  transition: "all 0.2s ease",
+                  userSelect: "none",
+                  flexShrink: 0,
+                }}
+              >
+                <input
+                  id="skipSelfId"
+                  type="checkbox"
+                  checked={!!settings.skipSelfId}
+                  onChange={(e) => handleSettingsChange("skipSelfId", e.target.checked)}
+                  style={{ width: "15px", height: "15px", cursor: "pointer", accentColor: "#3b82f6" }}
+                />
+                <span style={{ fontSize: "0.82rem", fontWeight: 500, color: settings.skipSelfId ? "#3b82f6" : "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                  Skip if not required
+                </span>
+              </label>
+            </div>
+            {settings.skipSelfId && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", background: "rgba(59, 130, 246, 0.07)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: "8px", padding: "0.65rem 0.85rem" }}>
+                <Info size={14} style={{ color: "#3b82f6", flexShrink: 0, marginTop: "2px" }} />
+                <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                  The AI will attempt to submit applications without completing Self-ID steps. If a Self-ID section turns out to be required, your answers below will be used as a fallback.
+                </p>
+              </div>
+            )}
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.25rem" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>

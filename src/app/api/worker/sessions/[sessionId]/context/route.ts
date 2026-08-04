@@ -109,6 +109,7 @@ export async function GET(
         eeocGender: prefs?.eeocGender ?? undefined,
         eeocVeteran: prefs?.eeocVeteran ?? undefined,
         eeocDisability: prefs?.eeocDisability ?? undefined,
+        skipSelfId: (prefs as any)?.skipSelfId ?? false,
       },
     };
 

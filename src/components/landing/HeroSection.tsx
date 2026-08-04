@@ -35,14 +35,14 @@ export default function HeroSection() {
           Your personal AI job search agent discovers jobs, tailors your resume, writes cover letters, and can automatically complete online application forms using the information and documents you've approved.
         </p>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-          <Link href="/login" className="btn-primary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', fontWeight: 600, borderRadius: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+          <Link href="/login" className="btn-primary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', fontWeight: 600, borderRadius: '8px', flexShrink: 0 }}>
             Get Started Free
           </Link>
           <img 
             src={getAssetUrl('/lil-bot.png')} 
             alt="Job Agent Bot" 
-            style={{ height: '195px', width: 'auto', objectFit: 'contain', margin: '-1.5rem 0' }} 
+            style={{ height: '195px', width: 'auto', objectFit: 'contain', margin: '-1.5rem 0', maxWidth: '100%' }} 
           />
         </div>
       </div>

@@ -360,6 +360,7 @@ model UserPreferences {
   eeocGender          String? @map("eeoc_gender")
   eeocVeteran         String? @map("eeoc_veteran")
   eeocDisability      String? @map("eeoc_disability")
+  skipSelfId          Boolean @default(false) @map("skip_self_id")
 
   // PDF Styling Customization
   resumePdfTemplate         String? @default("classic") @map("resume_pdf_template")

@@ -102,6 +102,7 @@ export interface UserProfile {
   eeocGender?: string;
   eeocVeteran?: string;
   eeocDisability?: string;
+  skipSelfId?: boolean;
 }
 
 export interface WorkflowContext {

@@ -485,6 +485,10 @@ export class GreenhousePlugin extends ATSPlugin {
           }
           targetValue = profile.country;
         } else if (label.includes('gender') || label.includes('sex')) {
+          if (profile.skipSelfId && !profile.eeocGender) {
+            await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
+            continue;
+          }
           if (!profile.eeocGender) {
             throw new InterventionError(
               InterventionReason.UNKNOWN_QUESTION,
@@ -493,6 +497,10 @@ export class GreenhousePlugin extends ATSPlugin {
           }
           targetValue = profile.eeocGender;
         } else if (label.includes('race') || label.includes('ethnicity')) {
+          if (profile.skipSelfId && !profile.eeocRace) {
+            await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
+            continue;
+          }
           if (!profile.eeocRace) {
             throw new InterventionError(
               InterventionReason.UNKNOWN_QUESTION,
@@ -501,6 +509,10 @@ export class GreenhousePlugin extends ATSPlugin {
           }
           targetValue = profile.eeocRace;
         } else if (label.includes('veteran')) {
+          if (profile.skipSelfId && !profile.eeocVeteran) {
+            await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
+            continue;
+          }
           if (!profile.eeocVeteran) {
             throw new InterventionError(
               InterventionReason.UNKNOWN_QUESTION,
@@ -509,6 +521,10 @@ export class GreenhousePlugin extends ATSPlugin {
           }
           targetValue = profile.eeocVeteran;
         } else if (label.includes('disability')) {
+          if (profile.skipSelfId && !profile.eeocDisability) {
+            await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
+            continue;
+          }
           if (!profile.eeocDisability) {
             throw new InterventionError(
               InterventionReason.UNKNOWN_QUESTION,
