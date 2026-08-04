@@ -4,6 +4,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useJoyride, STATUS } from 'react-joyride';
 import { useHelp } from '../../contexts/HelpContext';
 import { useRouter, usePathname } from 'next/navigation';
+import TourTooltip from './TourTooltip';
 
 interface TourGuideProps {
     tourId?: string;
@@ -69,6 +70,7 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
         scrollToFirstStep: true,
         scrollOffset: 120,
         scrollDuration: 400,
+        tooltipComponent: TourTooltip,
         styles: {
             // @ts-expect-error: options is a valid prop at runtime but missing from types
             options: {
