@@ -1,5 +1,4 @@
 import { BrowserSession } from './browser-session';
-import * as cheerio from 'cheerio';
 
 export interface StealthScrapeParams {
   url: string;
@@ -54,59 +53,69 @@ export async function scrapeWithPlaywrightStealth(params: StealthScrapeParams): 
       await page.waitForTimeout(7000);
     }
 
-    const html = await page.content();
-    const $ = cheerio.load(html);
-
     if (source === 'remoteco' || url.includes('remote.co')) {
-      $('a[href*="/job/"]').each((_, el) => {
-        const titleEl = $(el).find('p.font-weight-bold').length ? $(el).find('p.font-weight-bold') : $(el);
-        const companyEl = $(el).find('p.m-0').length ? $(el).find('p.m-0') : $(el);
-        const href = $(el).attr('href') || '';
-        if (!href) return;
-        const fullUrl = href.startsWith('http') ? href : `https://remote.co${href}`;
-        const title = titleEl.text().trim();
-        if (!title || title.length < 3) return;
+      const extracted = await page.$$eval('a[href*="/job/"]', (elements) => {
+        return elements.map((el) => {
+          const titleEl = el.querySelector('p.font-weight-bold') || el;
+          const companyEl = el.querySelector('p.m-0') || el;
+          const href = el.getAttribute('href') || '';
+          if (!href) return null;
+          const fullUrl = href.startsWith('http') ? href : `https://remote.co${href}`;
+          const title = titleEl.textContent?.trim() || '';
+          if (!title || title.length < 3) return null;
 
-        jobs.push({
-          title,
-          company: companyEl.text().split('|')[0]?.trim() || 'Remote.co Company',
-          location: 'Remote',
-          description: `Apply at: ${fullUrl}`,
-          url: fullUrl,
-          source: 'Remote.co'
-        });
+          return {
+            title,
+            company: companyEl.textContent?.split('|')[0]?.trim() || 'Remote.co Company',
+            location: 'Remote',
+            description: `Apply at: ${fullUrl}`,
+            url: fullUrl,
+            source: 'Remote.co'
+          };
+        }).filter(Boolean);
       });
+      jobs.push(...(extracted as ScrapedJob[]));
     } else if (source === 'jobspresso' || url.includes('jobspresso.co')) {
-      $('li.job_listing').each((_, el) => {
-        const href = $(el).find('a').attr('href');
-        const title = $(el).find('.position h3').text().trim();
-        if (!href || !title) return;
-        jobs.push({
-          title,
-          company: $(el).find('.company strong').text().trim() || 'Jobspresso',
-          location: $(el).find('.location').text().trim() || 'Remote',
-          description: `Apply at: ${href}`,
-          url: href,
-          source: 'Jobspresso'
-        });
+      const extracted = await page.$$eval('li.job_listing', (elements) => {
+        return elements.map((el) => {
+          const href = el.querySelector('a')?.getAttribute('href') || '';
+          const title = el.querySelector('.position h3')?.textContent?.trim() || '';
+          if (!href || !title) return null;
+          return {
+            title,
+            company: el.querySelector('.company strong')?.textContent?.trim() || 'Jobspresso',
+            location: el.querySelector('.location')?.textContent?.trim() || 'Remote',
+            description: `Apply at: ${href}`,
+            url: href,
+            source: 'Jobspresso'
+          };
+        }).filter(Boolean);
       });
+      jobs.push(...(extracted as ScrapedJob[]));
     } else {
       // Generic fallback card extraction
-      $('[class*="job-card"], [class*="jobListing"], article, li[class*="job"]').each((_, el) => {
-        const aTag = $(el).find('a[href*="/job"]').first();
-        const title = aTag.text().trim() || $(el).find('h2, h3').first().text().trim();
-        const href = aTag.attr('href') || $(el).find('a').first().attr('href') || '';
-        if (!title || !href) return;
-        const fullUrl = href.startsWith('http') ? href : new URL(href, url).toString();
-        jobs.push({
-          title,
-          company: $(el).find('[class*="company"]').first().text().trim() || 'Company',
-          location: $(el).find('[class*="location"]').first().text().trim() || 'Remote',
-          description: `Apply at: ${fullUrl}`,
-          url: fullUrl,
-          source: source
-        });
-      });
+      const extracted = await page.$$eval('[class*="job-card"], [class*="jobListing"], article, li[class*="job"]', (elements, pageUrl) => {
+        return elements.map((el) => {
+          const aTag = el.querySelector('a[href*="/job"]') || el.querySelector('a');
+          const title = aTag?.textContent?.trim() || el.querySelector('h2, h3')?.textContent?.trim() || '';
+          const href = aTag?.getAttribute('href') || '';
+          if (!title || !href) return null;
+          let fullUrl = href;
+          try {
+            fullUrl = href.startsWith('http') ? href : new URL(href, pageUrl).toString();
+          } catch {}
+
+          return {
+            title,
+            company: el.querySelector('[class*="company"]')?.textContent?.trim() || 'Company',
+            location: el.querySelector('[class*="location"]')?.textContent?.trim() || 'Remote',
+            description: `Apply at: ${fullUrl}`,
+            url: fullUrl,
+            source: 'Generic'
+          };
+        }).filter(Boolean);
+      }, url);
+      jobs.push(...(extracted as ScrapedJob[]));
     }
 
     console.log(`[StealthScraper] Finished ${source}: extracted ${jobs.length} jobs.`);
