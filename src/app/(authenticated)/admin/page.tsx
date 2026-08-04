@@ -127,7 +127,7 @@ export default function AdminDashboard() {
     remotecoIsPro: false,
     remoteokIsPro: false,
     workingnomadsIsPro: false,
-    arbeitnowIsPro: false,
+    arbeitnowIsPro: true,
     ycombinatorIsPro: false,
     himalayasIsPro: true,
     ottaIsPro: true,

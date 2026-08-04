@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         remotecoIsPro: data.remotecoIsPro ?? false,
         remoteokIsPro: data.remoteokIsPro ?? false,
         workingnomadsIsPro: data.workingnomadsIsPro ?? false,
-        arbeitnowIsPro: data.arbeitnowIsPro ?? false,
+        arbeitnowIsPro: data.arbeitnowIsPro ?? true,
         ycombinatorIsPro: data.ycombinatorIsPro ?? false,
         himalayasIsPro: data.himalayasIsPro ?? true,
         ottaIsPro: data.ottaIsPro ?? true,

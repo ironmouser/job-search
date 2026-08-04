@@ -463,7 +463,7 @@ export default function SettingsPage() {
                                     },
                                     {
                                         title: 'US / Remote Tech',
-                                        sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'arbeitnow', 'ycombinator', 'otta', 'jobspresso', 'justremote']
+                                        sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'ycombinator', 'otta', 'jobspresso', 'justremote']
                                     },
                                     {
                                         title: 'ATS Integrations',
@@ -471,7 +471,7 @@ export default function SettingsPage() {
                                     },
                                     {
                                         title: 'International Sources',
-                                        sources: ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank']
+                                        sources: ['arbeitsagentur', 'arbeitnow', 'themuse', 'computrabajo', 'jobbank']
                                     }
                                 ].map(group => (
                                     <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -495,7 +495,7 @@ export default function SettingsPage() {
                                                     <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
                                                         <input 
                                                             type="checkbox" 
-                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : true)}
+                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : (group.title === 'International Sources' ? false : true))}
                                                             disabled={isDisabled}
                                                             onChange={(e) => {
                                                                 const newSources = { ...settings.sources, [source]: e.target.checked };
@@ -534,7 +534,7 @@ export default function SettingsPage() {
                                     {
                                         title: 'Remote & Tech Jobs',
                                         items: [
-                                            { label: 'Free', sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'arbeitnow', 'ycombinator'] },
+                                            { label: 'Free', sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'ycombinator'] },
                                             { label: 'Premium', sources: ['himalayas', 'otta', 'jobspresso', 'justremote'], isPro: true }
                                         ]
                                     },
@@ -548,7 +548,7 @@ export default function SettingsPage() {
                                         title: 'International Job Boards',
                                         items: [
                                             { label: 'Global', sources: ['themuse'], isPro: true },
-                                            { label: 'Germany', sources: ['arbeitsagentur'], isPro: true },
+                                            { label: 'Germany', sources: ['arbeitsagentur', 'arbeitnow'], isPro: true },
                                             { label: 'Latin America', sources: ['computrabajo'], isPro: true },
                                             { label: 'Canada', sources: ['jobbank'], isPro: true }
                                         ]
