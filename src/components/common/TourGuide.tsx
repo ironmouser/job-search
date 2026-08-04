@@ -4,42 +4,36 @@ import React, { useEffect, useMemo } from 'react';
 import { useJoyride, STATUS } from 'react-joyride';
 import { useHelp } from '../../contexts/HelpContext';
 import { useRouter, usePathname } from 'next/navigation';
-import TourTooltip from './TourTooltip';
 
 interface TourGuideProps {
     tourId?: string;
 }
 
-const isElementInViewport = (el: Element): boolean => {
-    const rect = el.getBoundingClientRect();
-    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
-    const windowWidth = window.innerWidth || document.documentElement.clientWidth;
-
-    // Buffer for sticky navigation header (~100px) and bottom padding (20px)
-    const topOffset = 100;
-    const bottomOffset = 20;
-
-    return (
-        rect.top >= topOffset &&
-        rect.left >= 0 &&
-        rect.bottom <= (windowHeight - bottomOffset) &&
-        rect.right <= windowWidth
-    );
-};
-
+/**
+ * Scrolls so the target element sits at ~28% from the top of the viewport.
+ * This leaves the lower ~72% for the Joyride tooltip, which places the
+ * tooltip roughly in the center of the visible area.
+ */
 const scrollToStepTarget = (targetSelector: string) => {
     if (!targetSelector) return;
     try {
         const el = document.querySelector(targetSelector);
-        if (el) {
-            if (!isElementInViewport(el)) {
-                el.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center',
-                    inline: 'nearest'
-                });
-            }
-        }
+        if (!el) return;
+
+        const rect = el.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+        // Desired distance from the top of the viewport to the top of the element.
+        // 28% gives the tooltip (~200–240 px) room to sit in the visual center.
+        const desiredTopOffset = viewportHeight * 0.28;
+
+        const currentScrollY = window.scrollY || document.documentElement.scrollTop;
+        const targetScrollY = currentScrollY + rect.top - desiredTopOffset;
+
+        window.scrollTo({
+            top: Math.max(0, targetScrollY),
+            behavior: 'smooth',
+        });
     } catch (err) {
         console.error('Error scrolling to step target:', err);
     }
@@ -67,10 +61,9 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
         run: !!activeTour && steps.length > 0,
         continuous: true,
         skipBeacon: true,
-        scrollToFirstStep: true,
-        scrollOffset: 120,
-        scrollDuration: 400,
-        tooltipComponent: TourTooltip,
+        // Disable Joyride's built-in scroll — we handle it ourselves below
+        // so we can position the element precisely relative to the viewport.
+        disableScrolling: true,
         styles: {
             // @ts-expect-error: options is a valid prop at runtime but missing from types
             options: {
