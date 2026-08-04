@@ -361,6 +361,11 @@ model UserPreferences {
   eeocVeteran         String? @map("eeoc_veteran")
   eeocDisability      String? @map("eeoc_disability")
   skipSelfId          Boolean @default(false) @map("skip_self_id")
+  startDate           String? @map("start_date")
+  expectedSalary      String? @map("expected_salary")
+  willingToTravel     String? @map("willing_to_travel")
+  isOver18            String? @map("is_over_18")
+  willingToRelocate   String? @map("willing_to_relocate")
 
   // PDF Styling Customization
   resumePdfTemplate         String? @default("classic") @map("resume_pdf_template")

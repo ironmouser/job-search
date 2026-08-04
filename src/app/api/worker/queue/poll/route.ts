@@ -114,6 +114,11 @@ export async function GET(request: NextRequest) {
       eeocVeteran: prefs?.eeocVeteran ?? undefined,
       eeocDisability: prefs?.eeocDisability ?? undefined,
       skipSelfId: (prefs as any)?.skipSelfId ?? false,
+      startDate: (prefs as any)?.startDate ?? undefined,
+      expectedSalary: (prefs as any)?.expectedSalary ?? undefined,
+      willingToTravel: (prefs as any)?.willingToTravel ?? undefined,
+      isOver18: (prefs as any)?.isOver18 ?? undefined,
+      willingToRelocate: (prefs as any)?.willingToRelocate ?? undefined,
     };
 
     const payload = {

@@ -700,6 +700,113 @@ export default function ProfileForm({
               </div>
             </div>
 
+            {/* Row: Start Date & Expected Salary */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.25rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Start Date</label>
+                <select 
+                  value={settings.startDate || ''}
+                  onChange={(e) => handleSettingsChange('startDate', e.target.value)}
+                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                >
+                  <option value="">Select...</option>
+                  <option value="tomorrow">Tomorrow</option>
+                  <option value="1 week">1 week</option>
+                  <option value="2 weeks">2 weeks</option>
+                  <option value="3 weeks">3 weeks</option>
+                  <option value="1 month">1 month</option>
+                </select>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                  Actual calendar date calculated automatically relative to application submission date.
+                </span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Expected Salary</label>
+                <select 
+                  value={settings.expectedSalary || ''}
+                  onChange={(e) => handleSettingsChange('expectedSalary', e.target.value)}
+                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                >
+                  <option value="">Select...</option>
+                  <option value="20,000 - 30,000">$20,000 - $30,000</option>
+                  <option value="30,000 - 40,000">$30,000 - $40,000</option>
+                  <option value="40,000 - 50,000">$40,000 - $50,000</option>
+                  <option value="50,000 - 60,000">$50,000 - $60,000</option>
+                  <option value="60,000 - 70,000">$60,000 - $70,000</option>
+                  <option value="70,000 - 80,000">$70,000 - $80,000</option>
+                  <option value="80,000 - 90,000">$80,000 - $90,000</option>
+                  <option value="90,000 - 100,000">$90,000 - $100,000</option>
+                  <option value="100,000 - 110,000">$100,000 - $110,000</option>
+                  <option value="110,000 - 120,000">$110,000 - $120,000</option>
+                  <option value="120,000 - 130,000">$120,000 - $130,000</option>
+                  <option value="130,000 - 140,000">$130,000 - $140,000</option>
+                  <option value="140,000 - 150,000">$140,000 - $150,000</option>
+                  <option value="150,000 - 160,000">$150,000 - $160,000</option>
+                  <option value="160,000 - 170,000">$160,000 - $170,000</option>
+                  <option value="170,000 - 180,000">$170,000 - $180,000</option>
+                  <option value="180,000 - 190,000">$180,000 - $190,000</option>
+                  <option value="190,000 - 200,000">$190,000 - $200,000</option>
+                  <option value="200,000 - 240,000">$200,000 - $240,000</option>
+                  <option value="240,000 - 280,000">$240,000 - $280,000</option>
+                  <option value="280,000 - 320,000">$280,000 - $320,000</option>
+                  <option value="320,000 - 360,000">$320,000 - $360,000</option>
+                  <option value="360,000 - 400,000">$360,000 - $400,000</option>
+                  <option value="400,000 - 440,000">$400,000 - $440,000</option>
+                  <option value="440,000 - 480,000">$440,000 - $480,000</option>
+                  <option value="480,000 - 500,000+">$480,000 - $500,000+</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Row: Willing to Travel, Over 18, Willing to Relocate */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Willing to Travel</label>
+                <select 
+                  value={settings.willingToTravel || ''}
+                  onChange={(e) => handleSettingsChange('willingToTravel', e.target.value)}
+                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                >
+                  <option value="">Select...</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                  If travel percentage is required, lowest option will be picked automatically.
+                </span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Are You Over 18?</label>
+                <select 
+                  value={settings.isOver18 || ''}
+                  onChange={(e) => handleSettingsChange('isOver18', e.target.value)}
+                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                >
+                  <option value="">Select...</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Willing to Relocate</label>
+                <select 
+                  value={settings.willingToRelocate || ''}
+                  onChange={(e) => handleSettingsChange('willingToRelocate', e.target.value)}
+                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                >
+                  <option value="">Select...</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                  If Yes, any relocation-based questions will be answered Yes.
+                </span>
+              </div>
+            </div>
+
             <div style={{ height: "1px", background: "var(--border-glass)", margin: "0.5rem 0" }} />
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
               <h4 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Voluntary Self-ID (EEOC)</h4>

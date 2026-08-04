@@ -103,6 +103,11 @@ export interface UserProfile {
   eeocVeteran?: string;
   eeocDisability?: string;
   skipSelfId?: boolean;
+  startDate?: string;
+  expectedSalary?: string;
+  willingToTravel?: string;
+  isOver18?: string;
+  willingToRelocate?: string;
 }
 
 export interface WorkflowContext {
