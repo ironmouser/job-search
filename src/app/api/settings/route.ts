@@ -9,16 +9,11 @@ import { logSuspiciousActivity } from '@/lib/security';
 export const dynamic = 'force-dynamic';
 
 export const DEFAULT_FREE_SOURCES: Record<string, boolean> = {
-    indeed: true,
-    glassdoor: true,
-    ziprecruiter: true,
-    weworkremotely: true,
-    remoteco: true,
-    remoteok: true,
-    workingnomads: true,
-    remotive: true,
+    greenhouse: true,
+    linkedin: true,
     remotepoc: true,
-    ycombinator: true,
+    remotive: true,
+    nodesk: true,
 };
 
 export async function GET() {
@@ -46,12 +41,8 @@ export async function GET() {
             workable: false,
             smartrecruiters: false,
             breezy: false,
-            himalayas: false,
             otta: false,
-            jobspresso: false,
-            justremote: false,
             themuse: false,
-            arbeitsagentur: false,
             arbeitnow: false,
             computrabajo: false,
             jobbank: false,

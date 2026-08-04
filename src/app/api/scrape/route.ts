@@ -19,106 +19,74 @@ export async function POST(request: Request) {
         
         const keyword = body.keyword || settings.searchKeyword || 'Software Engineer';
         const location = body.location || settings.searchLocation || 'Remote';
+        const sourceParam = body.source;
 
         console.log(`Received omni-scrape request for ${keyword} in ${location} for user ${userId}`);
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const isPro = (session.user as any).planTier === 'PRO';
-        let sources = settings.sources || { indeed: true, glassdoor: true, ziprecruiter: true, weworkremotely: true, remoteco: true, remoteok: true, workingnomads: true, remotive: true, remotepoc: true, arbeitnow: false, ycombinator: true, linkedin: true, greenhouse: true, lever: true, ashby: true, himalayas: true, otta: true, jobspresso: true, justremote: true };
+        let sources = settings.sources || { greenhouse: true, linkedin: true, remotepoc: true, remotive: true, nodesk: true };
         
-        if (!isPro && globalSettings) {
-            // Standard job boards are Pro-only by default
-            sources.indeed = false;
-            sources.linkedin = false;
-            sources.glassdoor = false;
-            sources.ziprecruiter = false;
-            sources.monster = false;
-            sources.wellfound = false;
-            if (globalSettings.greenhouseIsPro) sources.greenhouse = false;
-            if (globalSettings.leverIsPro) sources.lever = false;
-            if (globalSettings.ashbyIsPro) sources.ashby = false;
-            if (globalSettings.workableIsPro) sources.workable = false;
-            if (globalSettings.smartrecruitersIsPro) sources.smartrecruiters = false;
-            if (globalSettings.breezyIsPro) sources.breezy = false;
-            if (globalSettings.remotiveIsPro) sources.remotive = false;
-            if (globalSettings.remotecoIsPro) sources.remoteco = false;
-            if (globalSettings.remoteokIsPro) sources.remoteok = false;
-            if (globalSettings.workingnomadsIsPro) sources.workingnomads = false;
-            if (globalSettings.arbeitnowIsPro) sources.arbeitnow = false;
-            if (globalSettings.ycombinatorIsPro) sources.ycombinator = false;
-            if (globalSettings.himalayasIsPro) sources.himalayas = false;
-            if (globalSettings.ottaIsPro) sources.otta = false;
-            if (globalSettings.jobspressoIsPro) sources.jobspresso = false;
-            if (globalSettings.justremoteIsPro) sources.justremote = false;
-        }
-
-        const INTERNATIONAL_SOURCES = ['eures', 'computrabajo', 'bumeran', 'jobbank', 'workopolis', 'workana', 'arbeitsagentur', 'themuse', 'arbeitnow'];
+        const FREE_ALLOWED_SOURCES = new Set(['greenhouse', 'linkedin', 'remotepoc', 'remotive', 'nodesk']);
 
         if (!isPro) {
-            // Block international sources for free users
-            for (const src of INTERNATIONAL_SOURCES) {
-                sources[src] = false;
+            // Free tier users ONLY have access to greenhouse, linkedin, remotepoc, remotive, and nodesk
+            for (const key of Object.keys(sources)) {
+                if (!FREE_ALLOWED_SOURCES.has(key)) {
+                    sources[key] = false;
+                }
             }
+        }
+
+        // Force enable specified source if parameter provided
+        if (sourceParam) {
+            sources = { [sourceParam]: true };
         }
 
         // Custom career pages are Pro-only — clear them for free accounts
         const customUrls = isPro ? (settings.customCareerPages || []) : [];
 
-
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
             async start(controller) {
                 const sendEvent = (data: any) => {
-                    try {
-                        controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'));
-                    } catch (e) {}
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
                 };
 
                 try {
-                    sendEvent({ type: 'progress', foundCount: 0, message: 'Initiating Omni-Scrape across job boards...' });
+                    sendEvent({ type: 'status', message: `Initializing search for ${keyword}...` });
 
                     let totalRawJobsFound = 0;
                     const allRawJobs: any[] = [];
 
-                    const runScraperTask = async (sourceName: string, fn: () => Promise<any[]>) => {
+                    const tasks: Promise<void>[] = [];
+
+                    const runScraperTask = async (name: string, fn: () => Promise<any[]>) => {
+                        sendEvent({ type: 'status', message: `Querying ${name}...` });
                         try {
-                            const jobs = await fn();
-                            if (Array.isArray(jobs) && jobs.length > 0) {
-                                allRawJobs.push(...jobs);
-                                totalRawJobsFound += jobs.length;
-                                sendEvent({
-                                    type: 'progress',
-                                    source: sourceName,
-                                    foundCount: totalRawJobsFound,
-                                    message: `Discovered ${jobs.length} job${jobs.length === 1 ? '' : 's'} from ${sourceName} (${totalRawJobsFound} total)...`
-                                });
-                            } else {
-                                sendEvent({
-                                    type: 'progress',
-                                    source: sourceName,
-                                    foundCount: totalRawJobsFound,
-                                    message: `Scanned ${sourceName} (${totalRawJobsFound} total found so far)...`
-                                });
+                            const res = await fn();
+                            if (res && res.length > 0) {
+                                allRawJobs.push(...res);
+                                totalRawJobsFound += res.length;
+                                sendEvent({ type: 'status', message: `Found ${res.length} jobs from ${name}` });
                             }
-                        } catch (e) {
-                            console.error(`${sourceName} scrape failed`, e);
+                        } catch (err: any) {
+                            console.error(`Error in ${name} scraper:`, err);
                         }
                     };
 
-                    const tasks: Promise<void>[] = [];
                     if (sources.indeed) tasks.push(runScraperTask('Indeed', () => scrapeIndeed(keyword, location)));
                     if (sources.glassdoor) tasks.push(runScraperTask('Glassdoor', () => scrapeGlassdoor(keyword, location)));
-                    if (sources.himalayas) tasks.push(runScraperTask('Himalayas', () => scrapeHimalayas(keyword)));
                     if (sources.linkedin) tasks.push(runScraperTask('LinkedIn', () => scrapeLinkedIn(keyword, location)));
                     if (sources.ziprecruiter) tasks.push(runScraperTask('ZipRecruiter', () => scrapeZipRecruiter(keyword, location)));
                     if (customUrls.length > 0) tasks.push(runScraperTask('Custom Career Pages', () => scrapeCustomPages(customUrls)));
-                    if (sources.weworkremotely || sources.remoteco || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.jobspresso || sources.justremote) {
+                    if (sources.weworkremotely || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.nodesk) {
                         tasks.push(runScraperTask('Remote Aggregators', () => scrapeRemoteAggregators(keyword, sources)));
                     }
                     if (sources.remotepoc && (isPro || !globalSettings?.remotepocIsPro)) {
                         tasks.push(runScraperTask('RemotePOC', () => scrapeRemotePOC(keyword)));
                     }
-                    const INTERNATIONAL_SOURCE_KEYS = ['arbeitsagentur', 'themuse', 'computrabajo', 'jobbank'];
+                    const INTERNATIONAL_SOURCE_KEYS = ['themuse', 'computrabajo', 'jobbank', 'arbeitnow'];
                     if (isPro && INTERNATIONAL_SOURCE_KEYS.some((s: string) => sources[s])) {
                         tasks.push(runScraperTask('International Boards', () => scrapeInternational(keyword, sources)));
                     }

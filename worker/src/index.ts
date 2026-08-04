@@ -28,11 +28,39 @@ const worker = new WorkerProcess(apiClient, WORKER_ID, POLL_INTERVAL_MS);
 // ─── Minimal health check HTTP server ────────────────────────────────────────
 // Docker HEALTHCHECK hits this endpoint
 
+import { scrapeWithPlaywrightStealth } from './stealth-scraper';
+
 const healthServer = http.createServer((req, res) => {
   if (req.url === '/health' && req.method === 'GET') {
     const health = worker.healthCheck();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(health));
+  } else if (req.url === '/scrape-stealth' && req.method === 'POST') {
+    const authHeader = req.headers.authorization;
+    if (WORKER_API_KEY && authHeader !== `Bearer ${WORKER_API_KEY}`) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const { url, source, keyword } = payload;
+        if (!url || !source) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ error: 'url and source required' }));
+        }
+
+        const jobs = await scrapeWithPlaywrightStealth({ url, source, keyword });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, jobsCount: jobs.length, jobs }));
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
   } else {
     res.writeHead(404);
     res.end();

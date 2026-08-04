@@ -124,57 +124,144 @@ export async function scrapeCustomPages(urls: string[]) {
                 errorMsg = 'Failed to fetch page';
             } else {
                 if (url.includes('boards.greenhouse.io')) {
-                    const companyName = $('title').text().replace('Job Board', '').trim();
-                    $('.opening').each((_, el) => {
-                        const titleEl = $(el).find('a');
-                        const locationEl = $(el).find('.location');
-                        const href = titleEl.attr('href') || '';
-                        const fullUrl = href.startsWith('http') ? href : `https://boards.greenhouse.io${href}`;
-                        jobs.push({
-                            title: titleEl.text().trim() || 'Unknown Role',
-                            company: companyName,
-                            location: locationEl.text().trim() || 'Unknown Location',
-                            description: `Apply at: ${fullUrl}`,
-                            url: fullUrl,
-                            source: 'Greenhouse'
+                    const match = url.match(/boards\.greenhouse\.io\/(?:embed\/job_board\?for=)?([^/?#]+)/i);
+                    const boardToken = match ? match[1] : null;
+                    let apiSuccess = false;
+
+                    if (boardToken) {
+                        try {
+                            const apiRes = await gotScraping({ url: `https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs?content=true`, responseType: 'json', throwHttpErrors: false });
+                            if (apiRes.statusCode >= 200 && apiRes.statusCode < 300 && (apiRes.body as any)?.jobs) {
+                                const rawJobs = (apiRes.body as any).jobs;
+                                const companyName = boardToken.charAt(0).toUpperCase() + boardToken.slice(1);
+                                for (const j of rawJobs) {
+                                    jobs.push({
+                                        title: j.title || 'Unknown Role',
+                                        company: companyName,
+                                        location: j.location?.name || 'Unknown Location',
+                                        description: j.content ? (cheerio.load(j.content).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${j.absolute_url}`) : `Apply at: ${j.absolute_url}`,
+                                        url: j.absolute_url,
+                                        source: 'Greenhouse'
+                                    });
+                                }
+                                apiSuccess = jobs.length > 0;
+                            }
+                        } catch(e) {}
+                    }
+
+                    if (!apiSuccess) {
+                        const companyName = $('title').text().replace('Job Board', '').trim() || 'Greenhouse Company';
+                        $('.opening').each((_, el) => {
+                            const titleEl = $(el).find('a');
+                            const locationEl = $(el).find('.location');
+                            const href = titleEl.attr('href') || '';
+                            const fullUrl = href.startsWith('http') ? href : `https://boards.greenhouse.io${href}`;
+                            jobs.push({
+                                title: titleEl.text().trim() || 'Unknown Role',
+                                company: companyName,
+                                location: locationEl.text().trim() || 'Unknown Location',
+                                description: `Apply at: ${fullUrl}`,
+                                url: fullUrl,
+                                source: 'Greenhouse'
+                            });
                         });
-                    });
+                    }
 
                 } else if (url.includes('jobs.lever.co')) {
-                    const companyName = $('title').text().split('–')[0]?.trim() || 
-                                        $('.main-header-logo img').attr('alt') || 
-                                        $('.main-header-text').text().trim() || 'Lever Company';
-                    $('.posting').each((_, el) => {
-                        const titleEl = $(el).find('h5');
-                        const locationEl = $(el).find('.sort-by-location, .posting-categories .location');
-                        const linkEl = $(el).find('a.posting-title');
-                        const href = linkEl.attr('href') || '';
-                        jobs.push({
-                            title: titleEl.text().trim() || 'Unknown Role',
-                            company: companyName,
-                            location: locationEl.text().trim() || 'Unknown Location',
-                            description: `Apply at: ${href}`,
-                            url: href,
-                            source: 'Lever'
+                    const match = url.match(/jobs\.lever\.co\/([^/?#]+)/i);
+                    const companyToken = match ? match[1] : null;
+                    let apiSuccess = false;
+
+                    if (companyToken) {
+                        try {
+                            const apiRes = await gotScraping({ url: `https://api.lever.co/v0/postings/${companyToken}?mode=json`, responseType: 'json', throwHttpErrors: false });
+                            if (apiRes.statusCode >= 200 && apiRes.statusCode < 300 && Array.isArray(apiRes.body)) {
+                                const rawJobs = apiRes.body as any[];
+                                const companyName = companyToken.charAt(0).toUpperCase() + companyToken.slice(1);
+                                for (const j of rawJobs) {
+                                    jobs.push({
+                                        title: j.text || 'Unknown Role',
+                                        company: companyName,
+                                        location: j.categories?.location || 'Unknown Location',
+                                        description: j.descriptionPlain ? (j.descriptionPlain.replace(/\s+/g, ' ').trim() + `\n\nApply at: ${j.hostedUrl}`) : `Apply at: ${j.hostedUrl}`,
+                                        url: j.hostedUrl || j.applyUrl,
+                                        source: 'Lever'
+                                    });
+                                }
+                                apiSuccess = jobs.length > 0;
+                            }
+                        } catch(e) {}
+                    }
+
+                    if (!apiSuccess) {
+                        const companyName = $('title').text().split('–')[0]?.trim() || 
+                                            $('.main-header-logo img').attr('alt') || 
+                                            $('.main-header-text').text().trim() || 'Lever Company';
+                        $('.posting').each((_, el) => {
+                            const titleEl = $(el).find('h5');
+                            const locationEl = $(el).find('.sort-by-location, .posting-categories .location');
+                            const linkEl = $(el).find('a.posting-title');
+                            const href = linkEl.attr('href') || '';
+                            jobs.push({
+                                title: titleEl.text().trim() || 'Unknown Role',
+                                company: companyName,
+                                location: locationEl.text().trim() || 'Unknown Location',
+                                description: `Apply at: ${href}`,
+                                url: href,
+                                source: 'Lever'
+                            });
                         });
-                    });
+                    }
 
                 } else if (url.includes('jobs.ashbyhq.com')) {
-                    const companyName = $('title').text().trim();
-                    $('a[href*="/jobs/"]').each((_, el) => {
-                        const titleEl = $(el).find('h3');
-                        const locationEl = $(el).find('p');
-                        const href = $(el).attr('href') || '';
-                        const fullUrl = href.startsWith('http') ? href : `https://jobs.ashbyhq.com${href}`;
-                        jobs.push({
-                            title: titleEl.text().trim() || $(el).text().trim() || 'Unknown Role',
-                            company: companyName,
-                            location: locationEl.text().trim() || 'Unknown Location',
-                            description: `Apply at: ${fullUrl}`,
-                            url: fullUrl,
-                            source: 'Ashby'
+                    const match = url.match(/jobs\.ashbyhq\.com\/([^/?#]+)/i);
+                    const companyToken = match ? match[1] : null;
+                    let apiSuccess = false;
+
+                    if (companyToken) {
+                        try {
+                            const apiRes = await gotScraping({
+                                url: `https://api.ashbyhq.com/posting-api/job-board/${companyToken}`,
+                                method: 'POST',
+                                json: {},
+                                responseType: 'json',
+                                throwHttpErrors: false
+                            });
+                            if (apiRes.statusCode >= 200 && apiRes.statusCode < 300 && (apiRes.body as any)?.jobs) {
+                                const rawJobs = (apiRes.body as any).jobs;
+                                const companyName = companyToken.charAt(0).toUpperCase() + companyToken.slice(1);
+                                for (const j of rawJobs) {
+                                    jobs.push({
+                                        title: j.title || 'Unknown Role',
+                                        company: companyName,
+                                        location: j.location || 'Unknown Location',
+                                        description: `Apply at: ${j.jobUrl}`,
+                                        url: j.jobUrl,
+                                        source: 'Ashby'
+                                    });
+                                }
+                                apiSuccess = jobs.length > 0;
+                            }
+                        } catch(e) {}
+                    }
+
+                    if (!apiSuccess) {
+                        const companyName = $('title').text().trim();
+                        $('a[href*="/jobs/"]').each((_, el) => {
+                            const titleEl = $(el).find('h3');
+                            const locationEl = $(el).find('p');
+                            const href = $(el).attr('href') || '';
+                            const fullUrl = href.startsWith('http') ? href : `https://jobs.ashbyhq.com${href}`;
+                            jobs.push({
+                                title: titleEl.text().trim() || $(el).text().trim() || 'Unknown Role',
+                                company: companyName,
+                                location: locationEl.text().trim() || 'Unknown Location',
+                                description: `Apply at: ${fullUrl}`,
+                                url: fullUrl,
+                                source: 'Ashby'
+                            });
                         });
-                    });
+                    }
 
                 } else if (url.includes('workable.com')) {
                     const companyName = $('title').text().trim();
@@ -275,14 +362,11 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     const urls: { url: string; source: string }[] = [];
 
     if (sources.weworkremotely) urls.push({ url: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keyword)}`, source: 'weworkremotely' });
-    if (sources.remoteco) urls.push({ url: `https://remote.co/remote-jobs/search/?search_keywords=${encodeURIComponent(keyword)}`, source: 'remoteco' });
     if (sources.remoteok) urls.push({ url: `https://remoteok.com/api?tag=${encodeURIComponent(keyword.replace(/\s+/g, '-'))}`, source: 'remoteok' });
     if (sources.workingnomads) urls.push({ url: `https://www.workingnomads.com/api/exposed_jobs/`, source: 'workingnomads' });
     if (sources.remotive) urls.push({ url: `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(keyword)}`, source: 'remotive' });
     if (sources.arbeitnow) urls.push({ url: `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(keyword)}`, source: 'arbeitnow' });
-    if (sources.himalayas) urls.push({ url: `https://himalayas.app/jobs/api?limit=100`, source: 'himalayas' });
-    if (sources.jobspresso) urls.push({ url: `https://jobspresso.co/remote-work/?search_keywords=${encodeURIComponent(keyword)}`, source: 'jobspresso' });
-    if (sources.justremote) urls.push({ url: `https://justremote.co/remote-jobs?q=${encodeURIComponent(keyword)}`, source: 'justremote' });
+    if (sources.nodesk) urls.push({ url: `https://nodesk.co/remote-jobs/`, source: 'nodesk' });
     if (sources.ycombinator) urls.push({ url: `https://www.workatastartup.com/companies?query=${encodeURIComponent(keyword)}`, source: 'ycombinator' });
     // Note: Otta omitted from this batch due to requiring GraphQL reverse-engineering.
 
@@ -382,24 +466,49 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 
             if (source === 'workingnomads') {
                 try {
+                    let data: any = null;
                     let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
                     if (res.statusCode >= 200 && res.statusCode < 300) {
-                        const data = res.body as any;
-                        if (Array.isArray(data)) {
-                            for (const job of data) {
-                                if (keyword && !job.title?.toLowerCase().includes(keyword.toLowerCase()) && !job.company_name?.toLowerCase().includes(keyword.toLowerCase())) continue;
-                                pageJobs.push({
-                                    title: job.title,
-                                    company: job.company_name,
-                                    location: job.location || 'Remote',
-                                    description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
-                                    url: job.url,
-                                    source: 'WorkingNomads'
-                                });
+                        data = res.body;
+                    } else if (process.env.SCRAPEDO_API_KEY) {
+                        console.info(`WorkingNomads returned ${res.statusCode}, falling back to Scrape.do`);
+                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
+                        const sdRes = await gotScraping({ url: scrapeDoUrl, throwHttpErrors: false });
+                        if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
+                            let raw = sdRes.body ? sdRes.body.toString() : '';
+                            const jsonMatch = raw.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+                            if (jsonMatch) {
+                                try { data = JSON.parse(jsonMatch[0]); } catch (e) {}
                             }
                         }
+                    }
+
+                    if (data) {
+                        const jobList = Array.isArray(data) ? data : (data.jobs || data.results || []);
+                        for (const job of jobList) {
+                            const kwLower = keyword.toLowerCase();
+                            const titleMatches = job.title?.toLowerCase().includes(kwLower);
+                            const companyMatches = job.company_name?.toLowerCase().includes(kwLower);
+                            const categoryMatches = job.category_name?.toLowerCase().includes(kwLower);
+                            const descMatches = typeof job.description === 'string' && job.description.toLowerCase().includes(kwLower);
+
+                            if (keyword && !titleMatches && !companyMatches && !categoryMatches && !descMatches) continue;
+
+                            const jobUrl = job.url || (job.slug ? `https://www.workingnomads.com/jobs/${job.slug}` : '');
+                            if (!jobUrl) continue;
+                            const fullUrl = jobUrl.startsWith('http') ? jobUrl : `https://www.workingnomads.com${jobUrl}`;
+
+                            pageJobs.push({
+                                title: job.title || 'Unknown Role',
+                                company: job.company_name || 'WorkingNomads',
+                                location: job.location || 'Remote',
+                                description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${fullUrl}`) : `Apply at: ${fullUrl}`,
+                                url: fullUrl,
+                                source: 'WorkingNomads'
+                            });
+                        }
                     } else {
-                        errorMsg = `HTTP Error: ${res.statusCode}`;
+                        errorMsg = `Failed to retrieve WorkingNomads data (Status: ${res.statusCode})`;
                     }
                 } catch (e: any) {
                     console.warn(`Error parsing workingnomads API: ${e.message}`);
@@ -421,7 +530,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                     location: job.location || 'Remote',
                                     description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
                                     url: job.url,
-                                    source: 'Arbeitnow'
+                                    source: 'Arbeitnow (DE)'
                                 });
                             }
                         }
@@ -633,6 +742,73 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                             source: 'JustRemote'
                         });
                     });
+                } else if (source === 'nodesk') {
+                    $('a[href*="/remote-jobs/"]').each((_, el) => {
+                        const href = $(el).attr('href') || '';
+                        if (!href || href.endsWith('/remote-jobs/') || href.match(/\/remote-jobs\/(engineering|design|marketing|sales|finance|customer-support|devops|management|operations|writing)\/?$/)) return;
+                        
+                        const titleText = $(el).find('h2, h3, .title, strong').text().trim() || $(el).text().trim();
+                        const title = titleText.split('\n')[0].trim();
+                        if (!title || title.length < 3 || title.toLowerCase().includes('view all') || title.toLowerCase() === 'engineering' || title.toLowerCase() === 'engineering jobs') return;
+                        
+                        const kwLower = keyword.toLowerCase();
+                        if (keyword && !title.toLowerCase().includes(kwLower)) return;
+
+                        const fullUrl = href.startsWith('http') ? href : `https://nodesk.co${href}`;
+                        if (pageJobs.some(j => j.url === fullUrl)) return;
+
+                        pageJobs.push({
+                            title,
+                            company: 'Nodesk',
+                            location: 'Remote',
+                            description: `Apply at: ${fullUrl}`,
+                            url: fullUrl,
+                            source: 'Nodesk'
+                        });
+                    });
+                } else if (source === 'wellfound') {
+                    $('[class*="styles_jobListing"], [data-test="JobListing"], div[class*="jobListing"], div[class*="JobCard"]').each((_, el) => {
+                        const titleEl = $(el).find('a[class*="title"], h2, h3, a[href*="/jobs/"]').first();
+                        const title = titleEl.text().trim();
+                        const href = titleEl.attr('href') || $(el).find('a[href*="/jobs/"]').attr('href') || '';
+                        const company = $(el).find('[class*="company"], [class*="startup"], [class*="header"]').first().text().trim() || 'Wellfound Company';
+                        const loc = $(el).find('[class*="location"]').text().trim() || 'Remote';
+                        if (!title || !href) return;
+                        const fullUrl = href.startsWith('http') ? href : `https://wellfound.com${href}`;
+                        if (pageJobs.some(j => j.url === fullUrl)) return;
+                        pageJobs.push({
+                            title,
+                            company,
+                            location: loc,
+                            description: `Apply at: ${fullUrl}`,
+                            url: fullUrl,
+                            source: 'Wellfound'
+                        });
+                    });
+
+                    if (pageJobs.length === 0) {
+                        $('script[type="application/ld+json"]').each((_, scriptEl) => {
+                            try {
+                                const content = $(scriptEl).html() || '';
+                                const json = JSON.parse(content);
+                                const items = Array.isArray(json) ? json : (json['@graph'] || [json]);
+                                for (const item of items) {
+                                    if (item['@type'] === 'JobPosting') {
+                                        const kwLower = keyword.toLowerCase();
+                                        if (keyword && !item.title?.toLowerCase().includes(kwLower)) continue;
+                                        pageJobs.push({
+                                            title: item.title,
+                                            company: item.hiringOrganization?.name || 'Wellfound',
+                                            location: item.jobLocation?.address?.addressLocality || 'Remote',
+                                            description: item.description ? cheerio.load(item.description).text().trim() : `Apply at: ${item.url}`,
+                                            url: item.url || url,
+                                            source: 'Wellfound'
+                                        });
+                                    }
+                                }
+                            } catch(e) {}
+                        });
+                    }
                 }
             } catch (e: any) {
                 console.warn(`Error parsing remote aggregator ${source}: ${e.message}`);
@@ -661,10 +837,12 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
         remoteok: 'RemoteOK',
         workingnomads: 'WorkingNomads',
         remotive: 'Remotive',
-        arbeitnow: 'Arbeitnow',
+        arbeitnow: 'Arbeitnow (DE)',
         himalayas: 'Himalayas',
         jobspresso: 'Jobspresso',
         justremote: 'JustRemote',
+        nodesk: 'Nodesk',
+        wellfound: 'Wellfound',
         ycombinator: 'YCombinator'
     };
 
@@ -835,70 +1013,101 @@ export async function scrapeIndeed(keyword: string, location: string) {
     return jobs;
 }
 
-export async function scrapeGlassdoor(keyword: string, location: string) {
+export async function scrapeGlassdoor(keyword: string, location: string = 'Remote') {
     const jobs: any[] = [];
-    const targetUrl = `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encodeURIComponent(keyword)}&locT=&locId=&locKeyword=${encodeURIComponent(location)}`;
+    const searchSlug = encodeURIComponent(keyword.replace(/\s+/g, '-'));
+    const targetUrl = `https://www.glassdoor.com/Job/${searchSlug}-jobs-SRCH_KO0,${keyword.length}.htm`;
+    const fallbackUrl = `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encodeURIComponent(keyword)}&locT=&locId=&locKeyword=${encodeURIComponent(location)}`;
 
     try {
-        const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(targetUrl)}`;
-        const res = await fetch(proxyUrl);
-        const html = await res.text();
-        const $ = cheerio.load(html);
-
-        $('li[data-test="jobListing"]').each((i, el) => {
-            const title = $(el).find('a[data-test="job-title"]').text().trim();
-            const company = $(el).find('span.EmployerProfile_employerName__...').text().trim() || $(el).find('.job-search-8wag7x').text().trim(); // Need to handle obfuscated classes or just extract text properly
-            const jobLoc = $(el).find('.job-search-12qntd3').text().trim() || $(el).find('.JobCard_location__rCz3x').text().trim();
-            let url = $(el).find('a[data-test="job-title"]').attr('href');
+        let html = '';
+        if (process.env.SCRAPEDO_API_KEY) {
+            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(targetUrl)}`;
+            const res = await fetch(proxyUrl);
+            if (res.ok) html = await res.text();
             
-            // Note: Glassdoor obfuscates classes, so we can use a more robust way to find text
-            const textContent = $(el).text();
-            
-            // Let's use a more generic approach to find the job title and link
-            const aTag = $(el).find('a[data-test="job-link"], a[data-test="job-title"], a.JobCard_jobTitle___eVHi');
-            const jobTitle = aTag.text().trim() || $(el).find('.JobCard_seoLink__WdqQv').text().trim();
-            let jobUrl = aTag.attr('href') || $(el).find('.JobCard_seoLink__WdqQv').attr('href');
-            if (jobUrl && !jobUrl.startsWith('http')) jobUrl = 'https://www.glassdoor.com' + jobUrl;
-
-            // Company is usually the first text element in the card before the rating
-            const companyText = $(el).find('div[class*="EmployerProfile"]').text().trim() || $(el).find('span:first-child').text().trim();
-            const locationText = $(el).find('div[data-test="emp-location"]').text().trim() || location;
-
-            if (jobTitle && jobUrl) {
-                jobs.push({
-                    title: jobTitle,
-                    company: companyText || 'Unknown Company',
-                    location: locationText || location,
-                    url: jobUrl.split('?')[0],
-                    source: 'glassdoor'
-                });
+            if (!html || html.includes('404 Not Found')) {
+                const fallbackProxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(fallbackUrl)}`;
+                const fallbackRes = await fetch(fallbackProxyUrl);
+                if (fallbackRes.ok) html = await fallbackRes.text();
             }
-        });
+        }
 
-        // Let's also check if it's the old dom just in case
-        if (jobs.length === 0) {
-            const nextData = $('script#__NEXT_DATA__').html();
-            if (nextData) {
-                const parsed = JSON.parse(nextData);
-                const results = parsed?.props?.pageProps?.searchResultQueries?.[0]?.jobResults || [];
-                
-                for (const job of results) {
+        if (html) {
+            const $ = cheerio.load(html);
+
+            // Modern Glassdoor Card Selectors
+            $('[data-test="jobListing"], li[data-test="job-tile"], div[class*="JobCard_jobCard"], li[class*="JobsList_jobListItem"], article[id^="job-listing-"], div[class*="jobCard"]').each((i, el) => {
+                const aTag = $(el).find('a[data-test="job-title"], a[data-test="job-link"], a[class*="JobCard_jobTitle"], a[class*="jobTitle"], a[class*="JobCard_seoLink"], a[href*="/job-listing/"], a[href*="/partner/jobListing.htm"]').first();
+                const jobTitle = aTag.text().trim();
+                let jobUrl = aTag.attr('href') || '';
+                if (jobUrl && !jobUrl.startsWith('http')) jobUrl = 'https://www.glassdoor.com' + jobUrl;
+
+                const companyText = $(el).find('[class*="EmployerProfile_employerName"], [data-test="employer-name"], [class*="JobCard_companyName"], span[class*="employerName"], [class*="EmployerProfile_compactEmployerName"]').first().text().trim() || $(el).find('span:first-child').text().trim();
+                const locationText = $(el).find('[data-test="emp-location"], [class*="JobCard_location"], [class*="location"]').first().text().trim() || location;
+                const salaryText = $(el).find('[data-test="detailSalary"], [class*="SalaryEstimate"], [class*="JobCard_salaryEstimate"]').first().text().trim() || null;
+
+                if (jobTitle && jobUrl) {
                     jobs.push({
-                        title: job.jobHeader?.jobTitleText,
-                        company: job.jobHeader?.employerName,
-                        location: job.jobHeader?.locationName || location,
-                        url: `https://www.glassdoor.com${job.jobLink}`,
-                        salary: job.jobHeader?.salaryText || null,
+                        title: jobTitle,
+                        company: companyText || 'Unknown Company',
+                        location: locationText || location,
+                        salary: salaryText,
+                        url: jobUrl.split('?')[0],
                         source: 'glassdoor'
                     });
                 }
+            });
+
+            // JSON / NextData Fallback
+            if (jobs.length === 0) {
+                $('script#__NEXT_DATA__, script[type="application/json"], script[id="apollo-state"]').each((_, scriptEl) => {
+                    try {
+                        const content = $(scriptEl).html() || '';
+                        if (!content) return;
+                        const parsed = JSON.parse(content);
+                        
+                        // Path 1: NextData searchResultQueries
+                        const results = parsed?.props?.pageProps?.searchResultQueries?.[0]?.jobResults || parsed?.props?.pageProps?.jobListings || [];
+                        for (const job of results) {
+                            if (job.jobHeader?.jobTitleText || job.jobTitle) {
+                                jobs.push({
+                                    title: job.jobHeader?.jobTitleText || job.jobTitle,
+                                    company: job.jobHeader?.employerName || job.companyName || 'Glassdoor Company',
+                                    location: job.jobHeader?.locationName || location,
+                                    url: job.jobLink ? (job.jobLink.startsWith('http') ? job.jobLink : `https://www.glassdoor.com${job.jobLink}`) : fallbackUrl,
+                                    salary: job.jobHeader?.salaryText || null,
+                                    source: 'glassdoor'
+                                });
+                            }
+                        }
+
+                        // Path 2: Apollo state objects
+                        if (jobs.length === 0 && typeof parsed === 'object') {
+                            for (const key of Object.keys(parsed)) {
+                                if (key.startsWith('JobListing:') || key.startsWith('JobCard:')) {
+                                    const item = parsed[key];
+                                    if (item?.jobTitle || item?.header?.jobTitleText) {
+                                        jobs.push({
+                                            title: item.jobTitle || item.header?.jobTitleText,
+                                            company: item.employerName || item.header?.employerName || 'Glassdoor Company',
+                                            location: item.locationName || location,
+                                            url: item.jobLink ? `https://www.glassdoor.com${item.jobLink}` : fallbackUrl,
+                                            source: 'glassdoor'
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                });
             }
         }
-        
+
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'Glassdoor (Native)',
-                targetUrl,
+                targetUrl: html ? targetUrl : fallbackUrl,
                 status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
@@ -906,9 +1115,8 @@ export async function scrapeGlassdoor(keyword: string, location: string) {
         });
     } catch (e) {
         console.error("Glassdoor Scrape Error:", e);
-
     }
-    
+
     return jobs;
 }
 
@@ -1130,48 +1338,7 @@ export async function scrapeInternational(keyword: string, sources: any) {
         }
     }
 
-    // -------------------------
-    // Arbeitsagentur (Germany) — Free public REST API, no key needed
-    // -------------------------
-    if (sources.arbeitsagentur) {
-        const url = `https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v4/jobs?was=${encodeURIComponent(keyword)}&angebotsart=1&page=1&size=25`;
-        try {
-            const res = await fetch(url, {
-                headers: { 'X-API-Key': 'jobboerse-jobsuche', 'Accept': 'application/json' },
-                signal: AbortSignal.timeout(15000)
-            });
-            const pageJobs: any[] = [];
-            if (res.ok) {
-                const data = await res.json();
-                const listings = data?.stellenangebote || [];
-                for (const item of listings) {
-                    const refnr = item.refnr || '';
-                    const jobUrl = `https://www.arbeitsagentur.de/jobsuche/jobdetail/${refnr}`;
-                    const city = item.arbeitsort?.ort || '';
-                    const region = item.arbeitsort?.region || '';
-                    const location = [city, region, 'Germany'].filter(Boolean).join(', ');
-                    const descriptionParts = [
-                        item.titel || item.beruf || keyword,
-                        item.arbeitgeber ? `Company: ${item.arbeitgeber}` : '',
-                        item.aktuelleVeroeffentlichungsdatum ? `Posted: ${item.aktuelleVeroeffentlichungsdatum}` : '',
-                        `Apply at: ${jobUrl}`
-                    ].filter(Boolean);
-                    pageJobs.push({
-                        title: item.titel || item.beruf || keyword,
-                        company: item.arbeitgeber || 'Arbeitsagentur',
-                        location,
-                        description: descriptionParts.join('\n'),
-                        url: jobUrl,
-                        source: 'Arbeitsagentur (DE)'
-                    });
-                }
-            }
-            jobs.push(...pageJobs);
-            await logResult('Arbeitsagentur (DE)', url, pageJobs.length);
-        } catch (e: any) {
-            await logResult('Arbeitsagentur (DE)', url, 0, e.message);
-        }
-    }
+
 
     // -------------------------
     // The Muse — Free public API, full descriptions, global remote jobs

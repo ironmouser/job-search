@@ -463,7 +463,7 @@ export default function SettingsPage() {
                                     },
                                     {
                                         title: 'US / Remote Tech',
-                                        sources: ['himalayas', 'weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'ycombinator', 'otta', 'jobspresso', 'justremote']
+                                        sources: ['weworkremotely', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'ycombinator', 'nodesk', 'otta']
                                     },
                                     {
                                         title: 'ATS Integrations',
@@ -471,7 +471,7 @@ export default function SettingsPage() {
                                     },
                                     {
                                         title: 'International Sources',
-                                        sources: ['arbeitsagentur', 'arbeitnow', 'themuse', 'computrabajo', 'jobbank']
+                                        sources: ['arbeitnow', 'themuse', 'computrabajo', 'jobbank']
                                     }
                                 ].map(group => (
                                     <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -480,14 +480,9 @@ export default function SettingsPage() {
                                         </h4>
                                         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                                             {group.sources.map(source => {
-                                                // Determine if this specific source requires PRO
-                                                let isProRequired = false;
-                                                
-                                                if (group.title === 'International Sources' || group.title === 'ATS Integrations') {
-                                                    isProRequired = true;
-                                                } else if (settings.globalSettings && settings.globalSettings[`${source}IsPro`] !== undefined) {
-                                                    isProRequired = settings.globalSettings[`${source}IsPro`];
-                                                }
+                                                // Free tier users only have access to greenhouse, linkedin, remotepoc, remotive, and nodesk
+                                                const FREE_SOURCES_SET = new Set(['greenhouse', 'linkedin', 'remotepoc', 'remotive', 'nodesk']);
+                                                const isProRequired = !FREE_SOURCES_SET.has(source);
                                                 
                                                 const isDisabled = isProRequired && !isPro;
                                                 
@@ -495,7 +490,7 @@ export default function SettingsPage() {
                                                     <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
                                                         <input 
                                                             type="checkbox" 
-                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : (group.title === 'International Sources' ? false : true))}
+                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : (!isProRequired))}
                                                             disabled={isDisabled}
                                                             onChange={(e) => {
                                                                 const newSources = { ...settings.sources, [source]: e.target.checked };
@@ -506,13 +501,11 @@ export default function SettingsPage() {
                                                         <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                                                             {source === 'jobbank' ? 'Job Bank (CA)' : 
                                               source === 'remotepoc' ? 'RemotePOC' : 
-                                              source === 'arbeitsagentur' ? 'Arbeitsagentur (DE)' :
                                               source === 'themuse' ? 'The Muse (Global)' :
                                               source === 'computrabajo' ? 'Computrabajo (LATAM)' :
                                               source === 'ycombinator' ? 'Y Combinator' :
-                                              source === 'arbeitnow' ? 'Arbeitnow' :
-                                              source === 'jobspresso' ? 'Jobspresso' :
-                                              source === 'justremote' ? 'JustRemote' :
+                                              source === 'arbeitnow' ? 'Arbeitnow (DE)' :
+                                              source === 'nodesk' ? 'noDesk' :
                                               source === 'otta' ? 'Otta' : source}
                                                             {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                         </span>
@@ -527,28 +520,29 @@ export default function SettingsPage() {
                                     {
                                         title: 'Global Job Boards',
                                         items: [
-                                            { label: 'Free', sources: ['indeed', 'glassdoor', 'ziprecruiter'] },
-                                            { label: 'Premium', sources: ['linkedin'], isPro: true }
+                                            { label: 'Free', sources: ['linkedin'] },
+                                            { label: 'Premium', sources: ['indeed', 'glassdoor', 'ziprecruiter'], isPro: true }
                                         ]
                                     },
                                     {
                                         title: 'Remote & Tech Jobs',
                                         items: [
-                                            { label: 'Free', sources: ['weworkremotely', 'remoteco', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'ycombinator'] },
-                                            { label: 'Premium', sources: ['himalayas', 'otta', 'jobspresso', 'justremote'], isPro: true }
+                                            { label: 'Free', sources: ['remotive', 'remotepoc', 'nodesk'] },
+                                            { label: 'Premium', sources: ['weworkremotely', 'remoteok', 'workingnomads', 'ycombinator', 'otta'], isPro: true }
                                         ]
                                     },
                                     {
                                         title: 'Company Career Sites',
                                         items: [
-                                            { label: 'Premium', sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'], isPro: true }
+                                            { label: 'Free', sources: ['greenhouse'] },
+                                            { label: 'Premium', sources: ['lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'], isPro: true }
                                         ]
                                     },
                                     {
                                         title: 'International Job Boards',
                                         items: [
                                             { label: 'Global', sources: ['themuse'], isPro: true },
-                                            { label: 'Germany', sources: ['arbeitsagentur', 'arbeitnow'], isPro: true },
+                                            { label: 'Germany', sources: ['arbeitnow'], isPro: true },
                                             { label: 'Latin America', sources: ['computrabajo'], isPro: true },
                                             { label: 'Canada', sources: ['jobbank'], isPro: true }
                                         ]

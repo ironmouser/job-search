@@ -67,13 +67,23 @@ export async function getUserSettings(userId: string): Promise<any> {
     }
 }
 
-export const PREMIUM_NON_INTL_SOURCES = [
-    'linkedin',
-    'himalayas',
-    'otta',
-    'jobspresso',
-    'justremote',
+export const FREE_ALLOWED_SOURCES = [
     'greenhouse',
+    'linkedin',
+    'remotepoc',
+    'remotive',
+    'nodesk'
+];
+
+export const PREMIUM_NON_INTL_SOURCES = [
+    'indeed',
+    'glassdoor',
+    'ziprecruiter',
+    'weworkremotely',
+    'remoteok',
+    'workingnomads',
+    'ycombinator',
+    'otta',
     'lever',
     'ashby',
     'workable',
@@ -83,13 +93,8 @@ export const PREMIUM_NON_INTL_SOURCES = [
 
 export const INTERNATIONAL_SOURCES = [
     'themuse',
-    'arbeitsagentur',
     'computrabajo',
     'jobbank',
-    'eures',
-    'bumeran',
-    'workopolis',
-    'workana',
     'arbeitnow'
 ];
 
@@ -117,7 +122,7 @@ export async function handleUserUpgradeToPro(userId: string) {
         glassdoor: true,
         ziprecruiter: true,
         weworkremotely: true,
-        remoteco: true,
+        nodesk: true,
         remoteok: true,
         workingnomads: true,
         remotive: true,
