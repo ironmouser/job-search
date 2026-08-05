@@ -4,6 +4,7 @@ import { reformatJobDescriptionWithGemini } from './formatter';
 import { cleanJobUrl } from './urlUtils';
 import { callDeepSeek } from './deepseek';
 import { isInternationalLocation, isRemoteLocation } from './locationUtils';
+import { cleanCompanyName } from './cleaners';
 
 export async function normalizeAndSaveJobs(
     rawJobs: any[],
@@ -23,7 +24,7 @@ export async function normalizeAndSaveJobs(
     const rawCount = rawJobs.length;
     let normalizedJobs = rawJobs.map((job) => {
         const title = job.title?.trim() || 'Untitled Position';
-        const company = job.company?.trim() || 'Unknown Company';
+        const company = cleanCompanyName(job.company) || 'Unknown Company';
         const fallbackDesc = `Found via email link: ${job.url || ''}`;
         const description = (job.description && job.description.trim().length > 0) ? job.description.trim() : fallbackDesc;
 

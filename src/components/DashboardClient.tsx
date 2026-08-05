@@ -421,7 +421,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             const trimmed = line.trim();
             if (!trimmed) continue;
             try {
-              const payload = JSON.parse(trimmed);
+              const jsonStr = trimmed.startsWith('data: ') ? trimmed.slice(6) : (trimmed.startsWith('data:') ? trimmed.slice(5) : trimmed);
+              const payload = JSON.parse(jsonStr);
               if (typeof payload.foundCount === 'number') {
                 runningCount = payload.foundCount;
                 setJobsFoundCount(runningCount);
@@ -436,7 +437,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
         if (buffer.trim()) {
           try {
-            const payload = JSON.parse(buffer.trim());
+            const rawBuf = buffer.trim();
+            const jsonStr = rawBuf.startsWith('data: ') ? rawBuf.slice(6) : (rawBuf.startsWith('data:') ? rawBuf.slice(5) : rawBuf);
+            const payload = JSON.parse(jsonStr);
             if (typeof payload.foundCount === 'number') {
               runningCount = payload.foundCount;
               setJobsFoundCount(runningCount);

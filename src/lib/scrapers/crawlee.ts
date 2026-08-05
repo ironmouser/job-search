@@ -9,6 +9,7 @@ import { gotScraping } from 'got-scraping';
 import got from 'got';
 import { prisma } from '../prisma';
 import { reformatJobDescriptionWithGemini } from '../formatter';
+import { cleanCompanyName } from '../cleaners';
 
 async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -1050,7 +1051,7 @@ export async function scrapeGlassdoor(keyword: string, location: string = 'Remot
                 if (jobTitle && jobUrl) {
                     jobs.push({
                         title: jobTitle,
-                        company: companyText || 'Unknown Company',
+                        company: cleanCompanyName(companyText) || 'Unknown Company',
                         location: locationText || location,
                         salary: salaryText,
                         url: jobUrl.split('?')[0],

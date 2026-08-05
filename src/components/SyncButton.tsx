@@ -53,7 +53,9 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
             const trimmed = line.trim();
             if (!trimmed) continue;
             try {
-              const payload = JSON.parse(trimmed);
+              // Strip SSE 'data: ' prefix if present
+              const jsonStr = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed;
+              const payload = JSON.parse(jsonStr);
               if (typeof payload.foundCount === 'number') {
                 runningCount = payload.foundCount;
                 const isRefining = payload.type === 'normalization';
@@ -68,7 +70,9 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
 
         if (buffer.trim()) {
           try {
-            const payload = JSON.parse(buffer.trim());
+            const raw = buffer.trim();
+            const jsonStr = raw.startsWith('data: ') ? raw.slice(6) : raw;
+            const payload = JSON.parse(jsonStr);
             if (typeof payload.foundCount === 'number') {
               runningCount = payload.foundCount;
             }
@@ -94,7 +98,11 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
         setStatusText('0 New Jobs');
         onSyncStateChange?.(false, 'No new jobs discovered');
         alert('Sync complete! We scanned your active sources and found 0 new listings matching your current keyword and location settings.');
-        setTimeout(() => setStatusText('Sync Jobs'), 3500);
+        setTimeout(() => {
+          setStatusText('Sync Jobs');
+          // Refresh in case server saved jobs that weren't reflected in the count
+          window.location.reload();
+        }, 1500);
       } else {
         const label = newJobsCount === 1 ? 'Added 1 Job!' : `Added ${newJobsCount} Jobs!`;
         setStatusText(label);
