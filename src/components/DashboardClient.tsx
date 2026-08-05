@@ -322,7 +322,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
       const res = await fetch(`/api/jobs/${jobItem.id}/fetch-details`, { method: 'POST' });
       if (res.ok) {
         if (userPlanTier === 'PRO') {
-          await fetch('/api/score', { method: 'POST', body: JSON.stringify({ jobId: jobItem.id }) }).catch(() => {});
+          // Fire-and-forget: don't block the UI waiting for AI scoring (3–12s)
+          fetch('/api/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId: jobItem.id }) }).catch(() => {});
         }
         setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'success' }));
         router.refresh();
