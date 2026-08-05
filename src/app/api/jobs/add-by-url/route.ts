@@ -237,18 +237,27 @@ export async function POST(request: Request) {
 
     // 2. Upsert Job in DB
     if (!job) {
-      job = await prisma.job.create({
-        data: {
-          title,
-          company,
-          location,
-          salaryRange,
-          description,
-          url: cleanUrl,
-          source: 'User Submission',
-          addedById: userId,
+      try {
+        job = await prisma.job.create({
+          data: {
+            title,
+            company,
+            location,
+            salaryRange,
+            description,
+            url: cleanUrl,
+            source: 'User Submission',
+            addedById: userId,
+          }
+        });
+      } catch (e: any) {
+        if (e.code === 'P2002') {
+          job = await prisma.job.findUnique({ where: { url: cleanUrl } });
+          if (!job) throw e;
+        } else {
+          throw e;
         }
-      });
+      }
     }
 
     // 3. Upsert UserJob

@@ -30,13 +30,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         const isGlobalJob = job.addedById === null;
 
         if (description || applicationUrl) {
-            // Allow modifying a global job's description ONLY if it doesn't currently have an adequate one
-            // OR via copy-on-write when updating description.
-            const isAppendingToGlobalStub = isGlobalJob && description && !isDescriptionAdequate(job.description);
-            const isCopyOnWrite = isGlobalJob && !!description;
+            // Allow modifying job description if user owns job, is admin, or it's a shared/global job stub
+            const isOwnerOrAdmin = isAdmin || job.addedById === userId;
 
-            if (!isAdmin && job.addedById !== userId && !isAppendingToGlobalStub && !isCopyOnWrite) {
-                await logSuspiciousActivity({ type: 'UNAUTHORIZED_MODIFICATION_ATTEMPT', message: 'Attempted to modify a global job not owned by user', userId, metadata: { jobId: id, requestedChanges: { description: !!description, applicationUrl: !!applicationUrl } } });
+            if (!isOwnerOrAdmin && !isGlobalJob) {
+                await logSuspiciousActivity({ type: 'UNAUTHORIZED_MODIFICATION_ATTEMPT', message: 'Attempted to modify a private job not owned by user', userId, metadata: { jobId: id, requestedChanges: { description: !!description, applicationUrl: !!applicationUrl } } });
                 return NextResponse.json(
                     { error: 'Unauthorized to modify shared job properties. Only the original creator can edit this job.' },
                     { status: 403 }
@@ -54,67 +52,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
                 }
             }
 
-            let targetJobId = id;
-            let updatedJob;
+            const targetJobId = id;
+            const updatedJob = await prisma.job.update({
+                where: { id },
+                data: { description: formattedDesc }
+            });
 
-            if (isGlobalJob) {
-                // COPY ON WRITE: Create a private copy of the global job for this user
-                updatedJob = await prisma.job.create({
-                    data: {
-                        title: job!.title || 'Unknown Title',
-                        company: job!.company || 'Unknown Company',
-                        location: job!.location,
-                        salaryRange: job!.salaryRange,
-                        requirements: job!.requirements,
-                        url: job!.url,
-                        source: job!.source,
-                        addedById: userId,
-                        description: formattedDesc
-                    }
-                });
-                
-                targetJobId = updatedJob.id;
-                
-                const oldUserJob = await prisma.userJob.findUnique({
-                    where: { userId_jobId: { userId, jobId: id } }
-                });
-                
-                if (oldUserJob) {
-                    await prisma.userJob.create({
-                        data: {
-                            userId: userId,
-                            jobId: targetJobId,
-                            status: oldUserJob.status === 'new' ? 'discovered' : oldUserJob.status,
-                            appliedAt: oldUserJob.appliedAt,
-                            isArchived: oldUserJob.isArchived,
-                            ipAddress: oldUserJob.ipAddress
-                        }
-                    });
-                    
-                    await prisma.userJob.delete({
-                        where: { userId_jobId: { userId, jobId: id } }
-                    });
-                } else {
-                    await prisma.userJob.create({
-                        data: {
-                            userId: userId,
-                            jobId: targetJobId,
-                            status: 'discovered'
-                        }
-                    });
-                }
-            } else {
-                updatedJob = await prisma.job.update({
-                    where: { id },
-                    data: { description: formattedDesc }
-                });
-
-                await prisma.userJob.upsert({
-                    where: { userId_jobId: { userId, jobId: id } },
-                    update: { status: 'discovered' },
-                    create: { userId, jobId: id, status: 'discovered' }
-                });
-            }
+            await prisma.userJob.upsert({
+                where: { userId_jobId: { userId, jobId: id } },
+                update: { status: 'discovered' },
+                create: { userId, jobId: id, status: 'discovered' }
+            });
 
             // Trigger scoring in background so PATCH responds immediately without timing out
             scoreJob(userId, targetJobId, updatedJob.title, formattedDesc).catch((scoreErr: any) => {
