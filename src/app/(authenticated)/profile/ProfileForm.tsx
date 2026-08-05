@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   User,
   Image as ImageIcon,
@@ -486,7 +487,7 @@ export default function ProfileForm({
         </div>
       </div>
 
-      {/* ── 1. My Info & Auto-Fill Information Section ───────────────────────────── */}
+      {/* -- 1. My Info & Auto-Fill Information Section ----------------------------- */}
       <div className={`glass-card accordion-card ${openSections['personal-info'] ? 'open' : ''}`} id="personal-info" style={{ padding: '1.5rem 2rem' }}>
         <div className="accordion-card-header" onClick={() => toggleSection('personal-info')}>
           <div>
@@ -712,9 +713,8 @@ export default function ProfileForm({
           </div>
         </div>
       )}
-      </div>
 
-      {/* ── 2. Authorization & Demographics Section ─────────────────────────────── */}
+      {/* -- 2. Authorization & Demographics Section ------------------------------- */}
       <div className={`glass-card accordion-card ${openSections['work-auth'] ? 'open' : ''}`} id="work-auth" style={{ padding: '1.5rem 2rem' }}>
         <div className="accordion-card-header" onClick={() => toggleSection('work-auth')}>
           <div>
@@ -998,7 +998,7 @@ export default function ProfileForm({
         )}
       </div>
 
-      {/* ── 3. Target Profile Section ────────────────────────────────────────── */}
+      {/* -- 3. Target Profile Section ------------------------------------------ */}
       <div className={`glass-card accordion-card ${openSections['target-profile'] ? 'open' : ''}`} id="target-profile" data-tour="target-profile" style={{ padding: '1.5rem 2rem' }}>
         <div className="accordion-card-header" onClick={() => toggleSection('target-profile')}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>

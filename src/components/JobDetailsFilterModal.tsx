@@ -1,0 +1,465 @@
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
+import { Modal } from './ui/modal';
+import { Search, SlidersHorizontal, RotateCcw, Check, Sparkles, X, ArrowRight, Calendar } from 'lucide-react';
+
+interface JobDetailsFilterModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onApply: () => void;
+  onJumpToFirst?: (firstJobId: string) => void;
+}
+
+export default function JobDetailsFilterModal({
+  isOpen,
+  onClose,
+  onApply,
+  onJumpToFirst
+}: JobDetailsFilterModalProps) {
+  const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
+  const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote' | 'auto_apply'>('newest');
+  const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
+  const [keywordFilter, setKeywordFilter] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  const [matchingCount, setMatchingCount] = useState<number | null>(null);
+  const [firstMatchingJobId, setFirstMatchingJobId] = useState<string | null>(null);
+  const [loadingCount, setLoadingCount] = useState<boolean>(false);
+
+  // Read saved state on open
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const saved = localStorage.getItem('jobAgentDashboardState');
+      if (saved) {
+        const stateObj = JSON.parse(saved);
+        if (stateObj.activeFilter) setActiveFilter(stateObj.activeFilter);
+        if (stateObj.sortOption) setSortOption(stateObj.sortOption);
+        if (stateObj.sourceFilter) setSourceFilter(stateObj.sourceFilter);
+        if (stateObj.keywordFilter !== undefined) setKeywordFilter(stateObj.keywordFilter);
+        if (stateObj.startDate !== undefined) setStartDate(stateObj.startDate);
+        if (stateObj.endDate !== undefined) setEndDate(stateObj.endDate);
+      }
+    } catch (e) {
+      console.error('Failed to load dashboard state in filter modal:', e);
+    }
+  }, [isOpen]);
+
+  // Live count preview
+  const fetchMatchingCount = useCallback(async () => {
+    setLoadingCount(true);
+    try {
+      const params = new URLSearchParams();
+      if (activeFilter) params.set('activeFilter', activeFilter);
+      if (sortOption) params.set('sortOption', sortOption);
+      if (sourceFilter) params.set('sourceFilter', sourceFilter);
+      if (keywordFilter) params.set('keywordFilter', keywordFilter);
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+
+      const res = await fetch(`/api/jobs/sequence?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.sequence) {
+          setMatchingCount(data.sequence.length);
+          setFirstMatchingJobId(data.sequence.length > 0 ? data.sequence[0].id : null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch sequence count:', err);
+    } finally {
+      setLoadingCount(false);
+    }
+  }, [activeFilter, sortOption, sourceFilter, keywordFilter, startDate, endDate]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        fetchMatchingCount();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, fetchMatchingCount]);
+
+  const handleSaveState = () => {
+    try {
+      const saved = localStorage.getItem('jobAgentDashboardState');
+      const stateObj = saved ? JSON.parse(saved) : {};
+      stateObj.activeFilter = activeFilter;
+      stateObj.sortOption = sortOption;
+      stateObj.sourceFilter = sourceFilter;
+      stateObj.keywordFilter = keywordFilter;
+      stateObj.startDate = startDate;
+      stateObj.endDate = endDate;
+      stateObj.currentPage = 1; // Reset to page 1 for dashboard sync
+      localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
+    } catch (e) {
+      console.error('Failed to save dashboard state:', e);
+    }
+  };
+
+  const handleApply = () => {
+    handleSaveState();
+    onApply();
+    onClose();
+  };
+
+  const handleApplyAndJump = () => {
+    handleSaveState();
+    onApply();
+    onClose();
+    if (firstMatchingJobId && onJumpToFirst) {
+      onJumpToFirst(firstMatchingJobId);
+    }
+  };
+
+  const handleReset = () => {
+    setActiveFilter('all');
+    setSortOption('newest');
+    setSourceFilter('both');
+    setKeywordFilter('');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const setPresetDateRange = (preset: 'all' | 'today' | 7 | 30) => {
+    if (preset === 'all') {
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'today') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else {
+      const d = new Date();
+      d.setDate(d.getDate() - preset);
+      setStartDate(d.toISOString().split('T')[0]);
+      setEndDate('');
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <SlidersHorizontal size={20} style={{ color: 'var(--accent-primary, #0070f3)' }} />
+          <span>Filter & Sort Jobs</span>
+        </div>
+      }
+      description="Refine your active job queue without leaving this page"
+      maxWidth="950px"
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {/* Horizontal Two-Column Grid Layout on Desktop */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: '1.25rem' }}>
+          {/* Left Column: Search Keyword & Status Filter */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Search Keyword */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                Keyword Search
+              </label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search size={16} style={{ position: 'absolute', left: '0.75rem', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  value={keywordFilter}
+                  onChange={(e) => setKeywordFilter(e.target.value)}
+                  placeholder="Search title, company, skills..."
+                  style={{
+                    width: '100%',
+                    padding: '0.55rem 2.25rem 0.55rem 2.25rem',
+                    fontSize: '0.875rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                    outline: 'none'
+                  }}
+                />
+                {keywordFilter && (
+                  <button
+                    onClick={() => setKeywordFilter('')}
+                    style={{
+                      position: 'absolute',
+                      right: '0.75rem',
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Status Filter Pills */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                Status & Fit Filter
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                {[
+                  { id: 'all', label: 'All Jobs' },
+                  { id: 'high_fit', label: 'High Fit (80%+)' },
+                  { id: 'scored', label: 'Scored Jobs' },
+                  { id: 'archived', label: 'Archived' }
+                ].map(opt => {
+                  const isSelected = activeFilter === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setActiveFilter(opt.id as any)}
+                      style={{
+                        padding: '0.4rem 0.75rem',
+                        fontSize: '0.825rem',
+                        borderRadius: '20px',
+                        border: isSelected ? '1px solid #0070f3' : '1px solid var(--border)',
+                        background: isSelected ? 'rgba(0, 112, 243, 0.1)' : 'var(--background)',
+                        color: isSelected ? '#0070f3' : 'var(--foreground)',
+                        fontWeight: isSelected ? 600 : 400,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {isSelected && <Check size={14} />}
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Date Range, Sort Order, Job Source */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Date Range Filter Section */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                  Date Discovered Range
+                </label>
+                {/* Quick Presets */}
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {[
+                    { label: 'All', action: () => setPresetDateRange('all') },
+                    { label: 'Today', action: () => setPresetDateRange('today') },
+                    { label: '7 Days', action: () => setPresetDateRange(7) },
+                    { label: '30 Days', action: () => setPresetDateRange(30) }
+                  ].map(p => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={p.action}
+                      style={{
+                        fontSize: '0.725rem',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--background)',
+                        color: 'var(--muted-foreground)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Calendar size={15} style={{ position: 'absolute', left: '0.65rem', color: '#94a3b8', pointerEvents: 'none' }} />
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.45rem 0.5rem 0.45rem 2rem',
+                      fontSize: '0.825rem',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Calendar size={15} style={{ position: 'absolute', left: '0.65rem', color: '#94a3b8', pointerEvents: 'none' }} />
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.45rem 0.5rem 0.45rem 2rem',
+                      fontSize: '0.825rem',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border)',
+                      background: 'var(--background)',
+                      color: 'var(--foreground)',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sort Option & Source Filter Side-by-Side */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                  Sort Order
+                </label>
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as any)}
+                  style={{
+                    width: '100%',
+                    padding: '0.55rem',
+                    fontSize: '0.85rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="score">Opportunity Score</option>
+                  <option value="salary">Salary (High to Low)</option>
+                  <option value="remote">Remote Jobs First</option>
+                  <option value="auto_apply">Auto-Apply Confidence</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                  Job Source
+                </label>
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value as any)}
+                  style={{
+                    width: '100%',
+                    padding: '0.55rem',
+                    fontSize: '0.85rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--foreground)',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="both">All Sources</option>
+                  <option value="scraped">Crawled / Direct</option>
+                  <option value="email">Scraped via Email</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Matching Count Preview Banner */}
+        <div style={{
+          background: 'rgba(0, 112, 243, 0.06)',
+          border: '1px solid rgba(0, 112, 243, 0.2)',
+          borderRadius: '8px',
+          padding: '0.65rem 0.9rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.85rem',
+          color: 'var(--foreground)'
+        }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 500 }}>
+            <Sparkles size={15} style={{ color: '#0070f3' }} />
+            Matching jobs in queue:
+          </span>
+          <span style={{ fontWeight: 700, color: '#0070f3', fontSize: '0.95rem' }}>
+            {loadingCount ? '...' : matchingCount !== null ? `${matchingCount} jobs` : '0 jobs'}
+          </span>
+        </div>
+
+        {/* Footer Actions */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingTop: '0.5rem',
+          borderTop: '1px solid var(--border)',
+          marginTop: '0.25rem'
+        }}>
+          <button
+            onClick={handleReset}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--muted-foreground)',
+              cursor: 'pointer',
+              fontSize: '0.825rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.4rem 0.6rem',
+              borderRadius: '6px'
+            }}
+          >
+            <RotateCcw size={14} /> Reset
+          </button>
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {firstMatchingJobId && (
+              <button
+                onClick={handleApplyAndJump}
+                className="btn-outline"
+                style={{
+                  fontSize: '0.825rem',
+                  padding: '0.45rem 0.8rem',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem'
+                }}
+              >
+                Apply & Jump to 1st <ArrowRight size={14} />
+              </button>
+            )}
+
+            <button
+              onClick={handleApply}
+              className="btn-primary"
+              style={{
+                fontSize: '0.825rem',
+                padding: '0.45rem 1rem',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}

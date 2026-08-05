@@ -693,7 +693,6 @@ export default function SettingsPage() {
                             </span>
                         </div>
                     </div>
-                </div>
             )}
         </div>
 
@@ -762,7 +761,6 @@ export default function SettingsPage() {
                             </Link>
                         </div>
                     </div>
-                </div>
             )}
         </div>
 

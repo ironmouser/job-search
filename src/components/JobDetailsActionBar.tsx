@@ -17,10 +17,12 @@ import {
   Zap,
   HelpCircle,
   FileText,
-  Send
+  Send,
+  SlidersHorizontal
 } from 'lucide-react';
 import FeedbackButtons from './FeedbackButtons';
 import { useJobNav } from './JobDetailsNavWrapper';
+import JobDetailsFilterModal from './JobDetailsFilterModal';
 
 interface JobDetailsActionBarProps {
   currentJobId: string;
@@ -58,50 +60,57 @@ export default function JobDetailsActionBar({
     setLocalHasAssets(hasAssets);
   }, [hasAssets]);
 
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+
+  const loadSequence = async () => {
+    try {
+      let stateObj: any = {};
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('jobAgentDashboardState');
+        if (saved) {
+          try {
+            stateObj = JSON.parse(saved);
+          } catch (e) {}
+        }
+      }
+
+      const active = Boolean(
+        stateObj.keywordFilter ||
+        (stateObj.activeFilter && stateObj.activeFilter !== 'all') ||
+        (stateObj.sortOption && stateObj.sortOption !== 'newest') ||
+        (stateObj.sourceFilter && stateObj.sourceFilter !== 'both') ||
+        stateObj.startDate ||
+        stateObj.endDate
+      );
+      setHasActiveFilters(active);
+
+      const params = new URLSearchParams();
+      if (stateObj.activeFilter) params.set('activeFilter', stateObj.activeFilter);
+      if (stateObj.sortOption) params.set('sortOption', stateObj.sortOption);
+      if (stateObj.sourceFilter) params.set('sourceFilter', stateObj.sourceFilter);
+      if (stateObj.startDate) params.set('startDate', stateObj.startDate);
+      if (stateObj.endDate) params.set('endDate', stateObj.endDate);
+      if (stateObj.keywordFilter) params.set('keywordFilter', stateObj.keywordFilter);
+      if (stateObj.locationFilter) params.set('locationFilter', JSON.stringify(stateObj.locationFilter));
+
+      const res = await fetch(`/api/jobs/sequence?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.sequence) {
+          setSequence(data.sequence);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load job sequence:', err);
+    } finally {
+      setLoadingSeq(false);
+    }
+  };
+
   // Fetch sequence based on saved dashboard state
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadSequence() {
-      try {
-        let stateObj: any = {};
-        if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('jobAgentDashboardState');
-          if (saved) {
-            try {
-              stateObj = JSON.parse(saved);
-            } catch (e) {}
-          }
-        }
-
-        const params = new URLSearchParams();
-        if (stateObj.activeFilter) params.set('activeFilter', stateObj.activeFilter);
-        if (stateObj.sortOption) params.set('sortOption', stateObj.sortOption);
-        if (stateObj.sourceFilter) params.set('sourceFilter', stateObj.sourceFilter);
-        if (stateObj.startDate) params.set('startDate', stateObj.startDate);
-        if (stateObj.endDate) params.set('endDate', stateObj.endDate);
-        if (stateObj.keywordFilter) params.set('keywordFilter', stateObj.keywordFilter);
-        if (stateObj.locationFilter) params.set('locationFilter', JSON.stringify(stateObj.locationFilter));
-
-        const res = await fetch(`/api/jobs/sequence?${params.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted && data.sequence) {
-            setSequence(data.sequence);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load job sequence:', err);
-      } finally {
-        if (isMounted) setLoadingSeq(false);
-      }
-    }
-
     loadSequence();
-
-    return () => {
-      isMounted = false;
-    };
   }, [currentJobId]);
 
   const currentIndex = sequence.findIndex(j => j.id === currentJobId);
@@ -364,6 +373,33 @@ export default function JobDetailsActionBar({
               <HelpCircle size={14} /> Q&A
             </span>
           </button>
+
+          {/* Filter Button */}
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            className="job-step-btn"
+            title="Filter & Sort Job Queue"
+            style={{
+              position: 'relative'
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <SlidersHorizontal size={14} /> Filter
+            </span>
+            {hasActiveFilters && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: '#0070f3'
+                }}
+              />
+            )}
+          </button>
         </div>
 
         {/* Counter */}
@@ -406,6 +442,18 @@ export default function JobDetailsActionBar({
                 style={{ flex: 1, justifyContent: 'center', padding: '0.5rem', fontSize: '0.85rem' }}
               >
                 1. Next <ChevronRight size={16} />
+              </button>
+
+              <button
+                onClick={() => { setIsFabOpen(false); setIsFilterModalOpen(true); }}
+                className="btn-outline"
+                style={{ padding: '0.5rem 0.65rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+                title="Filter Queue"
+              >
+                <SlidersHorizontal size={16} />
+                {hasActiveFilters && (
+                  <span style={{ position: 'absolute', top: '3px', right: '3px', width: '6px', height: '6px', borderRadius: '50%', background: '#0070f3' }} />
+                )}
               </button>
             </div>
 
@@ -493,6 +541,18 @@ export default function JobDetailsActionBar({
           {isFabOpen ? <X size={26} /> : <Sparkles size={26} />}
         </button>
       </div>
+
+      {/* Filter & Sort Dialog Modal */}
+      <JobDetailsFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApply={loadSequence}
+        onJumpToFirst={(firstJobId) => {
+          if (firstJobId !== currentJobId) {
+            router.push(`/job/${firstJobId}`);
+          }
+        }}
+      />
     </>
   );
 }
