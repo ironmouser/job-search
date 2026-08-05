@@ -248,9 +248,13 @@ export async function normalizeAndSaveJobs(
     }
 
     // Tier 3: Persistence
+    // All discovered listings are saved to global Job DB; cap UserJob feed allocations to top 100 matches per sync
     const finalJobsToSave = [...knownGoodJobs, ...approvedCandidates];
-    if (finalJobsToSave.length > 0) {
-        onProgress?.(finalJobsToSave.length, `Saving ${finalJobsToSave.length} qualified job${finalJobsToSave.length === 1 ? '' : 's'} to your list...`);
+    const userAllocationJobs = finalJobsToSave.slice(0, 100);
+    const userAllocationUrls = new Set(userAllocationJobs.map(j => j.url));
+
+    if (userAllocationJobs.length > 0) {
+        onProgress?.(userAllocationJobs.length, `Saving ${userAllocationJobs.length} qualified job${userAllocationJobs.length === 1 ? '' : 's'} to your list...`);
     }
     const processedUrls: string[] = [];
 
@@ -289,19 +293,20 @@ export async function normalizeAndSaveJobs(
           });
       }
       
-      await prisma.userJob.upsert({
-          where: { userId_jobId: { userId, jobId: job.id } },
-          update: {
-              // Do NOT reset createdAt — preserve original discovery date so jobs
-              // don't bubble back to the top of the dashboard on each scrape run.
-              status: 'discovered'
-          },
-          create: {
-              userId,
-              jobId: job.id,
-              status: 'discovered'
-          }
-      });
+      // Link to UserJob only for top 100 allocated matches for this sync run
+      if (userAllocationUrls.has(cleanedUrl)) {
+        await prisma.userJob.upsert({
+            where: { userId_jobId: { userId, jobId: job.id } },
+            update: {
+                status: 'discovered'
+            },
+            create: {
+                userId,
+                jobId: job.id,
+                status: 'discovered'
+            }
+        });
+      }
     }
     
     const data = await prisma.job.findMany({

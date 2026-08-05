@@ -112,12 +112,12 @@ export async function POST(request: Request) {
 
         const { jobId, jobIds } = body;
 
-        // If jobIds is provided, score specific jobs (capped at 3 per batch)
+        // If jobIds is provided, score specific jobs (capped at 5 per batch)
         if (jobIds && Array.isArray(jobIds) && jobIds.length > 0) {
             const userJobs = await prisma.userJob.findMany({
                 where: { 
                     userId: session.user.id,
-                    jobId: { in: jobIds.slice(0, 3) }
+                    jobId: { in: jobIds.slice(0, 5) }
                 },
                 include: { job: { select: { id: true, title: true, description: true, url: true } } }
             });

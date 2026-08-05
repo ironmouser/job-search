@@ -706,26 +706,68 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
       return false;
     };
 
-    // Only attempt scoring for unscored jobs on the active page that haven't been attempted in this browser session
-    const unscoredCurrentJobs = currentJobs.filter(
-      j => isUnscored(j) && canBeScored(j) && !attemptedScoringJobs.current.has(j.id)
-    );
+    // Helper to read/write retry state in sessionStorage
+    const getRetryState = (): Record<string, { attempts: number; lastAttempt: number; exhausted?: boolean }> => {
+      if (typeof window === 'undefined') return {};
+      try {
+        const raw = sessionStorage.getItem('job_agent_fetch_score_retries');
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    };
+
+    const saveRetryState = (state: Record<string, { attempts: number; lastAttempt: number; exhausted?: boolean }>) => {
+      if (typeof window === 'undefined') return;
+      try {
+        sessionStorage.setItem('job_agent_fetch_score_retries', JSON.stringify(state));
+      } catch (e) {}
+    };
+
+    const now = Date.now();
+    const TWO_MINUTES_MS = 2 * 60 * 1000;
+    const retryState = getRetryState();
+
+    // Filter unscored current jobs that are eligible (not exhausted, and past the 2-minute backoff window)
+    const unscoredCurrentJobs = currentJobs.filter((j: any) => {
+      if (!isUnscored(j) || !canBeScored(j)) return false;
+      const record = retryState[j.id];
+      if (!record) return true;
+      if (record.exhausted || record.attempts >= 3) return false;
+      // Enforce 2-minute initial backoff window before retrying
+      if (now - record.lastAttempt < TWO_MINUTES_MS) return false;
+      return true;
+    });
 
     if (unscoredCurrentJobs.length === 0) return;
 
-    // Debounce: wait 500ms before firing to avoid overlapping calls on rapid re-renders
+    // Debounce 500ms to avoid duplicate calls on rapid re-renders
     const timer = setTimeout(() => {
       if (unscoredCurrentJobs.length > 0) {
+        // Cap batch size at 5 jobs per request
         const chunk = unscoredCurrentJobs.slice(0, 5);
-        chunk.forEach(j => attemptedScoringJobs.current.add(j.id));
-        
-        const scoreCurrent = async () => {
+
+        // Record retry attempt in sessionStorage
+        const nextState = { ...retryState };
+        chunk.forEach((j: any) => {
+          const prev = nextState[j.id] || { attempts: 0, lastAttempt: 0 };
+          const newAttempts = prev.attempts + 1;
+          nextState[j.id] = {
+            attempts: newAttempts,
+            lastAttempt: Date.now(),
+            exhausted: newAttempts >= 3
+          };
+        });
+        saveRetryState(nextState);
+
+        const executeFetchAndScore = async () => {
           try {
-            const res = await fetch('/api/score', {
+            const res = await fetch('/api/jobs/fetch-and-score', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ jobIds: chunk.map(j => j.id) })
+              body: JSON.stringify({ jobIds: chunk.map((j: any) => j.id) })
             });
+
             if (!res.ok) {
               if (res.status === 403) {
                 setScoresExhausted(true);
@@ -734,12 +776,18 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
               const errorData = await res.json().catch(() => ({}));
               throw new Error(`Status ${res.status}: ${JSON.stringify(errorData)}`);
             }
-            router.refresh();
+
+            const data = await res.json().catch(() => ({}));
+            const hasScoredNewJobs = data.results?.some((r: any) => r.status === 'scored' || r.status === 'already_scored');
+            if (hasScoredNewJobs) {
+              router.refresh();
+            }
           } catch (e) {
-            console.error('Failed to score current jobs:', e);
+            console.error('Failed background fetch and score batch:', e);
           }
         };
-        scoreCurrent();
+
+        executeFetchAndScore();
       }
     }, 500);
 
