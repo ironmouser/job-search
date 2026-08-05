@@ -109,37 +109,50 @@ Return a JSON object strictly matching this schema:
     });
     
     try {
-        const scores = JSON.parse(responseText);
+        const cleanedText = responseText
+            .replace(/```json\s*/gi, '')
+            .replace(/```\s*$/gi, '')
+            .trim();
+        const scores = JSON.parse(cleanedText);
         
+        const compScore = Number(scores.compensation_score ?? scores.compensationScore ?? 50);
+        const prodScore = Number(scores.product_fit_score ?? scores.productFitScore ?? 50);
+        const remoteScore = Number(scores.remote_flexibility_score ?? scores.remoteFlexibilityScore ?? 50);
+        const aiScore = Number(scores.ai_maturity_score ?? scores.aiMaturityScore ?? 50);
+        const leadScore = Number(scores.leadership_score ?? scores.leadershipScore ?? 50);
+        const growthScore = Number(scores.growth_score ?? scores.growthScore ?? 50);
+        const cultScore = Number(scores.culture_score ?? scores.cultureScore ?? 50);
+        const techScore = Number(scores.tech_stack_score ?? scores.techStackScore ?? 50);
+
         // Calculate weighted total score using dynamic parsed weights
         const sumOfWeights = weights.compensation + weights.productFit + weights.remoteFlexibility + 
                              weights.aiMaturity + weights.leadership + weights.growth + 
                              weights.culture + weights.techStack;
 
         const rawWeightedScore = (
-            (scores.compensation_score * weights.compensation) +
-            (scores.product_fit_score * weights.productFit) +
-            (scores.remote_flexibility_score * weights.remoteFlexibility) +
-            (scores.ai_maturity_score * weights.aiMaturity) +
-            (scores.leadership_score * weights.leadership) +
-            (scores.growth_score * weights.growth) +
-            (scores.culture_score * weights.culture) +
-            (scores.tech_stack_score * weights.techStack)
+            (compScore * weights.compensation) +
+            (prodScore * weights.productFit) +
+            (remoteScore * weights.remoteFlexibility) +
+            (aiScore * weights.aiMaturity) +
+            (leadScore * weights.leadership) +
+            (growthScore * weights.growth) +
+            (cultScore * weights.culture) +
+            (techScore * weights.techStack)
         );
 
         const totalScore = Math.round(sumOfWeights > 0 ? (rawWeightedScore / sumOfWeights) : rawWeightedScore);
 
         const scorePayload: any = {
             totalScore: totalScore,
-            compensationScore: scores.compensation_score,
-            productFitScore: scores.product_fit_score,
-            remoteFlexibilityScore: scores.remote_flexibility_score,
-            aiMaturityScore: scores.ai_maturity_score,
-            leadershipScore: scores.leadership_score,
-            growthScore: scores.growth_score,
-            cultureScore: scores.culture_score,
-            techStackScore: scores.tech_stack_score,
-            analysisNotes: scores.analysis_notes
+            compensationScore: compScore,
+            productFitScore: prodScore,
+            remoteFlexibilityScore: remoteScore,
+            aiMaturityScore: aiScore,
+            leadershipScore: leadScore,
+            growthScore: growthScore,
+            cultureScore: cultScore,
+            techStackScore: techScore,
+            analysisNotes: scores.analysis_notes || scores.analysisNotes || 'Job alignment evaluated.'
         };
 
         const data = await prisma.opportunityScore.upsert({
