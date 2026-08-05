@@ -234,6 +234,14 @@ model GlobalSettings {
   ottaIsPro             Boolean @default(true) @map("otta_is_pro")
   jobspressoIsPro       Boolean @default(true) @map("jobspresso_is_pro")
   justremoteIsPro       Boolean @default(true) @map("justremote_is_pro")
+  linkedinIsPro         Boolean @default(false) @map("linkedin_is_pro")
+  indeedIsPro           Boolean @default(true) @map("indeed_is_pro")
+  glassdoorIsPro        Boolean @default(true) @map("glassdoor_is_pro")
+  ziprecruiterIsPro     Boolean @default(true) @map("ziprecruiter_is_pro")
+  nodeskIsPro           Boolean @default(false) @map("nodesk_is_pro")
+  themuseIsPro          Boolean @default(true) @map("themuse_is_pro")
+  computrabajoIsPro     Boolean @default(true) @map("computrabajo_is_pro")
+  jobbankIsPro          Boolean @default(true) @map("jobbank_is_pro")
   // Email Sync
   emailsSyncIsPro       Boolean @default(true) @map("emails_sync_is_pro")
   // AI Features
