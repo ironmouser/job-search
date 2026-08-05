@@ -391,7 +391,7 @@ ${question}
     let responseText = await callAiService({
         system: systemPrompt,
         userPrompt: userPrompt,
-        maxTokens: 1024,
+        maxTokens: 512,
         userId: userId,
         temperature: 1.0,
         model: 'deepseek-v4-flash'
@@ -558,7 +558,7 @@ export async function regenerateNetworkingMessage(userId: string, jobId: string,
     let responseText = await callAiService({
         system: systemPrompt,
         userPrompt: userPrompt,
-        maxTokens: 1024,
+        maxTokens: 512,
         userId: userId,
         temperature: 1.0,
         model: 'deepseek-v4-flash'
