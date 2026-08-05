@@ -998,6 +998,8 @@ export default function ProfileForm({
           </div>
         )}
       </div>
+      )}
+      </div>
 
       {/* -- 3. Target Profile Section ------------------------------------------ */}
       <div className={`glass-card accordion-card ${openSections['target-profile'] ? 'open' : ''}`} id="target-profile" data-tour="target-profile" style={{ padding: '1.5rem 2rem' }}>
