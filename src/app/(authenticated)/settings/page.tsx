@@ -506,7 +506,8 @@ export default function SettingsPage() {
                                               source === 'ycombinator' ? 'Y Combinator' :
                                               source === 'arbeitnow' ? 'Arbeitnow (DE)' :
                                               source === 'nodesk' ? 'noDesk' :
-                                              source === 'otta' ? 'Otta' : source}
+                                              source === 'otta' ? 'Otta' :
+                                              source === 'breezy' ? 'Breezy' : source}
                                                             {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                         </span>
                                                     </label>

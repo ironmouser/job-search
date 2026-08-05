@@ -871,70 +871,12 @@ export default function AdminDashboard() {
                   <Cpu size={18} className="text-accent" /> Job Search Crawlers (Pro Access Gating)
                 </h4>
 
-                {/* Subcategory: Company Career Sites (ATS) */}
+                {/* Subcategory: Global Aggregators */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                   <h5 style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)", margin: 0, fontWeight: 600 }}>
-                    Company Career Sites (ATS)
+                    Global Aggregators
                   </h5>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Greenhouse</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Greenhouse ATS integration</div>
-                      </div>
-                      <ToggleSwitch checked={settings.greenhouseIsPro} onChange={() => setSettings({ ...settings, greenhouseIsPro: !settings.greenhouseIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Lever.co</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Lever ATS scraping</div>
-                      </div>
-                      <ToggleSwitch checked={settings.leverIsPro} onChange={() => setSettings({ ...settings, leverIsPro: !settings.leverIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>AshbyHQ</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Ashby ATS scraping</div>
-                      </div>
-                      <ToggleSwitch checked={settings.ashbyIsPro} onChange={() => setSettings({ ...settings, ashbyIsPro: !settings.ashbyIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Workable</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Workable ATS scraping</div>
-                      </div>
-                      <ToggleSwitch checked={settings.workableIsPro} onChange={() => setSettings({ ...settings, workableIsPro: !settings.workableIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>SmartRecruiters</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>SmartRecruiters ATS scraping</div>
-                      </div>
-                      <ToggleSwitch checked={settings.smartrecruitersIsPro} onChange={() => setSettings({ ...settings, smartrecruitersIsPro: !settings.smartrecruitersIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Breezy.hr</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Breezy ATS scraping</div>
-                      </div>
-                      <ToggleSwitch checked={settings.breezyIsPro} onChange={() => setSettings({ ...settings, breezyIsPro: !settings.breezyIsPro })} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Subcategory: Global Job Boards */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                  <h5 style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)", margin: 0, fontWeight: 600 }}>
-                    Global Job Boards
-                  </h5>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>LinkedIn</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>LinkedIn job search</div>
-                      </div>
-                      <ToggleSwitch checked={settings.linkedinIsPro} onChange={() => setSettings({ ...settings, linkedinIsPro: !settings.linkedinIsPro })} />
-                    </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                       <div>
                         <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Indeed</div>
@@ -951,6 +893,13 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                       <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>LinkedIn</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>LinkedIn job search</div>
+                      </div>
+                      <ToggleSwitch checked={settings.linkedinIsPro} onChange={() => setSettings({ ...settings, linkedinIsPro: !settings.linkedinIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
                         <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>ZipRecruiter</div>
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>ZipRecruiter job search</div>
                       </div>
@@ -959,33 +908,12 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Subcategory: Remote & Tech Aggregators */}
+                {/* Subcategory: US / Remote Tech */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                   <h5 style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)", margin: 0, fontWeight: 600 }}>
-                    Remote & Tech Aggregators
+                    US / Remote Tech
                   </h5>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Remotive</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Remotive Remote Aggregator</div>
-                      </div>
-                      <ToggleSwitch checked={settings.remotiveIsPro} onChange={() => setSettings({ ...settings, remotiveIsPro: !settings.remotiveIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>RemotePOC</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>RemotePOC jobs board</div>
-                      </div>
-                      <ToggleSwitch checked={settings.remotepocIsPro} onChange={() => setSettings({ ...settings, remotepocIsPro: !settings.remotepocIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>noDesk</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>noDesk remote jobs</div>
-                      </div>
-                      <ToggleSwitch checked={settings.nodeskIsPro} onChange={() => setSettings({ ...settings, nodeskIsPro: !settings.nodeskIsPro })} />
-                    </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                       <div>
                         <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>WeWorkRemotely</div>
@@ -1009,6 +937,20 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                       <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Remotive</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Remotive Remote Aggregator</div>
+                      </div>
+                      <ToggleSwitch checked={settings.remotiveIsPro} onChange={() => setSettings({ ...settings, remotiveIsPro: !settings.remotiveIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>RemotePOC</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>RemotePOC jobs board</div>
+                      </div>
+                      <ToggleSwitch checked={settings.remotepocIsPro} onChange={() => setSettings({ ...settings, remotepocIsPro: !settings.remotepocIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
                         <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Y Combinator</div>
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Work at a Startup scraping</div>
                       </div>
@@ -1016,18 +958,76 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                       <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>noDesk</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>noDesk remote jobs</div>
+                      </div>
+                      <ToggleSwitch checked={settings.nodeskIsPro} onChange={() => setSettings({ ...settings, nodeskIsPro: !settings.nodeskIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
                         <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Otta</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Otta tech jobs scraping</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Otta tech jobs board</div>
                       </div>
                       <ToggleSwitch checked={settings.ottaIsPro} onChange={() => setSettings({ ...settings, ottaIsPro: !settings.ottaIsPro })} />
                     </div>
                   </div>
                 </div>
 
-                {/* Subcategory: International Job Boards */}
+                {/* Subcategory: ATS Integrations */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                   <h5 style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)", margin: 0, fontWeight: 600 }}>
-                    International Job Boards
+                    ATS Integrations
+                  </h5>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Greenhouse</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Greenhouse ATS integration</div>
+                      </div>
+                      <ToggleSwitch checked={settings.greenhouseIsPro} onChange={() => setSettings({ ...settings, greenhouseIsPro: !settings.greenhouseIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Lever</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Lever ATS scraping</div>
+                      </div>
+                      <ToggleSwitch checked={settings.leverIsPro} onChange={() => setSettings({ ...settings, leverIsPro: !settings.leverIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Ashby</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Ashby ATS scraping</div>
+                      </div>
+                      <ToggleSwitch checked={settings.ashbyIsPro} onChange={() => setSettings({ ...settings, ashbyIsPro: !settings.ashbyIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Workable</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Workable ATS scraping</div>
+                      </div>
+                      <ToggleSwitch checked={settings.workableIsPro} onChange={() => setSettings({ ...settings, workableIsPro: !settings.workableIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>SmartRecruiters</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>SmartRecruiters ATS scraping</div>
+                      </div>
+                      <ToggleSwitch checked={settings.smartrecruitersIsPro} onChange={() => setSettings({ ...settings, smartrecruitersIsPro: !settings.smartrecruitersIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Breezy</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Breezy HR ATS scraping</div>
+                      </div>
+                      <ToggleSwitch checked={settings.breezyIsPro} onChange={() => setSettings({ ...settings, breezyIsPro: !settings.breezyIsPro })} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subcategory: International Sources */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <h5 style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)", margin: 0, fontWeight: 600 }}>
+                    International Sources
                   </h5>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>

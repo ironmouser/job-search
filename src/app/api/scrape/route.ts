@@ -80,8 +80,11 @@ export async function POST(request: Request) {
                     if (sources.linkedin) tasks.push(runScraperTask('LinkedIn', () => scrapeLinkedIn(keyword, location)));
                     if (sources.ziprecruiter) tasks.push(runScraperTask('ZipRecruiter', () => scrapeZipRecruiter(keyword, location)));
                     if (customUrls.length > 0) tasks.push(runScraperTask('Custom Career Pages', () => scrapeCustomPages(customUrls)));
-                    if (sources.weworkremotely || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.otta || sources.nodesk) {
+                    if (sources.weworkremotely || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.himalayas || sources.nodesk) {
                         tasks.push(runScraperTask('Remote Aggregators', () => scrapeRemoteAggregators(keyword, sources)));
+                    }
+                    if (sources.himalayas) {
+                        tasks.push(runScraperTask('Himalayas', () => scrapeHimalayas(keyword)));
                     }
                     if (sources.remotepoc && (isPro || !globalSettings?.remotepocIsPro)) {
                         tasks.push(runScraperTask('RemotePOC', () => scrapeRemotePOC(keyword)));

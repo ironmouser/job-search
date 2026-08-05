@@ -214,34 +214,40 @@ model OrganizationActivityLog {
 
 model GlobalSettings {
   id                    String  @id @default("system")
-  // Scrapers
-
-  greenhouseIsPro       Boolean @default(true) @map("greenhouse_is_pro")
-  leverIsPro            Boolean @default(false) @map("lever_is_pro")
-  ashbyIsPro            Boolean @default(false) @map("ashby_is_pro")
+  // Scrapers - Company Career Sites (ATS)
+  greenhouseIsPro       Boolean @default(false) @map("greenhouse_is_pro")
+  leverIsPro            Boolean @default(true) @map("lever_is_pro")
+  ashbyIsPro            Boolean @default(true) @map("ashby_is_pro")
   workableIsPro         Boolean @default(true) @map("workable_is_pro")
   smartrecruitersIsPro  Boolean @default(true) @map("smartrecruiters_is_pro")
   breezyIsPro           Boolean @default(true) @map("breezy_is_pro")
-  remotiveIsPro         Boolean @default(true) @map("remotive_is_pro")
-  weworkremotelyIsPro   Boolean @default(false) @map("weworkremotely_is_pro")
-  remotecoIsPro         Boolean @default(false) @map("remoteco_is_pro")
-  remoteokIsPro         Boolean @default(false) @map("remoteok_is_pro")
-  workingnomadsIsPro    Boolean @default(false) @map("workingnomads_is_pro")
-  remotepocIsPro        Boolean @default(false) @map("remotepoc_is_pro")
-  arbeitnowIsPro        Boolean @default(false) @map("arbeitnow_is_pro")
-  ycombinatorIsPro      Boolean @default(false) @map("ycombinator_is_pro")
-  himalayasIsPro        Boolean @default(true) @map("himalayas_is_pro")
-  ottaIsPro             Boolean @default(true) @map("otta_is_pro")
-  jobspressoIsPro       Boolean @default(true) @map("jobspresso_is_pro")
-  justremoteIsPro       Boolean @default(true) @map("justremote_is_pro")
+  workdayIsPro          Boolean @default(true) @map("workday_is_pro")
+  taleoIsPro            Boolean @default(true) @map("taleo_is_pro")
+  icimsIsPro            Boolean @default(true) @map("icims_is_pro")
+
+  // Scrapers - Global Job Boards
   linkedinIsPro         Boolean @default(false) @map("linkedin_is_pro")
   indeedIsPro           Boolean @default(true) @map("indeed_is_pro")
   glassdoorIsPro        Boolean @default(true) @map("glassdoor_is_pro")
   ziprecruiterIsPro     Boolean @default(true) @map("ziprecruiter_is_pro")
+
+  // Scrapers - Remote & Tech Aggregators
+  weworkremotelyIsPro   Boolean @default(true) @map("weworkremotely_is_pro")
+  remoteokIsPro         Boolean @default(true) @map("remoteok_is_pro")
+  workingnomadsIsPro    Boolean @default(true) @map("workingnomads_is_pro")
+  remotiveIsPro         Boolean @default(false) @map("remotive_is_pro")
+  remotepocIsPro        Boolean @default(false) @map("remotepoc_is_pro")
+  ycombinatorIsPro      Boolean @default(true) @map("ycombinator_is_pro")
   nodeskIsPro           Boolean @default(false) @map("nodesk_is_pro")
+  ottaIsPro             Boolean @default(true) @map("otta_is_pro")
+  himalayasIsPro        Boolean @default(true) @map("himalayas_is_pro")
+
+  // Scrapers - International Job Boards
+  arbeitnowIsPro        Boolean @default(true) @map("arbeitnow_is_pro")
   themuseIsPro          Boolean @default(true) @map("themuse_is_pro")
   computrabajoIsPro     Boolean @default(true) @map("computrabajo_is_pro")
   jobbankIsPro          Boolean @default(true) @map("jobbank_is_pro")
+
   // Email Sync
   emailsSyncIsPro       Boolean @default(true) @map("emails_sync_is_pro")
   // AI Features
@@ -251,7 +257,6 @@ model GlobalSettings {
   autoApplyIsPro            Boolean @default(true) @map("auto_apply_is_pro")
 
   @@map("global_settings")
-
 }
 
 model User {
