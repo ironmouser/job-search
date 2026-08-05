@@ -122,7 +122,7 @@ Return a JSON object strictly matching this schema:
         jsonMode: true,
         messages: [{ role: 'user', content: prompt }],
         userId,
-        maxTokens: 800 // Scoring output is compact JSON (~300 tokens typical); 800 gives headroom without holding the connection open like the 8192 default
+        maxTokens: 1024 // Scoring output is compact JSON (~300 tokens typical); 1024 gives ample headroom without holding the connection open like the 8192 default
     });
     
     try {
