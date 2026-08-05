@@ -230,6 +230,7 @@ model GlobalSettings {
   indeedIsPro           Boolean @default(true) @map("indeed_is_pro")
   glassdoorIsPro        Boolean @default(true) @map("glassdoor_is_pro")
   ziprecruiterIsPro     Boolean @default(true) @map("ziprecruiter_is_pro")
+  diceIsPro             Boolean @default(true) @map("dice_is_pro")
 
   // Scrapers - Remote & Tech Aggregators
   weworkremotelyIsPro   Boolean @default(true) @map("weworkremotely_is_pro")

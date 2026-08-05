@@ -52,6 +52,7 @@ export async function POST(request: Request) {
         indeedIsPro: data.indeedIsPro,
         glassdoorIsPro: data.glassdoorIsPro,
         ziprecruiterIsPro: data.ziprecruiterIsPro,
+        diceIsPro: data.diceIsPro,
 
         remotiveIsPro: data.remotiveIsPro,
         remoteokIsPro: data.remoteokIsPro,
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
         indeedIsPro: data.indeedIsPro ?? true,
         glassdoorIsPro: data.glassdoorIsPro ?? true,
         ziprecruiterIsPro: data.ziprecruiterIsPro ?? true,
+        diceIsPro: data.diceIsPro ?? true,
 
         remotiveIsPro: data.remotiveIsPro ?? false,
         remoteokIsPro: data.remoteokIsPro ?? true,

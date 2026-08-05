@@ -459,7 +459,7 @@ export default function SettingsPage() {
                                 [
                                     {
                                         title: 'Global Aggregators',
-                                        sources: ['indeed', 'glassdoor', 'linkedin', 'ziprecruiter']
+                                        sources: ['indeed', 'glassdoor', 'linkedin', 'ziprecruiter', 'dice']
                                     },
                                     {
                                         title: 'US / Remote Tech',
@@ -507,6 +507,7 @@ export default function SettingsPage() {
                                               source === 'arbeitnow' ? 'Arbeitnow (DE)' :
                                               source === 'nodesk' ? 'noDesk' :
                                               source === 'otta' ? 'Otta' :
+                                              source === 'dice' ? 'Dice' :
                                               source === 'breezy' ? 'Breezy' : source}
                                                             {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                         </span>
@@ -522,7 +523,7 @@ export default function SettingsPage() {
                                         title: 'Global Job Boards',
                                         items: [
                                             { label: 'Free', sources: ['linkedin'] },
-                                            { label: 'Premium', sources: ['indeed', 'glassdoor', 'ziprecruiter'], isPro: true }
+                                            { label: 'Premium', sources: ['indeed', 'glassdoor', 'ziprecruiter', 'dice'], isPro: true }
                                         ]
                                     },
                                     {

@@ -36,6 +36,7 @@ interface GlobalSettings {
   indeedIsPro: boolean;
   glassdoorIsPro: boolean;
   ziprecruiterIsPro: boolean;
+  diceIsPro: boolean;
 
   remotiveIsPro: boolean;
   remotepocIsPro: boolean;
@@ -141,6 +142,7 @@ export default function AdminDashboard() {
     indeedIsPro: true,
     glassdoorIsPro: true,
     ziprecruiterIsPro: true,
+    diceIsPro: true,
 
     remotiveIsPro: false,
     remotepocIsPro: false,
@@ -252,6 +254,7 @@ export default function AdminDashboard() {
               indeedIsPro: data.indeedIsPro ?? true,
               glassdoorIsPro: data.glassdoorIsPro ?? true,
               ziprecruiterIsPro: data.ziprecruiterIsPro ?? true,
+              diceIsPro: data.diceIsPro ?? true,
 
               remotiveIsPro: data.remotiveIsPro ?? false,
               remotepocIsPro: data.remotepocIsPro ?? false,
@@ -916,6 +919,13 @@ export default function AdminDashboard() {
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>ZipRecruiter job search</div>
                       </div>
                       <ToggleSwitch checked={settings.ziprecruiterIsPro} onChange={() => setSettings({ ...settings, ziprecruiterIsPro: !settings.ziprecruiterIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Dice</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Dice.com tech job search</div>
+                      </div>
+                      <ToggleSwitch checked={settings.diceIsPro} onChange={() => setSettings({ ...settings, diceIsPro: !settings.diceIsPro })} />
                     </div>
                   </div>
                 </div>

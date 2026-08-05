@@ -1219,6 +1219,174 @@ export async function scrapeGlassdoor(keyword: string, location: string = 'Remot
     return jobs;
 }
 
+/**
+ * Scrape Dice.com job listings.
+ * Dice is a Next.js app — job data lives in __NEXT_DATA__ under
+ * props.pageProps.initialState.jobs.payload.data or similar paths,
+ * or in JSON-LD ItemList blocks. Each job has a UUID that maps to
+ * the dice.com/job-detail/{uuid} URL (used by our existing jobFetcher
+ * Dice profile API to retrieve full descriptions).
+ */
+export async function scrapeDice(keyword: string, location: string = 'Remote'): Promise<any[]> {
+    const jobs: any[] = [];
+    const isRemote = location.toLowerCase().includes('remote');
+    const searchUrl = `https://www.dice.com/jobs?q=${encodeURIComponent(keyword)}&location=${encodeURIComponent(isRemote ? 'Remote' : location)}&countryCode=US&radius=30&radiusUnit=mi&page=1&pageSize=20${isRemote ? '&filters.workplaceTypes=Remote' : ''}`;
+
+    try {
+        let html = '';
+
+        if (process.env.SCRAPEDO_API_KEY) {
+            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(searchUrl)}`;
+            try {
+                const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied')) {
+                        html = text;
+                    }
+                }
+            } catch { /* continue without proxy */ }
+        }
+
+        // Direct fetch fallback (no proxy)
+        if (!html) {
+            try {
+                const res = await fetch(searchUrl, {
+                    signal: AbortSignal.timeout(15000),
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                    }
+                });
+                if (res.ok) html = await res.text();
+            } catch { /* ignore */ }
+        }
+
+        if (html) {
+            const $ = cheerio.load(html);
+
+            // === PRIMARY: __NEXT_DATA__ (Dice is Next.js) ===
+            const nextDataRaw = $('script#__NEXT_DATA__').html();
+            if (nextDataRaw) {
+                try {
+                    const nextData = JSON.parse(nextDataRaw);
+                    // Dice stores results at multiple possible paths
+                    const payload =
+                        nextData?.props?.pageProps?.initialState?.jobs?.payload ||
+                        nextData?.props?.pageProps?.searchResult ||
+                        nextData?.props?.pageProps?.jobs ||
+                        null;
+
+                    const results: any[] = payload?.data || payload?.results || payload || [];
+                    if (Array.isArray(results)) {
+                        for (const job of results) {
+                            const title: string = job?.title || job?.jobTitle || job?.positionTitle || '';
+                            const company: string = job?.hiringOrganization?.name || job?.companyName || job?.employerName || job?.company?.name || '';
+                            const loc: string = job?.jobLocation?.[0]?.address?.addressLocality || job?.location || job?.workplaceType || location;
+                            const id: string = job?.id || job?.jobId || job?.adId || '';
+                            const slug: string = job?.slug || '';
+                            let jobUrl = '';
+                            if (id) {
+                                jobUrl = `https://www.dice.com/job-detail/${id}`;
+                            } else if (slug) {
+                                jobUrl = `https://www.dice.com/jobs/${slug}`;
+                            }
+                            if (title && jobUrl) {
+                                jobs.push({
+                                    title,
+                                    company: cleanCompanyName(company) || 'Unknown Company',
+                                    location: loc,
+                                    url: jobUrl,
+                                    source: 'dice'
+                                });
+                            }
+                        }
+                    }
+                } catch { /* fall through to JSON-LD */ }
+            }
+
+            // === FALLBACK 1: JSON-LD ItemList ===
+            if (jobs.length === 0) {
+                $('script[type="application/ld+json"]').each((_, el) => {
+                    try {
+                        const data = JSON.parse($(el).html() || '');
+                        const arr = Array.isArray(data) ? data : [data];
+                        for (const item of arr) {
+                            if (item['@type'] === 'ItemList' && Array.isArray(item.itemListElement)) {
+                                for (const entry of item.itemListElement) {
+                                    const job = entry.item || entry;
+                                    const title: string = job?.title || job?.name || '';
+                                    const company: string = job?.hiringOrganization?.name || '';
+                                    const loc: string = job?.jobLocation?.[0]?.address?.addressLocality || location;
+                                    const url: string = job?.url || entry?.url || '';
+                                    if (title && url) {
+                                        jobs.push({
+                                            title,
+                                            company: cleanCompanyName(company) || 'Unknown Company',
+                                            location: loc,
+                                            url,
+                                            source: 'dice'
+                                        });
+                                    }
+                                }
+                            } else if (item['@type'] === 'JobPosting') {
+                                const title: string = item?.title || '';
+                                const company: string = item?.hiringOrganization?.name || '';
+                                const loc: string = item?.jobLocation?.[0]?.address?.addressLocality || location;
+                                const url: string = item?.url || '';
+                                if (title && url) {
+                                    jobs.push({
+                                        title,
+                                        company: cleanCompanyName(company) || 'Unknown Company',
+                                        location: loc,
+                                        url,
+                                        source: 'dice'
+                                    });
+                                }
+                            }
+                        }
+                    } catch { /* ignore */ }
+                });
+            }
+
+            // === FALLBACK 2: CSS selectors ===
+            if (jobs.length === 0) {
+                $('a[data-cy="card-title-link"], a[class*="card-title"], [data-testid="job-card"] a, article.card a').each((_, el) => {
+                    const title = $(el).text().trim();
+                    let jobUrl = $(el).attr('href') || '';
+                    if (!jobUrl || !title) return;
+                    if (jobUrl && !jobUrl.startsWith('http')) jobUrl = 'https://www.dice.com' + jobUrl;
+                    const card = $(el).closest('article, div[data-testid], li');
+                    const company = card.find('[data-cy="search-result-company-name"], [class*="company"]').first().text().trim() || 'Unknown Company';
+                    const loc = card.find('[data-cy="search-result-location"], [class*="location"]').first().text().trim() || location;
+                    jobs.push({
+                        title,
+                        company: cleanCompanyName(company) || 'Unknown Company',
+                        location: loc,
+                        url: jobUrl,
+                        source: 'dice'
+                    });
+                });
+            }
+        }
+
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Dice (Native)',
+                targetUrl: searchUrl,
+                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                resultsCount: jobs.length,
+                usedFirecrawl: false
+            }
+        }).catch(console.error);
+    } catch (e) {
+        console.error('Dice scrape error:', e);
+    }
+
+    return jobs;
+}
+
 export async function scrapeLinkedIn(keyword: string, location: string = 'remote'): Promise<any[]> {
     try {
         const query = encodeURIComponent(keyword);
