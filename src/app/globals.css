@@ -992,7 +992,11 @@ body.light-theme .email-job-title {
 }
 
 .job-detail-sidebar {
+  position: sticky;
+  top: 2rem;
   padding-top: 3.5rem;
+  z-index: 10;
+  align-self: start;
 }
 
 /* Accordion (details/summary) styling for glass-cards */
@@ -1073,7 +1077,7 @@ details.glass-card > summary::marker { display: none; content: ''; }
     flex-direction: column-reverse;
   }
 
-  .job-detail-sidebar { padding-top: 0; }
+  .job-detail-sidebar { padding-top: 0; position: static; }
 
   .flex-stack-mobile {
     flex-direction: column;
@@ -1673,4 +1677,255 @@ body.light-theme .filter-item button.filter-dropdown-btn:hover {
     height: 22px !important;
     margin: 0 !important;
   }
+}
+
+/* ─── Job Details Slide Transitions & Action Bar / Mobile FAB ────────────── */
+
+@keyframes jobSlideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes jobSlideOutLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes jobSlideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes jobSlideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.job-slide-in-right {
+  animation: jobSlideInRight 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.job-slide-out-left {
+  animation: jobSlideOutLeft 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.job-slide-in-left {
+  animation: jobSlideInLeft 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.job-slide-out-right {
+  animation: jobSlideOutRight 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.job-nav-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+/* Desktop Action Bar Container — Light Mode Default */
+.job-action-bar-desktop {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.25rem;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.job-action-bar-desktop .btn-outline {
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.job-action-bar-desktop .btn-outline:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.job-action-bar-divider {
+  width: 1px;
+  height: 24px;
+  background: #e2e8f0;
+  margin: 0 0.5rem;
+}
+
+.job-action-bar-counter {
+  font-size: 0.85rem;
+  color: #475569;
+  font-weight: 600;
+  padding: 0 0.25rem;
+  white-space: nowrap;
+}
+
+/* Mobile Multi-Action FAB Container */
+.job-action-bar-mobile {
+  display: none;
+}
+
+.job-fab-menu {
+  position: absolute;
+  bottom: 4.25rem;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-end;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  min-width: 220px;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.job-fab-menu .btn-outline {
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.job-fab-menu .btn-outline:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+@media (max-width: 768px) {
+  .job-action-bar-desktop {
+    display: none !important;
+  }
+
+  .job-action-bar-mobile {
+    display: block !important;
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 1000;
+  }
+}
+
+/* ─── 4-Step Workflow Dock & Popover Styling ───────────────────────────── */
+
+.job-step-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 500;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.job-step-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.job-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+@keyframes popoverUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.job-apply-popover {
+  position: absolute;
+  bottom: 3.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 190px;
+  z-index: 1010;
+  animation: popoverUp 0.18s ease-out forwards;
+}
+
+.job-apply-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.job-apply-option-btn:hover {
+  background: #f1f5f9;
 }

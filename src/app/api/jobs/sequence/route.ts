@@ -1,0 +1,180 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { extractStateAbbr, isUsLocation, isRemoteLocation, US_STATE_ABBRS } from '@/lib/locationUtils';
+import { isDescriptionAdequate } from '@/lib/jobFetcher';
+import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
+
+export const revalidate = 0;
+
+const extractMaxSalary = (salaryStr: string | null) => {
+  if (!salaryStr) return 0;
+  const matches = salaryStr.match(/\$(\d{1,3}(?:,\d{3})*)/g);
+  if (!matches) return 0;
+  const numbers = matches.map(m => parseInt(m.replace(/[^\d]/g, ''), 10));
+  return Math.max(...numbers);
+};
+
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+  const { searchParams } = new URL(request.url);
+
+  const activeFilter = searchParams.get('activeFilter') || 'all';
+  const sortOption = searchParams.get('sortOption') || 'newest';
+  const sourceFilter = searchParams.get('sourceFilter') || 'both';
+  const startDate = searchParams.get('startDate') || '';
+  const endDate = searchParams.get('endDate') || '';
+  const keywordFilter = searchParams.get('keywordFilter') || '';
+  const locationFilterParam = searchParams.get('locationFilter');
+  let locationFilter: string[] = [];
+  if (locationFilterParam) {
+    try {
+      locationFilter = JSON.parse(locationFilterParam);
+    } catch {
+      locationFilter = locationFilterParam.split(',').filter(Boolean);
+    }
+  }
+
+  try {
+    const userJobs = await prisma.userJob.findMany({
+      where: {
+        userId,
+        status: { not: 'deleted' }
+      },
+      include: {
+        job: {
+          include: {
+            opportunityScores: { where: { userId }, select: { totalScore: true } },
+            jobFeedbacks: { where: { userId }, select: { feedbackType: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 1000
+    });
+
+    const jobs = userJobs.map(uj => {
+      const j = uj.job;
+      const score = j.opportunityScores?.[0]?.totalScore;
+      const feedback = j.jobFeedbacks?.[0]?.feedbackType;
+      const hasScore = uj.status === 'scored' || (score !== undefined && score !== null);
+      return {
+        id: j.id,
+        title: j.title,
+        company: j.company,
+        location: j.location,
+        salary_range: j.salaryRange,
+        status: uj.status,
+        is_archived: uj.isArchived,
+        created_at: uj.createdAt,
+        automation_confidence: detectATSFromUrl(j.url).confidence,
+        source: j.source,
+        description: j.description,
+        opportunity_scores: j.opportunityScores,
+        isScored: hasScore,
+        isDescriptionAdequate: isDescriptionAdequate(j.description),
+        feedbackType: feedback || null,
+      };
+    });
+
+    let result = [...jobs];
+
+    // Keyword Filter
+    if (keywordFilter.trim()) {
+      const terms = keywordFilter.toLowerCase().trim().split(/\s+/).filter(Boolean);
+      result = result.filter(j => {
+        const fullText = `${j.title || ''} ${j.company || ''} ${j.location || ''} ${j.description || ''}`.toLowerCase();
+        return terms.every(term => fullText.includes(term));
+      });
+    }
+
+    // Source Filter
+    if (sourceFilter === 'email') {
+      result = result.filter(j => j.company?.includes('(Scraped via Email)') || j.source?.toLowerCase().includes('email'));
+    } else if (sourceFilter === 'scraped') {
+      result = result.filter(j => !j.company?.includes('(Scraped via Email)') && !j.source?.toLowerCase().includes('email'));
+    }
+
+    // Date Filter
+    if (startDate) {
+      result = result.filter(j => new Date(j.created_at) >= new Date(startDate));
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      result = result.filter(j => new Date(j.created_at) <= end);
+    }
+
+    // Status Filter
+    if (activeFilter === 'archived') {
+      result = result.filter(j => j.is_archived);
+    } else {
+      result = result.filter(j => !j.is_archived);
+      if (activeFilter === 'scored') {
+        result = result.filter(j => j.isScored);
+      } else if (activeFilter === 'high_fit') {
+        result = result.filter(j => (j.opportunity_scores?.[0]?.totalScore || 0) >= 80);
+      }
+    }
+
+    // Location Filter
+    if (locationFilter.length > 0) {
+      result = result.filter(j => {
+        if (!j.location) return false;
+        return locationFilter.some(locOpt => {
+          if (locOpt === 'Remote') return isRemoteLocation(j.location!);
+          if (locOpt === 'United States') return isUsLocation(j.location!) && !isRemoteLocation(j.location!);
+          if (locOpt === 'International') return !isUsLocation(j.location!) && !isRemoteLocation(j.location!);
+          if (US_STATE_ABBRS.has(locOpt)) {
+            return extractStateAbbr(j.location!) === locOpt;
+          }
+          return false;
+        });
+      });
+    }
+
+    // Sorting
+    result.sort((a, b) => {
+      if (sortOption === 'score') {
+        const scoreA = a.opportunity_scores?.[0]?.totalScore || 0;
+        const scoreB = b.opportunity_scores?.[0]?.totalScore || 0;
+        return scoreB - scoreA;
+      }
+      if (sortOption === 'salary') {
+        return extractMaxSalary(b.salary_range || null) - extractMaxSalary(a.salary_range || null);
+      }
+      if (sortOption === 'remote') {
+        const isRemoteA = isRemoteLocation(a.location || '') ? 1 : 0;
+        const isRemoteB = isRemoteLocation(b.location || '') ? 1 : 0;
+        return isRemoteB - isRemoteA;
+      }
+      if (sortOption === 'auto_apply') {
+        const confA = a.automation_confidence || 0;
+        const confB = b.automation_confidence || 0;
+        if (confB !== confA) return confB - confA;
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    const sequence = result.map(j => ({
+      id: j.id,
+      title: j.title,
+      company: j.company,
+      isScored: j.isScored,
+      isDescriptionAdequate: j.isDescriptionAdequate,
+      isArchived: j.is_archived,
+      feedbackType: j.feedbackType
+    }));
+
+    return NextResponse.json({ sequence });
+  } catch (error: any) {
+    console.error('Error fetching job sequence:', error);
+    return NextResponse.json({ error: 'Failed to fetch job sequence' }, { status: 500 });
+  }
+}

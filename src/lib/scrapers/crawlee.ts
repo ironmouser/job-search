@@ -1014,6 +1014,73 @@ export async function scrapeIndeed(keyword: string, location: string) {
     return jobs;
 }
 
+/**
+ * Resolve Apollo GraphQL __ref references recursively.
+ * Glassdoor embeds all job data as a flattened Apollo cache with cross-references.
+ */
+function resolveApolloRefs(data: any, root: Record<string, any>): any {
+    if (data === null || data === undefined) return data;
+    if (typeof data !== 'object') return data;
+    if (Array.isArray(data)) return data.map(item => resolveApolloRefs(item, root));
+    if ('__ref' in data) {
+        const ref = data.__ref;
+        return ref in root ? resolveApolloRefs(root[ref], root) : data;
+    }
+    const resolved: Record<string, any> = {};
+    for (const [k, v] of Object.entries(data)) {
+        resolved[k] = resolveApolloRefs(v, root);
+    }
+    return resolved;
+}
+
+/**
+ * Extract Glassdoor Apollo cache from HTML.
+ * Returns the resolved ROOT_QUERY or raw cache object.
+ */
+function extractGlassdoorApolloCache(html: string, $: cheerio.CheerioAPI): Record<string, any> | null {
+    // Path 1: __NEXT_DATA__ → props.pageProps.apolloCache
+    const nextDataRaw = $('script#__NEXT_DATA__').html();
+    if (nextDataRaw) {
+        try {
+            const nextData = JSON.parse(nextDataRaw);
+            const cache: Record<string, any> = nextData?.props?.pageProps?.apolloCache;
+            if (cache && typeof cache === 'object') {
+                const root = cache;
+                const query = root['ROOT_QUERY'];
+                return query ? resolveApolloRefs(query, root) : resolveApolloRefs(root, root);
+            }
+        } catch { /* continue */ }
+    }
+
+    // Path 2: apolloState variable embedded in JS (older Glassdoor pages)
+    // Use indexOf + brace-counting instead of dotAll regex for ES2017 compat
+    const stateIdx = html.indexOf('"apolloState":{');
+    const match = stateIdx !== -1 ? (() => {
+        let depth = 0, i = stateIdx + '"apolloState":'.length;
+        if (html[i] !== '{') return null;
+        const start = i;
+        for (; i < html.length; i++) {
+            if (html[i] === '{') depth++;
+            else if (html[i] === '}') { depth--; if (depth === 0) return [null, html.slice(start, i + 1)]; }
+        }
+        return null;
+    })() : null;
+    if (match) {
+        try {
+            const raw = match[1];
+            if (!raw) return null;
+            const cache = JSON.parse(raw);
+            if (cache && typeof cache === 'object') {
+                const root = cache;
+                const query = root['ROOT_QUERY'];
+                return query ? resolveApolloRefs(query, root) : resolveApolloRefs(root, root);
+            }
+        } catch { /* continue */ }
+    }
+
+    return null;
+}
+
 export async function scrapeGlassdoor(keyword: string, location: string = 'Remote') {
     const jobs: any[] = [];
     const searchSlug = encodeURIComponent(keyword.replace(/\s+/g, '-'));
@@ -1022,85 +1089,116 @@ export async function scrapeGlassdoor(keyword: string, location: string = 'Remot
 
     try {
         let html = '';
+        let usedUrl = targetUrl;
+
+        // Use Scrape.do with render=true for JS-rendered Apollo data
         if (process.env.SCRAPEDO_API_KEY) {
-            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(targetUrl)}`;
-            const res = await fetch(proxyUrl);
-            if (res.ok) html = await res.text();
-            
-            if (!html || html.includes('404 Not Found')) {
-                const fallbackProxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(fallbackUrl)}`;
-                const fallbackRes = await fetch(fallbackProxyUrl);
-                if (fallbackRes.ok) html = await fallbackRes.text();
+            const urls = [targetUrl, fallbackUrl];
+            for (const tryUrl of urls) {
+                const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(tryUrl)}`;
+                try {
+                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
+                    if (res.ok) {
+                        const text = await res.text();
+                        if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied')) {
+                            html = text;
+                            usedUrl = tryUrl;
+                            break;
+                        }
+                    }
+                } catch { /* try fallback */ }
             }
         }
 
         if (html) {
             const $ = cheerio.load(html);
 
-            // Modern Glassdoor Card Selectors
-            $('[data-test="jobListing"], li[data-test="job-tile"], div[class*="JobCard_jobCard"], li[class*="JobsList_jobListItem"], article[id^="job-listing-"], div[class*="jobCard"]').each((i, el) => {
-                const aTag = $(el).find('a[data-test="job-title"], a[data-test="job-link"], a[class*="JobCard_jobTitle"], a[class*="jobTitle"], a[class*="JobCard_seoLink"], a[href*="/job-listing/"], a[href*="/partner/jobListing.htm"]').first();
-                const jobTitle = aTag.text().trim();
-                let jobUrl = aTag.attr('href') || '';
-                if (jobUrl && !jobUrl.startsWith('http')) jobUrl = 'https://www.glassdoor.com' + jobUrl;
+            // === PRIMARY: Apollo GraphQL cache extraction ===
+            // Glassdoor embeds ALL job data in Apollo cache with __ref resolution needed
+            const apolloData = extractGlassdoorApolloCache(html, $);
+            if (apolloData) {
+                // Find jobListings query key (format: jobListings({...params...}))
+                for (const [key, value] of Object.entries(apolloData)) {
+                    if (!key.startsWith('jobListings')) continue;
+                    const listingsData = value as any;
+                    const listings: any[] = listingsData?.jobListings || listingsData?.jobResults || [];
+                    for (const item of listings) {
+                        // Each item is a JobView with header/job/overview
+                        const header = item?.jobview?.header || item?.header || item;
+                        const jobTitle: string = header?.jobTitleText || header?.normalizedJobTitle || item?.jobTitle || '';
+                        const jobLink: string = header?.jobLink || item?.jobLink || '';
+                        const employer = header?.employer || item?.employer || {};
+                        const company: string = employer?.name || employer?.shortName || header?.employerName || header?.divisionEmployerName || '';
+                        const locationName: string = header?.locationName || item?.locationName || '';
+                        const salaryText: string | null = header?.salaryText || header?.payPeriod
+                            ? `${header?.payPercentile10 || ''} - ${header?.payPercentile90 || ''} ${header?.payCurrency || ''} (${header?.payPeriod || ''})`
+                            : null;
 
-                const companyText = $(el).find('[class*="EmployerProfile_employerName"], [data-test="employer-name"], [class*="JobCard_companyName"], span[class*="employerName"], [class*="EmployerProfile_compactEmployerName"]').first().text().trim() || $(el).find('span:first-child').text().trim();
-                const locationText = $(el).find('[data-test="emp-location"], [class*="JobCard_location"], [class*="location"]').first().text().trim() || location;
-                const salaryText = $(el).find('[data-test="detailSalary"], [class*="SalaryEstimate"], [class*="JobCard_salaryEstimate"]').first().text().trim() || null;
-
-                if (jobTitle && jobUrl) {
-                    jobs.push({
-                        title: jobTitle,
-                        company: cleanCompanyName(companyText) || 'Unknown Company',
-                        location: locationText || location,
-                        salary: salaryText,
-                        url: jobUrl.split('?')[0],
-                        source: 'glassdoor'
-                    });
+                        if (jobTitle && jobLink) {
+                            const fullUrl = jobLink.startsWith('http') ? jobLink : `https://www.glassdoor.com${jobLink}`;
+                            jobs.push({
+                                title: jobTitle,
+                                company: cleanCompanyName(company) || 'Unknown Company',
+                                location: locationName || location,
+                                salary: salaryText,
+                                url: fullUrl,
+                                source: 'glassdoor'
+                            });
+                        }
+                    }
                 }
-            });
 
-            // JSON / NextData Fallback
-            if (jobs.length === 0) {
-                $('script#__NEXT_DATA__, script[type="application/json"], script[id="apollo-state"]').each((_, scriptEl) => {
-                    try {
-                        const content = $(scriptEl).html() || '';
-                        if (!content) return;
-                        const parsed = JSON.parse(content);
-                        
-                        // Path 1: NextData searchResultQueries
-                        const results = parsed?.props?.pageProps?.searchResultQueries?.[0]?.jobResults || parsed?.props?.pageProps?.jobListings || [];
-                        for (const job of results) {
-                            if (job.jobHeader?.jobTitleText || job.jobTitle) {
+                // Also check for flat JobView: or JobListing: keys in the resolved cache
+                if (jobs.length === 0) {
+                    const rawCache = (() => {
+                        try {
+                            const nd = $('script#__NEXT_DATA__').html();
+                            if (nd) return JSON.parse(nd)?.props?.pageProps?.apolloCache;
+                        } catch { return null; }
+                    })();
+
+                    if (rawCache) {
+                        for (const [key, item] of Object.entries(rawCache as Record<string, any>)) {
+                            if (!key.startsWith('JobView:') && !key.startsWith('JobListing:')) continue;
+                            const title: string = item?.header?.jobTitleText || item?.jobTitleText || '';
+                            const jobLink: string = item?.header?.jobLink || item?.jobLink || '';
+                            const company: string = item?.header?.employer?.name || item?.header?.employerName || '';
+                            const loc: string = item?.header?.locationName || '';
+                            if (title && jobLink) {
+                                const fullUrl = jobLink.startsWith('http') ? jobLink : `https://www.glassdoor.com${jobLink}`;
                                 jobs.push({
-                                    title: job.jobHeader?.jobTitleText || job.jobTitle,
-                                    company: job.jobHeader?.employerName || job.companyName || 'Glassdoor Company',
-                                    location: job.jobHeader?.locationName || location,
-                                    url: job.jobLink ? (job.jobLink.startsWith('http') ? job.jobLink : `https://www.glassdoor.com${job.jobLink}`) : fallbackUrl,
-                                    salary: job.jobHeader?.salaryText || null,
+                                    title,
+                                    company: cleanCompanyName(company) || 'Unknown Company',
+                                    location: loc || location,
+                                    url: fullUrl,
                                     source: 'glassdoor'
                                 });
                             }
                         }
+                    }
+                }
+            }
 
-                        // Path 2: Apollo state objects
-                        if (jobs.length === 0 && typeof parsed === 'object') {
-                            for (const key of Object.keys(parsed)) {
-                                if (key.startsWith('JobListing:') || key.startsWith('JobCard:')) {
-                                    const item = parsed[key];
-                                    if (item?.jobTitle || item?.header?.jobTitleText) {
-                                        jobs.push({
-                                            title: item.jobTitle || item.header?.jobTitleText,
-                                            company: item.employerName || item.header?.employerName || 'Glassdoor Company',
-                                            location: item.locationName || location,
-                                            url: item.jobLink ? `https://www.glassdoor.com${item.jobLink}` : fallbackUrl,
-                                            source: 'glassdoor'
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    } catch(e) {}
+            // === FALLBACK: CSS selectors for job cards ===
+            if (jobs.length === 0) {
+                $('[data-test="jobListing"], li[data-test="job-tile"], div[class*="JobCard_jobCard"], li[class*="JobsList_jobListItem"], article[id^="job-listing-"], div[class*="jobCard"]').each((i, el) => {
+                    const aTag = $(el).find('a[data-test="job-title"], a[data-test="job-link"], a[class*="JobCard_jobTitle"], a[class*="jobTitle"], a[class*="JobCard_seoLink"], a[href*="/job-listing/"], a[href*="/partner/jobListing.htm"]').first();
+                    const jobTitle = aTag.text().trim();
+                    let jobUrl = aTag.attr('href') || '';
+                    if (jobUrl && !jobUrl.startsWith('http')) jobUrl = 'https://www.glassdoor.com' + jobUrl;
+                    const companyText = $(el).find('[class*="EmployerProfile_employerName"], [data-test="employer-name"], [class*="JobCard_companyName"], span[class*="employerName"], [class*="EmployerProfile_compactEmployerName"]').first().text().trim();
+                    const locationText = $(el).find('[data-test="emp-location"], [class*="JobCard_location"], [class*="location"]').first().text().trim() || location;
+                    const salaryText = $(el).find('[data-test="detailSalary"], [class*="SalaryEstimate"], [class*="JobCard_salaryEstimate"]').first().text().trim() || null;
+                    if (jobTitle && jobUrl) {
+                        jobs.push({
+                            title: jobTitle,
+                            company: cleanCompanyName(companyText) || 'Unknown Company',
+                            location: locationText,
+                            salary: salaryText,
+                            url: jobUrl.split('?')[0],
+                            source: 'glassdoor'
+                        });
+                    }
                 });
             }
         }
@@ -1108,7 +1206,7 @@ export async function scrapeGlassdoor(keyword: string, location: string = 'Remot
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'Glassdoor (Native)',
-                targetUrl: html ? targetUrl : fallbackUrl,
+                targetUrl: usedUrl,
                 status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
                 resultsCount: jobs.length,
                 usedFirecrawl: false

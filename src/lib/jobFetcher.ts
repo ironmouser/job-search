@@ -78,6 +78,17 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
         return null;
     }
 
+    // Glassdoor job detail pages (/job-listing/, /partner/jobListing) require login
+    // and cannot be bypassed. The jobLink URL IS the application redirect — return null
+    // so the UI prompts manual paste, and the job URL serves as the apply link.
+    if (
+        url.includes('glassdoor.com/job-listing/') ||
+        url.includes('glassdoor.com/partner/jobListing')
+    ) {
+        console.info(`Skipping fetch for Glassdoor auth-walled job detail: ${url}`);
+        return null;
+    }
+
     // --- Dice.com: use their public job-posting-service REST API ---
     // URL pattern: https://www.dice.com/job-detail/{uuid}
     const diceMatch = url.match(/dice\.com\/job-detail\/([a-f0-9-]{36})/i);

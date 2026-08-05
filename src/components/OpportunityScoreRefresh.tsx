@@ -48,7 +48,7 @@ export default function OpportunityScoreRefresh({ jobId }: OpportunityScoreRefre
   return (
     <div
       className="glass-card"
-      style={{ position: 'sticky', top: '2rem', textAlign: 'center', padding: '2rem' }}
+      style={{ textAlign: 'center', padding: '2rem' }}
     >
       {/* Icon */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
