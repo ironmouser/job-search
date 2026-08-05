@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { getCoverLetterPrompts } from '@/lib/generator';
 import { streamDeepSeek } from '@/lib/deepseek';
 import { validateCustomInstructionSemantics, validateGeneratedAsset } from '@/lib/asset-validator';
+import { getEffectiveTier } from '@/lib/tier';
+
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
@@ -13,8 +15,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-        if (!user || user.planTier !== 'PRO') {
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+        });
+        if (!user || getEffectiveTier(user) !== 'PRO') {
             return NextResponse.json({ error: 'Pro account required.' }, { status: 403 });
         }
 

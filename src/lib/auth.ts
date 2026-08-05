@@ -83,15 +83,27 @@ export const authOptions: AuthOptions = {
       }
       if (user?.id) {
         try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { trialEndsAt: true, planTier: true }
+          });
+          // On first sign-in for a FREE user with no trial yet, grant 7-day Pro trial
+          if (dbUser && !dbUser.trialEndsAt && dbUser.planTier === 'FREE') {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+            });
+          }
           await prisma.user.update({
             where: { id: user.id },
             data: { lastLoginAt: new Date() }
           });
         } catch (e) {
-          console.error("Error updating lastLoginAt timestamp:", e);
+          console.error("Error updating user on signIn:", e);
         }
       }
       return true;
+
     },
     async jwt({ token, user, trigger, session }) {
       if (user) {
@@ -115,6 +127,7 @@ export const authOptions: AuthOptions = {
             organizationId: true,
             isDisabled: true,
             orgAccessExpiresAt: true,
+            trialEndsAt: true,
           }
         });
         if (!dbUser) {
@@ -134,6 +147,7 @@ export const authOptions: AuthOptions = {
         token.organizationId = dbUser.organizationId;
         token.isDisabled = dbUser.isDisabled || false;
         token.orgAccessExpiresAt = dbUser.orgAccessExpiresAt?.toISOString() || null;
+        token.trialEndsAt = dbUser.trialEndsAt?.toISOString() || null;
       }
       
       if (trigger === "update") {
@@ -169,6 +183,7 @@ export const authOptions: AuthOptions = {
         (session.user as any).organizationId = token.organizationId as string | null;
         (session.user as any).isDisabled = token.isDisabled as boolean || false;
         (session.user as any).orgAccessExpiresAt = expiresAt;
+        (session.user as any).trialEndsAt = token.trialEndsAt ? new Date(token.trialEndsAt as string) : null;
         if (token.image) session.user.image = token.image as string;
         if (token.name) session.user.name = token.name as string;
       }

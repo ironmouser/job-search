@@ -65,7 +65,7 @@ export default function PricingPage() {
             Starter
           </h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
-            Perfect for casual job seekers looking for basic insights.
+            Free tier with 7-day Pro trial included (no card required).
           </p>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginBottom: "2rem" }}>
             <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--text-primary)" }}>$0</span>
@@ -79,7 +79,13 @@ export default function PricingPage() {
             Current Plan
           </button>
           <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "1rem", padding: 0 }}>
-            {["Basic resume parsing", "Up to 10 job discoveries per month", "Standard opportunity scoring", "Community support"].map((feature) => (
+            {[
+              "Instant 7-day Pro trial unlock",
+              "Multi-board job search",
+              "3 tailored resume generations / week (after trial)",
+              "3 smart applies / week (after trial)",
+              "All created work & saved jobs preserved forever"
+            ].map((feature) => (
               <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
                 <Check size={20} color="#3695e3" style={{ flexShrink: 0 }} />
                 <span>{feature}</span>

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { getUserSettings } from '@/lib/settings';
 import DashboardClient from '@/components/DashboardClient';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
+import { getEffectiveTier } from '@/lib/tier';
+
 
 export const revalidate = 0;
 
@@ -21,8 +23,10 @@ export default async function Dashboard() {
 
   const userId = session.user.id;
   const planTier = (session.user as any).planTier || 'FREE';
+  const trialEndsAt: Date | null = (session.user as any).trialEndsAt ?? null;
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
 
   let userJobs: any[] = [];
   let userPrefs: any = null;
@@ -81,22 +85,15 @@ export default async function Dashboard() {
   const hasSeenNonUsPrompt = userPrefs?.hasSeenNonUsPrompt || false;
   const noInternational = userPrefs?.noInternational || false;
 
-  let initialScoresExhausted = false;
-  if (planTier !== 'PRO') {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const scoresThisWeek = await prisma.opportunityScore.count({
-      where: {
-        userId,
-        createdAt: { gte: sevenDaysAgo }
-      }
-    });
-    if (scoresThisWeek >= 10) {
-      initialScoresExhausted = true;
-    }
-  }
+  // Scoring is blocked for free tier (post-trial). Mark as exhausted unless they have Pro access.
+  const userRecord = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+  });
+  const initialScoresExhausted = userRecord ? getEffectiveTier(userRecord) !== 'PRO' : planTier !== 'PRO';
+
 
   return (
-    <DashboardClient jobs={jobs} userPlanTier={planTier} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} />
+    <DashboardClient jobs={jobs} userPlanTier={planTier} trialEndsAt={trialEndsAt} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} />
   );
 }

@@ -3,6 +3,8 @@ import { generateAssetsForJob } from '@/lib/generator';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveTier } from '@/lib/tier';
+
 
 export async function POST(request: Request) {
     try {
@@ -11,7 +13,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const isPro = (session.user as any).planTier === 'PRO';
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+        });
+        const isPro = user ? getEffectiveTier(user) === 'PRO' : false;
 
         // Free tier rate-limit: 3 asset generations per rolling 7-day window
         if (!isPro) {
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
                 }
             });
             if (generationsThisWeek >= 3) {
-                return NextResponse.json({ error: 'Free accounts are limited to 3 asset generations per week. Upgrade to Pro for unlimited generation.' }, { status: 403 });
+                return NextResponse.json({ error: 'Free accounts are limited to 3 asset generations per week. Upgrade to Pro for unlimited generation.', code: 'LIMIT_REACHED' }, { status: 403 });
             }
         }
 

@@ -29,7 +29,7 @@ export default function PricingSection() {
               Free Starter
             </h3>
             <p style={{ color: '#475569', fontSize: '0.95rem', marginBottom: '1.5rem', minHeight: '2.8rem' }}>
-              Essential job discovery and pipeline tracking.
+              Free forever + 7-day Pro trial. No credit card required.
             </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '2rem' }}>
               <span style={{ fontSize: '3rem', fontWeight: 800, color: '#0f172a' }}>$0</span>
@@ -56,10 +56,12 @@ export default function PricingSection() {
             </Link>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {[
+                'Instant 7-day Pro trial unlock (no card needed)',
                 'Multi-board job search & aggregation',
-                'AI Opportunity Scoring & fit analysis',
                 'Interactive Kanban application pipeline',
-                'Standard 1-click apply links',
+                '3 tailored resume generations / week (after trial)',
+                '3 smart applies / week (after trial)',
+                'Keep all created resumes, cover letters & saved jobs forever',
               ].map((item) => (
                 <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontSize: '0.9rem' }}>
                   <Check size={18} color="#2563eb" style={{ flexShrink: 0 }} />

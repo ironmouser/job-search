@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { isDescriptionAdequate, fetchJobDescription, extractUrlFromStubDescription } from '@/lib/jobFetcher';
+import { getEffectiveTier } from '@/lib/tier';
+
 
 export const maxDuration = 60;
 
@@ -71,21 +73,19 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const isPro = (session.user as any).planTier === 'PRO';
+        const userRecord = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+        });
+        const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
 
-        // Free tier rate-limit: 10 AI scores per rolling 7-day window
+        // Free tier (post-trial): scoring is fully blocked
         if (!isPro) {
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            const scoresThisWeek = await prisma.opportunityScore.count({
-                where: {
-                    userId: session.user.id,
-                    createdAt: { gte: sevenDaysAgo }
-                }
-            });
-            if (scoresThisWeek >= 10) {
-                return NextResponse.json({ error: 'Free accounts are limited to 10 AI scores per week. Upgrade to Pro for unlimited scoring.', code: 'LIMIT_REACHED', limitReached: true }, { status: 403 });
-            }
+            return NextResponse.json({
+                error: 'AI Match Scoring requires a Pro account. Upgrade to Pro to unlock unlimited scoring.',
+                code: 'LIMIT_REACHED',
+                limitReached: true
+            }, { status: 403 });
         }
 
         let body: any = {};

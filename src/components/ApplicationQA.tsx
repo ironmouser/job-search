@@ -3,8 +3,10 @@
 import { useState, useRef } from 'react';
 import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown, RotateCcw, Pencil, X } from 'lucide-react';
 import DownloadTextButton from './DownloadTextButton';
+import UpgradePrompt from './UpgradePrompt';
 
-export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed = 0 }: { jobId: string; planTier?: string; initialQaUsed?: number }) {
+
+export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, initialQaUsed = 0, totalResumesGenerated, totalApplied }: { jobId: string; planTier?: string; trialEndsAt?: Date | string | null; initialQaUsed?: number; totalResumesGenerated?: number; totalApplied?: number; }) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [previousAnswer, setPreviousAnswer] = useState('');
@@ -16,9 +18,11 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
   const [savedPref, setSavedPref] = useState(false);
   const [qaUsed, setQaUsed] = useState(initialQaUsed);
 
-  const isPro = planTier === 'PRO';
-  const limit = isPro ? 10 : 2;
+  const isInTrial = trialEndsAt && new Date(trialEndsAt) > new Date();
+  const isPro = planTier === 'PRO' || isInTrial;
+  const limit = 10; // Pro limit per job
   const regensLeft = limit - qaUsed;
+
 
   // Custom prompt & length limit state
   const [showCustomPrompt, setShowCustomPrompt] = useState(false);
@@ -96,6 +100,19 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', initialQaUsed 
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Free tier: show upgrade prompt instead of the Q&A form
+  if (!isPro) {
+    return (
+      <div style={{ marginTop: '1rem' }}>
+        <UpgradePrompt
+          variant="inline"
+          feature="qa"
+          stats={{ resumesTailored: totalResumesGenerated, jobsApplied: totalApplied }}
+        />
+      </div>
+    );
+  }
 
   return (
     <details className="glass-card" style={{ cursor: 'pointer', margin: 0 }}>

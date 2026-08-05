@@ -5,23 +5,37 @@ import { useRouter } from 'next/navigation';
 import { FileText, Loader2 } from 'lucide-react';
 import SyncOverlay from './SyncOverlay';
 import { scrollToTop } from './BackToTopButton';
+import UpgradePrompt from './UpgradePrompt';
 
 interface GenerateAssetsButtonProps {
   jobId: string;
   scrollToTopOnClick?: boolean;
   userPlanTier?: string;
   generationsLeftThisWeek?: number;
+  trialEndsAt?: Date | string | null;
+  // Stats for contextual upgrade prompt
+  totalResumesGenerated?: number;
+  totalApplied?: number;
 }
 
-export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false, userPlanTier = 'FREE', generationsLeftThisWeek }: GenerateAssetsButtonProps) {
+export default function GenerateAssetsButton({
+  jobId,
+  scrollToTopOnClick = false,
+  userPlanTier = 'FREE',
+  generationsLeftThisWeek,
+  trialEndsAt,
+  totalResumesGenerated,
+  totalApplied,
+}: GenerateAssetsButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const router = useRouter();
 
   const handleGenerate = async () => {
     if (isGenerating) return;
-    
-    if (userPlanTier !== 'PRO' && generationsLeftThisWeek !== undefined && generationsLeftThisWeek <= 0) {
-      alert('Free accounts are limited to 3 asset generations per week. Please upgrade to Pro for unlimited generation.');
+
+    if (userPlanTier !== 'PRO' && !trialEndsAt && generationsLeftThisWeek !== undefined && generationsLeftThisWeek <= 0) {
+      setShowUpgradePrompt(true);
       return;
     }
 
@@ -40,7 +54,11 @@ export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false
         router.refresh();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to generate assets. Please ensure you are on the PRO plan if required.');
+        if (data.code === 'LIMIT_REACHED') {
+          setShowUpgradePrompt(true);
+        } else {
+          alert(data.error || 'Failed to generate assets.');
+        }
       }
     } catch (e) {
       console.error(e);
@@ -50,10 +68,12 @@ export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false
     }
   };
 
+  const isPro = userPlanTier === 'PRO' || (trialEndsAt && new Date(trialEndsAt) > new Date());
+
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <button 
+        <button
           onClick={handleGenerate}
           disabled={isGenerating}
           className="btn-outline"
@@ -71,16 +91,25 @@ export default function GenerateAssetsButton({ jobId, scrollToTopOnClick = false
             </>
           )}
         </button>
-        {userPlanTier !== 'PRO' && (
+        {!isPro && (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.35rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-            {generationsLeftThisWeek !== undefined 
-              ? `${generationsLeftThisWeek} generation${generationsLeftThisWeek === 1 ? '' : 's'} left this week for free account` 
-              : '3 generations left this week for free account'}
+            {generationsLeftThisWeek !== undefined
+              ? `${generationsLeftThisWeek} generation${generationsLeftThisWeek === 1 ? '' : 's'} left this week`
+              : '3 generations left this week'}
           </span>
         )}
       </div>
 
-      <SyncOverlay 
+      {showUpgradePrompt && (
+        <UpgradePrompt
+          variant="inline"
+          feature="generation"
+          stats={{ resumesTailored: totalResumesGenerated, jobsApplied: totalApplied }}
+          onDismiss={() => setShowUpgradePrompt(false)}
+        />
+      )}
+
+      <SyncOverlay
         isSyncing={isGenerating}
         title="Generating Assets"
         syncMessage="Crafting personalized cover letter and resume..."

@@ -12,6 +12,8 @@ declare module "next-auth" {
       organizationId: string | null
       isDisabled: boolean
       orgAccessExpiresAt: Date | null
+      /** Expiry of the 7-day Pro trial (null if no trial was ever granted or trial expired) */
+      trialEndsAt: Date | null
     } & DefaultSession["user"]
   }
 
@@ -23,6 +25,7 @@ declare module "next-auth" {
     organizationId: string | null
     isDisabled: boolean
     orgAccessExpiresAt: Date | null
+    trialEndsAt: Date | null
   }
 }
 
@@ -36,5 +39,6 @@ declare module "next-auth/jwt" {
     organizationId: string | null
     isDisabled: boolean
     orgAccessExpiresAt: string | null
+    trialEndsAt: string | null
   }
 }

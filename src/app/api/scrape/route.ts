@@ -5,6 +5,8 @@ import { getUserSettings } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveTier } from '@/lib/tier';
+
 
 export async function POST(request: Request) {
     try {
@@ -24,8 +26,13 @@ export async function POST(request: Request) {
         console.log(`Received omni-scrape request for ${keyword} in ${location} for user ${userId}`);
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
-        const isPro = (session.user as any).planTier === 'PRO';
+        const userRecord = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+        });
+        const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
         let sources = settings.sources || { greenhouse: true, linkedin: true, remotepoc: true, remotive: true, nodesk: true };
+
         
         const FREE_ALLOWED_SOURCES = new Set(['greenhouse', 'linkedin', 'remotepoc', 'remotive', 'nodesk']);
 

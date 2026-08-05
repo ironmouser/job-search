@@ -51,7 +51,13 @@ export default function Navigation() {
   const userRole = (session.user as any)?.role;
   const isOrgAdminOnly = userRole === 'ORGANIZATION_ADMIN';
   const planTier = (session.user as any)?.planTier;
-  const isPro = planTier === 'PRO';
+  const trialEndsAt = (session.user as any)?.trialEndsAt as Date | null;
+  const isInTrial = !!(trialEndsAt && new Date(trialEndsAt) > new Date());
+  const isPro = planTier === 'PRO' || isInTrial;
+  const trialDaysLeft = isInTrial
+    ? Math.ceil((new Date(trialEndsAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : 0;
+
 
   return (
     <>
@@ -247,12 +253,35 @@ export default function Navigation() {
                           gap: '0.2rem',
                         }}>
                           {isPro && <Zap size={10} />}
-                          {isPro ? 'Pro' : 'Free'}
+                          {planTier === 'PRO' ? 'Pro' : isInTrial ? 'Pro Trial' : 'Free'}
                         </span>
                       </div>
                     )}
                   </Link>
-                  {!isPro && !isMinimized && (
+                  {!isMinimized && isInTrial && (
+                    <Link
+                      href="/upgrade"
+                      style={{
+                        padding: '0.2rem 0.5rem',
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        color: '#a855f7',
+                        background: 'rgba(168, 85, 247, 0.1)',
+                        border: '1px solid rgba(168, 85, 247, 0.25)',
+                        borderRadius: 'var(--radius)',
+                        textDecoration: 'none',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        width: 'fit-content',
+                        transition: 'background 0.15s ease',
+                        marginLeft: '0.375rem',
+                      }}
+                      className="upgrade-btn"
+                    >
+                      {trialDaysLeft}d left
+                    </Link>
+                  )}
+                  {!isMinimized && !isPro && !isInTrial && (
                     <Link
                       href="/upgrade"
                       style={{

@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
 import { calculateResumeSimilarity } from '@/lib/similarity';
+import { getEffectiveTier } from '@/lib/tier';
+
 
 export async function POST(request: Request) {
     try {
@@ -12,7 +14,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         const userId = session.user.id;
-        const isPro = (session.user as any).planTier === 'PRO';
+        const userRecord = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+        });
+        const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
+
 
         const { jobId } = await request.json();
 

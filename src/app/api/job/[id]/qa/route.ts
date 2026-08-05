@@ -4,6 +4,8 @@ import { generateApplicationAnswer } from '@/lib/generator';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { validateCustomInstructionSemantics, validateGeneratedAsset } from '@/lib/asset-validator';
+import { getEffectiveTier } from '@/lib/tier';
+
 
 export async function POST(
   request: Request,
@@ -44,7 +46,22 @@ export async function POST(
     }
 
     const planTier = user.planTier || 'FREE';
-    const limit = planTier === 'PRO' ? 10 : 2;
+    const isPro = getEffectiveTier({
+      planTier,
+      trialEndsAt: user.trialEndsAt,
+      subscriptionType: user.subscriptionType,
+      orgAccessExpiresAt: user.orgAccessExpiresAt
+    }) === 'PRO';
+
+    // Free tier (post-trial): Q&A is fully blocked
+    if (!isPro) {
+      return NextResponse.json({
+        error: 'Application Q&A requires a Pro account. Upgrade to Pro to unlock this feature.',
+        code: 'LIMIT_REACHED'
+      }, { status: 403 });
+    }
+
+    const limit = 10; // Pro limit per job
 
     const userJob = await prisma.userJob.findUnique({
       where: { userId_jobId: { userId: session.user.id, jobId: id } },
