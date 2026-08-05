@@ -28,6 +28,9 @@ interface GlobalSettings {
   workableIsPro: boolean;
   smartrecruitersIsPro: boolean;
   breezyIsPro: boolean;
+  workdayIsPro: boolean;
+  taleoIsPro: boolean;
+  icimsIsPro: boolean;
 
   linkedinIsPro: boolean;
   indeedIsPro: boolean;
@@ -42,6 +45,7 @@ interface GlobalSettings {
   workingnomadsIsPro: boolean;
   ycombinatorIsPro: boolean;
   ottaIsPro: boolean;
+  himalayasIsPro: boolean;
 
   arbeitnowIsPro: boolean;
   themuseIsPro: boolean;
@@ -129,6 +133,9 @@ export default function AdminDashboard() {
     workableIsPro: true,
     smartrecruitersIsPro: true,
     breezyIsPro: true,
+    workdayIsPro: true,
+    taleoIsPro: true,
+    icimsIsPro: true,
 
     linkedinIsPro: false,
     indeedIsPro: true,
@@ -143,6 +150,7 @@ export default function AdminDashboard() {
     workingnomadsIsPro: true,
     ycombinatorIsPro: true,
     ottaIsPro: true,
+    himalayasIsPro: true,
 
     arbeitnowIsPro: true,
     themuseIsPro: true,
@@ -236,6 +244,9 @@ export default function AdminDashboard() {
               workableIsPro: data.workableIsPro ?? true,
               smartrecruitersIsPro: data.smartrecruitersIsPro ?? true,
               breezyIsPro: data.breezyIsPro ?? true,
+              workdayIsPro: data.workdayIsPro ?? true,
+              taleoIsPro: data.taleoIsPro ?? true,
+              icimsIsPro: data.icimsIsPro ?? true,
 
               linkedinIsPro: data.linkedinIsPro ?? false,
               indeedIsPro: data.indeedIsPro ?? true,
@@ -250,6 +261,7 @@ export default function AdminDashboard() {
               workingnomadsIsPro: data.workingnomadsIsPro ?? true,
               ycombinatorIsPro: data.ycombinatorIsPro ?? true,
               ottaIsPro: data.ottaIsPro ?? true,
+              himalayasIsPro: data.himalayasIsPro ?? true,
 
               arbeitnowIsPro: data.arbeitnowIsPro ?? true,
               themuseIsPro: data.themuseIsPro ?? true,
@@ -970,6 +982,13 @@ export default function AdminDashboard() {
                       </div>
                       <ToggleSwitch checked={settings.ottaIsPro} onChange={() => setSettings({ ...settings, ottaIsPro: !settings.ottaIsPro })} />
                     </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Himalayas</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Himalayas remote tech jobs aggregator</div>
+                      </div>
+                      <ToggleSwitch checked={settings.himalayasIsPro} onChange={() => setSettings({ ...settings, himalayasIsPro: !settings.himalayasIsPro })} />
+                    </div>
                   </div>
                 </div>
 
@@ -1020,6 +1039,27 @@ export default function AdminDashboard() {
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Breezy HR ATS scraping</div>
                       </div>
                       <ToggleSwitch checked={settings.breezyIsPro} onChange={() => setSettings({ ...settings, breezyIsPro: !settings.breezyIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Workday</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Workday ATS integration</div>
+                      </div>
+                      <ToggleSwitch checked={settings.workdayIsPro} onChange={() => setSettings({ ...settings, workdayIsPro: !settings.workdayIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Taleo</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Oracle Taleo ATS integration</div>
+                      </div>
+                      <ToggleSwitch checked={settings.taleoIsPro} onChange={() => setSettings({ ...settings, taleoIsPro: !settings.taleoIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>iCIMS</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>iCIMS ATS integration</div>
+                      </div>
+                      <ToggleSwitch checked={settings.icimsIsPro} onChange={() => setSettings({ ...settings, icimsIsPro: !settings.icimsIsPro })} />
                     </div>
                   </div>
                 </div>
