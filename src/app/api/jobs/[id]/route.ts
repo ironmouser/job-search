@@ -30,11 +30,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         const isGlobalJob = job.addedById === null;
 
         if (description || applicationUrl) {
-            // Allow modifying a global job's description ONLY if it doesn't currently have an adequate one.
-            // This lets users paste descriptions for stub jobs imported via email.
+            // Allow modifying a global job's description ONLY if it doesn't currently have an adequate one
+            // OR via copy-on-write when updating description.
             const isAppendingToGlobalStub = isGlobalJob && description && !isDescriptionAdequate(job.description);
+            const isCopyOnWrite = isGlobalJob && !!description;
 
-            if (!isAdmin && job.addedById !== userId && !isAppendingToGlobalStub) {
+            if (!isAdmin && job.addedById !== userId && !isAppendingToGlobalStub && !isCopyOnWrite) {
                 await logSuspiciousActivity({ type: 'UNAUTHORIZED_MODIFICATION_ATTEMPT', message: 'Attempted to modify a global job not owned by user', userId, metadata: { jobId: id, requestedChanges: { description: !!description, applicationUrl: !!applicationUrl } } });
                 return NextResponse.json(
                     { error: 'Unauthorized to modify shared job properties. Only the original creator can edit this job.' },
@@ -48,7 +49,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
             if (formattedDesc.length > 50 && !formattedDesc.includes('## ')) {
                 try {
                     formattedDesc = await reformatJobDescriptionWithGemini(description);
-                } catch (e) {}
+                } catch (e) {
+                    console.warn('Formatting job description failed:', e);
+                }
             }
 
             let targetJobId = id;
@@ -91,6 +94,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
                     await prisma.userJob.delete({
                         where: { userId_jobId: { userId, jobId: id } }
                     });
+                } else {
+                    await prisma.userJob.create({
+                        data: {
+                            userId: userId,
+                            jobId: targetJobId,
+                            status: 'discovered'
+                        }
+                    });
                 }
             } else {
                 updatedJob = await prisma.job.update({
@@ -98,17 +109,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
                     data: { description: formattedDesc }
                 });
 
-                await prisma.userJob.update({
+                await prisma.userJob.upsert({
                     where: { userId_jobId: { userId, jobId: id } },
-                    data: { status: 'discovered' }
+                    update: { status: 'discovered' },
+                    create: { userId, jobId: id, status: 'discovered' }
                 });
             }
 
-            try {
-                await scoreJob(userId, targetJobId, updatedJob.title, formattedDesc);
-            } catch (scoreErr: any) {
-                console.error("Error scoring job:", scoreErr);
-            }
+            // Trigger scoring in background so PATCH responds immediately without timing out
+            scoreJob(userId, targetJobId, updatedJob.title, formattedDesc).catch((scoreErr: any) => {
+                console.error("Error scoring job in background:", scoreErr);
+            });
 
             return NextResponse.json({ success: true, newJobId: targetJobId });
         }

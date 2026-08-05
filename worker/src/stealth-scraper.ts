@@ -127,3 +127,118 @@ export async function scrapeWithPlaywrightStealth(params: StealthScrapeParams): 
 
   return jobs;
 }
+
+export interface StealthSingleJobResult {
+  description: string | null;
+  finalUrl: string;
+}
+
+/**
+ * fetchSingleJobDescriptionStealth — Uses Playwright stealth browser to navigate to a protected
+ * job page (e.g. ZipRecruiter /ekm/ tracking links, Glassdoor, YCombinator), follow redirects,
+ * bypass Cloudflare/DataDome bot protections, and extract the full job description.
+ */
+export async function fetchSingleJobDescriptionStealth(url: string, timeoutMs = 35_000): Promise<StealthSingleJobResult> {
+  const session = new BrowserSession();
+  let description: string | null = null;
+  let finalUrl = url;
+
+  try {
+    await session.launch();
+    const page = session.page;
+
+    // Apply anti-detection stealth evasions
+    await page.addInitScript(() => {
+      const g = globalThis as any;
+      if (g.navigator) {
+        Object.defineProperty(g.navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(g.navigator, 'languages', { get: () => ['en-US', 'en'] });
+        Object.defineProperty(g.navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      }
+      g.chrome = { runtime: {} };
+    });
+
+    console.log(`[StealthScraper] Fetching single job details stealthily for: ${url}...`);
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+
+    // Wait for JS redirects or Cloudflare Turnstile if present
+    await page.waitForTimeout(3000);
+
+    const cfFrame = page.frames().find(f => f.url().includes('cloudflare') || f.url().includes('turnstile'));
+    if (cfFrame) {
+      console.log(`[StealthScraper] Cloudflare Turnstile detected on ${url}, waiting for solver...`);
+      await page.waitForTimeout(7000);
+    }
+
+    finalUrl = page.url();
+
+    // 1. Try extracting from JSON-LD schema (schema.org/JobPosting)
+    const jsonLdDesc = await page.evaluate(() => {
+      const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+      for (const script of scripts) {
+        try {
+          const data = JSON.parse(script.textContent || '');
+          const items = Array.isArray(data) ? data : (data['@graph'] && Array.isArray(data['@graph'])) ? data['@graph'] : [data];
+          for (const item of items) {
+            if (item && typeof item.description === 'string' && item.description.length > 100) {
+              return item.description;
+            }
+          }
+        } catch {}
+      }
+      return null;
+    });
+
+    if (jsonLdDesc && jsonLdDesc.trim().length > 100) {
+      description = jsonLdDesc.trim();
+    }
+
+    // 2. Try YCombinator / WorkAtAStartUp data-page JSON attribute
+    if (!description && (url.includes('workatastartup.com') || url.includes('ycombinator.com'))) {
+      const ycDesc = await page.evaluate(() => {
+        const div = document.querySelector('div[data-page]');
+        if (div) {
+          try {
+            const data = JSON.parse(div.getAttribute('data-page') || '');
+            const job = data?.props?.job || data?.props?.jobs?.[0];
+            if (job && job.description) return job.description;
+          } catch {}
+        }
+        return null;
+      });
+      if (ycDesc && ycDesc.trim().length > 100) {
+        description = ycDesc.trim();
+      }
+    }
+
+    // 3. Extract DOM content using targeted selectors for ZipRecruiter, Glassdoor, and standard ATSs
+    if (!description) {
+      const domText = await page.evaluate(() => {
+        const primarySelectors = '#jobDescriptionText, .jobsearch-JobComponent-description, #JobDescriptionContainer, .jobDescriptionContent, .job_description, .jobDescriptionSection, [data-automation-id="jobPostingDescription"], .show-more-less-html__markup';
+        const fallbackSelectors = 'main, article, .job-description, #job-description, .posting-requirements, .section-description, [class*="description"], [class*="posting"]';
+
+        const el = document.querySelector(primarySelectors) || document.querySelector(fallbackSelectors);
+        if (el) {
+          // Clone element and strip script/style noise
+          const clone = el.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll('script, style, noscript, nav, header, footer, iframe, svg').forEach((n: Element) => n.remove());
+          return clone.innerText || clone.textContent || '';
+        }
+        return '';
+      });
+
+      if (domText && domText.trim().length > 100) {
+        description = domText.trim();
+      }
+    }
+
+    console.log(`[StealthScraper] Finished fetching single job for ${url}. Success: ${!!description}, Final URL: ${finalUrl}`);
+  } catch (err: any) {
+    console.error(`[StealthScraper] Failed to fetch single job details for ${url}: ${err.message}`);
+  } finally {
+    await session.close();
+  }
+
+  return { description, finalUrl };
+}
+

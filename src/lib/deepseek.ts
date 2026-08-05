@@ -50,6 +50,9 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                     bodyPayload.response_format = { type: "json_object" };
                 }
 
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
+
                 const res = await fetch('https://api.deepseek.com/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -57,7 +60,9 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                         'Authorization': `Bearer ${apiKey}`,
                     },
                     body: JSON.stringify(bodyPayload),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
 
                 if (!res.ok) {
                     const errData = await res.json().catch(() => ({}));

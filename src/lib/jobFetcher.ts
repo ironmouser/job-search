@@ -65,32 +65,67 @@ export function extractUrlFromStubDescription(desc?: string | null): string | nu
     return match ? match[0] : null;
 }
 
+async function fetchViaWorkerPlaywright(url: string): Promise<string | null> {
+    const workerUrl = process.env.WORKER_URL || 'http://167.99.55.186:3001';
+    const workerApiKey = process.env.WORKER_API_KEY;
+    if (!workerApiKey) return null;
+
+    try {
+        console.info(`[JobFetcher] Routing fetch request to Worker Playwright stealth endpoint for: ${url}`);
+        const res = await gotScraping({
+            url: `${workerUrl.replace(/\/$/, '')}/fetch-job-details`,
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${workerApiKey}`,
+                'Content-Type': 'application/json'
+            },
+            json: { url },
+            timeout: { request: 40000 },
+            retry: { limit: 0 },
+            throwHttpErrors: false,
+            responseType: 'json'
+        });
+
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+            const body = res.body as any;
+            if (body?.success && body?.description) {
+                const formatted = await reformatJobDescriptionWithGemini(body.description);
+                if (isDescriptionAdequate(formatted)) return formatted;
+                if (isDescriptionAdequate(body.description)) return body.description;
+            }
+        }
+    } catch (e: any) {
+        console.warn(`[JobFetcher] Worker Playwright fetch failed for ${url}: ${e.message}`);
+    }
+    return null;
+}
+
 export async function fetchJobDescription(rawUrl: string): Promise<string | null> {
     if (!rawUrl) return null;
     const url = cleanJobUrl(rawUrl);
 
-    // Fast-fail on known strict auth-walls where scraping is impossible
-    if (
-        url.includes('account.ycombinator.com') || 
-        url.includes('workatastartup.com/application')
-    ) {
+    // Known anti-bot / protected sites: route directly to DigitalOcean Droplet Worker Playwright stealth scraper
+    const isProtectedTarget = (
+        url.includes('ziprecruiter.com/ekm/') ||
+        url.includes('glassdoor.com/job-listing/') ||
+        url.includes('glassdoor.com/partner/jobListing') ||
+        url.includes('workatastartup.com') ||
+        url.includes('ycombinator.com')
+    );
+
+    if (isProtectedTarget) {
+        console.info(`[JobFetcher] Protected target detected (${url}). Attempting Worker Playwright stealth scrape...`);
+        const workerResult = await fetchViaWorkerPlaywright(url);
+        if (workerResult) return workerResult;
+    }
+
+    // Fast-fail on known strict auth-walls where login forms are required
+    if (url.includes('account.ycombinator.com/authenticate')) {
         console.info(`Skipping fetch for known auth wall: ${url}`);
         return null;
     }
 
-    // Glassdoor job detail pages (/job-listing/, /partner/jobListing) require login
-    // and cannot be bypassed. The jobLink URL IS the application redirect — return null
-    // so the UI prompts manual paste, and the job URL serves as the apply link.
-    if (
-        url.includes('glassdoor.com/job-listing/') ||
-        url.includes('glassdoor.com/partner/jobListing')
-    ) {
-        console.info(`Skipping fetch for Glassdoor auth-walled job detail: ${url}`);
-        return null;
-    }
-
     // --- Dice.com: use their public job-posting-service REST API ---
-    // URL pattern: https://www.dice.com/job-detail/{uuid}
     const diceMatch = url.match(/dice\.com\/job-detail\/([a-f0-9-]{36})/i);
     if (diceMatch) {
         const jobUuid = diceMatch[1];
@@ -105,10 +140,8 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
             });
             if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
                 const data = JSON.parse(apiRes.body.toString());
-                // descriptionHtml is the full HTML job description field
                 const rawDesc: string = data.descriptionHtml || data.description || '';
                 if (rawDesc.length > 100) {
-                    // Strip HTML tags for plain text, then reformat
                     const textOnly = rawDesc.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
                     const formatted = await reformatJobDescriptionWithGemini(rawDesc);
                     if (isDescriptionAdequate(formatted)) return formatted;
@@ -123,7 +156,6 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
     const extractContent = async (rawHtml: string): Promise<string | null> => {
         const $ = cheerio.load(rawHtml);
 
-        // 1. Try extracting from JSON-LD schema (schema.org/JobPosting)
         let jsonLdDesc = '';
         $('script[type="application/ld+json"]').each((_, el) => {
             try {
@@ -139,7 +171,6 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
             } catch {}
         });
 
-        // Try Indeed / site embedded script data
         if (!jsonLdDesc) {
             const mosaicScript = $('script#mosaic-data, script#_INITIAL_STATE_').html() || '';
             if (mosaicScript.includes('description')) {
@@ -160,7 +191,6 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
             return await reformatJobDescriptionWithGemini(cleanDesc);
         }
 
-        // 2. Remove script/style noise and search DOM using targeted selectors
         $('script, style, noscript, nav, header, footer, iframe, svg').remove();
         const primarySelectors = '#jobDescriptionText, .jobsearch-JobComponent-description, #JobDescriptionContainer, .jobDescriptionContent, .show-more-less-html__markup, [data-automation-id="jobPostingDescription"]';
         const fallbackSelectors = 'main, article, .job-description, .job_description, #job-description, .posting-requirements, .section-description, [class*="description"], [class*="posting"], [class*="details"], [id*="description"], [id*="posting"]';
@@ -214,6 +244,13 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
         } catch (err: any) {
             console.warn(`Scrape.do fallback error for ${url}: ${err.message}`);
         }
+    }
+
+    // Final fallback: DigitalOcean Droplet Worker Playwright stealth browser
+    if (!isProtectedTarget) {
+        console.info(`Attempting final fallback to Worker Playwright stealth browser for ${url}...`);
+        const workerResult = await fetchViaWorkerPlaywright(url);
+        if (workerResult) return workerResult;
     }
 
     return null;

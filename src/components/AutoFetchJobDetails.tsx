@@ -105,7 +105,8 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
             router.refresh();
         }
       } else {
-        alert('Failed to save description');
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Failed to save description');
       }
     } catch (e) {
       console.error(e);

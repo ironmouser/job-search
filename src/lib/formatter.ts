@@ -35,10 +35,13 @@ Here is the raw job description to format:
 ${trimmedRaw}`;
 
         try {
-            const formatted = await callDeepSeek({
-                model: 'deepseek-v4-flash',
-                messages: [{ role: 'user', content: prompt }]
-            });
+            const formatted = await Promise.race([
+                callDeepSeek({
+                    model: 'deepseek-v4-flash',
+                    messages: [{ role: 'user', content: prompt }]
+                }),
+                new Promise<null>((resolve) => setTimeout(() => resolve(null), 7000))
+            ]);
             if (formatted && formatted.trim().length > 0) {
                 let cleaned = formatted.trim().replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"');
                 if (cleaned.startsWith('```')) {
