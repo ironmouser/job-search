@@ -1860,11 +1860,6 @@ body:not(.light-theme) .save-bar-section-btn:hover {
   font-weight: 700;
   flex-shrink: 0;
 }
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
 
 body:not(.light-theme) .save-bar-step-badge-gray {
   background: rgba(255, 255, 255, 0.15);
