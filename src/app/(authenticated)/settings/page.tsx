@@ -459,7 +459,7 @@ export default function SettingsPage() {
                                 [
                                     {
                                         title: 'Global Aggregators',
-                                        sources: ['indeed', 'glassdoor', 'linkedin', 'ziprecruiter', 'dice']
+                                        sources: ['indeed', 'linkedin', 'ziprecruiter', 'dice']
                                     },
                                     {
                                         title: 'US / Remote Tech',
@@ -523,7 +523,7 @@ export default function SettingsPage() {
                                         title: 'Global Job Boards',
                                         items: [
                                             { label: 'Free', sources: ['linkedin'] },
-                                            { label: 'Premium', sources: ['indeed', 'glassdoor', 'ziprecruiter', 'dice'], isPro: true }
+                                            { label: 'Premium', sources: ['indeed', 'ziprecruiter', 'dice'], isPro: true }
                                         ]
                                     },
                                     {

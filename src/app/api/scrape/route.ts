@@ -83,7 +83,6 @@ export async function POST(request: Request) {
                     };
 
                     if (sources.indeed) tasks.push(runScraperTask('Indeed', () => scrapeIndeed(keyword, location)));
-                    if (sources.glassdoor) tasks.push(runScraperTask('Glassdoor', () => scrapeGlassdoor(keyword, location)));
                     if (sources.linkedin) tasks.push(runScraperTask('LinkedIn', () => scrapeLinkedIn(keyword, location)));
                     if (sources.ziprecruiter) tasks.push(runScraperTask('ZipRecruiter', () => scrapeZipRecruiter(keyword, location)));
                     if (sources.dice && isPro) tasks.push(runScraperTask('Dice', () => scrapeDice(keyword, location)));

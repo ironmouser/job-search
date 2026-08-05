@@ -901,13 +901,6 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                       <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Glassdoor</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Glassdoor job search</div>
-                      </div>
-                      <ToggleSwitch checked={settings.glassdoorIsPro} onChange={() => setSettings({ ...settings, glassdoorIsPro: !settings.glassdoorIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
                         <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>LinkedIn</div>
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>LinkedIn job search</div>
                       </div>

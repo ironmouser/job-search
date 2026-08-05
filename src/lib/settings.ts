@@ -77,7 +77,6 @@ export const FREE_ALLOWED_SOURCES = [
 
 export const PREMIUM_NON_INTL_SOURCES = [
     'indeed',
-    'glassdoor',
     'ziprecruiter',
     'dice',
     'weworkremotely',
@@ -120,7 +119,6 @@ export async function handleUserUpgradeToPro(userId: string) {
 
     const currentSources = (prefs?.sources as Record<string, boolean>) || {
         indeed: true,
-        glassdoor: true,
         ziprecruiter: true,
         dice: true,
         weworkremotely: true,
