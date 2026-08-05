@@ -135,7 +135,7 @@ export default function SyncOverlay({
                 padding: '0.75rem 1.25rem',
                 background: 'linear-gradient(135deg, rgba(0, 112, 243, 0.12) 0%, rgba(16, 185, 129, 0.14) 100%)',
                 border: '1px solid rgba(0, 112, 243, 0.25)',
-                borderRadius: '12px',
+                borderRadius: '16px',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.85rem',
@@ -143,30 +143,80 @@ export default function SyncOverlay({
                 maxWidth: '90%'
               }}
             >
+              {/* Container with rotating spinner ring around job number */}
               <div 
                 style={{
-                  minWidth: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: 'var(--accent-primary)',
-                  color: '#ffffff',
+                  position: 'relative',
+                  width: '48px',
+                  height: '48px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: '1.15rem',
-                  boxShadow: '0 0 14px rgba(0, 112, 243, 0.4)',
-                  transition: 'transform 0.2s ease',
-                  transform: displayCount > 0 ? 'scale(1.08)' : 'scale(1)'
+                  flexShrink: 0
                 }}
               >
-                {displayCount}
+                {/* Rotating SVG Spinner ring */}
+                <svg 
+                  className="animate-spin" 
+                  viewBox="0 0 48 48" 
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    animation: 'spin 1.2s linear infinite',
+                    overflow: 'visible'
+                  }}
+                >
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="21"
+                    fill="none"
+                    stroke="rgba(0, 112, 243, 0.2)"
+                    strokeWidth="3"
+                  />
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="21"
+                    fill="none"
+                    stroke="#0070f3"
+                    strokeWidth="3.5"
+                    strokeDasharray="95 38"
+                    strokeLinecap="round"
+                  />
+                </svg>
+
+                {/* Inner solid blue number badge */}
+                <div 
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #0070f3 0%, #0051a2 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    boxShadow: '0 2px 8px rgba(0, 112, 243, 0.35)',
+                    zIndex: 2,
+                    transition: 'transform 0.2s ease',
+                    transform: displayCount > 0 ? 'scale(1.05)' : 'scale(1)'
+                  }}
+                >
+                  {displayCount}
+                </div>
               </div>
+
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                   {isRefining
                     ? 'Refining your matches...'
-                    : (displayCount === 1 ? '1 Possible Match Found' : `${displayCount} Possible Matches Found`)
+                    : (displayCount === 1 ? '1 Job Found So Far' : `${displayCount} Jobs Found So Far`)
                   }
                 </div>
                 {!isRefining && displayCount === 0 && (
