@@ -1878,6 +1878,73 @@ body:not(.light-theme) .save-bar-counter {
   color: #94a3b8;
 }
 
+/* Active dock section button highlight */
+.save-bar-section-btn.active {
+  background: #0066ff !important;
+  color: #ffffff !important;
+  border-color: #0066ff !important;
+  box-shadow: 0 2px 8px rgba(0, 102, 255, 0.35);
+}
+
+/* Accordion Card Styles */
+.accordion-card {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  scroll-margin-top: 5rem;
+}
+
+.accordion-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+  border-radius: var(--radius-lg, 12px);
+}
+
+.accordion-card-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.light-theme .accordion-card-header:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.accordion-chevron {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.accordion-card.open .accordion-chevron {
+  transform: rotate(180deg);
+  color: var(--accent-primary, #0070f3);
+}
+
+.accordion-summary-box {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--border-glass);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+body.light-theme .accordion-summary-box {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+.accordion-body {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-glass);
+  margin-top: 1rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
 @media (max-width: 1024px) {
   .save-bar-pill-step4,
   .save-bar-counter {

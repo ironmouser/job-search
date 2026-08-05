@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2, Bookmark, ChevronLeft, ChevronRight, CheckCircle2, Zap, HelpCircle } from 'lucide-react';
+import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2, Bookmark, ChevronLeft, ChevronRight, CheckCircle2, Zap, HelpCircle, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -72,6 +72,45 @@ export default function SettingsPage() {
     const [emailTestResult, setEmailTestResult] = useState<{success?: boolean, error?: string} | null>(null);
     const [previewStandardView, setPreviewStandardView] = useState(false);
 
+    // Accordion state
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+        general: false,
+        'job-discovery': false,
+        scoring: false,
+        'email-sync': false,
+        'pdf-customizer': false,
+    });
+
+    const toggleSection = (id: string, forceState?: boolean) => {
+        setOpenSections(prev => {
+            const nextState = forceState !== undefined ? forceState : !prev[id];
+            return { ...prev, [id]: nextState };
+        });
+    };
+
+    const handleDockNav = (id: string) => {
+        toggleSection(id, true);
+        setTimeout(() => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 80);
+    };
+
+    const allExpanded = Object.values(openSections).every(Boolean);
+
+    const toggleAllSections = () => {
+        const nextState = !allExpanded;
+        setOpenSections({
+            general: nextState,
+            'job-discovery': nextState,
+            scoring: nextState,
+            'email-sync': nextState,
+            'pdf-customizer': nextState,
+        });
+    };
+
     // Unsaved changes navigation prompt state
     const [showDialog, setShowDialog] = useState(false);
     const [pendingHref, setPendingHref] = useState<string | null>(null);
@@ -82,7 +121,8 @@ export default function SettingsPage() {
         if (typeof window !== 'undefined') {
             const hash = window.location.hash;
             if (hash) {
-                const targetId = hash.startsWith('#pdf-styling') ? 'pdf-styling' : hash.replace('#', '');
+                const targetId = hash.startsWith('#pdf-styling') ? 'pdf-customizer' : hash.replace('#', '');
+                toggleSection(targetId, true);
                 let attempts = 0;
                 const scrollToElement = () => {
                     let el = document.getElementById(targetId);
@@ -282,40 +322,76 @@ export default function SettingsPage() {
                     <PageHeaderHeading>Settings</PageHeaderHeading>
                     <PageHeaderDescription>Manage your integrations, email connections, automation, and PDF preferences</PageHeaderDescription>
                 </div>
+                <PageHeaderActions>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={toggleAllSections}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '9999px' }}
+                    >
+                        {allExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                        <span>{allExpanded ? 'Collapse All' : 'Expand All'}</span>
+                    </Button>
+                </PageHeaderActions>
             </PageHeader>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
                 {/* Global Preferences */}
-                <div className="glass-card" id="general" style={{ padding: '2rem' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
-                        <Layout size={22} className="text-accent" /> Global Preferences
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxWidth: '360px' }}>
-                            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>UI Theme</label>
-                            <select 
-                                value={settings.theme || 'light'} 
-                                onChange={(e) => handleChange('theme', e.target.value)}
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
-                            >
-                                <option value="dark">Dark Mode</option>
-                                <option value="light">Light Mode</option>
-                            </select>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Choose your preferred color theme for the interface</span>
-                        </div>
+                <div className={`glass-card accordion-card ${openSections.general ? 'open' : ''}`} id="general" style={{ padding: '1.5rem 2rem' }}>
+                    <div className="accordion-card-header" onClick={() => toggleSection('general')}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                            <Layout size={22} className="text-accent" /> Global Preferences
+                        </h3>
+                        <ChevronDown size={20} className="accordion-chevron" />
                     </div>
+
+                    {!openSections.general && (
+                        <div className="accordion-summary-box" onClick={() => toggleSection('general')}>
+                            UI Theme & interface customization settings. Click to view settings.
+                        </div>
+                    )}
+
+                    {openSections.general && (
+                        <div className="accordion-body">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxWidth: '360px' }}>
+                                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>UI Theme</label>
+                                    <select 
+                                        value={settings.theme || 'light'} 
+                                        onChange={(e) => handleChange('theme', e.target.value)}
+                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                    >
+                                        <option value="dark">Dark Mode</option>
+                                        <option value="light">Light Mode</option>
+                                    </select>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Choose your preferred color theme for the interface</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
 
 
                 {/* Job Discovery */}
-                <div className="glass-card" id="job-discovery" data-tour="job-preferences" style={{ padding: '2rem' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.75rem', fontSize: '1.25rem', fontWeight: 600 }}>
-                        <Search size={22} className="text-accent" /> Job Discovery Settings
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div className={`glass-card accordion-card ${openSections['job-discovery'] ? 'open' : ''}`} id="job-discovery" data-tour="job-preferences" style={{ padding: '1.5rem 2rem' }}>
+                    <div className="accordion-card-header" onClick={() => toggleSection('job-discovery')}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                            <Search size={22} className="text-accent" /> Job Discovery Settings
+                        </h3>
+                        <ChevronDown size={20} className="accordion-chevron" />
+                    </div>
+
+                    {!openSections['job-discovery'] && (
+                        <div className="accordion-summary-box" onClick={() => toggleSection('job-discovery')}>
+                            Primary role titles, seniority levels, target locations, pre-filtering keywords, and scraper sources. Click to edit preferences.
+                        </div>
+                    )}
+
+                    {openSections['job-discovery'] && (
+                        <div className="accordion-body">
                         
                         {/* Primary Target Controls (Title, Level, Location) */}
                         <div>
@@ -616,18 +692,28 @@ export default function SettingsPage() {
                                 {isPro ? 'Put each URL on a new line. These bypass the generic Search Keyword and directly scrape the company page.' : 'Upgrade to Pro to bypass the generic search and directly scrape specific company career pages.'}
                             </span>
                         </div>
-
-
                     </div>
                 </div>
+            )}
+        </div>
 
-                {/* AI Configuration */}
-                <div className="glass-card" id="scoring" style={{ padding: '2rem' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
-                        <Bot size={22} className="text-accent" /> AI Generation Preferences
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* AI Configuration */}
+        <div className={`glass-card accordion-card ${openSections.scoring ? 'open' : ''}`} id="scoring" style={{ padding: '1.5rem 2rem' }}>
+            <div className="accordion-card-header" onClick={() => toggleSection('scoring')}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                    <Bot size={22} className="text-accent" /> AI Generation Preferences
+                </h3>
+                <ChevronDown size={20} className="accordion-chevron" />
+            </div>
+
+            {!openSections.scoring && (
+                <div className="accordion-summary-box" onClick={() => toggleSection('scoring')}>
+                    AI strictness rules, prompt customization, and automated scoring parameters. Click to configure.
+                </div>
+            )}
+
+            {openSections.scoring && (
+                <div className="accordion-body">
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                             <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>AI Strictness</label>
                             <select 
@@ -675,38 +761,70 @@ export default function SettingsPage() {
                                 <FileText size={16} /> Manage Base Resume
                             </Link>
                         </div>
-
-
                     </div>
                 </div>
-                {/* Authorization / Auto Apply Settings Shortcut */}
-                <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Key size={22} className="text-accent" />
-                        <div>
-                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>Authorization & Demographics</h4>
-                            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                Work authorization and EEOC demographic options used for Auto Applying are managed on your Profile page.
-                            </p>
-                        </div>
-                    </div>
-                    <button 
-                        onClick={() => router.push('/profile')} 
-                        className="btn-outline"
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-                    >
-                        Go to Profile Page <ExternalLink size={14} />
-                    </button>
+            )}
+        </div>
+
+        {/* Authorization / Auto Apply Settings Shortcut */}
+        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Key size={22} className="text-accent" />
+                <div>
+                    <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>Authorization & Demographics</h4>
+                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        Work authorization and EEOC demographic options used for Auto Applying are managed on your Profile page.
+                    </p>
                 </div>
+            </div>
+            <button 
+                onClick={() => router.push('/profile')} 
+                className="btn-outline"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+            >
+                Go to Profile Page <ExternalLink size={14} />
+            </button>
+        </div>
 
-                {/* PDF Styling Customizer */}
-                <PdfCustomizerSection settings={settings} onChange={handleChange} />
+        {/* PDF Styling Customizer */}
+        <div className={`glass-card accordion-card ${openSections['pdf-customizer'] ? 'open' : ''}`} id="pdf-customizer" style={{ padding: '1.5rem 2rem' }}>
+            <div className="accordion-card-header" onClick={() => toggleSection('pdf-customizer')}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                    <FileText size={22} className="text-accent" /> Resume & PDF Customizer
+                </h3>
+                <ChevronDown size={20} className="accordion-chevron" />
+            </div>
 
-                {/* Email Sync Configuration */}
-                <div className="glass-card" id="email-sync" style={{ padding: '2rem' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
-                        <Mail size={22} className="text-accent" /> Email Sync Configuration
-                    </h3>
+            {!openSections['pdf-customizer'] && (
+                <div className="accordion-summary-box" onClick={() => toggleSection('pdf-customizer')}>
+                    Customize PDF margins, font families, accent colors, and styling rules. Click to adjust styling.
+                </div>
+            )}
+
+            {openSections['pdf-customizer'] && (
+                <div className="accordion-body">
+                    <PdfCustomizerSection settings={settings} onChange={handleChange} />
+                </div>
+            )}
+        </div>
+
+        {/* Email Sync Configuration */}
+        <div className={`glass-card accordion-card ${openSections['email-sync'] ? 'open' : ''}`} id="email-sync" style={{ padding: '1.5rem 2rem' }}>
+            <div className="accordion-card-header" onClick={() => toggleSection('email-sync')}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                    <Mail size={22} className="text-accent" /> Email Sync & Credentials
+                </h3>
+                <ChevronDown size={20} className="accordion-chevron" />
+            </div>
+
+            {!openSections['email-sync'] && (
+                <div className="accordion-summary-box" onClick={() => toggleSection('email-sync')}>
+                    Connect Gmail/Outlook/Yahoo/iCloud app passwords for automated application status updates. Click to manage credentials.
+                </div>
+            )}
+
+            {openSections['email-sync'] && (
+                <div className="accordion-body">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                             <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Select Provider</label>
@@ -874,6 +992,8 @@ export default function SettingsPage() {
 
                     </div>
                 </div>
+            )}
+        </div>
 
                 {/* API Connections - Admin only */}
                 {isAdmin && (
@@ -926,45 +1046,45 @@ export default function SettingsPage() {
                     {/* Section Jump Buttons */}
                     <button
                         type="button"
-                        onClick={() => document.getElementById('general')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                        className="save-bar-section-btn"
-                        title="Jump to General Preferences"
+                        onClick={() => handleDockNav('general')}
+                        className={`save-bar-section-btn ${openSections.general ? 'active' : ''}`}
+                        title="Toggle General Preferences"
                     >
                         <span>General</span>
                     </button>
 
                     <button
                         type="button"
-                        onClick={() => document.getElementById('job-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                        className="save-bar-section-btn"
-                        title="Jump to Job Discovery"
+                        onClick={() => handleDockNav('job-discovery')}
+                        className={`save-bar-section-btn ${openSections['job-discovery'] ? 'active' : ''}`}
+                        title="Toggle Job Discovery"
                     >
                         <span>Discovery</span>
                     </button>
 
                     <button
                         type="button"
-                        onClick={() => document.getElementById('scoring')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                        className="save-bar-section-btn"
-                        title="Jump to AI Rules"
+                        onClick={() => handleDockNav('scoring')}
+                        className={`save-bar-section-btn ${openSections.scoring ? 'active' : ''}`}
+                        title="Toggle AI Rules"
                     >
                         <span>AI Rules</span>
                     </button>
 
                     <button
                         type="button"
-                        onClick={() => document.getElementById('email-sync')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                        className="save-bar-section-btn"
-                        title="Jump to Email Sync"
+                        onClick={() => handleDockNav('email-sync')}
+                        className={`save-bar-section-btn ${openSections['email-sync'] ? 'active' : ''}`}
+                        title="Toggle Email Sync"
                     >
                         <span>Email Sync</span>
                     </button>
 
                     <button
                         type="button"
-                        onClick={() => document.getElementById('pdf-customizer')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                        className="save-bar-section-btn"
-                        title="Jump to PDF Format"
+                        onClick={() => handleDockNav('pdf-customizer')}
+                        className={`save-bar-section-btn ${openSections['pdf-customizer'] ? 'active' : ''}`}
+                        title="Toggle PDF Format"
                     >
                         <span>PDF Format</span>
                     </button>

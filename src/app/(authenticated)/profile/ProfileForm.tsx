@@ -25,6 +25,11 @@ import {
   ChevronRight,
   Zap,
   HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Minimize2,
+  AlertCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -103,6 +108,47 @@ export default function ProfileForm({
   const [parsingResume, setParsingResume] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Accordion state
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    'personal-info': false,
+    'work-auth': false,
+    'target-profile': false,
+    'base-resume': false,
+    'avatar-settings': false,
+    subscription: false,
+  });
+
+  const toggleSection = (id: string, forceState?: boolean) => {
+    setOpenSections((prev) => {
+      const nextState = forceState !== undefined ? forceState : !prev[id];
+      return { ...prev, [id]: nextState };
+    });
+  };
+
+  const handleDockNav = (id: string) => {
+    toggleSection(id, true);
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 80);
+  };
+
+  const allExpanded = Object.values(openSections).every(Boolean);
+
+  const toggleAllSections = () => {
+    const nextState = !allExpanded;
+    setOpenSections({
+      'personal-info': nextState,
+      'work-auth': nextState,
+      'target-profile': nextState,
+      'base-resume': nextState,
+      'avatar-settings': nextState,
+      subscription: nextState,
+    });
+  };
 
   const [settings, setSettings] = useState<any>({});
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -413,33 +459,58 @@ export default function ProfileForm({
       )}
 
       {/* Top Header Controls */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">My Profile</h1>
           <p className="page-subtitle">Manage your personal information, auto-apply settings, target profile, and base resume.</p>
         </div>
-        <button
-          onClick={handleSaveProfile}
-          disabled={saving}
-          className="btn-primary"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Save size={18} />
-          {saving ? 'Saving...' : 'Save All Changes'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            type="button"
+            onClick={toggleAllSections}
+            className="btn-outline"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '9999px', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+          >
+            {allExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            <span>{allExpanded ? 'Collapse All' : 'Expand All'}</span>
+          </button>
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Save size={18} />
+            {saving ? 'Saving...' : 'Save All Changes'}
+          </button>
+        </div>
       </div>
 
       {/* ── 1. My Info & Auto-Fill Information Section ───────────────────────────── */}
-      <div className="glass-card" id="personal-info">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+      <div className={`glass-card accordion-card ${openSections['personal-info'] ? 'open' : ''}`} id="personal-info" style={{ padding: '1.5rem 2rem' }}>
+        <div className="accordion-card-header" onClick={() => toggleSection('personal-info')}>
           <div>
             <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
               <User size={20} className="text-accent" /> My Info & Auto-Fill Settings
             </h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0.25rem 0 0 0" }}>
-              Your contact details used to automatically complete job applications.
-            </p>
           </div>
+          <ChevronDown size={20} className="accordion-chevron" />
+        </div>
+
+        {!openSections['personal-info'] && (
+          <div className="accordion-summary-box" onClick={() => toggleSection('personal-info')}>
+            Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for automatic job applications. Click to view or edit.
+          </div>
+        )}
+
+        {openSections['personal-info'] && (
+          <div className="accordion-body">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+              <div>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
+                  Your contact details used to automatically complete job applications.
+                </p>
+              </div>
 
           <button
             type="button"
@@ -640,16 +711,28 @@ export default function ProfileForm({
             </div>
           </div>
         </div>
+      )}
       </div>
 
       {/* ── 2. Authorization & Demographics Section ─────────────────────────────── */}
-      <div className="glass-card" id="work-auth">
-        <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-          <Key size={20} className="text-accent" /> Authorization & Demographics
-        </h3>
-        <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
-          Required for Auto Applying. These settings are injected into application questionnaires (work authorization, visa sponsorship, and voluntary EEOC self-identification).
-        </p>
+      <div className={`glass-card accordion-card ${openSections['work-auth'] ? 'open' : ''}`} id="work-auth" style={{ padding: '1.5rem 2rem' }}>
+        <div className="accordion-card-header" onClick={() => toggleSection('work-auth')}>
+          <div>
+            <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
+              <Key size={20} className="text-accent" /> Authorization & Demographics
+            </h3>
+          </div>
+          <ChevronDown size={20} className="accordion-chevron" />
+        </div>
+
+        {!openSections['work-auth'] && (
+          <div className="accordion-summary-box" onClick={() => toggleSection('work-auth')}>
+            Required for Auto Applying. Work authorization, visa sponsorship, and voluntary EEOC self-identification injected into application questionnaires. Click to configure.
+          </div>
+        )}
+
+        {openSections['work-auth'] && (
+          <div className="accordion-body">
 
         {loadingSettings ? (
           <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Loading authorization settings...</p>
@@ -915,166 +998,221 @@ export default function ProfileForm({
         )}
       </div>
 
-      {/* ── 3. Target Profile & Scoring Rubric Section ───────────────────────────── */}
-      <div className="glass-card" id="target-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} data-tour="target-profile">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-            <Target size={20} /> Target Profile & Scoring Rubric
+      {/* ── 3. Target Profile Section ────────────────────────────────────────── */}
+      <div className={`glass-card accordion-card ${openSections['target-profile'] ? 'open' : ''}`} id="target-profile" data-tour="target-profile" style={{ padding: '1.5rem 2rem' }}>
+        <div className="accordion-card-header" onClick={() => toggleSection('target-profile')}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+            <Target size={20} className="text-accent" /> Target Profile & Scoring Rubric
           </h3>
+          <ChevronDown size={20} className="accordion-chevron" />
         </div>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-          This text is used by AI automation to score, rank, and evaluate match quality for job opportunities. Update it to reflect your ideal target roles and criteria.
-        </p>
-        <textarea
-          value={settings.profile || ''}
-          onChange={(e) => handleSettingsChange('profile', e.target.value)}
-          placeholder="Enter target job titles, key skills, industry preferences, and scoring rubric..."
-          style={{
-            width: '100%',
-            minHeight: '180px',
-            background: 'rgba(0,0,0,0.2)',
-            border: '1px solid var(--border-glass)',
-            borderRadius: '8px',
-            color: 'var(--text-primary)',
-            padding: '1rem',
-            fontSize: '0.9rem',
-            resize: 'vertical'
-          }}
-        />
+
+        {!openSections['target-profile'] && (
+          <div className="accordion-summary-box" onClick={() => toggleSection('target-profile')}>
+            Ideal role titles, seniority levels, salary expectations, and work preferences. Click to configure.
+          </div>
+        )}
+
+        {openSections['target-profile'] && (
+          <div className="accordion-body">
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 1rem 0' }}>
+              This text is used by AI automation to score, rank, and evaluate match quality for job opportunities. Update it to reflect your ideal target roles and criteria.
+            </p>
+            <textarea
+              value={settings.profile || ''}
+              onChange={(e) => handleSettingsChange('profile', e.target.value)}
+              placeholder="Enter target job titles, key skills, industry preferences, and scoring rubric..."
+              style={{
+                width: '100%',
+                minHeight: '180px',
+                background: 'rgba(0,0,0,0.2)',
+                border: '1px solid var(--border-glass)',
+                borderRadius: '8px',
+                color: 'var(--text-primary)',
+                padding: '1rem',
+                fontSize: '0.9rem',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+        )}
       </div>
 
-      {/* ── 4. Base Resume Section ─────────────────────────────────────────────── */}
-      <div className="glass-card" id="base-resume" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} data-tour="assets-editor">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', margin: 0 }}>
-            <FileText size={20} /> Base Resume
+      {/* ── 4. Base Resume Section ────────────────────────────────────────────── */}
+      <div className={`glass-card accordion-card ${openSections['base-resume'] ? 'open' : ''}`} id="base-resume" data-tour="assets-editor" style={{ padding: '1.5rem 2rem' }}>
+        <div className="accordion-card-header" onClick={() => toggleSection('base-resume')}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+            <FileText size={20} className="text-accent" /> Base Resume Text
           </h3>
-          <div style={{ display: 'flex', gap: '0.5rem' }} data-tour="assets-upload">
-            <button 
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={parsingResume}
-              className="btn-outline"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              {parsingResume ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} 
-              {parsingResume ? 'Parsing...' : 'Upload PDF/DOC'}
-            </button>
-            <input 
-              type="file" 
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-              style={{ display: 'none' }} 
-              ref={fileInputRef}
-              onChange={handleResumeFileUpload}
-            />
-            <button 
-              type="button"
-              onClick={handlePasteResume}
-              className="btn-outline"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              <Clipboard size={16} /> Paste
-            </button>
-          </div>
+          <ChevronDown size={20} className="accordion-chevron" />
         </div>
-        <textarea
-          value={settings.resumeMarkdown || ''}
-          onChange={(e) => handleSettingsChange('resumeMarkdown', e.target.value)}
-          placeholder="Paste or write your master base resume in Markdown format..."
-          style={{
-            width: '100%',
-            minHeight: '400px',
-            background: 'rgba(0,0,0,0.2)',
-            border: '1px solid var(--border-glass)',
-            borderRadius: '8px',
-            color: 'var(--text-primary)',
-            padding: '1.25rem',
-            fontSize: '0.95rem',
-            resize: 'vertical'
-          }}
-        />
+
+        {!openSections['base-resume'] && (
+          <div className="accordion-summary-box" onClick={() => toggleSection('base-resume')}>
+            Core master resume text used by AI to generate targeted cover letters and application answers. Click to edit resume.
+          </div>
+        )}
+
+        {openSections['base-resume'] && (
+          <div className="accordion-body">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Master Resume Text</span>
+              <div style={{ display: 'flex', gap: '0.5rem' }} data-tour="assets-upload">
+                <button 
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={parsingResume}
+                  className="btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  {parsingResume ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} 
+                  {parsingResume ? 'Parsing...' : 'Upload PDF/DOC'}
+                </button>
+                <input 
+                  type="file" 
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                  style={{ display: 'none' }} 
+                  ref={fileInputRef}
+                  onChange={handleResumeFileUpload}
+                />
+                <button 
+                  type="button"
+                  onClick={handlePasteResume}
+                  className="btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <Clipboard size={16} /> Paste
+                </button>
+              </div>
+            </div>
+            <textarea
+              value={settings.resumeMarkdown || ''}
+              onChange={(e) => handleSettingsChange('resumeMarkdown', e.target.value)}
+              placeholder="Paste or write your master base resume in Markdown format..."
+              style={{
+                width: '100%',
+                minHeight: '400px',
+                background: 'rgba(0,0,0,0.2)',
+                border: '1px solid var(--border-glass)',
+                borderRadius: '8px',
+                color: 'var(--text-primary)',
+                padding: '1.25rem',
+                fontSize: '0.95rem',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* ── 5. Profile Avatar & Display Settings ────────────────────────────────── */}
-      <div className="glass-card" id="avatar-settings">
-        <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
-          <ImageIcon size={20} className="text-accent" /> Profile Avatar & Display Settings
-        </h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <label style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Profile Photo</label>
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ position: "relative" }}>
-                <UserAvatar
-                  src={image}
-                  name={name}
-                  email={email}
-                  size={48}
-                  showIconFallback={true}
-                />
-              </div>
-              
-              <div style={{ display: "flex", gap: "0.5rem", flex: 1, alignItems: "center" }}>
-                <label className="btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1rem", cursor: "pointer", margin: 0 }}>
-                  Upload Image
-                  <input type="file" accept="image/jpeg, image/png, image/gif" style={{ display: "none" }} onChange={handleFileChange} />
-                </label>
-                
-                <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "0 0.5rem" }}>OR</span>
+      <div className={`glass-card accordion-card ${openSections['avatar-settings'] ? 'open' : ''}`} id="avatar-settings" style={{ padding: '1.5rem 2rem' }}>
+        <div className="accordion-card-header" onClick={() => toggleSection('avatar-settings')}>
+          <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
+            <ImageIcon size={20} className="text-accent" /> Profile Avatar & Display Settings
+          </h3>
+          <ChevronDown size={20} className="accordion-chevron" />
+        </div>
 
-                <input
-                  type="text"
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                  placeholder="https://example.com/my-photo.jpg"
-                  style={{
-                    background: "rgba(0,0,0,0.2)",
-                    border: "1px solid var(--border-glass)",
-                    color: "var(--text-primary)",
-                    padding: "0.75rem",
-                    borderRadius: "8px",
-                    flex: 1,
-                    minWidth: "200px"
-                  }}
-                />
+        {!openSections['avatar-settings'] && (
+          <div className="accordion-summary-box" onClick={() => toggleSection('avatar-settings')}>
+            Profile picture upload and avatar photo settings. Click to change photo.
+          </div>
+        )}
+
+        {openSections['avatar-settings'] && (
+          <div className="accordion-body">
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <label style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Profile Photo</label>
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ position: "relative" }}>
+                    <UserAvatar
+                      src={image}
+                      name={name}
+                      email={email}
+                      size={48}
+                      showIconFallback={true}
+                    />
+                  </div>
+                  
+                  <div style={{ display: "flex", gap: "0.5rem", flex: 1, alignItems: "center" }}>
+                    <label className="btn-outline" style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 1rem", cursor: "pointer", margin: 0 }}>
+                      Upload Image
+                      <input type="file" accept="image/jpeg, image/png, image/gif" style={{ display: "none" }} onChange={handleFileChange} />
+                    </label>
+                    
+                    <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "0 0.5rem" }}>OR</span>
+
+                    <input
+                      type="text"
+                      value={image}
+                      onChange={(e) => setImage(e.target.value)}
+                      placeholder="https://example.com/my-photo.jpg"
+                      style={{
+                        background: "rgba(0,0,0,0.2)",
+                        border: "1px solid var(--border-glass)",
+                        color: "var(--text-primary)",
+                        padding: "0.75rem",
+                        borderRadius: "8px",
+                        flex: 1,
+                        minWidth: "200px"
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── 6. Subscription Section ────────────────────────────────────────────── */}
-      <div className="glass-card" id="subscription">
-        <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
-          <CreditCard size={20} className="text-accent" /> Subscription
-        </h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Current Plan</span>
-              <span style={{ fontSize: "1.25rem", fontWeight: 600, color: planTier === "PRO" ? "var(--accent-primary)" : "var(--text-primary)" }}>
-                {planTier === "PRO" ? "Job Agent HQ Pro" : "Free Plan"}
-              </span>
-            </div>
-            {stripeCustomerId ? (
-              <button
-                onClick={handleManageBilling}
-                disabled={redirecting}
-                className="btn-outline"
-                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-              >
-                {redirecting ? "Opening Portal..." : "Manage Billing"}
-              </button>
-            ) : (
-              <button
-                onClick={() => router.push("/pricing")}
-                className="btn-primary"
-              >
-                Upgrade to Pro
-              </button>
-            )}
-          </div>
+      <div className={`glass-card accordion-card ${openSections.subscription ? 'open' : ''}`} id="subscription" style={{ padding: '1.5rem 2rem' }}>
+        <div className="accordion-card-header" onClick={() => toggleSection('subscription')}>
+          <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
+            <CreditCard size={20} className="text-accent" /> Subscription Plan
+          </h3>
+          <ChevronDown size={20} className="accordion-chevron" />
         </div>
+
+        {!openSections.subscription && (
+          <div className="accordion-summary-box" onClick={() => toggleSection('subscription')}>
+            Current subscription plan tier and billing features. Click to view details.
+          </div>
+        )}
+
+        {openSections.subscription && (
+          <div className="accordion-body">
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Current Plan</span>
+                  <span style={{ fontSize: "1.25rem", fontWeight: 600, color: planTier === "PRO" ? "var(--accent-primary)" : "var(--text-primary)" }}>
+                    {planTier === "PRO" ? "Job Agent HQ Pro" : "Free Plan"}
+                  </span>
+                </div>
+                {stripeCustomerId ? (
+                  <button
+                    onClick={handleManageBilling}
+                    disabled={redirecting}
+                    className="btn-outline"
+                    style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                  >
+                    {redirecting ? "Opening Portal..." : "Manage Billing"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push("/pricing")}
+                    className="btn-primary"
+                  >
+                    Upgrade to Pro
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Floating Save Button Bar at Bottom */}
@@ -1113,54 +1251,54 @@ export default function ProfileForm({
           {/* Section Jump Buttons */}
           <button
             type="button"
-            onClick={() => document.getElementById("personal-info")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="save-bar-section-btn"
-            title="Jump to Personal Info"
+            onClick={() => handleDockNav("personal-info")}
+            className={`save-bar-section-btn ${openSections['personal-info'] ? 'active' : ''}`}
+            title="Toggle Personal Info"
           >
             <span>Personal</span>
           </button>
 
           <button
             type="button"
-            onClick={() => document.getElementById("work-auth")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="save-bar-section-btn"
-            title="Jump to Demographics & Work Auth"
+            onClick={() => handleDockNav("work-auth")}
+            className={`save-bar-section-btn ${openSections['work-auth'] ? 'active' : ''}`}
+            title="Toggle Demographics & Work Auth"
           >
             <span>Demographics</span>
           </button>
 
           <button
             type="button"
-            onClick={() => document.getElementById("target-profile")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="save-bar-section-btn"
-            title="Jump to Target Profile"
+            onClick={() => handleDockNav("target-profile")}
+            className={`save-bar-section-btn ${openSections['target-profile'] ? 'active' : ''}`}
+            title="Toggle Target Profile"
           >
             <span>Target Role</span>
           </button>
 
           <button
             type="button"
-            onClick={() => document.getElementById("base-resume")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="save-bar-section-btn"
-            title="Jump to Resume"
+            onClick={() => handleDockNav("base-resume")}
+            className={`save-bar-section-btn ${openSections['base-resume'] ? 'active' : ''}`}
+            title="Toggle Resume"
           >
             <span>Resume</span>
           </button>
 
           <button
             type="button"
-            onClick={() => document.getElementById("avatar-settings")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="save-bar-section-btn"
-            title="Jump to Avatar Settings"
+            onClick={() => handleDockNav("avatar-settings")}
+            className={`save-bar-section-btn ${openSections['avatar-settings'] ? 'active' : ''}`}
+            title="Toggle Avatar Settings"
           >
             <span>Avatar</span>
           </button>
 
           <button
             type="button"
-            onClick={() => document.getElementById("subscription")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="save-bar-section-btn"
-            title="Jump to Subscription Plan"
+            onClick={() => handleDockNav("subscription")}
+            className={`save-bar-section-btn ${openSections.subscription ? 'active' : ''}`}
+            title="Toggle Subscription Plan"
           >
             <span>Plan</span>
           </button>
