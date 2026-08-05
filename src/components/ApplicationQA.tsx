@@ -6,6 +6,8 @@ import DownloadTextButton from './DownloadTextButton';
 import UpgradePrompt from './UpgradePrompt';
 
 
+import { safeCopyToClipboard } from '@/lib/clipboard';
+
 export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, initialQaUsed = 0, totalResumesGenerated, totalApplied }: { jobId: string; planTier?: string; trialEndsAt?: Date | string | null; initialQaUsed?: number; totalResumesGenerated?: number; totalApplied?: number; }) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
@@ -95,10 +97,12 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, i
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(answer);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyToClipboard = async () => {
+    const success = await safeCopyToClipboard(answer);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   // Free tier: show upgrade prompt instead of the Q&A form

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Download, Copy, CheckCircle } from 'lucide-react';
 
 import { generateStyledPdfHtml, PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
+import { safeCopyToClipboard } from '@/lib/clipboard';
 
 export default function ResumeActions({ jobId, markdownText, selectedColor = "#06af9e", pdfSettings }: { jobId: string, markdownText: string, selectedColor?: string, pdfSettings?: PdfStyleOptions }) {
     const [isCopied, setIsCopied] = useState(false);
@@ -11,12 +12,10 @@ export default function ResumeActions({ jobId, markdownText, selectedColor = "#0
     const [showToast, setShowToast] = useState(false);
 
     const handleCopy = async () => {
-        try {
-            await navigator.clipboard.writeText(markdownText);
+        const success = await safeCopyToClipboard(markdownText);
+        if (success) {
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 3000);
-        } catch (err) {
-            console.error('Failed to copy text:', err);
         }
     };
 

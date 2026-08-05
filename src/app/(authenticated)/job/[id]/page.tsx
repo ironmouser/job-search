@@ -347,6 +347,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               isPro={planTier === 'PRO'}
               appliesThisWeek={appliesThisWeek}
               hasAssets={!!(assets?.tailoredResumeMarkdown && assets?.coverLetterMarkdown)}
+              generationsLeftThisWeek={assetGenerationsLeft}
             />
           </section>
 

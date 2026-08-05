@@ -2,17 +2,16 @@
 
 import { useState } from 'react';
 import { Copy, CheckCircle } from 'lucide-react';
+import { safeCopyToClipboard } from '@/lib/clipboard';
 
 export default function CopyToClipboardButton({ textToCopy, label = "Copy" }: { textToCopy: string, label?: string }) {
     const [isCopied, setIsCopied] = useState(false);
 
     const handleCopy = async () => {
-        try {
-            await navigator.clipboard.writeText(textToCopy);
+        const success = await safeCopyToClipboard(textToCopy);
+        if (success) {
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
-        } catch (err) {
-            console.error('Failed to copy text:', err);
         }
     };
 

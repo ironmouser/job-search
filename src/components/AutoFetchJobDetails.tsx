@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Edit3, Save, ExternalLink, Copy, Check } from 'lucide-react';
 import SyncOverlay from './SyncOverlay';
+import { safeCopyToClipboard } from '@/lib/clipboard';
 
 export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription }: { jobId: string; jobUrl?: string | null; initialDescription?: string | null }) {
   const router = useRouter();
@@ -15,11 +16,13 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
   const [savingManual, setSavingManual] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const handleCopyUrl = () => {
+  const handleCopyUrl = async () => {
     if (jobUrl) {
-      navigator.clipboard.writeText(jobUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const success = await safeCopyToClipboard(jobUrl);
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
     }
   };
 
