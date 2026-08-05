@@ -127,26 +127,42 @@ export default function JobDetailsActionBar({
     }
   }, [nextJob, prevJob, router]);
 
-  // Background fetch & score next 3 jobs
+  // Background fetch & score next 3 and previous 3 unscored jobs
   useEffect(() => {
     if (currentIndex < 0 || sequence.length === 0) return;
 
+    // Next 3 jobs ahead of the current position
     const next3Jobs = sequence.slice(currentIndex + 1, currentIndex + 4);
+    // Previous 3 jobs behind the current position
+    const prev3Jobs = sequence.slice(Math.max(0, currentIndex - 3), currentIndex);
 
-    next3Jobs.forEach(job => {
-      if (!job.id || prefetchedJobs.current.has(job.id)) return;
+    // Filter to only unscored, not-yet-queued jobs in each direction
+    const filterNew = (jobs: any[]) =>
+      jobs.filter(j => j.id && !prefetchedJobs.current.has(j.id) && !j.isScored);
 
-      if (!job.isScored || !job.isDescriptionAdequate) {
-        prefetchedJobs.current.add(job.id);
-        fetch('/api/score', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId: job.id })
-        }).catch(err => {
-          console.warn(`Background score trigger failed for job ${job.id}:`, err);
-        });
-      }
-    });
+    const nextToScore = filterNew(next3Jobs);
+    const prevToScore = filterNew(prev3Jobs);
+
+    // Mark all as queued immediately to prevent duplicate calls on re-renders
+    [...nextToScore, ...prevToScore].forEach(j => prefetchedJobs.current.add(j.id));
+
+    // Option 1: use the jobIds batch endpoint — one request per direction instead of
+    // one request per job, cutting auth/session overhead from up to 6 calls down to 2.
+    if (nextToScore.length > 0) {
+      fetch('/api/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobIds: nextToScore.map(j => j.id) })
+      }).catch(err => console.warn('Background batch score (next) failed:', err));
+    }
+
+    if (prevToScore.length > 0) {
+      fetch('/api/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobIds: prevToScore.map(j => j.id) })
+      }).catch(err => console.warn('Background batch score (prev) failed:', err));
+    }
   }, [currentIndex, sequence]);
 
   const handleNext = () => {

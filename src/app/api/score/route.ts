@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { isDescriptionAdequate, fetchJobDescription, extractUrlFromStubDescription } from '@/lib/jobFetcher';
 import { getEffectiveTier } from '@/lib/tier';
+import { getUserSettings } from '@/lib/settings';
 
 
 export const maxDuration = 60;
@@ -16,7 +17,20 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   ]);
 }
 
-async function ensureAndScoreJob(userId: string, job: { id: string; title: string; description: string | null; url?: string | null }) {
+async function ensureAndScoreJob(
+    userId: string,
+    job: { id: string; title: string; description: string | null; url?: string | null },
+    prefetchedData?: { settings: any; feedbackData: any[] }
+) {
+    // Option 5: bail out immediately if already scored — avoids a full AI call on stale sequence data
+    const existing = await prisma.opportunityScore.findUnique({
+        where: { userId_jobId: { userId, jobId: job.id } },
+        select: { id: true }
+    });
+    if (existing) {
+        return { jobId: job.id, skipped: true, reason: 'Already scored.' };
+    }
+
     let description = job.description || '';
     
     // 1. Check if description is adequate
@@ -54,7 +68,7 @@ async function ensureAndScoreJob(userId: string, job: { id: string; title: strin
 
     // 3. Score the job! (Wrap scoring in 25s timeout)
     const score = await withTimeout(
-      scoreJob(userId, job.id, job.title, description),
+      scoreJob(userId, job.id, job.title, description, prefetchedData),
       25000,
       null
     );
@@ -113,11 +127,26 @@ export async function POST(request: Request) {
             }
 
             console.log(`Processing ${userJobs.length} specific jobs for scoring...`);
+
+            // Option 3: fetch user context once for the whole batch instead of once per job
+            const [batchSettings, batchFeedback] = await Promise.all([
+                getUserSettings(session.user.id),
+                prisma.jobFeedback.findMany({
+                    where: { userId: session.user.id },
+                    select: { feedbackType: true, reasons: true, job: { select: { title: true, company: true } } },
+                    orderBy: { createdAt: 'desc' },
+                    take: 10
+                })
+            ]);
             
             const results = await Promise.all(
                 userJobs.map(async (uj) => {
                     try {
-                        return await ensureAndScoreJob(session.user.id, uj.job);
+                        return await ensureAndScoreJob(
+                            session.user.id,
+                            uj.job,
+                            { settings: batchSettings, feedbackData: batchFeedback }
+                        );
                     } catch (e: any) {
                         console.error(`Error scoring job ${uj.job.id}:`, e.message);
                         return { jobId: uj.job.id, error: e.message };
@@ -150,11 +179,26 @@ export async function POST(request: Request) {
             }
 
             console.log(`Processing ${userJobs.length} unscored jobs...`);
+
+            // Option 3: fetch user context once for the whole batch
+            const [batchSettings, batchFeedback] = await Promise.all([
+                getUserSettings(session.user.id),
+                prisma.jobFeedback.findMany({
+                    where: { userId: session.user.id },
+                    select: { feedbackType: true, reasons: true, job: { select: { title: true, company: true } } },
+                    orderBy: { createdAt: 'desc' },
+                    take: 10
+                })
+            ]);
             
             const results = await Promise.all(
                 userJobs.map(async (uj) => {
                     try {
-                        return await ensureAndScoreJob(session.user.id, uj.job);
+                        return await ensureAndScoreJob(
+                            session.user.id,
+                            uj.job,
+                            { settings: batchSettings, feedbackData: batchFeedback }
+                        );
                     } catch (e: any) {
                         console.error(`Error scoring job ${uj.job.id}:`, e.message);
                         return { jobId: uj.job.id, error: e.message };

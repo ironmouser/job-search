@@ -3,7 +3,13 @@ import { getUserSettings } from './settings';
 import { callDeepSeek } from './deepseek';
 import { isDescriptionAdequate } from './jobFetcher';
 
-export async function scoreJob(userId: string, jobId: string, jobTitle: string, jobDescription: string) {
+export async function scoreJob(
+    userId: string,
+    jobId: string,
+    jobTitle: string,
+    jobDescription: string,
+    prefetchedData?: { settings: any; feedbackData: any[] }
+) {
     if (!process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY) {
         throw new Error('DEEPSEEK_API_KEY or GEMINI_API_KEY is missing.');
     }
@@ -12,7 +18,25 @@ export async function scoreJob(userId: string, jobId: string, jobTitle: string, 
         throw new Error('Cannot score job: Job description is inadequate or has not been downloaded.');
     }
 
-    const settings = await getUserSettings(userId);
+    // Options 2 & 3: reuse pre-fetched batch data, or run both DB reads in parallel
+    let settings: any;
+    let feedbackData: any[];
+
+    if (prefetchedData) {
+        settings = prefetchedData.settings;
+        feedbackData = prefetchedData.feedbackData;
+    } else {
+        [settings, feedbackData] = await Promise.all([
+            getUserSettings(userId),
+            prisma.jobFeedback.findMany({
+                where: { userId },
+                select: { feedbackType: true, reasons: true, job: { select: { title: true, company: true } } },
+                orderBy: { createdAt: 'desc' },
+                take: 10
+            })
+        ]);
+    }
+
     const profileText = settings.profile || "Default Scoring Profile";
 
     // Helper to parse weights from the profile markdown
@@ -50,14 +74,6 @@ export async function scoreJob(userId: string, jobId: string, jobTitle: string, 
     };
 
     const weights = parseWeights(profileText);
-
-    // Fetch recent feedback to inject into the prompt
-    const feedbackData = await prisma.jobFeedback.findMany({
-        where: { userId: userId },
-        select: { feedbackType: true, reasons: true, job: { select: { title: true, company: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 10
-    });
 
     let feedbackContext = "";
     if (feedbackData && feedbackData.length > 0) {
@@ -105,7 +121,8 @@ Return a JSON object strictly matching this schema:
         model: 'deepseek-v4-flash',
         jsonMode: true,
         messages: [{ role: 'user', content: prompt }],
-        userId
+        userId,
+        maxTokens: 512 // Option 4: scoring output is compact JSON, 8192 default wastes inference time
     });
     
     try {
