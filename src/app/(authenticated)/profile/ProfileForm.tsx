@@ -34,7 +34,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { UserAvatar } from "@/components/common/UserAvatar";
 
@@ -712,7 +711,9 @@ export default function ProfileForm({
             </div>
           </div>
         </div>
+      </div>
       )}
+      </div>
 
       {/* -- 2. Authorization & Demographics Section ------------------------------- */}
       <div className={`glass-card accordion-card ${openSections['work-auth'] ? 'open' : ''}`} id="work-auth" style={{ padding: '1.5rem 2rem' }}>
