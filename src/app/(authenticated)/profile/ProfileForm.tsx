@@ -20,6 +20,11 @@ import {
   Target,
   Upload,
   Clipboard,
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  Zap,
+  HelpCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -425,7 +430,7 @@ export default function ProfileForm({
       </div>
 
       {/* ── 1. My Info & Auto-Fill Information Section ───────────────────────────── */}
-      <div className="glass-card">
+      <div className="glass-card" id="personal-info">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
           <div>
             <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
@@ -638,7 +643,7 @@ export default function ProfileForm({
       </div>
 
       {/* ── 2. Authorization & Demographics Section ─────────────────────────────── */}
-      <div className="glass-card">
+      <div className="glass-card" id="work-auth">
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
           <Key size={20} className="text-accent" /> Authorization & Demographics
         </h3>
@@ -991,7 +996,7 @@ export default function ProfileForm({
       </div>
 
       {/* ── 5. Profile Avatar & Display Settings ────────────────────────────────── */}
-      <div className="glass-card">
+      <div className="glass-card" id="avatar-settings">
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
           <ImageIcon size={20} className="text-accent" /> Profile Avatar & Display Settings
         </h3>
@@ -1039,7 +1044,7 @@ export default function ProfileForm({
       </div>
 
       {/* ── 6. Subscription Section ────────────────────────────────────────────── */}
-      <div className="glass-card">
+      <div className="glass-card" id="subscription">
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
           <CreditCard size={20} className="text-accent" /> Subscription
         </h3>
@@ -1075,14 +1080,96 @@ export default function ProfileForm({
       {/* Floating Save Button Bar at Bottom */}
       {mounted && createPortal(
         <div className="floating-save-bar">
+          {/* Left Saved Status Badge */}
+          <div className="save-bar-pill-saved">
+            <Bookmark size={14} />
+            <span>Saved</span>
+          </div>
+
+          {/* Divider */}
+          <div className="save-bar-divider" />
+
+          {/* Previous/Scroll circular button */}
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="save-bar-circle-btn"
+            title="Scroll to Top"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {/* Step 1 Primary Action: Save All Changes */}
           <button
             onClick={handleSaveProfile}
             disabled={saving}
-            className="btn-primary floating-save-btn"
+            className="floating-save-btn"
             title={saving ? "Saving All Changes..." : "Save All Changes"}
           >
-            {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+            <span className="save-bar-step-badge">1</span>
             <span className="save-btn-text">{saving ? "Saving All Changes..." : "Save All Changes"}</span>
+            {saving ? <Loader2 className="animate-spin" size={16} /> : <ChevronRight size={16} />}
+          </button>
+
+          {/* Section Jump Buttons */}
+          <button
+            type="button"
+            onClick={() => document.getElementById("personal-info")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="save-bar-section-btn"
+            title="Jump to Personal Info"
+          >
+            <span className="save-bar-step-badge-gray">2</span>
+            <span>Personal</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => document.getElementById("work-auth")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="save-bar-section-btn"
+            title="Jump to Demographics & Work Auth"
+          >
+            <span className="save-bar-step-badge-gray">3</span>
+            <span>Demographics</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => document.getElementById("target-profile")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="save-bar-section-btn"
+            title="Jump to Target Profile"
+          >
+            <span className="save-bar-step-badge-gray">4</span>
+            <span>Target Role</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => document.getElementById("base-resume")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="save-bar-section-btn"
+            title="Jump to Resume"
+          >
+            <span className="save-bar-step-badge-gray">5</span>
+            <span>Resume</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => document.getElementById("avatar-settings")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="save-bar-section-btn"
+            title="Jump to Avatar Settings"
+          >
+            <span className="save-bar-step-badge-gray">6</span>
+            <span>Avatar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => document.getElementById("subscription")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="save-bar-section-btn"
+            title="Jump to Subscription Plan"
+          >
+            <span className="save-bar-step-badge-gray">7</span>
+            <span>Plan</span>
           </button>
         </div>,
         document.body

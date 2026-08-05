@@ -1626,56 +1626,284 @@ body.light-theme .filter-item button.filter-dropdown-btn:hover {
   .filter-dropdowns-wrapper { grid-template-columns: 1fr; }
 }
 
-/* ─── Floating Save Bar & Mobile FAB ─────────────────────────────────── */
+/* ─── Workflow Floating Save Bar Dock ───────────────────────────────── */
 
 .floating-save-bar {
   position: fixed !important;
   bottom: 1.5rem !important;
-  right: 2.5rem !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
   z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.45rem 0.75rem !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  max-width: 95vw;
+}
+
+body:not(.light-theme) .floating-save-bar {
+  background: rgba(18, 18, 18, 0.92) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Left Saved/Status Badge */
+.save-bar-pill-saved {
+  background: #e0f2fe;
+  color: #0284c7;
+  border: 1px solid #7dd3fc;
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.825rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
-  padding: 0.5rem 0.75rem;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg, 0.625rem);
-  box-shadow: var(--shadow-lg), 0 8px 30px rgba(0, 0, 0, 0.4);
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+body:not(.light-theme) .save-bar-pill-saved {
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* Vertical Divider */
+.save-bar-divider {
+  width: 1px;
+  height: 22px;
+  background: #e2e8f0;
+  margin: 0 0.15rem;
+  flex-shrink: 0;
+}
+
+body:not(.light-theme) .save-bar-divider {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Secondary Circle Nav/Reset Button */
+.save-bar-circle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.save-bar-circle-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+body:not(.light-theme) .save-bar-circle-btn {
+  background: #1a1a1a;
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+body:not(.light-theme) .save-bar-circle-btn:hover {
+  background: #262626;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Main Step 1 Primary Action Button */
+.floating-save-btn {
+  background: #0066ff !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 9999px !important;
+  padding: 0.45rem 1.15rem !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 14px rgba(0, 102, 255, 0.35) !important;
+  white-space: nowrap;
+}
+
+.floating-save-btn:hover:not(:disabled) {
+  background: #0052cc !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 102, 255, 0.45) !important;
+}
+
+.floating-save-btn:disabled {
+  opacity: 0.75 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.save-bar-step-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0066ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Step 2 Pill (Green / Ready) */
+.save-bar-pill-step2 {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.825rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+body:not(.light-theme) .save-bar-pill-step2 {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.25);
+}
+
+.save-bar-step-badge-green {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+body:not(.light-theme) .save-bar-step-badge-green {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+/* Step 3 & 4 Pills (Gray / Info) & Section Jump Buttons */
+.save-bar-pill-step3,
+.save-bar-pill-step4,
+.save-bar-section-btn {
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.825rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-bar-section-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+body:not(.light-theme) .save-bar-pill-step3,
+body:not(.light-theme) .save-bar-pill-step4,
+body:not(.light-theme) .save-bar-section-btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body:not(.light-theme) .save-bar-section-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.save-bar-step-badge-gray {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+body:not(.light-theme) .save-bar-step-badge-gray {
+  background: rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+}
+
+.save-bar-counter {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 0 0.25rem;
+  white-space: nowrap;
+}
+
+body:not(.light-theme) .save-bar-counter {
+  color: #94a3b8;
 }
 
 @media (max-width: 1024px) {
-  .floating-save-bar {
-    position: fixed !important;
-    bottom: 1.5rem !important;
-    right: 1.5rem !important;
-    z-index: 9999 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
-  .floating-save-btn {
-    width: 54px !important;
-    height: 54px !important;
-    padding: 0 !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 6px 20px rgba(0, 112, 243, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4) !important;
-  }
-
-  .floating-save-btn .save-btn-text {
+  .save-bar-pill-step4,
+  .save-bar-counter {
     display: none !important;
   }
+}
 
-  .floating-save-btn svg {
-    width: 22px !important;
-    height: 22px !important;
-    margin: 0 !important;
+@media (max-width: 768px) {
+  .floating-save-bar {
+    bottom: 1.25rem !important;
+    padding: 0.35rem 0.5rem !important;
+    gap: 0.4rem !important;
+  }
+  .save-bar-pill-step3 {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .save-bar-pill-step2 {
+    display: none !important;
   }
 }
 

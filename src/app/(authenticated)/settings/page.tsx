@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2, Bookmark, ChevronLeft, ChevronRight, CheckCircle2, Zap, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -287,7 +287,7 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
                 {/* Global Preferences */}
-                <div className="glass-card" style={{ padding: '2rem' }}>
+                <div className="glass-card" id="general" style={{ padding: '2rem' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
                         <Layout size={22} className="text-accent" /> Global Preferences
                     </h3>
@@ -622,7 +622,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* AI Configuration */}
-                <div className="glass-card" style={{ padding: '2rem' }}>
+                <div className="glass-card" id="scoring" style={{ padding: '2rem' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
                         <Bot size={22} className="text-accent" /> AI Generation Preferences
                     </h3>
@@ -893,14 +893,86 @@ export default function SettingsPage() {
             {/* Floating Save Button Bar at Bottom */}
             {mounted && createPortal(
                 <div className="floating-save-bar">
+                    {/* Left Saved Status Badge */}
+                    <div className="save-bar-pill-saved">
+                        <Bookmark size={14} />
+                        <span>Saved</span>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="save-bar-divider" />
+
+                    {/* Previous/Scroll circular button */}
+                    <button
+                        type="button"
+                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        className="save-bar-circle-btn"
+                        title="Scroll to Top"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+
+                    {/* Step 1 Primary Action: Save All Changes */}
                     <button
                         onClick={() => handleSave()}
                         disabled={saving}
-                        className="btn-primary floating-save-btn"
+                        className="floating-save-btn"
                         title={saving ? "Saving All Changes..." : "Save All Changes"}
                     >
-                        {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                        <span className="save-bar-step-badge">1</span>
                         <span className="save-btn-text">{saving ? "Saving All Changes..." : "Save All Changes"}</span>
+                        {saving ? <Loader2 className="animate-spin" size={16} /> : <ChevronRight size={16} />}
+                    </button>
+
+                    {/* Section Jump Buttons */}
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById('general')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className="save-bar-section-btn"
+                        title="Jump to General Preferences"
+                    >
+                        <span className="save-bar-step-badge-gray">2</span>
+                        <span>General</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById('job-discovery')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className="save-bar-section-btn"
+                        title="Jump to Job Discovery"
+                    >
+                        <span className="save-bar-step-badge-gray">3</span>
+                        <span>Discovery</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById('scoring')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className="save-bar-section-btn"
+                        title="Jump to AI Rules"
+                    >
+                        <span className="save-bar-step-badge-gray">4</span>
+                        <span>AI Rules</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById('email-sync')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className="save-bar-section-btn"
+                        title="Jump to Email Sync"
+                    >
+                        <span className="save-bar-step-badge-gray">5</span>
+                        <span>Email Sync</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => document.getElementById('pdf-customizer')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className="save-bar-section-btn"
+                        title="Jump to PDF Format"
+                    >
+                        <span className="save-bar-step-badge-gray">6</span>
+                        <span>PDF Format</span>
                     </button>
                 </div>,
                 document.body

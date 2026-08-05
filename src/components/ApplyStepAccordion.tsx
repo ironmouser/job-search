@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle } from 'lucide-react';
 import AutofillButton from './AutofillButton';
 import { AutoApplyPanel } from './AutoApplyPanel';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
@@ -35,6 +35,7 @@ export function ApplyStepAccordion({
   const [activeUrl, setActiveUrl] = useState(applicationUrl || initialUrl);
   const [customUrl, setCustomUrl] = useState('');
   const [isSavingUrl, setIsSavingUrl] = useState(false);
+  const [hasAttemptedCustomUrl, setHasAttemptedCustomUrl] = useState(!!applicationUrl);
   
   const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
   const [isGeneratingAssets, setIsGeneratingAssets] = useState(false);
@@ -134,6 +135,7 @@ export function ApplyStepAccordion({
       if (res.ok) {
         setActiveUrl(customUrl.trim());
         setCustomUrl('');
+        setHasAttemptedCustomUrl(true);
       }
     } catch (e) {
       console.error('Failed to save URL', e);
@@ -238,7 +240,7 @@ export function ApplyStepAccordion({
                     type="url"
                     value={customUrl}
                     onChange={(e) => setCustomUrl(e.target.value)}
-                    placeholder={activeUrl}
+                    placeholder={showLowConfidenceWarning && !hasAttemptedCustomUrl ? 'https://boards.greenhouse.io/company/jobs/12345' : activeUrl}
                     style={{
                       flex: 1,
                       padding: '0.6rem 1rem',
@@ -259,32 +261,130 @@ export function ApplyStepAccordion({
                     Update URL
                   </button>
                 </div>
+
+                {/* Supported ATS Domain Chips */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Supported platforms:</span>
+                  {['Greenhouse', 'Lever', 'Workday', 'Ashby', 'SmartRecruiters', 'BambooHR'].map((ats) => (
+                    <span
+                      key={ats}
+                      style={{
+                        fontSize: '0.7rem',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'var(--bg-primary)',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      {ats}
+                    </span>
+                  ))}
+                </div>
+
                 {applicationUrl && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Using custom application URL.</span>
                 )}
               </div>
 
-              {/* Low Confidence Warning OR AutoApplyPanel */}
+              {/* Low Confidence Helper OR Low Confidence Error Warning OR AutoApplyPanel */}
               {isCheckingConfidence ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
                   <p>Analyzing job application format...</p>
                 </div>
               ) : showLowConfidenceWarning ? (
-                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                  <AlertCircle color="#ef4444" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
-                  <div>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#ef4444' }}>Direct Link Required</h4>
-                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                      The current URL doesn't look like it supports Auto Apply (the application might be nested behind the apply button on a job board like Indeed or LinkedIn). 
-                      <strong>Try navigating to the company's direct career page and pasting the URL above</strong> to see if we can automate it!
-                    </p>
-                    <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.6 }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Detected Score:</span>
-                      <AutoApplyConfidenceBadge confidence={confidenceData.confidence} />
+                !hasAttemptedCustomUrl ? (
+                  /* Guided Link Helper Box (Initial Low Confidence State) */
+                  <div style={{
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    borderRadius: '10px',
+                    padding: '1.5rem 1.75rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                  }}>
+                    <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
+                      <HelpCircle color="#3b82f6" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <h4 style={{ margin: '0 0 0.4rem 0', color: '#3b82f6', fontSize: '1rem', fontWeight: 600 }}>
+                          Direct Application Link Needed
+                        </h4>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
+                          This job URL appears to be a job board listing (e.g. LinkedIn or Indeed). To start Auto Apply, click <strong>"Get application URL"</strong> below to open the job page in a new tab, copy the direct application page link from the company website, and paste it into the field above.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(59, 130, 246, 0.15)' }}>
+                      <a
+                        href={activeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-outline"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          color: '#3b82f6',
+                          borderColor: 'rgba(59, 130, 246, 0.4)',
+                          textDecoration: 'none',
+                          background: 'rgba(59, 130, 246, 0.05)',
+                        }}
+                      >
+                        <ExternalLink size={14} /> Get application URL
+                      </a>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.7 }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Current Score:</span>
+                        <AutoApplyConfidenceBadge confidence={confidenceData.confidence} />
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  /* Red Alert Box (shown only after user submits a custom URL that still fails confidence check) */
+                  <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <AlertCircle color="#ef4444" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#ef4444' }}>Direct Link Required</h4>
+                      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                        The updated URL provided still doesn't look like a supported direct application page. 
+                        <strong>Please open the job page, navigate to the company's direct application form, and paste that URL above.</strong>
+                      </p>
+                      <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <a
+                          href={activeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-outline"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            padding: '0.4rem 0.75rem',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            color: '#ef4444',
+                            borderColor: 'rgba(239, 68, 68, 0.4)',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <ExternalLink size={14} /> Get application URL
+                        </a>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.8 }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Detected Score:</span>
+                          <AutoApplyConfidenceBadge confidence={confidenceData.confidence} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
               ) : (
                 <div>
                   {confidenceData && (
