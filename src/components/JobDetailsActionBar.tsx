@@ -143,25 +143,34 @@ export default function JobDetailsActionBar({
     const nextToScore = filterNew(next3Jobs);
     const prevToScore = filterNew(prev3Jobs);
 
-    // Mark all as queued immediately to prevent duplicate calls on re-renders
+    // Mark all as queued immediately to prevent duplicate calls on concurrent re-renders
     [...nextToScore, ...prevToScore].forEach(j => prefetchedJobs.current.add(j.id));
 
     // Option 1: use the jobIds batch endpoint — one request per direction instead of
     // one request per job, cutting auth/session overhead from up to 6 calls down to 2.
+    // On failure: remove IDs from the dedup set so they can be retried on the next nav.
     if (nextToScore.length > 0) {
+      const nextIds = nextToScore.map(j => j.id);
       fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobIds: nextToScore.map(j => j.id) })
-      }).catch(err => console.warn('Background batch score (next) failed:', err));
+        body: JSON.stringify({ jobIds: nextIds })
+      }).catch(err => {
+        console.warn('Background batch score (next) failed:', err);
+        nextIds.forEach(id => prefetchedJobs.current.delete(id));
+      });
     }
 
     if (prevToScore.length > 0) {
+      const prevIds = prevToScore.map(j => j.id);
       fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobIds: prevToScore.map(j => j.id) })
-      }).catch(err => console.warn('Background batch score (prev) failed:', err));
+        body: JSON.stringify({ jobIds: prevIds })
+      }).catch(err => {
+        console.warn('Background batch score (prev) failed:', err);
+        prevIds.forEach(id => prefetchedJobs.current.delete(id));
+      });
     }
   }, [currentIndex, sequence]);
 
