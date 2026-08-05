@@ -912,14 +912,13 @@ export default function SettingsPage() {
                         <ChevronLeft size={16} />
                     </button>
 
-                    {/* Step 1 Primary Action: Save All Changes */}
+                    {/* Primary Action: Save All Changes */}
                     <button
                         onClick={() => handleSave()}
                         disabled={saving}
                         className="floating-save-btn"
                         title={saving ? "Saving All Changes..." : "Save All Changes"}
                     >
-                        <span className="save-bar-step-badge">1</span>
                         <span className="save-btn-text">{saving ? "Saving All Changes..." : "Save All Changes"}</span>
                         {saving ? <Loader2 className="animate-spin" size={16} /> : <ChevronRight size={16} />}
                     </button>
@@ -931,7 +930,6 @@ export default function SettingsPage() {
                         className="save-bar-section-btn"
                         title="Jump to General Preferences"
                     >
-                        <span className="save-bar-step-badge-gray">2</span>
                         <span>General</span>
                     </button>
 
@@ -941,7 +939,6 @@ export default function SettingsPage() {
                         className="save-bar-section-btn"
                         title="Jump to Job Discovery"
                     >
-                        <span className="save-bar-step-badge-gray">3</span>
                         <span>Discovery</span>
                     </button>
 
@@ -951,7 +948,6 @@ export default function SettingsPage() {
                         className="save-bar-section-btn"
                         title="Jump to AI Rules"
                     >
-                        <span className="save-bar-step-badge-gray">4</span>
                         <span>AI Rules</span>
                     </button>
 
@@ -961,7 +957,6 @@ export default function SettingsPage() {
                         className="save-bar-section-btn"
                         title="Jump to Email Sync"
                     >
-                        <span className="save-bar-step-badge-gray">5</span>
                         <span>Email Sync</span>
                     </button>
 
@@ -971,7 +966,6 @@ export default function SettingsPage() {
                         className="save-bar-section-btn"
                         title="Jump to PDF Format"
                     >
-                        <span className="save-bar-step-badge-gray">6</span>
                         <span>PDF Format</span>
                     </button>
                 </div>,

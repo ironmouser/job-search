@@ -1099,14 +1099,13 @@ export default function ProfileForm({
             <ChevronLeft size={16} />
           </button>
 
-          {/* Step 1 Primary Action: Save All Changes */}
+          {/* Primary Action: Save All Changes */}
           <button
             onClick={handleSaveProfile}
             disabled={saving}
             className="floating-save-btn"
             title={saving ? "Saving All Changes..." : "Save All Changes"}
           >
-            <span className="save-bar-step-badge">1</span>
             <span className="save-btn-text">{saving ? "Saving All Changes..." : "Save All Changes"}</span>
             {saving ? <Loader2 className="animate-spin" size={16} /> : <ChevronRight size={16} />}
           </button>
@@ -1118,7 +1117,6 @@ export default function ProfileForm({
             className="save-bar-section-btn"
             title="Jump to Personal Info"
           >
-            <span className="save-bar-step-badge-gray">2</span>
             <span>Personal</span>
           </button>
 
@@ -1128,7 +1126,6 @@ export default function ProfileForm({
             className="save-bar-section-btn"
             title="Jump to Demographics & Work Auth"
           >
-            <span className="save-bar-step-badge-gray">3</span>
             <span>Demographics</span>
           </button>
 
@@ -1138,7 +1135,6 @@ export default function ProfileForm({
             className="save-bar-section-btn"
             title="Jump to Target Profile"
           >
-            <span className="save-bar-step-badge-gray">4</span>
             <span>Target Role</span>
           </button>
 
@@ -1148,7 +1144,6 @@ export default function ProfileForm({
             className="save-bar-section-btn"
             title="Jump to Resume"
           >
-            <span className="save-bar-step-badge-gray">5</span>
             <span>Resume</span>
           </button>
 
@@ -1158,7 +1153,6 @@ export default function ProfileForm({
             className="save-bar-section-btn"
             title="Jump to Avatar Settings"
           >
-            <span className="save-bar-step-badge-gray">6</span>
             <span>Avatar</span>
           </button>
 
@@ -1168,7 +1162,6 @@ export default function ProfileForm({
             className="save-bar-section-btn"
             title="Jump to Subscription Plan"
           >
-            <span className="save-bar-step-badge-gray">7</span>
             <span>Plan</span>
           </button>
         </div>,
