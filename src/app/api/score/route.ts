@@ -27,8 +27,8 @@ async function ensureAndScoreJob(userId: string, job: { id: string; title: strin
         for (const tryUrl of urlsToTry) {
             console.log(`Job ${job.id} description is incomplete. Attempting fast fetch from ${tryUrl}...`);
             try {
-                // Enforce strict 4-second timeout on fetching to prevent 502 Bad Gateway timeouts
-                const downloaded = await withTimeout(fetchJobDescription(tryUrl), 4000, null);
+                // Allow 15-second timeout on fetching description to give career sites time to respond
+                const downloaded = await withTimeout(fetchJobDescription(tryUrl), 15000, null);
                 if (downloaded && isDescriptionAdequate(downloaded)) {
                     description = downloaded + `\n\nApply at: ${tryUrl}`;
                     await prisma.job.update({

@@ -699,18 +699,15 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
     if (userPlanTier !== 'PRO' && scoresExhausted) return;
 
     const isUnscored = (j: any) => (!j.opportunity_scores || j.opportunity_scores.length === 0);
-    const hasDescription = (j: any) => {
-      if (!j.description) return false;
-      const clean = j.description.trim();
-      if (clean.length < 150) return false;
-      const lower = clean.toLowerCase();
-      if (lower.includes('click link to view') || lower.includes('found via email') || lower.startsWith('apply at:')) return false;
-      return true;
+    const canBeScored = (j: any) => {
+      if (j.url && (j.url.startsWith('http://') || j.url.startsWith('https://'))) return true;
+      if (j.description && j.description.trim().length > 30) return true;
+      return false;
     };
 
     // Only attempt scoring for unscored jobs on the active page that haven't been attempted in this browser session
     const unscoredCurrentJobs = currentJobs.filter(
-      j => isUnscored(j) && hasDescription(j) && !attemptedScoringJobs.current.has(j.id)
+      j => isUnscored(j) && canBeScored(j) && !attemptedScoringJobs.current.has(j.id)
     );
 
     if (unscoredCurrentJobs.length === 0) return;
@@ -735,14 +732,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
               }
               const errorData = await res.json().catch(() => ({}));
               throw new Error(`Status ${res.status}: ${JSON.stringify(errorData)}`);
-            }
-            const data = await res.json().catch(() => ({}));
-            if (data.results && Array.isArray(data.results)) {
-              data.results.forEach((r: any) => {
-                if (r.skipped) {
-                  attemptedScoringJobs.current.add(r.jobId);
-                }
-              });
             }
             router.refresh();
           } catch (e) {
