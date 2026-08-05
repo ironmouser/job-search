@@ -185,8 +185,10 @@ ${uniqueUrls.join('\n')}
       }
 
       // 3. Save to database
+      let newJobsSaved = 0;
       if (rawJobs.length > 0) {
-        await normalizeAndSaveJobs(rawJobs, userId, { isEmailSync: true });
+        const result: any = await normalizeAndSaveJobs(rawJobs, userId, { isEmailSync: true, onProgress });
+        newJobsSaved = typeof result?.newSavedCount === 'number' ? result.newSavedCount : (result?.length || rawJobs.length);
       }
 
       if (syncLog) {
@@ -200,7 +202,7 @@ ${uniqueUrls.join('\n')}
          });
       }
 
-      return rawJobs.length;
+      return newJobsSaved;
 
     } finally {
       lock.release();

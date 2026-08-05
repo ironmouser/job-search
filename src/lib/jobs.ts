@@ -252,6 +252,7 @@ export async function normalizeAndSaveJobs(
     const finalJobsToSave = [...knownGoodJobs, ...approvedCandidates];
     const userAllocationJobs = finalJobsToSave.slice(0, 100);
     const userAllocationUrls = new Set(userAllocationJobs.map(j => j.url));
+    let newSavedCount = 0;
 
     if (userAllocationJobs.length > 0) {
         onProgress?.(userAllocationJobs.length, `Saving ${userAllocationJobs.length} qualified job${userAllocationJobs.length === 1 ? '' : 's'} to your list...`);
@@ -295,6 +296,13 @@ export async function normalizeAndSaveJobs(
       
       // Link to UserJob only for top 100 allocated matches for this sync run
       if (userAllocationUrls.has(cleanedUrl)) {
+        const existingUj = await prisma.userJob.findUnique({
+            where: { userId_jobId: { userId, jobId: job.id } },
+            select: { id: true }
+        });
+        if (!existingUj) {
+            newSavedCount++;
+        }
         await prisma.userJob.upsert({
             where: { userId_jobId: { userId, jobId: job.id } },
             update: {
@@ -313,7 +321,9 @@ export async function normalizeAndSaveJobs(
         where: { url: { in: processedUrls } }
     });
     
-    console.log(`Successfully processed ${data?.length || 0} jobs for user ${userId}.`);
-    return data;
+    console.log(`Successfully processed ${data?.length || 0} jobs (${newSavedCount} new) for user ${userId}.`);
+    const resultArr: any = data || [];
+    resultArr.newSavedCount = newSavedCount;
+    return resultArr;
 }
 

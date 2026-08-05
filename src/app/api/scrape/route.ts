@@ -126,7 +126,7 @@ export async function POST(request: Request) {
                             sendEvent({ type: 'normalization', foundCount: count, message });
                         }
                     });
-                    const newJobsSaved = savedJobs?.length || 0;
+                    const newJobsSaved = (savedJobs as any)?.newSavedCount ?? savedJobs?.length ?? 0;
 
                     sendEvent({
                         type: 'complete',

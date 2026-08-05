@@ -456,22 +456,23 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
       if (res.ok && data.success !== false) {
         const finalCount = data.count ?? runningCount;
+        setIsEmailSyncing(false);
+        setIsSyncing(false);
+        setJobsFoundCount(null);
+        setSyncMessage('');
+
+        // ALWAYS refresh dashboard so newly saved jobs display immediately on first sync run
+        router.refresh();
+
         if (finalCount === 0) {
           alert('Email sync complete! We scanned your inbox and found 0 new job opportunities since your last sync.');
         } else {
-          setSyncMessage(`Found ${finalCount} new opportunit${finalCount === 1 ? 'y' : 'ies'}! Updating dashboard...`);
-          // Refresh dashboard IMMEDIATELY so new email jobs display on dashboard right away!
-          setIsEmailSyncing(false);
-          setIsSyncing(false);
-          setJobsFoundCount(null);
-          router.refresh();
-
           // Fire background scoring call (non-blocking)
           fetch('/api/score', { method: 'POST', body: JSON.stringify({}) })
             .then(() => router.refresh())
             .catch(err => console.error('Background scoring error:', err));
-          return;
         }
+        return;
       } else {
         const errorMsg = data.error || 'Failed to sync emails';
         console.error('Failed to sync emails:', errorMsg);
