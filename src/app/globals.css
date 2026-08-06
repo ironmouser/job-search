@@ -1638,21 +1638,19 @@ body.light-theme .filter-item button.filter-dropdown-btn:hover {
   align-items: center !important;
   gap: 0.5rem !important;
   padding: 0.45rem 0.75rem !important;
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
   border-radius: 9999px !important;
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  box-shadow: 0 14px 36px -4px rgba(15, 23, 42, 0.45), 0 0 20px rgba(59, 130, 246, 0.15) !important;
   max-width: 95vw;
 }
 
 body:not(.light-theme) .floating-save-bar {
-  background: rgba(18, 18, 18, 0.92) !important;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
   color: #f8fafc !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 14px 36px -4px rgba(0, 0, 0, 0.6), 0 0 24px rgba(59, 130, 246, 0.2) !important;
 }
 
 /* Left Saved/Status Badge */
@@ -2037,6 +2035,7 @@ body.light-theme .accordion-summary-box {
 }
 
 /* Desktop Action Bar Container — Light Mode Default */
+/* Desktop Action Bar Container — Premium Dark Slate & Navy Gradient Dock */
 .job-action-bar-desktop {
   position: fixed;
   bottom: 1.5rem;
@@ -2047,37 +2046,35 @@ body.light-theme .accordion-summary-box {
   align-items: center;
   gap: 1rem;
   padding: 0.6rem 1.25rem;
-  background: #ffffff;
-  color: #0f172a;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  border: 1px solid rgba(59, 130, 246, 0.35);
   border-radius: 9999px;
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 14px 36px -4px rgba(15, 23, 42, 0.45), 0 0 20px rgba(59, 130, 246, 0.15);
 }
 
 .job-action-bar-desktop .btn-outline {
-  background: #ffffff;
-  color: #1e293b;
-  border-color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .job-action-bar-desktop .btn-outline:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #ffffff;
 }
 
 .job-action-bar-divider {
   width: 1px;
   height: 24px;
-  background: #e2e8f0;
+  background: rgba(255, 255, 255, 0.15);
   margin: 0 0.5rem;
 }
 
 .job-action-bar-counter {
   font-size: 0.85rem;
-  color: #475569;
+  color: #94a3b8;
   font-weight: 600;
   padding: 0 0.25rem;
   white-space: nowrap;
@@ -2096,26 +2093,26 @@ body.light-theme .accordion-summary-box {
   flex-direction: column;
   gap: 0.75rem;
   align-items: flex-end;
-  background: #ffffff;
-  color: #0f172a;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  border: 1px solid rgba(59, 130, 246, 0.35);
   border-radius: 16px;
   padding: 1rem;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.4);
   min-width: 220px;
   animation: fadeIn 0.2s ease-out forwards;
 }
 
 .job-fab-menu .btn-outline {
-  background: #ffffff;
-  color: #1e293b;
-  border-color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .job-fab-menu .btn-outline:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #ffffff;
 }
 
 @media (max-width: 768px) {
@@ -2142,18 +2139,18 @@ body.light-theme .accordion-summary-box {
   align-items: center;
   gap: 0.35rem;
   font-weight: 500;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
   transition: all 0.15s ease;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .job-step-btn:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #ffffff;
 }
 
 .job-step-number {
@@ -2163,8 +2160,8 @@ body.light-theme .accordion-summary-box {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #e2e8f0;
-  color: #0f172a;
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -2185,11 +2182,11 @@ body.light-theme .accordion-summary-box {
   bottom: 3.25rem;
   left: 50%;
   transform: translateX(-50%);
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #0f172a;
+  border: 1px solid rgba(59, 130, 246, 0.35);
   border-radius: 12px;
   padding: 0.5rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -2207,7 +2204,7 @@ body.light-theme .accordion-summary-box {
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #0f172a;
+  color: #f8fafc;
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -2217,5 +2214,5 @@ body.light-theme .accordion-summary-box {
 }
 
 .job-apply-option-btn:hover {
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.1);
 }
