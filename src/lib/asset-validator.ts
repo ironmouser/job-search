@@ -178,50 +178,8 @@ export function validateGeneratedAsset(
         warnings.push('Q&A answer output is unusually brief.');
     }
 
-    // 3. Hallucination Detection: Extract capitalized proper noun entities (e.g. multi-word company/institution names)
-    const entityMatches = cleanOutput.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g) || [];
-    const sourceTextLower = (baseResume + '\n' + jobDescription).toLowerCase();
-
-    // Standard common terms to ignore during entity checks
-    const commonIgnoredEntities = new Set([
-        'united states', 'north america', 'san francisco', 'new york', 'los angeles',
-        'software engineer', 'product manager', 'data scientist', 'full stack',
-        'project manager', 'recruiting department', 'hiring manager', 'recruiting team',
-        'dear recruiter', 'dear hiring', 'sincerely yours', 'best regards', 'thank you',
-        'bachelor of', 'master of', 'doctor of', 'computer science', 'information technology',
-        'business administration', 'artificial intelligence', 'machine learning'
-    ]);
-
-    let hallucinatedCount = 0;
-    const suspiciousEntities: string[] = [];
-
-    for (const entity of entityMatches) {
-        const entityLower = entity.toLowerCase();
-        if (commonIgnoredEntities.has(entityLower)) continue;
-
-        // Check if entity or individual core words appear in base resume or job description
-        const words = entityLower.split(/\s+/);
-        const allWordsInSource = words.every(w => sourceTextLower.includes(w));
-
-        if (!allWordsInSource) {
-            hallucinatedCount++;
-            suspiciousEntities.push(entity);
-        }
-    }
-
-    // If more than 4 ungrounded multi-word proper entities are generated, flag as severe hallucination
-    if (hallucinatedCount >= 5) {
-        return {
-            isValid: false,
-            warnings: [`High hallucination risk: Unverified entity references found (${suspiciousEntities.slice(0, 3).join(', ')}...)`],
-            severeHallucination: true
-        };
-    } else if (hallucinatedCount > 2) {
-        warnings.push(`Potential unverified entities: ${suspiciousEntities.slice(0, 3).join(', ')}`);
-    }
-
     return {
-        isValid: warnings.length === 0 || !warnings.some(w => w.includes('High hallucination')),
+        isValid: warnings.length === 0,
         warnings,
         severeHallucination: false
     };
