@@ -164,6 +164,42 @@ export async function fetchSingleJobDescriptionStealth(url: string, timeoutMs = 
     // Wait for JS redirects or Cloudflare Turnstile if present
     await page.waitForTimeout(3000);
 
+    // If still on a tracking / encrypted redirect stub page (e.g. ZipRecruiter /ekm/ or /trk/), extract destination URL
+    if (page.url().includes('/ekm/') || page.url().includes('/trk/') || page.url().includes('session_redirect')) {
+      console.log(`[StealthScraper] Tracking redirect stub detected (${page.url()}). Unwrapping target destination...`);
+      
+      const targetUrl = await page.evaluate(() => {
+        // 1. Meta refresh tag
+        const meta = document.querySelector('meta[http-equiv="refresh"]');
+        if (meta) {
+          const content = meta.getAttribute('content') || '';
+          const match = content.match(/url=(.+)/i);
+          if (match && match[1]) return match[1].replace(/["']/g, '').trim();
+        }
+        // 2. Script window.location redirects or embedded target URLs
+        const scripts = Array.from(document.querySelectorAll('script'));
+        for (const script of scripts) {
+          const text = script.textContent || '';
+          const match = text.match(/window\.location(?:\.href)?\s*=\s*["'](https?:\/\/[^"']+)["']/i) ||
+                        text.match(/(https?:\/\/(?:workforcenow\.adp\.com|myworkdayjobs\.com|[a-z0-9.-]+\.(?:com|co|io|net|org))\/[^"'\s]+)/i);
+          if (match && match[1]) return match[1];
+        }
+        // 3. First external link on page
+        const anchor = document.querySelector('a[href*="http"]');
+        if (anchor) return anchor.getAttribute('href');
+        return null;
+      });
+
+      if (targetUrl && targetUrl.startsWith('http') && !targetUrl.includes('/ekm/')) {
+        console.log(`[StealthScraper] Navigating to unwrapped target URL: ${targetUrl}`);
+        await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+        await page.waitForTimeout(3000);
+      } else {
+        // Wait for dynamic JS redirect to complete
+        await page.waitForURL(u => !u.href.includes('/ekm/') && !u.href.includes('/trk/'), { timeout: 10000 }).catch(() => {});
+      }
+    }
+
     const cfFrame = page.frames().find(f => f.url().includes('cloudflare') || f.url().includes('turnstile'));
     if (cfFrame) {
       console.log(`[StealthScraper] Cloudflare Turnstile detected on ${url}, waiting for solver...`);
