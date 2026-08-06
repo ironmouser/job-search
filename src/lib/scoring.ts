@@ -122,15 +122,30 @@ Return a JSON object strictly matching this schema:
         jsonMode: true,
         messages: [{ role: 'user', content: prompt }],
         userId,
-        maxTokens: 1024 // Scoring output is compact JSON (~300 tokens typical); 1024 gives ample headroom without holding the connection open like the 8192 default
+        maxTokens: 3072
     });
     
     try {
-        const cleanedText = responseText
+        let cleanedText = responseText
             .replace(/```json\s*/gi, '')
             .replace(/```\s*$/gi, '')
             .trim();
-        const scores = JSON.parse(cleanedText);
+            
+        let scores: any;
+        try {
+            scores = JSON.parse(cleanedText);
+        } catch (parseErr) {
+            console.warn('Initial JSON parse failed due to possible truncation, retrying DeepSeek scoring with 4096 maxTokens...');
+            const retryText = await callDeepSeek({
+                model: 'deepseek-v4-flash',
+                jsonMode: true,
+                messages: [{ role: 'user', content: prompt }],
+                userId,
+                maxTokens: 4096
+            });
+            cleanedText = retryText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
+            scores = JSON.parse(cleanedText);
+        }
         
         const compScore = Number(scores.compensation_score ?? scores.compensationScore ?? 50);
         const prodScore = Number(scores.product_fit_score ?? scores.productFitScore ?? 50);
