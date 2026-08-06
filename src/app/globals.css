@@ -1638,19 +1638,19 @@ body.light-theme .filter-item button.filter-dropdown-btn:hover {
   align-items: center !important;
   gap: 0.5rem !important;
   padding: 0.45rem 0.75rem !important;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
-  color: #f8fafc !important;
-  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  background: #f0f7ff !important;
+  color: #0f172a !important;
+  border: 2px solid #2563eb !important;
   border-radius: 9999px !important;
-  box-shadow: 0 14px 36px -4px rgba(15, 23, 42, 0.45), 0 0 20px rgba(59, 130, 246, 0.15) !important;
+  box-shadow: 0 10px 30px -4px rgba(37, 99, 235, 0.22), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
   max-width: 95vw;
 }
 
 body:not(.light-theme) .floating-save-bar {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  background: #0f172a !important;
   color: #f8fafc !important;
-  border: 1px solid rgba(59, 130, 246, 0.4) !important;
-  box-shadow: 0 14px 36px -4px rgba(0, 0, 0, 0.6), 0 0 24px rgba(59, 130, 246, 0.2) !important;
+  border: 2px solid #3b82f6 !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.25) !important;
 }
 
 /* Left Saved/Status Badge */
@@ -2034,8 +2034,7 @@ body.light-theme .accordion-summary-box {
   position: relative;
 }
 
-/* Desktop Action Bar Container — Light Mode Default */
-/* Desktop Action Bar Container — Premium Dark Slate & Navy Gradient Dock */
+/* Desktop Action Bar Container — Soft Blue Tint with 2px Solid Brand Border */
 .job-action-bar-desktop {
   position: fixed;
   bottom: 1.5rem;
@@ -2046,35 +2045,35 @@ body.light-theme .accordion-summary-box {
   align-items: center;
   gap: 1rem;
   padding: 0.6rem 1.25rem;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  color: #f8fafc;
-  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: #f0f7ff;
+  color: #0f172a;
+  border: 2px solid #2563eb;
   border-radius: 9999px;
-  box-shadow: 0 14px 36px -4px rgba(15, 23, 42, 0.45), 0 0 20px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 10px 30px -4px rgba(37, 99, 235, 0.22), 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .job-action-bar-desktop .btn-outline {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.18);
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #93c5fd;
 }
 
 .job-action-bar-desktop .btn-outline:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(59, 130, 246, 0.6);
-  color: #ffffff;
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1e40af;
 }
 
 .job-action-bar-divider {
   width: 1px;
   height: 24px;
-  background: rgba(255, 255, 255, 0.15);
+  background: #bfdbfe;
   margin: 0 0.5rem;
 }
 
 .job-action-bar-counter {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: #1e40af;
   font-weight: 600;
   padding: 0 0.25rem;
   white-space: nowrap;
@@ -2093,26 +2092,26 @@ body.light-theme .accordion-summary-box {
   flex-direction: column;
   gap: 0.75rem;
   align-items: flex-end;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  color: #f8fafc;
-  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: #f0f7ff;
+  color: #0f172a;
+  border: 2px solid #2563eb;
   border-radius: 16px;
   padding: 1rem;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 32px rgba(37, 99, 235, 0.2);
   min-width: 220px;
   animation: fadeIn 0.2s ease-out forwards;
 }
 
 .job-fab-menu .btn-outline {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.18);
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #93c5fd;
 }
 
 .job-fab-menu .btn-outline:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(59, 130, 246, 0.6);
-  color: #ffffff;
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1e40af;
 }
 
 @media (max-width: 768px) {
@@ -2139,18 +2138,18 @@ body.light-theme .accordion-summary-box {
   align-items: center;
   gap: 0.35rem;
   font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
+  border: 1px solid #93c5fd;
+  background: #ffffff;
+  color: #1e293b;
   transition: all 0.15s ease;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .job-step-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(59, 130, 246, 0.6);
-  color: #ffffff;
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1e40af;
 }
 
 .job-step-number {
@@ -2160,8 +2159,8 @@ body.light-theme .accordion-summary-box {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.25);
-  color: #60a5fa;
+  background: #dbeafe;
+  color: #1d4ed8;
   font-size: 0.75rem;
   font-weight: 700;
 }
@@ -2182,11 +2181,11 @@ body.light-theme .accordion-summary-box {
   bottom: 3.25rem;
   left: 50%;
   transform: translateX(-50%);
-  background: #0f172a;
-  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: #ffffff;
+  border: 2px solid #2563eb;
   border-radius: 12px;
   padding: 0.5rem;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.18);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -2204,7 +2203,7 @@ body.light-theme .accordion-summary-box {
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #f8fafc;
+  color: #0f172a;
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -2214,5 +2213,5 @@ body.light-theme .accordion-summary-box {
 }
 
 .job-apply-option-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #dbeafe;
 }

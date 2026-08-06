@@ -122,20 +122,18 @@ export function GlobalAutoApplyDock() {
         zIndex: 9990,
         width: '360px',
         maxWidth: 'calc(100vw - 3rem)',
-        background: isIntervention 
-          ? 'linear-gradient(135deg, #1e1b4b 0%, #311b92 100%)' 
-          : 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-        border: `1px solid ${isIntervention ? '#f59e0b' : 'rgba(59, 130, 246, 0.35)'}`,
+        background: isIntervention ? '#fffbe6' : '#f0f7ff',
+        border: `2px solid ${isIntervention ? '#f59e0b' : '#2563eb'}`,
         borderRadius: '0.85rem',
         padding: '1rem 1.1rem',
         boxShadow: isIntervention 
-          ? '0 14px 36px -4px rgba(245, 158, 11, 0.3), 0 0 20px rgba(245, 158, 11, 0.2)'
-          : '0 14px 36px -4px rgba(15, 23, 42, 0.45), 0 0 20px rgba(59, 130, 246, 0.15)',
+          ? '0 10px 25px -5px rgba(245, 158, 11, 0.25), 0 4px 15px rgba(0, 0, 0, 0.08)'
+          : '0 10px 30px -4px rgba(37, 99, 235, 0.22), 0 4px 12px rgba(0, 0, 0, 0.06)',
         display: 'flex',
         flexDirection: 'column',
         gap: '0.75rem',
         transition: 'all 0.25s ease-in-out',
-        color: '#f8fafc',
+        color: '#0f172a',
       }}
       id="global-auto-apply-dock"
     >
@@ -143,15 +141,15 @@ export function GlobalAutoApplyDock() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
           {isIntervention ? (
-            <AlertTriangle size={17} color="#fbbf24" className="animate-pulse" />
+            <AlertTriangle size={17} color="#d97706" className="animate-pulse" />
           ) : (
-            <Loader2 size={17} color="#60a5fa" className="animate-spin" />
+            <Loader2 size={17} color="#2563eb" className="animate-spin" />
           )}
-          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: isIntervention ? '#fbbf24' : '#60a5fa', letterSpacing: '0.01em' }}>
+          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: isIntervention ? '#d97706' : '#2563eb', letterSpacing: '0.01em' }}>
             {isIntervention ? 'Action Required' : 'Auto Apply Running'}
           </span>
           {isSimulated && (
-            <span style={{ fontSize: '0.62rem', color: '#c084fc', border: '1px solid #c084fc', borderRadius: '4px', padding: '0.05rem 0.3rem', fontWeight: 600 }}>
+            <span style={{ fontSize: '0.62rem', color: '#7c3aed', border: '1px solid #7c3aed', borderRadius: '4px', padding: '0.05rem 0.3rem', fontWeight: 600 }}>
               SIM
             </span>
           )}
@@ -160,7 +158,7 @@ export function GlobalAutoApplyDock() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
           <button
             onClick={() => setCollapsed(true)}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.2rem' }}
+            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.2rem' }}
             title="Minimize Dock"
           >
             <ChevronDown size={17} />
@@ -170,11 +168,11 @@ export function GlobalAutoApplyDock() {
 
       {/* Main Content Info */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-        <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {jobTitle}
         </span>
         {companyName && (
-          <span style={{ fontSize: '0.78rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <span style={{ fontSize: '0.78rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <Building2 size={12} /> {companyName}
           </span>
         )}
@@ -182,20 +180,20 @@ export function GlobalAutoApplyDock() {
 
       {/* Progress or Description */}
       {isIntervention && pendingIntervention ? (
-        <div style={{ fontSize: '0.78rem', color: '#fef3c7', background: 'rgba(245, 158, 11, 0.2)', padding: '0.5rem 0.65rem', borderRadius: '0.4rem', borderLeft: '3px solid #f59e0b', lineHeight: 1.4 }}>
+        <div style={{ fontSize: '0.78rem', color: '#92400e', background: 'rgba(245, 158, 11, 0.12)', padding: '0.5rem 0.65rem', borderRadius: '0.4rem', borderLeft: '3px solid #f59e0b', lineHeight: 1.4 }}>
           {pendingIntervention.description.length > 90 
             ? pendingIntervention.description.slice(0, 87) + '…'
             : pendingIntervention.description}
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', color: '#cbd5e1' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', color: '#475569' }}>
           <span>
             {activeSession.currentStep 
               ? activeSession.currentStep.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
               : 'Processing application...'}
           </span>
           {activeSession.stepsTotal && (
-            <span style={{ fontWeight: 600, color: '#60a5fa' }}>
+            <span style={{ fontWeight: 600, color: '#2563eb' }}>
               Step {activeSession.stepsCompleted}/{activeSession.stepsTotal}
             </span>
           )}
