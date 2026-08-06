@@ -1207,6 +1207,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                             {isUserAdded && (
                               <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>
                             )}
+                            {isEmailJob && (
+                              <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Emailed Job</span>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -1339,6 +1342,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       {getConfidenceBadge(job.automation_confidence)}
                       {isUserAdded && (
                         <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>
+                      )}
+                      {isEmailJob && (
+                        <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Emailed Job</span>
                       )}
                     </div>
                     <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} style={{ textDecoration: 'none' }} className={isEmailJob ? 'email-job-title' : 'job-title'}>
