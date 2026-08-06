@@ -3,12 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
+import { formatFailureExplanation } from '@/lib/auto-apply/failure-helpers';
 import { AutoApplyButton } from './AutoApplyButton';
 import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
-import { Bot, Building2, Clock, CheckCircle2 } from 'lucide-react';
+import { Bot, Building2, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface AutoApplyPanelProps {
   jobId: string;
@@ -147,6 +148,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
             <AutoApplyStatusBadge
               status={session.status}
               failureReason={session.failureReason ?? undefined}
+              failureDetails={session.failureDetails ?? undefined}
             />
           )}
         </span>
@@ -158,6 +160,30 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
           </span>
         )}
       </div>
+
+      {/* Failure Banner with Human Explanation */}
+      {session?.status === AutoApplyStatus.FAILED && (
+        <div
+          style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: '8px',
+            padding: '0.85rem 1rem',
+            margin: '0.5rem 0',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.65rem',
+            fontSize: '0.85rem',
+            color: 'var(--text-primary)',
+          }}
+        >
+          <AlertCircle size={18} style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            <strong style={{ color: '#ef4444' }}>Auto Apply Could Not Complete</strong>
+            <span>{formatFailureExplanation(session.failureReason, session.failureDetails)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Intervention Panel — takes over when worker is blocked */}
       {session?.status === AutoApplyStatus.NEEDS_INTERVENTION && pendingIntervention && (

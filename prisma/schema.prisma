@@ -362,6 +362,10 @@ model UserPreferences {
   // Contact & Personal Info
   phone             String?
   location          String?
+  streetAddress     String?  @map("street_address")
+  city              String?
+  state             String?
+  postalCode        String?  @map("postal_code")
   linkedinUrl       String?  @map("linkedin_url")
   githubUrl         String?  @map("github_url")
   websiteUrl        String?  @map("website_url")

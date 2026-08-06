@@ -71,7 +71,7 @@ export function InterventionPanel({
     !settings.eeocVeteran || 
     !settings.eeocDisability ||
     !settings.phone ||
-    !settings.location ||
+    (!settings.location && !settings.city) ||
     !settings.linkedinUrl
   );
 
@@ -152,9 +152,20 @@ export function InterventionPanel({
         </span>
       </div>
 
-      <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
-        {description}
-      </p>
+      {(() => {
+        let displayDesc = description;
+        if (reason === 'unknown_question') {
+          const match = description.match(/(?:requires your input|question):\s*["'“]?([^"'”\n]+)["'”]?/i);
+          if (match && match[1]) {
+            displayDesc = `I did not have enough information to answer: "${match[1].trim()}"`;
+          }
+        }
+        return (
+          <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+            {displayDesc}
+          </p>
+        );
+      })()}
 
       {screenshotUrl && (
         <img
@@ -337,8 +348,30 @@ export function InterventionPanel({
                     <input type="tel" value={settings?.phone || ''} onChange={(e) => handleSettingsChange('phone', e.target.value)} placeholder="e.g. +1 (555) 000-0000" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Location</label>
-                    <input type="text" value={settings?.location || ''} onChange={(e) => handleSettingsChange('location', e.target.value)} placeholder="e.g. New York, NY" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Street Address</label>
+                    <input type="text" value={settings?.streetAddress || ''} onChange={(e) => handleSettingsChange('streetAddress', e.target.value)} placeholder="e.g. 123 Main St, Apt 4B" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>City</label>
+                    <input type="text" value={settings?.city || ''} onChange={(e) => {
+                      const newCity = e.target.value;
+                      handleSettingsChange('city', newCity);
+                      const st = settings?.state || '';
+                      if (newCity || st) handleSettingsChange('location', [newCity, st].filter(Boolean).join(', '));
+                    }} placeholder="e.g. San Francisco" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>State / Province</label>
+                    <input type="text" value={settings?.state || ''} onChange={(e) => {
+                      const newSt = e.target.value;
+                      handleSettingsChange('state', newSt);
+                      const ct = settings?.city || '';
+                      if (ct || newSt) handleSettingsChange('location', [ct, newSt].filter(Boolean).join(', '));
+                    }} placeholder="e.g. CA" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>ZIP / Postal Code</label>
+                    <input type="text" value={settings?.postalCode || ''} onChange={(e) => handleSettingsChange('postalCode', e.target.value)} placeholder="e.g. 94105" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>LinkedIn URL</label>

@@ -55,11 +55,28 @@ export async function POST(request: NextRequest) {
       phone = phoneMatch[0].trim();
     }
 
-    // 4. Location (e.g., "San Francisco, CA" or "New York, NY 10001")
+    // 4. Location & Address
     let location = '';
-    const locationMatch = resume.match(/\b([A-Z][a-zA-Z\s]+,\s*[A-Z]{2}(?:\s+\d{5})?)\b/);
-    if (locationMatch) {
-      location = locationMatch[1].trim();
+    let streetAddress = '';
+    let city = '';
+    let state = '';
+    let postalCode = '';
+
+    // Match City, State ZIP (e.g., "San Francisco, CA 94105" or "New York, NY")
+    const cityStateZipMatch = resume.match(/\b([A-Z][a-zA-Z\s]+),\s*([A-Z]{2})(?:\s+(\d{5}(?:-\d{4})?))?\b/);
+    if (cityStateZipMatch) {
+      city = cityStateZipMatch[1].trim();
+      state = cityStateZipMatch[2].trim();
+      if (cityStateZipMatch[3]) {
+        postalCode = cityStateZipMatch[3].trim();
+      }
+      location = `${city}, ${state}`;
+    }
+
+    // Match Street Address line
+    const streetMatch = resume.match(/\b(\d{1,5}\s+[A-Za-z0-9\s.,#-]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Place|Pl|Suite|Ste|Apt)\b[^\n,]*)/i);
+    if (streetMatch) {
+      streetAddress = streetMatch[1].trim();
     }
 
     // 5. LinkedIn URL
@@ -95,6 +112,10 @@ export async function POST(request: NextRequest) {
       email,
       phone,
       location,
+      streetAddress,
+      city,
+      state,
+      postalCode,
       linkedinUrl,
       githubUrl,
       websiteUrl,

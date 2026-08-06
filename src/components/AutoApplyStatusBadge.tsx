@@ -1,11 +1,13 @@
 'use client';
 
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
+import { formatFailureExplanation } from '@/lib/auto-apply/failure-helpers';
 import { AlertTriangle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 interface AutoApplyStatusBadgeProps {
   status: AutoApplyStatus | string;
   failureReason?: string | null;
+  failureDetails?: string | null;
 }
 
 const RUNNING_STATUSES = new Set([
@@ -34,9 +36,12 @@ const STATUS_LABELS: Record<string, string> = {
   [AutoApplyStatus.SKIPPED]:              'Skipped',
 };
 
-export function AutoApplyStatusBadge({ status, failureReason }: AutoApplyStatusBadgeProps) {
+export function AutoApplyStatusBadge({ status, failureReason, failureDetails }: AutoApplyStatusBadgeProps) {
   const label = STATUS_LABELS[status] ?? status;
   const badgeClass = `badge badge-${status}`;
+  const humanExplanation = failureReason || failureDetails 
+    ? formatFailureExplanation(failureReason, failureDetails) 
+    : undefined;
 
   const renderIcon = () => {
     if (RUNNING_STATUSES.has(status as AutoApplyStatus)) {
@@ -51,8 +56,8 @@ export function AutoApplyStatusBadge({ status, failureReason }: AutoApplyStatusB
   return (
     <span
       className={badgeClass}
-      title={failureReason ?? undefined}
-      style={{ cursor: failureReason ? 'help' : 'default', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+      title={humanExplanation}
+      style={{ cursor: humanExplanation ? 'help' : 'default', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
     >
       {renderIcon()}
       {label}

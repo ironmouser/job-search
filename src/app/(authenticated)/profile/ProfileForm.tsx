@@ -263,6 +263,11 @@ export default function ProfileForm({
 
       if (data.name) setName(data.name);
       if (data.phone) handleSettingsChange('phone', data.phone);
+      if (data.streetAddress) handleSettingsChange('streetAddress', data.streetAddress);
+      if (data.city) handleSettingsChange('city', data.city);
+      if (data.state) handleSettingsChange('state', data.state);
+      if (data.postalCode) handleSettingsChange('postalCode', data.postalCode);
+      if (data.country) handleSettingsChange('country', data.country);
       if (data.location) handleSettingsChange('location', data.location);
       if (data.linkedinUrl) handleSettingsChange('linkedinUrl', data.linkedinUrl);
       if (data.githubUrl) handleSettingsChange('githubUrl', data.githubUrl);
@@ -610,7 +615,7 @@ export default function ProfileForm({
             </div>
           </div>
 
-          {/* Row 2: Phone Number & Location */}
+          {/* Row 2: Phone Number & Street Address */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
@@ -633,13 +638,98 @@ export default function ProfileForm({
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <MapPin size={14} className="text-accent" /> Location (City, State)
+                <MapPin size={14} className="text-accent" /> Street Address
               </label>
               <input
                 type="text"
-                value={settings.location || ''}
-                onChange={(e) => handleSettingsChange('location', e.target.value)}
-                placeholder='e.g. "San Francisco, CA"'
+                value={settings.streetAddress || ''}
+                onChange={(e) => handleSettingsChange('streetAddress', e.target.value)}
+                placeholder='e.g. "123 Main Street, Apt 4B"'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Row 3: City, State / Province, ZIP / Postal Code, Country */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1.25rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>City</label>
+              <input
+                type="text"
+                value={settings.city || ''}
+                onChange={(e) => {
+                  const newCity = e.target.value;
+                  handleSettingsChange('city', newCity);
+                  const stateVal = settings.state || '';
+                  if (newCity || stateVal) {
+                    handleSettingsChange('location', [newCity, stateVal].filter(Boolean).join(', '));
+                  }
+                }}
+                placeholder='e.g. "San Francisco"'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>State / Province</label>
+              <input
+                type="text"
+                value={settings.state || ''}
+                onChange={(e) => {
+                  const newState = e.target.value;
+                  handleSettingsChange('state', newState);
+                  const cityVal = settings.city || '';
+                  if (cityVal || newState) {
+                    handleSettingsChange('location', [cityVal, newState].filter(Boolean).join(', '));
+                  }
+                }}
+                placeholder='e.g. "CA"'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>ZIP / Postal Code</label>
+              <input
+                type="text"
+                value={settings.postalCode || ''}
+                onChange={(e) => handleSettingsChange('postalCode', e.target.value)}
+                placeholder='e.g. "94105"'
+                style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid var(--border-glass)",
+                  color: "var(--text-primary)",
+                  padding: "0.75rem",
+                  borderRadius: "8px",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Country</label>
+              <input
+                type="text"
+                value={settings.country || ''}
+                onChange={(e) => handleSettingsChange('country', e.target.value)}
+                placeholder='e.g. "United States"'
                 style={{
                   background: "rgba(0,0,0,0.2)",
                   border: "1px solid var(--border-glass)",

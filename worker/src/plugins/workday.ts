@@ -325,11 +325,28 @@ export class WorkdayPlugin extends ATSPlugin {
       }
     }
 
-    if (profile.location) {
+    const cityVal = profile.city || (profile.location ? profile.location.split(',')[0]?.trim() : '');
+    if (cityVal) {
       const locationField = page.locator('[data-automation-id="city"]');
       if (await locationField.count() > 0) {
-        await locationField.fill(profile.location.split(',')[0]?.trim() ?? '');
-        await logger.info('field_filled', 'Location field populated');
+        await locationField.fill(cityVal);
+        await logger.info('field_filled', 'City field populated');
+      }
+    }
+
+    if (profile.streetAddress) {
+      const addressField = page.locator('[data-automation-id="addressSection_addressLine1"]');
+      if (await addressField.count() > 0) {
+        await addressField.fill(profile.streetAddress);
+        await logger.info('field_filled', 'Street address field populated');
+      }
+    }
+
+    if (profile.postalCode) {
+      const postalField = page.locator('[data-automation-id="postalCode"]');
+      if (await postalField.count() > 0) {
+        await postalField.fill(profile.postalCode);
+        await logger.info('field_filled', 'Postal code field populated');
       }
     }
   }
@@ -367,7 +384,7 @@ export class WorkdayPlugin extends ATSPlugin {
           await logger.warn('unknown_question', `Unknown question encountered: ${label.substring(0, 100)}`);
           throw new InterventionError(
             InterventionReason.UNKNOWN_QUESTION,
-            `Workday has a question that requires your input: "${label.trim()}"`,
+            `I did not have enough information to answer: "${label.trim()}"`,
             page.url()
           );
         }

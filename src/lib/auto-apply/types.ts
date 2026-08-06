@@ -108,6 +108,10 @@ export interface UserProfile {
   email: string;
   phone?: string;
   location?: string;
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
   linkedinUrl?: string;
   websiteUrl?: string;
   usWorkAuthorization?: string;
