@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Loader2, ThumbsUp, RefreshCw, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { marked } from 'marked';
 import { generateStyledPdfHtml, PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
 import ResumeActions from './ResumeActions';
@@ -26,6 +27,7 @@ export default function ResumeAssetCard({
     initialCustomization: number;
     initialPdfSettings?: PdfStyleOptions;
 }) {
+    const router = useRouter();
     const [content, setContent] = useState(initialContent);
     const [previousContent, setPreviousContent] = useState<string | undefined>(initialPreviousContent);
     const [isReverting, setIsReverting] = useState(false);
@@ -145,6 +147,7 @@ export default function ResumeAssetCard({
             }
             
             setRegensUsed(prev => prev + 1);
+            router.refresh();
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -186,6 +189,7 @@ export default function ResumeAssetCard({
             }
             setContent(editContent);
             setIsEditing(false);
+            router.refresh();
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -211,6 +215,7 @@ export default function ResumeAssetCard({
             setContent(data.currentContent);
             setEditContent(data.currentContent);
             setPreviousContent(data.previousContent);
+            router.refresh();
         } catch (err: any) {
             setError(err.message);
         } finally {

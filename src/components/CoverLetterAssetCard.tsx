@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { marked } from 'marked';
+import { useRouter } from 'next/navigation';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadPdfButton from './DownloadPdfButton';
 import { cleanCompanyName, cleanCompanyLocation } from '@/lib/cleaners';
@@ -50,6 +51,7 @@ export default function CoverLetterAssetCard({
     companyLocation?: string;
     initialPdfSettings?: PdfStyleOptions;
 }) {
+    const router = useRouter();
     const today = new Date().toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' });
     const initialCompany = cleanCompanyName(companyName);
     const initialLoc = cleanCompanyLocation(companyLocation);
@@ -197,6 +199,7 @@ export default function CoverLetterAssetCard({
             }
             
             setRegensUsed(prev => prev + 1);
+            router.refresh();
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -246,6 +249,7 @@ export default function CoverLetterAssetCard({
             setSenderName(editSenderName);
             setSenderContact(editSenderContact);
             setIsEditing(false);
+            router.refresh();
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -273,6 +277,7 @@ export default function CoverLetterAssetCard({
             setContent(newCurrent);
             setEditContent(newCurrent);
             setPreviousContent(newPrevious);
+            router.refresh();
         } catch (err: any) {
             setError(err.message);
         } finally {

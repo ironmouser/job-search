@@ -66,6 +66,13 @@ export async function PUT(
       data: updateData,
     });
 
+    if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
+      await prisma.userJob.update({
+        where: { userId_jobId: { userId: session.user.id, jobId } },
+        data: { status: 'asset_generated' }
+      }).catch(err => console.warn('Failed to update userJob status:', err));
+    }
+
     return NextResponse.json({ success: true, asset: updatedAsset });
   } catch (error: any) {
     console.error('Error updating asset:', error);

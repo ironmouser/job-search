@@ -46,7 +46,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         if (!userJob) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
 
         let asset = userJob.job.applicationAssets[0];
-        if (!asset) return NextResponse.json({ error: 'Assets not generated yet' }, { status: 400 });
+        if (!asset) {
+            asset = await prisma.applicationAsset.upsert({
+                where: { userId_jobId: { userId: session.user.id, jobId } },
+                update: {},
+                create: {
+                    userId: session.user.id,
+                    jobId: jobId,
+                }
+            });
+        }
 
         if (asset.resumeRegensUsed >= 5) {
             return NextResponse.json({ error: 'Regeneration limit reached (5/5).' }, { status: 403 });
@@ -83,7 +92,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
                     const outputValidation = validateGeneratedAsset(newTailoredResume, baseResumeText, userJob.job.description || '', 'resume');
 
                     if (!outputValidation.severeHallucination) {
-                        await prisma.applicationAsset.update({
+                        const updatedAsset = await prisma.applicationAsset.update({
                             where: { id: asset.id },
                             data: {
                                 tailoredResumeMarkdown: newTailoredResume,
@@ -91,6 +100,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
                                 resumeRegensUsed: asset.resumeRegensUsed + 1
                             }
                         });
+
+                        if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
+                            await prisma.userJob.update({
+                                where: { userId_jobId: { userId: session.user.id, jobId } },
+                                data: { status: 'asset_generated' }
+                            }).catch(err => console.warn('Failed to update userJob status:', err));
+                        }
                     } else {
                         console.warn('[Output Validation] Resume generation rejected due to severe hallucination:', outputValidation.warnings);
                     }
