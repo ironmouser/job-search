@@ -232,6 +232,15 @@ export default function JobDetailsActionBar({
     setShowApplyPopover(false);
     setMobileApplyOpen(false);
     setIsFabOpen(false);
+
+    fetch(`/api/jobs/${currentJobId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'applied', applied_at: new Date().toISOString() })
+    })
+      .then(() => router.refresh())
+      .catch(console.error);
+
     if (jobUrl) {
       window.open(jobUrl, '_blank');
     }

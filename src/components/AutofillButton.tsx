@@ -1,7 +1,6 @@
-"use client";
-
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { Bot, Copy, Lock, Sparkles, AlertCircle, X, ExternalLink } from 'lucide-react';
 import { scrollToTop } from './BackToTopButton';
 import UpgradePrompt from './UpgradePrompt';
@@ -32,6 +31,7 @@ export default function AutofillButton({
   hasAssets?: boolean;
   generationsLeftThisWeek?: number;
 }) {
+  const router = useRouter();
   const [isLaunching, setIsLaunching] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -54,7 +54,9 @@ export default function AutofillButton({
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'applied', applied_at: new Date().toISOString() })
-    }).catch(console.error);
+    })
+      .then(() => router.refresh())
+      .catch(console.error);
 
     let targetUrl = jobUrl;
     const isInternalLink = jobUrl.includes('jobagenthq.com') || jobUrl.startsWith('/') || jobUrl.includes('localhost') || jobUrl.includes('railway.app');
@@ -108,7 +110,9 @@ export default function AutofillButton({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'applied', applied_at: new Date().toISOString() })
-      }).catch(console.error);
+      })
+        .then(() => router.refresh())
+        .catch(console.error);
 
       let targetUrl = jobUrl;
       const isInternalLink = jobUrl.includes('jobagenthq.com') || jobUrl.startsWith('/') || jobUrl.includes('localhost') || jobUrl.includes('railway.app');

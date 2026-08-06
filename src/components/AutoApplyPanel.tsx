@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { formatFailureExplanation } from '@/lib/auto-apply/failure-helpers';
 import { AutoApplyButton } from './AutoApplyButton';
@@ -54,6 +55,7 @@ const ACTIVE_STATUSES = new Set([
 const POLL_INTERVAL = 3000;
 
 export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps) {
+  const router = useRouter();
   const { data: authSession } = useSession();
   const userRole = (authSession?.user as any)?.role;
   const isAdmin = userRole === 'SYSTEM_ADMIN' || userRole === 'ORGANIZATION_ADMIN' || userRole === 'ADMIN';
@@ -127,14 +129,15 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
     return () => clearInterval(interval);
   }, [isActive, fetchStatus]);
 
-  // When auto-apply succeeds (real or simulation), mark this job for confetti on the dashboard
+  // When auto-apply succeeds (real or simulation), mark this job for confetti on the dashboard & refresh page
   useEffect(() => {
     if (
       session?.status === AutoApplyStatus.APPLIED
     ) {
       sessionStorage.setItem('just_applied_job_id', jobId);
+      router.refresh();
     }
-  }, [session?.status, jobId]);
+  }, [session?.status, jobId, router]);
 
   const pendingIntervention = session?.interventions?.[0] ?? null;
 
