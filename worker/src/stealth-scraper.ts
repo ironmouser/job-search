@@ -172,19 +172,16 @@ export async function fetchSingleJobDescriptionStealth(url: string, timeoutMs = 
 
     finalUrl = page.url();
 
-    // If destination is an SPA (e.g. ADP Workforce Now, Workday, iCIMS), wait for client-side rendering
-    const isSpaPage = (
-      finalUrl.includes('adp.com') ||
-      finalUrl.includes('workday') ||
-      finalUrl.includes('icims') ||
-      finalUrl.includes('taleo') ||
-      finalUrl.includes('myworkdayjobs')
-    );
+    // Universal SPA & Dynamic Content Check: if DOM does not yet contain adequate text, wait for network idle
+    const hasLoadedContent = await page.evaluate(() => {
+      const el = document.querySelector('main, article, [class*="description"], [id*="description"], [class*="posting"], [class*="details"]');
+      return el && el.textContent ? el.textContent.trim().length > 300 : false;
+    });
 
-    if (isSpaPage) {
-      console.log(`[StealthScraper] SPA target detected (${finalUrl}), waiting for client-side AJAX rendering...`);
-      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-      await page.waitForTimeout(2500);
+    if (!hasLoadedContent) {
+      console.log(`[StealthScraper] Dynamic SPA target detected on ${finalUrl}, waiting for client-side AJAX rendering...`);
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(2000);
     }
 
     // 1. Try extracting from JSON-LD schema (schema.org/JobPosting)
