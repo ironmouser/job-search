@@ -51,7 +51,7 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                 }
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 20000);
+                const timeoutId = setTimeout(() => controller.abort(), 45000);
 
                 const res = await fetch('https://api.deepseek.com/chat/completions', {
                     method: 'POST',

@@ -105,6 +105,22 @@ function parseOrRepairJson(rawText: string, attempt: number = 1): any {
     throw new Error('No JSON object found in the AI response.');
 }
 
+async function repairJsonWithAi(rawText: string, userId?: string): Promise<any> {
+    console.log('Attempting AI JSON repair subflow for malformed response...');
+    const repairSystem = `You are a strict JSON repair utility. Fix the provided text so that it is a valid JSON object matching the required schema. Output ONLY valid JSON without any markdown formatting or explanations. Key names MUST be: "tailored_resume", "cover_letter", "networking_message", "portfolio_recommendation".`;
+    const repairUser = `Fix and output valid JSON for this text:\n\n${rawText.slice(0, 8000)}`;
+    const repairedText = await callAiService({
+        system: repairSystem,
+        userPrompt: repairUser,
+        maxTokens: 5100,
+        jsonMode: true,
+        userId: userId,
+        temperature: 0.1,
+        model: 'deepseek-v4-flash'
+    });
+    return parseOrRepairJson(repairedText, 99);
+}
+
 async function callAiService(params: {
     system: string;
     userPrompt: string;
@@ -230,35 +246,45 @@ BASE RESUME:
 ${baseResume}
 
 ${COVER_LETTER_REFERENCE_EXAMPLES}
-
-${NETWORKING_REFERENCE_EXAMPLES}
 `;
 
     console.log(`Generating assets for ${company} - ${jobTitle}...`);
 
     const jsonTemp = 1.0; // User specified temperature setting
 
-    const fetchAndParseAssets = async (attempt: number) => {
+    const fetchRawAssets = async (attempt: number) => {
         let responseText = await callAiService({
             system: systemPrompt,
             userPrompt: userPrompt,
-            maxTokens: 8192,
+            maxTokens: 5100,
             jsonMode: true,
             userId: userId,
-            temperature: jsonTemp
+            temperature: jsonTemp,
+            model: 'deepseek-v4-flash'
         });
 
-        responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
-
-        return parseOrRepairJson(responseText, attempt);
+        return responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     };
 
     let assets;
     try {
-        assets = await fetchAndParseAssets(1);
+        const rawText = await fetchRawAssets(1);
+        try {
+            assets = parseOrRepairJson(rawText, 1);
+        } catch (localRepairErr) {
+            console.warn('Local JSON parse/repair failed on attempt 1. Invoking AI JSON repair subflow before full retry...');
+            try {
+                assets = await repairJsonWithAi(rawText, userId);
+            } catch (aiRepairErr) {
+                console.warn('AI JSON repair subflow also failed. Performing full asset generation retry...', (aiRepairErr as Error).message);
+                const rawText2 = await fetchRawAssets(2);
+                assets = parseOrRepairJson(rawText2, 2);
+            }
+        }
     } catch (firstErr) {
         console.warn('First asset generation attempt failed, retrying with second attempt...', (firstErr as Error).message);
-        assets = await fetchAndParseAssets(2);
+        const rawText2 = await fetchRawAssets(2);
+        assets = parseOrRepairJson(rawText2, 2);
     }
 
     try {

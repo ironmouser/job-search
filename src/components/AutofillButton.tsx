@@ -197,15 +197,15 @@ export default function AutofillButton({
           padding: '1rem'
         }}>
           <div style={{
-            background: 'var(--bg-primary, #0f172a)',
-            border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
+            background: 'var(--card, var(--bg-surface, #111111))',
+            border: '1px solid var(--border, rgba(255, 255, 255, 0.08))',
             borderRadius: '16px',
             padding: '1.75rem',
             maxWidth: '480px',
             width: '100%',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+            boxShadow: 'var(--shadow-lg, 0 20px 25px -5px rgba(0, 0, 0, 0.3))',
             position: 'relative',
-            color: 'var(--text-primary)'
+            color: 'var(--card-foreground, var(--text-primary))'
           }}>
             <button
               onClick={() => setShowNoGenerationsModal(false)}
@@ -275,15 +275,15 @@ export default function AutofillButton({
           padding: '1rem'
         }}>
           <div style={{
-            background: 'var(--bg-primary, #0f172a)',
-            border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
+            background: 'var(--card, var(--bg-surface, #111111))',
+            border: '1px solid var(--border, rgba(255, 255, 255, 0.08))',
             borderRadius: '16px',
             padding: '1.75rem',
             maxWidth: '520px',
             width: '100%',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+            boxShadow: 'var(--shadow-lg, 0 20px 25px -5px rgba(0, 0, 0, 0.3))',
             position: 'relative',
-            color: 'var(--text-primary)'
+            color: 'var(--card-foreground, var(--text-primary))'
           }}>
             <button
               onClick={() => setShowPromptGenerateModal(false)}

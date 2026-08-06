@@ -46,7 +46,10 @@
   --bg-color: #0a0a0a;
   --bg-surface: #111111;
   --bg-glass: #111111;
+  --bg-primary: #111111;
+  --card-bg: #111111;
   --border-glass: rgba(255, 255, 255, 0.08);
+  --border-color: rgba(255, 255, 255, 0.12);
   --text-primary: #ededed;
   --text-secondary: #737373;
   --accent-primary: #0070f3;
@@ -117,7 +120,10 @@ body.light-theme {
   --bg-color: #fafafa;
   --bg-surface: #ffffff;
   --bg-glass: #ffffff;
+  --bg-primary: #ffffff;
+  --card-bg: #ffffff;
   --border-glass: rgba(0, 0, 0, 0.08);
+  --border-color: rgba(0, 0, 0, 0.12);
   --text-primary: #0a0a0a;
   --text-secondary: #737373;
   --accent-glow: rgba(0, 112, 243, 0.1);

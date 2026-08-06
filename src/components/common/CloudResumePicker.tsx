@@ -250,31 +250,31 @@ export default function CloudResumePicker({
               style={{
                 width: '100%',
                 maxWidth: '460px',
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
+                backgroundColor: 'var(--card)',
+                border: '1px solid var(--border)',
                 borderRadius: '16px',
                 padding: '1.75rem',
-                color: '#0f172a',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                color: 'var(--card-foreground)',
+                boxShadow: 'var(--shadow-lg)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1.25rem',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
-                  <ExternalLink size={20} style={{ color: '#2563eb' }} /> Import Resume from Cloud Link
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--card-foreground)' }}>
+                  <ExternalLink size={20} style={{ color: 'var(--accent-primary)' }} /> Import Resume from Cloud Link
                 </h3>
                 <button
                   onClick={() => setShowUrlModal(false)}
                   disabled={urlLoading}
-                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', borderRadius: '6px' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', borderRadius: '6px' }}
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <p style={{ fontSize: '0.88rem', color: '#475569', margin: 0, lineHeight: 1.5 }}>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                 Paste any shared Google Drive, Google Docs, Dropbox, or public PDF/Word document URL below.
               </p>
 
