@@ -112,7 +112,7 @@ async function repairJsonWithAi(rawText: string, userId?: string): Promise<any> 
     const repairedText = await callAiService({
         system: repairSystem,
         userPrompt: repairUser,
-        maxTokens: 5100,
+        maxTokens: 8192,
         jsonMode: true,
         userId: userId,
         temperature: 0.1,
@@ -256,7 +256,7 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
         let responseText = await callAiService({
             system: systemPrompt,
             userPrompt: userPrompt,
-            maxTokens: 5100,
+            maxTokens: 8192,
             jsonMode: true,
             userId: userId,
             temperature: jsonTemp,
