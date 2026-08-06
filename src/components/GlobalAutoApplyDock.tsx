@@ -122,13 +122,13 @@ export function GlobalAutoApplyDock() {
         zIndex: 9990,
         width: '360px',
         maxWidth: 'calc(100vw - 3rem)',
-        background: isIntervention ? '#fffbe6' : '#f0f7ff',
-        border: `2px solid ${isIntervention ? '#f59e0b' : '#2563eb'}`,
+        background: isIntervention ? '#fffbe6' : '#ffffff',
+        border: `1px solid ${isIntervention ? '#f59e0b' : '#e2e8f0'}`,
         borderRadius: '0.85rem',
         padding: '1rem 1.1rem',
         boxShadow: isIntervention 
           ? '0 10px 25px -5px rgba(245, 158, 11, 0.25), 0 4px 15px rgba(0, 0, 0, 0.08)'
-          : '0 10px 30px -4px rgba(37, 99, 235, 0.22), 0 4px 12px rgba(0, 0, 0, 0.06)',
+          : '0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05)',
         display: 'flex',
         flexDirection: 'column',
         gap: '0.75rem',
