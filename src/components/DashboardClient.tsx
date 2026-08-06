@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2 } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
@@ -43,6 +43,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
   const router = useRouter();
   const [jobList, setJobList] = useState<any[]>(jobs || []);
   const [scoresExhausted, setScoresExhausted] = useState(initialScoresExhausted);
+  const [isScoringBackground, setIsScoringBackground] = useState(false);
   const [showNonUsModal, setShowNonUsModal] = useState(false);
   const [intlJobCount, setIntlJobCount] = useState(0);
 
@@ -740,7 +741,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
       return true;
     });
 
-    if (unscoredCurrentJobs.length === 0) return;
+    if (unscoredCurrentJobs.length === 0) {
+      setIsScoringBackground(false);
+      return;
+    }
+
+    setIsScoringBackground(true);
 
     // Debounce 500ms to avoid duplicate calls on rapid re-renders
     const timer = setTimeout(() => {
@@ -772,6 +778,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             if (!res.ok) {
               if (res.status === 403) {
                 setScoresExhausted(true);
+                setIsScoringBackground(false);
                 return;
               }
               const errorData = await res.json().catch(() => ({}));
@@ -785,10 +792,16 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             }
           } catch (e) {
             console.error('Failed background fetch and score batch:', e);
+          } finally {
+            if (unscoredCurrentJobs.length <= chunk.length) {
+              setIsScoringBackground(false);
+            }
           }
         };
 
         executeFetchAndScore();
+      } else {
+        setIsScoringBackground(false);
       }
     }, 500);
 
@@ -872,7 +885,18 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           onClick={() => setActiveFilter('scored')}
           style={{ cursor: 'pointer', padding: '1rem' }}
         >
-          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Scored</h4>
+          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span>Scored</span>
+            {isScoringBackground && (
+              <span title="Background scoring in progress..." style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <Loader2 
+                  size={13} 
+                  className="animate-spin" 
+                  style={{ color: 'var(--accent-primary)', animation: 'spin 1s linear infinite' }} 
+                />
+              </span>
+            )}
+          </h4>
           <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalScored}</h2>
         </div>
         <div 
