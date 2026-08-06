@@ -106,9 +106,8 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
 
     // Known anti-bot / protected sites: route directly to DigitalOcean Droplet Worker Playwright stealth scraper
     const isProtectedTarget = (
-        url.includes('ziprecruiter.com/ekm/') ||
-        url.includes('glassdoor.com/job-listing/') ||
-        url.includes('glassdoor.com/partner/jobListing') ||
+        url.includes('ziprecruiter.com') ||
+        url.includes('glassdoor.com') ||
         url.includes('workatastartup.com') ||
         url.includes('ycombinator.com')
     );

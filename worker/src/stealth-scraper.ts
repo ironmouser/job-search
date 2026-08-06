@@ -214,17 +214,22 @@ export async function fetchSingleJobDescriptionStealth(url: string, timeoutMs = 
     // 3. Extract DOM content using targeted selectors for ZipRecruiter, Glassdoor, and standard ATSs
     if (!description) {
       const domText = await page.evaluate(() => {
-        const primarySelectors = '#jobDescriptionText, .jobsearch-JobComponent-description, #JobDescriptionContainer, .jobDescriptionContent, .job_description, .jobDescriptionSection, [data-automation-id="jobPostingDescription"], .show-more-less-html__markup';
-        const fallbackSelectors = 'main, article, .job-description, #job-description, .posting-requirements, .section-description, [class*="description"], [class*="posting"]';
+        const primarySelectors = '#jobDescriptionText, .jobsearch-JobComponent-description, #JobDescriptionContainer, .jobDescriptionContent, .job_description, .job_description_container, .job_description_text, .job_details, .jobDescriptionSection, [data-automation-id="jobPostingDescription"], .show-more-less-html__markup, [class*="job_description"], [class*="jobDescription"]';
+        const fallbackSelectors = 'main, article, .job-description, #job-description, .posting-requirements, .section-description, [class*="description"], [class*="posting"], [class*="details"], [id*="description"], [id*="posting"]';
 
         const el = document.querySelector(primarySelectors) || document.querySelector(fallbackSelectors);
         if (el) {
-          // Clone element and strip script/style noise
           const clone = el.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll('script, style, noscript, nav, header, footer, iframe, svg').forEach((n: Element) => n.remove());
-          return clone.innerText || clone.textContent || '';
+          clone.querySelectorAll('script, style, noscript, nav, header, footer, iframe, svg, button, input').forEach((n: Element) => n.remove());
+          const txt = clone.innerText || clone.textContent || '';
+          if (txt.trim().length > 100) return txt.trim();
         }
-        return '';
+
+        // Body fallback if main container wasn't matched
+        const bodyClone = document.body.cloneNode(true) as HTMLElement;
+        bodyClone.querySelectorAll('script, style, noscript, nav, header, footer, iframe, svg, button, input').forEach((n: Element) => n.remove());
+        const bodyTxt = bodyClone.innerText || bodyClone.textContent || '';
+        return bodyTxt.trim().length > 200 ? bodyTxt.trim() : '';
       });
 
       if (domText && domText.trim().length > 100) {
