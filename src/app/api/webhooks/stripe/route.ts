@@ -10,14 +10,14 @@ function getPeriodEnd(subscription: Stripe.Subscription): Date | null {
   return periodEndSeconds ? new Date(periodEndSeconds * 1000) : null;
 }
 
-function getSubscriptionId(sub: string | Stripe.Subscription | null | undefined): string | null {
+function getSubscriptionId(sub: any): string | null {
   if (!sub) return null;
   if (typeof sub === "string") return sub;
   if (typeof sub === "object" && sub.id) return sub.id;
   return null;
 }
 
-function getCustomerId(cust: string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined): string | null {
+function getCustomerId(cust: any): string | null {
   if (!cust) return null;
   if (typeof cust === "string") return cust;
   if (typeof cust === "object" && cust.id) return cust.id;
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
 
   // ─── invoice.payment_succeeded ─────────────────────────────────────────────
   if (event.type === "invoice.payment_succeeded") {
-    const invoice = event.data.object as Stripe.Invoice;
+    const invoice = event.data.object as any;
     const subscriptionId = getSubscriptionId(invoice.subscription);
     const customerId = getCustomerId(invoice.customer);
     const customerEmail = invoice.customer_email;
