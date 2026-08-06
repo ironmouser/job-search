@@ -65,7 +65,12 @@ export function extractUrlFromStubDescription(desc?: string | null): string | nu
     return match ? match[0] : null;
 }
 
-async function fetchViaWorkerPlaywright(url: string): Promise<string | null> {
+export interface FetchJobDescriptionResult {
+    description: string;
+    finalUrl?: string;
+}
+
+async function fetchViaWorkerPlaywright(url: string): Promise<FetchJobDescriptionResult | null> {
     const workerUrl = process.env.WORKER_URL || 'http://167.99.55.186:3001';
     const workerApiKey = process.env.WORKER_API_KEY;
     if (!workerApiKey) return null;
@@ -90,14 +95,41 @@ async function fetchViaWorkerPlaywright(url: string): Promise<string | null> {
             const body = res.body as any;
             if (body?.success && body?.description) {
                 const formatted = await reformatJobDescriptionWithGemini(body.description);
-                if (isDescriptionAdequate(formatted)) return formatted;
-                if (isDescriptionAdequate(body.description)) return body.description;
+                const finalDesc = isDescriptionAdequate(formatted) ? formatted : body.description;
+                if (isDescriptionAdequate(finalDesc)) {
+                    return {
+                        description: finalDesc,
+                        finalUrl: body.finalUrl ? cleanJobUrl(body.finalUrl) : cleanJobUrl(url)
+                    };
+                }
             }
         }
     } catch (e: any) {
         console.warn(`[JobFetcher] Worker Playwright fetch failed for ${url}: ${e.message}`);
     }
     return null;
+}
+
+export async function fetchJobDescriptionDetailed(rawUrl: string): Promise<FetchJobDescriptionResult | null> {
+    if (!rawUrl) return null;
+    const url = cleanJobUrl(rawUrl);
+
+    // Known anti-bot / protected sites: route directly to DigitalOcean Droplet Worker Playwright stealth scraper
+    const isProtectedTarget = (
+        url.includes('ziprecruiter.com') ||
+        url.includes('glassdoor.com') ||
+        url.includes('workatastartup.com') ||
+        url.includes('ycombinator.com')
+    );
+
+    if (isProtectedTarget) {
+        console.info(`[JobFetcher] Protected target detected (${url}). Attempting Worker Playwright stealth scrape...`);
+        const workerResult = await fetchViaWorkerPlaywright(url);
+        if (workerResult) return workerResult;
+    }
+
+    const simpleDesc = await fetchJobDescription(rawUrl);
+    return simpleDesc ? { description: simpleDesc, finalUrl: url } : null;
 }
 
 export async function fetchJobDescription(rawUrl: string): Promise<string | null> {
@@ -115,7 +147,7 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
     if (isProtectedTarget) {
         console.info(`[JobFetcher] Protected target detected (${url}). Attempting Worker Playwright stealth scrape...`);
         const workerResult = await fetchViaWorkerPlaywright(url);
-        if (workerResult) return workerResult;
+        if (workerResult?.description) return workerResult.description;
     }
 
     // Fast-fail on known strict auth-walls where login forms are required
@@ -249,7 +281,7 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
     if (!isProtectedTarget) {
         console.info(`Attempting final fallback to Worker Playwright stealth browser for ${url}...`);
         const workerResult = await fetchViaWorkerPlaywright(url);
-        if (workerResult) return workerResult;
+        if (workerResult?.description) return workerResult.description;
     }
 
     return null;

@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { scoreJob } from '@/lib/scoring';
 
-import { fetchJobDescription, extractUrlFromStubDescription } from '@/lib/jobFetcher';
+import { fetchJobDescriptionDetailed, extractUrlFromStubDescription, FetchJobDescriptionResult } from '@/lib/jobFetcher';
 
 export async function POST(
     request: Request,
@@ -39,19 +39,23 @@ export async function POST(
             return NextResponse.json({ error: 'Job has no URL to fetch from' }, { status: 400 });
         }
 
-        let description: string | null = null;
+        let fetchResult: FetchJobDescriptionResult | null = null;
         let usedUrl: string = urlsToTry[0];
         for (const tryUrl of urlsToTry) {
-            description = await fetchJobDescription(tryUrl);
-            if (description) { usedUrl = tryUrl; break; }
+            fetchResult = await fetchJobDescriptionDetailed(tryUrl);
+            if (fetchResult?.description) { 
+                usedUrl = fetchResult.finalUrl || tryUrl; 
+                break; 
+            }
         }
 
-        if (!description) {
+        if (!fetchResult?.description) {
             return NextResponse.json({ error: 'Failed to scrape full job details. The site may be blocking automated access.' }, { status: 502 });
         }
 
         const updatePayload: any = {
-            description: description + `\n\nApply at: ${usedUrl}`
+            description: fetchResult.description + `\n\nApply at: ${usedUrl}`,
+            applicationUrl: usedUrl
         };
 
         // 3. Update the job
