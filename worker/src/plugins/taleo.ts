@@ -62,6 +62,8 @@ export class TaleoPlugin extends ATSPlugin {
       await applyBtn.click().catch(() => {});
       await browser.page.waitForTimeout(2000);
     }
+
+    await this.checkAccountGate(browser.page, context.jobUrl, this.displayName);
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {

@@ -92,15 +92,7 @@ export class GreenhousePlugin extends ATSPlugin {
     // for either the direct form container or the Greenhouse iframe.
     await browser.navigate(context.jobUrl);
 
-    // Check for login wall (some internal Greenhouse boards require auth)
-    const currentUrl = page.url();
-    if (currentUrl.includes('/users/sign_in') || currentUrl.includes('/login')) {
-      throw new InterventionError(
-        InterventionReason.LOGIN_REQUIRED,
-        'This Greenhouse board requires you to sign in. Please log in in the browser window.',
-        currentUrl
-      );
-    }
+    await this.checkAccountGate(page, context.jobUrl, this.displayName);
 
     // Wait for the Greenhouse app container or the application form fields
     const formSelectors = [

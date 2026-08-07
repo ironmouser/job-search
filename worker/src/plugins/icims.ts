@@ -59,30 +59,7 @@ export class ICIMSPlugin extends ATSPlugin {
       await logger.info('iframe_detected', 'Found iCIMS application iframe');
     }
 
-    // Check if login is strictly required
-    const isLoginRequired = await browser.page.$(
-      'input[name*="password" i], button:has-text("Sign In"), a:has-text("Log back in")'
-    );
-
-    const isGuestOption = await browser.page.$(
-      'button:has-text("Apply as Guest"), a:has-text("Apply without creating an account")'
-    );
-
-    if (isLoginRequired && !isGuestOption) {
-      if (isGuestOption) {
-        await (isGuestOption as any).click().catch(() => {});
-        await browser.page.waitForTimeout(1000);
-      }
-
-      const stillRequiresLogin = await browser.page.$('input[name*="password" i]');
-      if (stillRequiresLogin) {
-        throw new InterventionError(
-          InterventionReason.LOGIN_REQUIRED,
-          'iCIMS requires candidate account sign-in. Please log in or create an account to proceed.',
-          context.jobUrl
-        );
-      }
-    }
+    await this.checkAccountGate(browser.page, context.jobUrl, this.displayName);
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {

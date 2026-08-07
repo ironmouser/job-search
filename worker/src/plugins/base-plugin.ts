@@ -1,4 +1,4 @@
-import { ATSPlatform, ATSDetectionResult, WorkflowContext, WorkflowResult } from '../types';
+import { ATSPlatform, ATSDetectionResult, WorkflowContext, WorkflowResult, InterventionReason } from '../types';
 import { ExecutionLogger } from '../execution-logger';
 import { BrowserSession } from '../browser-session';
 
@@ -80,6 +80,57 @@ export abstract class ATSPlugin {
   ): Promise<WorkflowResult>;
 
   // ─── Shared Helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Universal helper to detect if a page is requiring candidate account creation,
+   * sign in, or password authentication across any ATS platform.
+   */
+  protected async checkAccountGate(
+    page: import('playwright').Page,
+    fallbackUrl: string,
+    platformDisplayName: string
+  ): Promise<void> {
+    const currentUrl = page.url();
+    const lowerUrl = currentUrl.toLowerCase();
+    const pageTitle = (await page.title().catch(() => '')) || '';
+    const lowerTitle = pageTitle.toLowerCase();
+
+    const urlMatch =
+      lowerUrl.includes('/login') ||
+      lowerUrl.includes('/signin') ||
+      lowerUrl.includes('/sign-in') ||
+      lowerUrl.includes('/sign_in') ||
+      lowerUrl.includes('autofillwithresume') ||
+      lowerUrl.includes('applymanually') ||
+      lowerUrl.includes('createaccount') ||
+      lowerUrl.includes('/create_account') ||
+      lowerUrl.includes('/create-account') ||
+      lowerUrl.includes('/register') ||
+      lowerUrl.includes('/auth/');
+
+    const titleMatch =
+      lowerTitle.includes('sign in') ||
+      lowerTitle.includes('log in') ||
+      lowerTitle.includes('create account') ||
+      lowerTitle.includes('create an account') ||
+      lowerTitle.includes('register');
+
+    const hasPasswordField = (await page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]').count().catch(() => 0)) > 0;
+    const domCreateAccount = (await page.locator('h1, h2, h3, div, button, a').filter({ hasText: /create account/i }).count().catch(() => 0)) > 0;
+    const domSignIn = (await page.locator('h1, h2, h3, button, a').filter({ hasText: /sign in/i }).count().catch(() => 0)) > 0;
+    const domPasswordReq = (await page.locator(':has-text("Password Requirements")').count().catch(() => 0)) > 0;
+    const domVerifyPassword = (await page.locator(':has-text("Verify New Password")').count().catch(() => 0)) > 0;
+
+    const isGuestOption = (await page.locator('button, a').filter({ hasText: /apply as guest|continue as guest|apply without account/i }).count().catch(() => 0)) > 0;
+
+    if (!isGuestOption && (urlMatch || titleMatch || hasPasswordField || domCreateAccount || domSignIn || domPasswordReq || domVerifyPassword)) {
+      throw new InterventionError(
+        InterventionReason.LOGIN_REQUIRED,
+        `${platformDisplayName} requires candidate account creation or sign in. Please log in or create an account to proceed.`,
+        currentUrl || fallbackUrl
+      );
+    }
+  }
 
   /**
    * Locates the final submit button within a frame/page using a priority-ordered
