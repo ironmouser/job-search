@@ -22,4 +22,5 @@ When writing or rewriting content for resumes, cover letters, networking message
 
 # Infrastructure & Deployment Conventions
 - **Auto Apply Worker**: Hosted on a DigitalOcean droplet accessible via `ssh root@167.99.55.186`.
+- **Process Restarts Alert**: Always explicitly alert the user whenever changes modify files under `worker/` or backend services requiring a process restart, `git pull`, or server update on the DigitalOcean droplet.
 
