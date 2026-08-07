@@ -14,7 +14,7 @@ export async function GET() {
         
         // Fetch all jobs for this user from UserJob to get the correct user-specific status
         const userJobs = await prisma.userJob.findMany({
-            where: { userId: session.user.id, status: { not: 'deleted' }, isArchived: false },
+            where: { userId: session.user.id, status: { not: 'deleted' } },
             include: {
                 job: {
                     select: { id: true, title: true, company: true, opportunityScores: { select: { totalScore: true } } }
@@ -23,15 +23,21 @@ export async function GET() {
             orderBy: { createdAt: 'desc' }
         });
 
-        const jobs = userJobs.map((uj: any) => ({
-            id: uj.job.id,
-            title: uj.job.title,
-            company: uj.job.company,
-            status: uj.status,
-            createdAt: uj.createdAt,
-            appliedAt: uj.appliedAt,
-            opportunityScores: uj.job.opportunityScores
-        }));
+        const jobs = userJobs.map((uj: any) => {
+            let status = (uj.status || '').toLowerCase();
+            if (uj.appliedAt && !['interviewing', 'offer', 'rejected'].includes(status)) {
+                status = 'applied';
+            }
+            return {
+                id: uj.job.id,
+                title: uj.job.title,
+                company: uj.job.company,
+                status,
+                createdAt: uj.createdAt,
+                appliedAt: uj.appliedAt,
+                opportunityScores: uj.job.opportunityScores
+            };
+        });
 
         // Funnel counts
         const funnel = {
@@ -52,7 +58,7 @@ export async function GET() {
 
         // Recent applied/interviewing activity
         const recentActivity = jobs
-            ?.filter(j => j.status === 'applied' || j.status === 'interviewing' || j.status === 'offer' || j.status === 'rejected')
+            ?.filter(j => j.status === 'applied' || j.appliedAt || j.status === 'interviewing' || j.status === 'offer' || j.status === 'rejected')
             .slice(0, 10);
 
         return NextResponse.json({ funnel, recentActivity, total: jobs?.length || 0 });

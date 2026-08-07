@@ -80,7 +80,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         }
 
         if (status) {
-            const updateData: any = { status };
+            const updateData: any = { status: String(status).toLowerCase() };
             if (applied_at) {
                 const headerStore = await headers();
                 const forwardedFor = headerStore.get('x-forwarded-for');
@@ -90,9 +90,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
                 updateData.ipAddress = ipAddress;
             }
 
-            const data = await prisma.userJob.update({
+            const data = await prisma.userJob.upsert({
                 where: { userId_jobId: { userId, jobId: id } },
-                data: updateData
+                update: updateData,
+                create: {
+                    userId,
+                    jobId: id,
+                    ...updateData
+                }
             });
 
             return NextResponse.json(data);

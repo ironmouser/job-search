@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, MoreVertical, MapPin, Trash2 } from 'lucide-react';
+import { ExternalLink, MoreVertical, MapPin, Trash2, Calendar } from 'lucide-react';
 
 type Job = {
     id: string;
@@ -11,6 +11,8 @@ type Job = {
     status: string;
     location: string;
     salary_range: string;
+    applied_at?: string | null;
+    created_at?: string | null;
 };
 
 const COLUMNS = [
@@ -25,6 +27,19 @@ const STATUS_COLORS: Record<string, string> = {
     interviewing: '#fcf49b78',
     offer: '#01e96e47',
     rejected: '#ff000029',
+};
+
+const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    try {
+        return new Date(dateStr).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    } catch {
+        return null;
+    }
 };
 
 export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
@@ -103,12 +118,12 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                             }}>
                                 <span>{col.label}</span>
                                 <span style={{ color: 'var(--text-secondary)' }}>
-                                    {jobs.filter(j => j.status === col.id).length}
+                                    {jobs.filter(j => j.status?.toLowerCase() === col.id).length}
                                 </span>
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '100px' }}>
-                                {jobs.filter(j => j.status === col.id).map(job => (
+                                {jobs.filter(j => j.status?.toLowerCase() === col.id).map(job => (
                                     <div key={job.id} className="glass-card pipeline-card" style={{ padding: '1rem', position: 'relative', background: STATUS_COLORS[job.status?.toLowerCase()] || STATUS_COLORS[col.id] }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{job.company}</h4>
@@ -154,8 +169,13 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                                 {job.title}
                                             </Link>
                                         </h3>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.75rem' }}>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                                             {job.location && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={14} /> {job.location}</span>}
+                                            {job.applied_at && (
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }} title="Date Applied">
+                                                    <Calendar size={14} /> Applied {formatDate(job.applied_at)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -171,6 +191,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Company</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Role</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Status</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Date Applied</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Location</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Salary</th>
                                 <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Action</th>
@@ -201,6 +222,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                             {COLUMNS.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>{c.label}</option>)}
                                         </select>
                                     </td>
+                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{formatDate(job.applied_at) || 'N/A'}</td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.location || 'Remote'}</td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.salary_range || 'Not Listed'}</td>
                                     <td style={{ padding: '1rem' }}>
@@ -217,7 +239,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                             ))}
                             {jobs.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No jobs in pipeline.</td>
+                                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No jobs in pipeline.</td>
                                 </tr>
                             )}
                         </tbody>
