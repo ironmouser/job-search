@@ -144,35 +144,61 @@ export abstract class ATSPlugin {
       if (email && password) {
         try {
           const emailInput = page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
-          const passwordInput = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]').first();
+          const passwordInputs = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
 
-          if (await emailInput.count() > 0 && await passwordInput.count() > 0) {
+          if (await emailInput.count() > 0 && await passwordInputs.count() > 0) {
             await emailInput.fill(email);
-            await passwordInput.fill(password);
+            
+            // Fill primary password
+            await passwordInputs.nth(0).fill(password);
 
-            const confirmInput = page.locator('input[name*="confirm" i], input[name*="verify" i], [data-automation-id*="verifyPassword" i], [data-automation-id*="confirmPassword" i]').first();
-            if (await confirmInput.count() > 0) {
-              await confirmInput.fill(password);
+            // Fill verify password if a second password field exists (e.g. Workday Create Account)
+            if (await passwordInputs.count() > 1) {
+              await passwordInputs.nth(1).fill(password);
+            } else {
+              const confirmInput = page.locator('input[name*="confirm" i], input[name*="verify" i], [data-automation-id*="verifyPassword" i], [data-automation-id*="confirmPassword" i]').first();
+              if (await confirmInput.count() > 0) {
+                await confirmInput.fill(password);
+              }
             }
 
-            const termsCheckbox = page.locator('input[type="checkbox"][name*="term" i], input[type="checkbox"][name*="privacy" i], [data-automation-id*="agree" i]').first();
+            const termsCheckbox = page.locator('input[type="checkbox"][name*="term" i], input[type="checkbox"][name*="privacy" i], [data-automation-id*="agree" i], [data-automation-id*="checkbox" i]').first();
             if (await termsCheckbox.count() > 0) {
               await termsCheckbox.check().catch(() => {});
             }
 
-            const submitBtn = page.locator('button[type="submit"], [data-automation-id*="createAccount" i], [data-automation-id*="submit" i], [data-automation-id*="signIn" i], button:has-text("Create Account"), button:has-text("Sign In"), button:has-text("Register"), button:has-text("Log In")').first();
+            const submitBtn = page.locator('button[type="submit"], [data-automation-id="createAccountSubmitButton"], [data-automation-id="signInSubmitButton"], [data-automation-id*="createAccount" i], [data-automation-id*="signIn" i], [data-automation-id*="submit" i], button:has-text("Create Account"), button:has-text("Sign In"), button:has-text("Register"), button:has-text("Log In")').first();
             if (await submitBtn.count() > 0) {
               await submitBtn.click();
-              await page.waitForTimeout(3000);
-
-              // Re-check if gate is still active after submitting credentials
-              const stillGated = (await page.locator('input[type="password"]').count().catch(() => 0)) > 0;
-              if (!stillGated) {
-                return; // Successfully created account or signed in!
+              
+              // Wait up to 8 seconds for navigation or password field disappearance
+              for (let i = 0; i < 8; i++) {
+                await page.waitForTimeout(1000);
+                const isPasswordStillVisible = (await page.locator('input[type="password"]').count().catch(() => 0)) > 0;
+                if (!isPasswordStillVisible) {
+                  return; // Gate successfully cleared!
+                }
               }
+
+              // Check if an error message is visible on the page (e.g. password requirements, invalid login)
+              const errorEl = page.locator('[data-automation-id*="error" i], .error-msg, [aria-invalid="true"], [role="alert"]').first();
+              let errorDetails = '';
+              if (await errorEl.count() > 0) {
+                const text = await errorEl.textContent().catch(() => '');
+                if (text && text.trim().length > 0) {
+                  errorDetails = ` Validation feedback: "${text.trim().slice(0, 150)}"`;
+                }
+              }
+
+              throw new InterventionError(
+                InterventionReason.LOGIN_REQUIRED,
+                `Submitted credentials, but the account gate remains active.${errorDetails} Please verify your password meets Workday requirements (uppercase, lowercase, number, special char, min 8 chars).`,
+                currentUrl || fallbackUrl
+              );
             }
           }
-        } catch {
+        } catch (authErr) {
+          if (authErr instanceof InterventionError) throw authErr;
           // Automated credential entry encountered error — fallback to intervention
         }
       }
