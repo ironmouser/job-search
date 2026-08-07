@@ -102,7 +102,8 @@ export class WorkdayPlugin extends ATSPlugin {
     const applySelectors = [
       '[data-automation-id="applyButton"]',
       '[data-automation-id="Apply"]',
-      'a[href*="apply"]',
+      'a[data-automation-id*="apply" i]',
+      'button[data-automation-id*="apply" i]',
       'button:has-text("Apply")',
       'a:has-text("Autofill with Resume")',
       'button:has-text("Autofill with Resume")',
