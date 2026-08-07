@@ -145,29 +145,32 @@ export class WorkdayPlugin extends ATSPlugin {
    */
   private async checkLoginOrCreateAccount(page: import('playwright').Page, fallbackUrl: string): Promise<void> {
     const currentUrl = page.url();
+    const lowerUrl = currentUrl.toLowerCase();
     const pageTitle = (await page.title().catch(() => '')) || '';
+    const lowerTitle = pageTitle.toLowerCase();
 
     const urlMatch =
-      currentUrl.includes('/login') ||
-      currentUrl.includes('/signin') ||
-      currentUrl.includes('autofillWithResume') ||
-      currentUrl.includes('applyManually') ||
-      currentUrl.includes('createAccount') ||
-      currentUrl.includes('register') ||
-      currentUrl.includes('/auth');
+      lowerUrl.includes('/login') ||
+      lowerUrl.includes('/signin') ||
+      lowerUrl.includes('autofillwithresume') ||
+      lowerUrl.includes('applymanually') ||
+      lowerUrl.includes('createaccount') ||
+      lowerUrl.includes('register') ||
+      lowerUrl.includes('/auth');
 
     const titleMatch =
-      pageTitle.toLowerCase().includes('sign in') ||
-      pageTitle.toLowerCase().includes('log in') ||
-      pageTitle.toLowerCase().includes('create account') ||
-      pageTitle.toLowerCase().includes('register');
+      lowerTitle.includes('sign in') ||
+      lowerTitle.includes('log in') ||
+      lowerTitle.includes('create account') ||
+      lowerTitle.includes('register');
 
-    const domCreateAccount = (await page.locator('h1, h2, h3, div, button, a').filter({ hasText: /^create account$/i }).count().catch(() => 0)) > 0;
-    const domSignIn = (await page.locator('h1, h2, h3, button, a').filter({ hasText: /^sign in$/i }).count().catch(() => 0)) > 0;
-    const domPasswordReq = (await page.locator('text=Password Requirements').count().catch(() => 0)) > 0;
-    const domVerifyPassword = (await page.locator('text=Verify New Password').count().catch(() => 0)) > 0;
+    const hasPasswordField = (await page.locator('input[type="password"], [data-automation-id*="password" i]').count().catch(() => 0)) > 0;
+    const domCreateAccount = (await page.locator('h1, h2, h3, div, button, a').filter({ hasText: /create account/i }).count().catch(() => 0)) > 0;
+    const domSignIn = (await page.locator('h1, h2, h3, button, a').filter({ hasText: /sign in/i }).count().catch(() => 0)) > 0;
+    const domPasswordReq = (await page.locator('text=/password requirements/i, :has-text("Password Requirements")').count().catch(() => 0)) > 0;
+    const domVerifyPassword = (await page.locator('text=/verify new password/i, :has-text("Verify New Password")').count().catch(() => 0)) > 0;
 
-    if (urlMatch || titleMatch || domCreateAccount || domSignIn || domPasswordReq || domVerifyPassword) {
+    if (urlMatch || titleMatch || hasPasswordField || domCreateAccount || domSignIn || domPasswordReq || domVerifyPassword) {
       throw new InterventionError(
         InterventionReason.LOGIN_REQUIRED,
         'Workday requires candidate account creation or sign in. Please log in or create an account to proceed.',
