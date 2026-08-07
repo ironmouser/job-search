@@ -143,6 +143,9 @@ export abstract class ATSPlugin {
 
       if (email && password) {
         try {
+          // Wait briefly for input fields to render in SPA DOM
+          await page.waitForSelector('input[type="email"], input[type="password"], [data-automation-id*="email" i], [data-automation-id*="password" i]', { timeout: 3000 }).catch(() => {});
+
           const emailInput = page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
           const passwordInputs = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
 
@@ -180,19 +183,19 @@ export abstract class ATSPlugin {
                 }
               }
 
-              // Check if an error message is visible on the page (e.g. password requirements, invalid login)
-              const errorEl = page.locator('[data-automation-id*="error" i], .error-msg, [aria-invalid="true"], [role="alert"]').first();
+              // Check if an error message is visible on the page
+              const errorEl = page.locator('[data-automation-id*="error" i], [data-automation-id="alert"], .error-msg, [aria-invalid="true"], [role="alert"], :has-text("already exists"), :has-text("Invalid user name"), :has-text("Password Requirements")').first();
               let errorDetails = '';
               if (await errorEl.count() > 0) {
                 const text = await errorEl.textContent().catch(() => '');
                 if (text && text.trim().length > 0) {
-                  errorDetails = ` Validation feedback: "${text.trim().slice(0, 150)}"`;
+                  errorDetails = ` Portal message: "${text.trim().slice(0, 150)}"`;
                 }
               }
 
               throw new InterventionError(
                 InterventionReason.LOGIN_REQUIRED,
-                `Submitted credentials, but the account gate remains active.${errorDetails} Please verify your password meets Workday requirements (uppercase, lowercase, number, special char, min 8 chars).`,
+                `Attempted auto-fill, but the account gate is still active.${errorDetails} Please ensure your password meets Workday requirements (uppercase, lowercase, number, special char, min 8 chars).`,
                 currentUrl || fallbackUrl
               );
             }

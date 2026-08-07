@@ -282,26 +282,31 @@ export function InterventionPanel({
               </p>
               
               {reason === 'login_required' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Email</label>
-                    <input
-                      type="email"
-                      value={settings?.emailAddress || ''}
-                      onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
-                      placeholder="e.g. user@example.com"
-                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}
-                    />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Email</label>
+                      <input
+                        type="email"
+                        value={settings?.emailAddress || ''}
+                        onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
+                        placeholder="e.g. user@example.com"
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Password</label>
+                      <input
+                        type="password"
+                        value={settings?.defaultAccountPassword || ''}
+                        onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
+                        placeholder="Enter password for portal account"
+                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}
+                      />
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Password</label>
-                    <input
-                      type="password"
-                      value={settings?.defaultAccountPassword || ''}
-                      onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
-                      placeholder="Enter password for portal account"
-                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}
-                    />
+                  <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.04)', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                    💡 <strong>Password Requirements:</strong> Workday requires 8+ characters including an uppercase letter, lowercase letter, number, and special character (e.g. <code>!</code>, <code>@</code>, <code>#</code>, <code>$</code>, <code>%</code>).
                   </div>
                 </div>
               )}
