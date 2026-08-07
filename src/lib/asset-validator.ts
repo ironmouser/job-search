@@ -14,14 +14,25 @@ const LEGITIMATE_CAREER_KEYWORDS = [
     'built', 'engineered', 'developed', 'architected', 'design', 'designed', 'leadership',
     'technical', 'soft skill', 'work', 'career', 'qualification', 'qualifications', 'rewrite',
     'word', 'words', 'version', 'summary', 'profile', 'accomplishment', 'accomplishments',
-    'impact', 'results', 'experience', 'certification', 'certifications', 'education'
+    'impact', 'results', 'experience', 'certification', 'certifications', 'education',
+    'interested', 'interest', 'join', 'joining', 'apply', 'applying', 'application', 'fit',
+    'culture', 'team', 'mission', 'value', 'values', 'salary', 'compensation', 'pay', 'rate',
+    'environment', 'start', 'available', 'availability', 'sponsorship', 'authorized', 'relocate',
+    'relocation', 'remote', 'hybrid', 'onsite', 'strength', 'strengths', 'weakness', 'weaknesses',
+    'challenge', 'conflict', 'goal', 'goals', 'future', 'background', 'opportunity', 'position',
+    'hire', 'hiring', 'interview', 'answer', 'question', 'describe', 'explain', 'tell', 'workplace',
+    'management', 'style', 'philosophy', 'reason', 'looking', 'leave', 'leaving', 'expectations',
+    'coworker', 'coworkers', 'colleague', 'colleagues', 'boss', 'supervisor', 'supervisors',
+    'stakeholder', 'stakeholders', 'client', 'clients', 'customer', 'customers', 'peer', 'peers',
+    'mentor', 'mentee', 'report', 'reports', 'when', 'have', 'would', 'did', 'if', 'which',
+    'superpower', 'superpowers', 'power', 'scale', 'rating', 'rank', 'do', 'can', 'could', 'are', 'about'
 ];
 
 // Patterns indicative of off-topic or malicious requests
 const OFF_TOPIC_PATTERNS = [
     /\b(math|calculus|algebra|solve|equation)\b/i,
     /\b(write|create|code|generate)\s+(a|an)?\s*(python|javascript|java|c\+\+|rust|go|sql|bash|html)\s+(script|program|function|code)\b/i,
-    /\b(who\s+is|what\s+is|where\s+is|when\s+did|why\s+does|how\s+many)\b(?!.*\b(resume|job|role|cover letter|company|skills?)\b)/i,
+    /\b(who\s+is|what\s+is|where\s+is|when\s+did|why\s+does|how\s+many)\b(?!.*\b(resume|job|role|cover letter|company|skills?|experience|salary|pay|compensation|availability|start|environment|team|leadership|management|interest|interested|joining|background|fit|qualifications?|application|interview|position|opportunity|work|career|strength|weakness|challenge|accomplishment|achievement|project|goals?|sponsorship|relocation|years|coworkers?|colleagues?|boss|supervisors?|stakeholders?|clients?|customers?|peers?|mentors?|superpowers?|powers?|scale|rating)\b)/i,
     /\b(poem|story|song|essay|joke|riddle|recipe|haiku|fiction|novel)\b/i,
     /\b(weather|sports|score|game|movie|president|politics|stock|crypto|bitcoin)\b/i,
     /\b(ignore|system|jailbreak|prompt|instructions)\b/i
@@ -33,6 +44,7 @@ const OFF_TOPIC_PATTERNS = [
  * - Resume: skills, experience, bullet points, metrics, formatting.
  * - Cover Letter: tone, paragraph structure, company alignment, interview CTA.
  * - Networking: outreach, LinkedIn message, cold email, recruiter note, short intro.
+ * - QA: Application and interview questions.
  */
 export function validateCustomInstructionSemantics(
     instruction: string | undefined,
@@ -85,7 +97,7 @@ export function validateCustomInstructionSemantics(
         }
 
         // Q&A Question Relevance Check: Ensure input pertains to job applications, interviews, or career qualifications
-        const qaRelevancePattern = /\b(why|how|what|describe|explain|tell|experience|background|salary|role|company|job|strength|weakness|challenge|team|fit|work|accomplishment|skill|qualification|qualifications|application|interview|conflict|achievement|leadership|project|manager|career|hire|position)\b/i;
+        const qaRelevancePattern = /\b(why|how|what|when|where|which|if|have|did|would|do|can|could|are|describe|explain|tell|share|give|provide|list|detail|experience|background|salary|compensation|pay|role|company|job|strength|weakness|challenge|team|fit|work|accomplishment|skill|qualification|qualifications|application|interview|conflict|achievement|leadership|project|manager|management|career|hire|hiring|position|interested|interest|join|joining|apply|applying|availability|start|sponsorship|environment|culture|values|mission|goals|opportunity|looking|leave|leaving|style|philosophy|coworker|coworkers|colleague|colleagues|boss|supervisor|supervisors|stakeholder|stakeholders|client|clients|customer|customers|peer|peers|mentor|mentee|superpower|superpowers|power|scale|rate|rating|rank|about)\b/i;
         
         if (!qaRelevancePattern.test(lower) && !LEGITIMATE_CAREER_KEYWORDS.some(kw => lower.includes(kw))) {
             return {
@@ -93,6 +105,8 @@ export function validateCustomInstructionSemantics(
                 reason: "The prompt must be a job-application or interview-related question (e.g., 'Why do you want to work at this company?')."
             };
         }
+
+        return { isValid: true };
     }
 
     // Short instructions (< 25 chars) like "emphasize React" or "make it concise" pass if no off-topic/cross-asset triggers hit
