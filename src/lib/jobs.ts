@@ -173,9 +173,9 @@ export async function normalizeAndSaveJobs(
             brandNewCandidates.push(jobData);
         }
     }
-    if (dbDedupDropped > 0) {
-        const remaining = knownGoodJobs.length + brandNewCandidates.length;
-        onProgress?.(remaining, `Skipped ${dbDedupDropped} role${dbDedupDropped === 1 ? '' : 's'} you already have in your list`);
+    if (dbDedupDropped > 0 || knownGoodJobs.length > 0) {
+        const totalAlreadyHave = dbDedupDropped + knownGoodJobs.length;
+        onProgress?.(brandNewCandidates.length, `Skipped ${totalAlreadyHave} role${totalAlreadyHave === 1 ? '' : 's'} already in your list`);
     }
 
     // Tier 2: Batched Rapid Triage via DeepSeek (Lite Pass)
@@ -183,7 +183,7 @@ export async function normalizeAndSaveJobs(
 
     if (brandNewCandidates.length > 0 && searchKeyword) {
         console.log(`[AI Triage] Running DeepSeek rapid pre-screening on ${brandNewCandidates.length} new candidate jobs for keyword "${searchKeyword}"...`);
-        onProgress?.(knownGoodJobs.length + brandNewCandidates.length, `Running AI quality check on ${brandNewCandidates.length} new listing${brandNewCandidates.length === 1 ? '' : 's'}...`);
+        onProgress?.(brandNewCandidates.length, `Running AI quality check on ${brandNewCandidates.length} new listing${brandNewCandidates.length === 1 ? '' : 's'}...`);
         
         const chunkSize = 20;
         for (let i = 0; i < brandNewCandidates.length; i += chunkSize) {
@@ -241,7 +241,7 @@ export async function normalizeAndSaveJobs(
         }
         const droppedByAI = brandNewCandidates.length - approvedCandidates.length;
         if (droppedByAI > 0) {
-            onProgress?.(knownGoodJobs.length + approvedCandidates.length, `AI filtered out ${droppedByAI} poor match${droppedByAI === 1 ? '' : 'es'} based on your profile`);
+            onProgress?.(approvedCandidates.length, `AI filtered out ${droppedByAI} poor match${droppedByAI === 1 ? '' : 'es'} based on your profile`);
         }
     } else {
         approvedCandidates.push(...brandNewCandidates);
@@ -254,8 +254,11 @@ export async function normalizeAndSaveJobs(
     const userAllocationUrls = new Set(userAllocationJobs.map(j => j.url));
     let newSavedCount = 0;
 
-    if (userAllocationJobs.length > 0) {
-        onProgress?.(userAllocationJobs.length, `Saving ${userAllocationJobs.length} qualified job${userAllocationJobs.length === 1 ? '' : 's'} to your list...`);
+    const newCandidatesCount = approvedCandidates.length;
+    if (newCandidatesCount === 0) {
+        onProgress?.(0, 'No new job listings to add (all discovered roles were already in your list or filtered out)');
+    } else {
+        onProgress?.(newCandidatesCount, `Finalizing ${newCandidatesCount} new qualified job${newCandidatesCount === 1 ? '' : 's'} for your list...`);
     }
     const processedUrls: string[] = [];
 

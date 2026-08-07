@@ -215,7 +215,7 @@ export default function SyncOverlay({
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                   {isRefining
-                    ? 'Refining your matches...'
+                    ? (displayCount === 1 ? 'Refining 1 Candidate Match...' : `Refining ${displayCount} Candidate Matches...`)
                     : (displayCount === 1 ? '1 Job Found So Far' : `${displayCount} Jobs Found So Far`)
                   }
                 </div>
@@ -226,7 +226,7 @@ export default function SyncOverlay({
                 )}
                 {isRefining && (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Removing duplicates, poor matches, and roles you already have
+                    Filtering duplicates, non-matches & existing list roles
                   </div>
                 )}
               </div>

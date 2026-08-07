@@ -118,7 +118,7 @@ export async function POST(request: Request) {
                     sendEvent({
                         type: 'progress',
                         foundCount: totalRawJobsFound,
-                        message: `Saving and normalizing ${totalRawJobsFound} discovered jobs...`
+                        message: `Refining ${totalRawJobsFound} discovered job listings...`
                     });
 
                     const savedJobs = await normalizeAndSaveJobs(allRawJobs, userId, {
