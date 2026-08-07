@@ -156,41 +156,75 @@ export class WorkdayPlugin extends ATSPlugin {
     logger: ExecutionLogger
   ): Promise<void> {
     const page = browser.page;
-    await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
-    // Step 1: Upload resume
-    const resumePath = await browser.writeMarkdownToPdf(
-      context.resumeMarkdown,
-      `resume_${context.sessionId}.pdf`
-    );
+    // Workday applications are multi-step wizards (usually 3 to 6 steps).
+    // Loop through each step, filling fields, answering questions, and clicking "Save and Continue"
+    // until reaching the final Review / Submit page.
+    const maxWizardSteps = 8;
+    for (let step = 1; step <= maxWizardSteps; step++) {
+      await logger.info('wizard_step', `Processing Workday application step ${step}`);
 
-    const resumeInput = page.locator('[data-automation-id="file-upload-input-ref"]').first();
-    if (await resumeInput.count() > 0) {
-      await resumeInput.setInputFiles(resumePath);
-      await logger.info('resume_uploaded', 'Resume uploaded to Workday');
-      // Wait for Workday to parse the resume
-      await page.waitForTimeout(3000);
-    } else {
-      await logger.warn('resume_upload_skipped', 'Could not find resume upload field');
-    }
+      // Check if account gate is active (e.g. login/create account)
+      await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
-    // Step 2: Fill standard fields
-    await this.fillStandardFields(browser, context, logger);
+      // Step 1: Upload resume (if upload input exists on current step)
+      const resumeInput = page.locator('[data-automation-id="file-upload-input-ref"]').first();
+      if (await resumeInput.count() > 0) {
+        const resumePath = await browser.writeMarkdownToPdf(
+          context.resumeMarkdown,
+          `resume_${context.sessionId}.pdf`
+        );
+        await resumeInput.setInputFiles(resumePath).catch(() => {});
+        await logger.info('resume_uploaded', 'Resume uploaded to Workday');
+        await page.waitForTimeout(3000);
+      }
 
-    // Step 3: Handle dynamic questions
-    await this.answerDynamicQuestions(browser, context, logger);
+      // Step 2: Fill standard fields (Name, Phone, Address, City, Postal)
+      await this.fillStandardFields(browser, context, logger);
 
-    // Step 4: Upload cover letter if field exists
-    const clPath = await browser.writeMarkdownToPdf(
-      context.coverLetterMarkdown,
-      `cover_letter_${context.sessionId}.pdf`
-    );
+      // Step 3: Handle dynamic questions (Radio groups, Dropdowns, EEOC)
+      await this.answerDynamicQuestions(browser, context, logger);
 
-    const clInputs = page.locator('[data-automation-id="file-upload-input-ref"]');
-    const inputCount = await clInputs.count();
-    if (inputCount > 1) {
-      await clInputs.nth(1).setInputFiles(clPath);
-      await logger.info('cover_letter_uploaded', 'Cover letter uploaded to Workday');
+      // Step 4: Upload cover letter if second upload field exists
+      const clInputs = page.locator('[data-automation-id="file-upload-input-ref"]');
+      if (await clInputs.count() > 1) {
+        const clPath = await browser.writeMarkdownToPdf(
+          context.coverLetterMarkdown,
+          `cover_letter_${context.sessionId}.pdf`
+        );
+        await clInputs.nth(1).setInputFiles(clPath).catch(() => {});
+        await logger.info('cover_letter_uploaded', 'Cover letter uploaded to Workday');
+      }
+
+      // Look for "Save and Continue" / "Next" button to advance to the next step
+      const nextBtn = page.locator(
+        '[data-automation-id="bottom-navigation-next-button"], button:has-text("Save and Continue"), button:has-text("Next")'
+      ).first();
+
+      if (await nextBtn.count() > 0) {
+        const btnText = ((await nextBtn.textContent().catch(() => '')) || '').trim().toLowerCase();
+        
+        // If button text is "submit", we have reached the final submission page
+        if (btnText.includes('submit')) {
+          await logger.info('wizard_complete', 'Reached final submission step in Workday');
+          break;
+        }
+
+        const isBtnDisabled = (await nextBtn.getAttribute('disabled')) !== null;
+        if (!isBtnDisabled) {
+          await nextBtn.click();
+          await logger.info('wizard_advanced', `Advanced Workday wizard to step ${step + 1}`);
+          await page.waitForTimeout(3000);
+        } else {
+          // Next button disabled — missing required input on current step
+          await logger.warn('wizard_step_blocked', `Save and Continue is disabled on step ${step} — required fields missing`);
+          break;
+        }
+      } else {
+        // No Next button — completed wizard navigation
+        await logger.info('wizard_complete', 'Completed Workday wizard navigation');
+        break;
+      }
     }
   }
 
@@ -362,30 +396,63 @@ export class WorkdayPlugin extends ATSPlugin {
     logger: ExecutionLogger
   ): Promise<void> {
     const page = browser.page;
+    const profile = context.userProfile;
 
-    // Find all radio groups and select "Yes" for standard affirmative questions
-    // (e.g. "Are you authorized to work?", "Do you require sponsorship?")
-    const radioGroups = await page.locator('[data-automation-id="radioGroup"]').all();
+    const radioGroups = await page.locator('[data-automation-id="radioGroup"], fieldset').all();
 
     for (const group of radioGroups) {
-      const label = await group.locator('label').first().textContent();
+      const label = (await group.locator('label, legend').first().textContent().catch(() => '')) || '';
+      const lowerLabel = label.toLowerCase();
+      if (!label.trim()) continue;
 
-      // Work authorization — "Yes" to auth, "No" to sponsorship
-      if (label?.toLowerCase().includes('authorized to work')) {
-        await group.locator('[value="Yes"], [data-automation-id="Yes"]').first().click();
-        await logger.info('question_answered', 'Work authorization: Yes');
-      } else if (label?.toLowerCase().includes('require sponsorship') || label?.toLowerCase().includes('visa sponsorship')) {
-        await group.locator('[value="No"], [data-automation-id="No"]').first().click();
-        await logger.info('question_answered', 'Visa sponsorship required: No');
-      } else if (label) {
-        // Check if this looks like a Self-ID / EEOC question that can be skipped
-        const eeocKeywords = ['gender', 'sex', 'race', 'ethnicity', 'veteran', 'disability', 'self-id', 'self identify', 'voluntary disclosure'];
-        const isEeocQuestion = eeocKeywords.some((kw) => label.toLowerCase().includes(kw));
-
-        if (isEeocQuestion && context.userProfile.skipSelfId) {
-          await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 80)}" (skipSelfId=true)`);
+      // Work authorization
+      if (lowerLabel.includes('authorized to work') || lowerLabel.includes('work authorization')) {
+        const val = profile.usWorkAuthorization === 'No' ? 'No' : 'Yes';
+        const opt = group.locator(`[value="${val}"], [data-automation-id="${val}"], label:has-text("${val}")`).first();
+        if (await opt.count() > 0) await opt.click().catch(() => {});
+        await logger.info('question_answered', `Work authorization: ${val}`);
+      } 
+      // Visa sponsorship
+      else if (lowerLabel.includes('require sponsorship') || lowerLabel.includes('visa sponsorship')) {
+        const val = profile.visaSponsorship === 'Yes' ? 'Yes' : 'No';
+        const opt = group.locator(`[value="${val}"], [data-automation-id="${val}"], label:has-text("${val}")`).first();
+        if (await opt.count() > 0) await opt.click().catch(() => {});
+        await logger.info('question_answered', `Visa sponsorship: ${val}`);
+      } 
+      // EEOC Gender
+      else if (lowerLabel.includes('gender') || lowerLabel.includes('sex')) {
+        const choice = profile.eeocGender || 'Decline';
+        const opt = group.locator(`label:has-text("${choice}"), label:has-text("Decline"), label:has-text("I do not wish to answer")`).first();
+        if (await opt.count() > 0) await opt.click().catch(() => {});
+        await logger.info('eeoc_answered', `EEOC Gender: ${choice}`);
+      }
+      // EEOC Race / Ethnicity
+      else if (lowerLabel.includes('race') || lowerLabel.includes('ethnicity')) {
+        const choice = profile.eeocRace || 'Decline';
+        const opt = group.locator(`label:has-text("${choice}"), label:has-text("Decline"), label:has-text("I do not wish to answer")`).first();
+        if (await opt.count() > 0) await opt.click().catch(() => {});
+        await logger.info('eeoc_answered', `EEOC Race: ${choice}`);
+      }
+      // EEOC Veteran status
+      else if (lowerLabel.includes('veteran')) {
+        const choice = profile.eeocVeteran || 'Decline';
+        const opt = group.locator(`label:has-text("${choice}"), label:has-text("Decline"), label:has-text("I do not wish to answer"), label:has-text("No")`).first();
+        if (await opt.count() > 0) await opt.click().catch(() => {});
+        await logger.info('eeoc_answered', `EEOC Veteran: ${choice}`);
+      }
+      // EEOC Disability status
+      else if (lowerLabel.includes('disability')) {
+        const choice = profile.eeocDisability || 'Decline';
+        const opt = group.locator(`label:has-text("${choice}"), label:has-text("Decline"), label:has-text("I do not wish to answer"), label:has-text("No")`).first();
+        if (await opt.count() > 0) await opt.click().catch(() => {});
+        await logger.info('eeoc_answered', `EEOC Disability: ${choice}`);
+      }
+      else {
+        // Fallback for optional questions: try selecting a decline/no option if available
+        const fallbackOpt = group.locator('label:has-text("Decline"), label:has-text("I do not wish"), label:has-text("No")').first();
+        if (await fallbackOpt.count() > 0) {
+          await fallbackOpt.click().catch(() => {});
         } else {
-          // Unknown question — log it and signal for intervention
           await logger.warn('unknown_question', `Unknown question encountered: ${label.substring(0, 100)}`);
           throw new InterventionError(
             InterventionReason.UNKNOWN_QUESTION,
