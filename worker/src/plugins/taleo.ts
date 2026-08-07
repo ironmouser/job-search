@@ -69,56 +69,57 @@ export class TaleoPlugin extends ATSPlugin {
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
     await logger.info('apply_started', 'Navigating Taleo application steps...');
 
-    const targetContext: Frame | Page = await browser.findFormFrame([
-      'input[name*="firstName" i]',
-      'input[name*="email" i]',
-      'input[type="file"]',
-      'form',
-    ]);
+    await this.processMultiStepWizard(
+      browser,
+      context,
+      logger,
+      async (targetContext, step) => {
+        const profile = context.userProfile;
+        const nameParts = (profile.name || '').split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
 
-    const profile = context.userProfile;
-    const nameParts = (profile.name || '').split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
+        // 1. Personal Information Fields
+        const fnInput = await targetContext.$(
+          'input[name*="firstName" i], input[id*="firstName" i], input[name*="fname" i]'
+        );
+        if (fnInput && firstName) {
+          await fnInput.fill(firstName).catch(() => {});
+        }
 
-    // 1. Personal Information Fields
-    const fnInput = await targetContext.$(
-      'input[name*="firstName" i], input[id*="firstName" i], input[name*="fname" i]'
+        const lnInput = await targetContext.$(
+          'input[name*="lastName" i], input[id*="lastName" i], input[name*="lname" i]'
+        );
+        if (lnInput && lastName) {
+          await lnInput.fill(lastName).catch(() => {});
+        }
+
+        const email = await targetContext.$(
+          'input[name*="email" i], input[id*="email" i], input[type="email"]'
+        );
+        if (email && profile.email) {
+          await email.fill(profile.email).catch(() => {});
+        }
+
+        const phone = await targetContext.$(
+          'input[name*="phone" i], input[id*="phone" i], input[type="tel"]'
+        );
+        if (phone && profile.phone) {
+          await phone.fill(profile.phone).catch(() => {});
+        }
+
+        // 2. Resume Attachment
+        const fileInput = await targetContext.$('input[type="file"]');
+        if (fileInput && context.resumeMarkdown) {
+          const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
+          await fileInput.setInputFiles(pdfPath).catch(() => {});
+          await logger.info('file_uploaded', 'Uploaded PDF resume to Oracle Taleo');
+        }
+
+        await logger.info('form_filling_complete', `Completed filling Taleo wizard step ${step}`);
+      },
+      ['button:has-text("Save and Continue")', 'input[value*="Save and Continue" i]', 'a:has-text("Next")']
     );
-    if (fnInput && firstName) {
-      await fnInput.fill(firstName);
-    }
-
-    const lnInput = await targetContext.$(
-      'input[name*="lastName" i], input[id*="lastName" i], input[name*="lname" i]'
-    );
-    if (lnInput && lastName) {
-      await lnInput.fill(lastName);
-    }
-
-    const email = await targetContext.$(
-      'input[name*="email" i], input[id*="email" i], input[type="email"]'
-    );
-    if (email && profile.email) {
-      await email.fill(profile.email);
-    }
-
-    const phone = await targetContext.$(
-      'input[name*="phone" i], input[id*="phone" i], input[type="tel"]'
-    );
-    if (phone && profile.phone) {
-      await phone.fill(profile.phone);
-    }
-
-    // 2. Resume Attachment
-    const fileInput = await targetContext.$('input[type="file"]');
-    if (fileInput && context.resumeMarkdown) {
-      const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
-      await fileInput.setInputFiles(pdfPath);
-      await logger.info('file_uploaded', 'Uploaded PDF resume to Oracle Taleo');
-    }
-
-    await logger.info('form_filling_complete', 'Completed filling Taleo wizard step');
   }
 
   async validate(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<{ valid: boolean; issues: string[] }> {

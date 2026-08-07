@@ -215,6 +215,98 @@ export abstract class ATSPlugin {
   }
 
   /**
+   * Universal multi-step application wizard processor.
+   * Works across all ATS platforms (Workday, Taleo, iCIMS, multi-page forms, etc.).
+   *
+   * Iterates through sequential pages, invoking `fillStepCallback` on each page,
+   * checking for account gates, and clicking "Save & Continue" / "Next" buttons
+   * until reaching the final submission step.
+   */
+  protected async processMultiStepWizard(
+    browser: BrowserSession,
+    context: WorkflowContext,
+    logger: ExecutionLogger,
+    fillStepCallback: (ctx: import('playwright').Frame | import('playwright').Page, step: number) => Promise<void>,
+    nextSelectors: string[] = []
+  ): Promise<void> {
+    const page = browser.page;
+    const maxSteps = 8;
+
+    const defaultNextSelectors = [
+      '[data-automation-id="bottom-navigation-next-button"]',
+      'button[type="submit"]:has-text("Next")',
+      'button[type="submit"]:has-text("Continue")',
+      'button:has-text("Save and Continue")',
+      'button:has-text("Save & Continue")',
+      'button:has-text("Next Step")',
+      'button:has-text("Continue")',
+      'input[type="submit"][value*="Next" i]',
+      'input[type="submit"][value*="Continue" i]',
+      'input[type="button"][value*="Next" i]',
+      'input[type="button"][value*="Continue" i]',
+      'a:has-text("Save and Continue")',
+      'a:has-text("Next")',
+    ];
+
+    const candidates = [...nextSelectors, ...defaultNextSelectors];
+
+    for (let step = 1; step <= maxSteps; step++) {
+      await logger.info('wizard_step', `Processing ${this.displayName} application step ${step}`);
+
+      // Check account gate or login prompt on every page step
+      await this.checkAccountGate(page, context.jobUrl, this.displayName, context);
+
+      // Find active form frame if present (e.g. iCIMS or Taleo iframes)
+      const formCtx = await browser.findFormFrame([
+        'input[type="file"]',
+        'input[name*="email" i]',
+        'input[name*="first" i]',
+        'form',
+      ]);
+
+      // Execute step form fill logic
+      await fillStepCallback(formCtx, step);
+
+      // Search for the Next / Save and Continue button
+      let nextBtn: import('playwright').ElementHandle | null = null;
+      let matchedText = '';
+
+      for (const sel of candidates) {
+        const handle = await formCtx.$(sel).catch(() => null);
+        if (handle) {
+          const isVisible = await handle.isVisible().catch(() => false);
+          if (isVisible) {
+            nextBtn = handle;
+            matchedText = ((await handle.textContent().catch(() => '')) || '').trim().toLowerCase();
+            break;
+          }
+        }
+      }
+
+      if (nextBtn) {
+        // If button text is "submit", "complete", or "finish", we reached the final step
+        if (matchedText.includes('submit') || matchedText.includes('complete application') || matchedText.includes('finish')) {
+          await logger.info('wizard_complete', `Reached final submission step on ${this.displayName}`);
+          break;
+        }
+
+        const isDisabled = (await nextBtn.getAttribute('disabled').catch(() => null)) !== null;
+        if (!isDisabled) {
+          await nextBtn.click().catch(() => {});
+          await logger.info('wizard_advanced', `Advanced ${this.displayName} wizard to step ${step + 1}`);
+          await page.waitForTimeout(3000);
+        } else {
+          await logger.warn('wizard_step_blocked', `Next button is disabled on step ${step} — required fields may be missing`);
+          break;
+        }
+      } else {
+        await logger.info('wizard_complete', `Completed ${this.displayName} wizard page navigation`);
+        break;
+      }
+    }
+  }
+
+  /**
    * Locates the final submit button within a frame/page using a priority-ordered
    * strategy that balances precision against resilience to CSS-Module hash changes
    * and ATS-specific markup quirks.
