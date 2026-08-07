@@ -424,6 +424,7 @@ ${question}
     });
 
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
+    responseText = responseText.replace(/^(here is|here's)\s+[^:\n]*:\s*/i, '').trim();
     return responseText.trim();
 }
 

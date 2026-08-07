@@ -160,11 +160,11 @@ export function validateGeneratedAsset(
         return { isValid: false, warnings: ['Generated output is empty.'], severeHallucination: true };
     }
 
-    const cleanOutput = output.trim();
+    // 1. Strip common conversational intro prefixes (e.g. "Here is...", "Here's...") if present
+    const cleanOutput = output.trim().replace(/^(here is|here's)\s+[^:\n]*:\s*/i, '');
 
-    // 1. Check for prompt leakage or wrapper meta-text
+    // 2. Check for prompt leakage or wrapper meta-text
     const promptLeakPatterns = [
-        /^here is the/i,
         /as an ai language model/i,
         /critical guardrails/i,
         /system prompt/i,
