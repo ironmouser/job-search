@@ -186,7 +186,13 @@ export class WorkflowEngine {
       }
 
       // ─── Step 7: Finalize (submit or simulate) ───────────────────────────
-      const result = await plugin.finalize(browser, context, logger);
+      const result = await this.runWithInterventionReturn(
+        session.sessionId,
+        browser,
+        logger,
+        context,
+        async () => plugin.finalize(browser, context, logger)
+      );
 
       await logger.info('workflow_completed', `Workflow complete — status: ${result.status}`);
       await logger.flush();
@@ -200,7 +206,7 @@ export class WorkflowEngine {
       return result;
 
     } catch (err: any) {
-      return await this.handleError(session, logger, err);
+      return await this.handleError(session, browser, logger, err);
     } finally {
       await browser.close().catch(() => {});
     }
@@ -210,6 +216,7 @@ export class WorkflowEngine {
 
   private async handleError(
     session: QueuedSession,
+    browser: BrowserSession,
     logger: ExecutionLogger,
     err: unknown
   ): Promise<WorkflowResult> {
@@ -230,11 +237,32 @@ export class WorkflowEngine {
     }
 
     if (err instanceof InterventionError) {
-      // Plugin threw an InterventionError — should have been caught by runWithIntervention
-      // If it reaches here, the intervention itself failed
-      await logger.error('workflow_failed', `Unhandled intervention: ${err.reason}`);
-      await logger.flush();
-      return await this.fail(session.sessionId, logger, err.reason, err.description);
+      await logger.warn('unhandled_intervention_caught', `Intervention required: ${err.reason} - ${err.description}`);
+      try {
+        const interventionManager = new InterventionManager(session.sessionId, this.apiClient, logger);
+        await interventionManager.requestIntervention(
+          browser,
+          err.reason as InterventionReason,
+          err.description,
+          err.pageUrl
+        );
+      } catch (interventionErr) {
+        if (interventionErr instanceof InterventionCancelledError) {
+          await logger.info('workflow_cancelled', 'User cancelled automation during intervention');
+          await logger.flush();
+          await this.updateStatus(session.sessionId, AutoApplyStatus.CANCELLED, {
+            currentStep: 'cancelled',
+            failureReason: 'user_cancelled',
+          });
+          return this.makeResult(AutoApplyStatus.CANCELLED, 'User cancelled');
+        }
+        if (interventionErr instanceof InterventionTimeoutError) {
+          await logger.error('workflow_failed', 'Intervention timed out');
+          await logger.flush();
+          return await this.fail(session.sessionId, logger, 'intervention_timeout', interventionErr.message);
+        }
+        return await this.fail(session.sessionId, logger, err.reason, err.description);
+      }
     }
 
     const message = err instanceof Error ? err.message : String(err);
@@ -256,13 +284,22 @@ export class WorkflowEngine {
     context: WorkflowContext,
     fn: () => Promise<void>
   ): Promise<void> {
+    await this.runWithInterventionReturn(sessionId, browser, logger, context, fn);
+  }
+
+  private async runWithInterventionReturn<T>(
+    sessionId: string,
+    browser: BrowserSession,
+    logger: ExecutionLogger,
+    context: WorkflowContext,
+    fn: () => Promise<T>
+  ): Promise<T> {
     let attempts = 0;
     const maxAttempts = 5;
 
     while (attempts < maxAttempts) {
       try {
-        await fn();
-        return;
+        return await fn();
       } catch (err) {
         if (err instanceof InterventionError) {
           attempts++;
@@ -290,13 +327,12 @@ export class WorkflowEngine {
           } catch (refreshErr) {
             await logger.warn('context_refresh_failed', `Could not refresh context: ${refreshErr}`);
           }
-
-          // Loop will retry fn() with fresh userProfile context
         } else {
           throw err;
         }
       }
     }
+    throw new Error('Maximum intervention retries exceeded');
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

@@ -94,6 +94,9 @@ export class WorkdayPlugin extends ATSPlugin {
     await browser.navigate(context.jobUrl);
     await logger.info('page_navigated', 'Navigated to Workday job posting');
 
+    // Check for login/create account page before clicking Apply (some URLs go straight to auth/apply)
+    await this.checkLoginOrCreateAccount(page, context.jobUrl);
+
     // Wait for and click the Apply button
     // Workday uses data-automation-id for most interactive elements
     const applySelectors = [
@@ -101,12 +104,16 @@ export class WorkdayPlugin extends ATSPlugin {
       '[data-automation-id="Apply"]',
       'a[href*="apply"]',
       'button:has-text("Apply")',
+      'a:has-text("Autofill with Resume")',
+      'button:has-text("Autofill with Resume")',
+      'a:has-text("Apply Manually")',
+      'button:has-text("Apply Manually")',
     ];
 
     let clicked = false;
     for (const selector of applySelectors) {
       try {
-        await page.waitForSelector(selector, { timeout: 5000 });
+        await page.waitForSelector(selector, { timeout: 4000 });
         await page.click(selector);
         clicked = true;
         await logger.info('apply_button_clicked', `Clicked apply button via: ${selector}`);
@@ -116,6 +123,12 @@ export class WorkdayPlugin extends ATSPlugin {
       }
     }
 
+    // Give page time to load after click
+    await page.waitForTimeout(2500);
+
+    // Check for login/create account page after clicking Apply
+    await this.checkLoginOrCreateAccount(page, context.jobUrl);
+
     if (!clicked) {
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
@@ -124,24 +137,43 @@ export class WorkdayPlugin extends ATSPlugin {
       );
     }
 
-    // Check for login/create account page
-    await page.waitForTimeout(2000);
-    const pageTitle = await page.title();
-    const pageUrl = page.url();
+    await logger.info('form_located', 'Workday application form ready');
+  }
 
-    if (
-      pageUrl.includes('login') ||
-      pageUrl.includes('signin') ||
-      pageTitle.toLowerCase().includes('sign in')
-    ) {
+  /**
+   * Helper to detect if Workday is currently showing a Sign In or Create Account screen.
+   */
+  private async checkLoginOrCreateAccount(page: import('playwright').Page, fallbackUrl: string): Promise<void> {
+    const currentUrl = page.url();
+    const pageTitle = (await page.title().catch(() => '')) || '';
+
+    const urlMatch =
+      currentUrl.includes('/login') ||
+      currentUrl.includes('/signin') ||
+      currentUrl.includes('autofillWithResume') ||
+      currentUrl.includes('applyManually') ||
+      currentUrl.includes('createAccount') ||
+      currentUrl.includes('register') ||
+      currentUrl.includes('/auth');
+
+    const titleMatch =
+      pageTitle.toLowerCase().includes('sign in') ||
+      pageTitle.toLowerCase().includes('log in') ||
+      pageTitle.toLowerCase().includes('create account') ||
+      pageTitle.toLowerCase().includes('register');
+
+    const domCreateAccount = (await page.locator('h1, h2, h3, div, button, a').filter({ hasText: /^create account$/i }).count().catch(() => 0)) > 0;
+    const domSignIn = (await page.locator('h1, h2, h3, button, a').filter({ hasText: /^sign in$/i }).count().catch(() => 0)) > 0;
+    const domPasswordReq = (await page.locator('text=Password Requirements').count().catch(() => 0)) > 0;
+    const domVerifyPassword = (await page.locator('text=Verify New Password').count().catch(() => 0)) > 0;
+
+    if (urlMatch || titleMatch || domCreateAccount || domSignIn || domPasswordReq || domVerifyPassword) {
       throw new InterventionError(
         InterventionReason.LOGIN_REQUIRED,
-        'Workday requires login. Please sign in to your Workday account in the browser window.',
-        pageUrl
+        'Workday requires candidate account creation or sign in. Please log in or create an account to proceed.',
+        currentUrl || fallbackUrl
       );
     }
-
-    await logger.info('form_located', 'Workday application form ready');
   }
 
   // ─── Apply ────────────────────────────────────────────────────────────────
@@ -152,6 +184,7 @@ export class WorkdayPlugin extends ATSPlugin {
     logger: ExecutionLogger
   ): Promise<void> {
     const page = browser.page;
+    await this.checkLoginOrCreateAccount(page, context.jobUrl);
 
     // Step 1: Upload resume
     const resumePath = await browser.writeMarkdownToPdf(
