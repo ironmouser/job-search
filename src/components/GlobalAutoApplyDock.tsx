@@ -42,9 +42,17 @@ export function GlobalAutoApplyDock() {
       const res = await fetch('/api/auto-apply/active', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (data.activeSession && data.activeSession.id !== dismissedSessionId) {
-          setActiveSession(data.activeSession);
-        } else if (!data.activeSession) {
+        const active = data.activeSession;
+        if (active) {
+          const isDismissed =
+            active.id === dismissedSessionId ||
+            (typeof window !== 'undefined' && sessionStorage.getItem(`dismissed_dock_${active.id}`) === 'true');
+          if (!isDismissed) {
+            setActiveSession(active);
+          } else {
+            setActiveSession(null);
+          }
+        } else {
           setActiveSession(null);
         }
       }
@@ -68,11 +76,31 @@ export function GlobalAutoApplyDock() {
   const pendingIntervention = activeSession.interventions?.[0];
 
   const handleNavigateToJob = () => {
-    router.push(`/job/${activeSession.jobId}`);
+    if (!activeSession) return;
+    const sessionId = activeSession.id;
+    const targetJobId = activeSession.jobId;
+
+    setDismissedSessionId(sessionId);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(`dismissed_dock_${sessionId}`, 'true');
+    }
+    setActiveSession(null);
+
+    const targetUrl = `/job/${targetJobId}?autoApplyExpand=true#step-3-apply`;
+    if (pathname === `/job/${targetJobId}`) {
+      window.history.pushState({}, '', targetUrl);
+      window.dispatchEvent(new CustomEvent('auto-apply-expand-trigger'));
+    } else {
+      router.push(targetUrl);
+    }
   };
 
   const handleDismiss = () => {
+    if (!activeSession) return;
     setDismissedSessionId(activeSession.id);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(`dismissed_dock_${activeSession.id}`, 'true');
+    }
     setActiveSession(null);
   };
 

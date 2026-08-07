@@ -139,10 +139,36 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
     }
   }, [session?.status, jobId, router]);
 
+  // Scroll directly to intervention / failure issue when session status is fetched
+  useEffect(() => {
+    if (!session) return;
+    if (typeof window === 'undefined') return;
+
+    const shouldScroll =
+      window.location.search.includes('autoApplyExpand=true') ||
+      window.location.hash === '#step-3-apply';
+
+    if (!shouldScroll) return;
+
+    const timer = setTimeout(() => {
+      const issueElement =
+        document.querySelector('[id^="intervention-panel-"]') ||
+        document.getElementById('auto-apply-failure-banner') ||
+        document.getElementById('auto-apply-low-confidence-warning') ||
+        document.getElementById('step-3-apply');
+
+      if (issueElement) {
+        issueElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [session?.status, session?.interventions]);
+
   const pendingIntervention = session?.interventions?.[0] ?? null;
 
   return (
-    <div className="auto-apply-section">
+    <div className="auto-apply-section" id="auto-apply-panel">
       {/* Header row */}
       <div className="auto-apply-row">
         <span className="auto-apply-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -167,6 +193,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
       {/* Failure Banner with Human Explanation */}
       {session?.status === AutoApplyStatus.FAILED && (
         <div
+          id="auto-apply-failure-banner"
           style={{
             background: 'rgba(239, 68, 68, 0.08)',
             border: '1px solid rgba(239, 68, 68, 0.25)',

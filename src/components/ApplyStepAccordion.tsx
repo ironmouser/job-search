@@ -48,6 +48,72 @@ export function ApplyStepAccordion({
     setLocalHasAssets(hasAssets);
   }, [hasAssets]);
 
+  // Check URL parameters and custom triggers to auto-expand the accordion
+  useEffect(() => {
+    const checkAndExpand = () => {
+      if (typeof window === 'undefined') return;
+      const searchParams = new URLSearchParams(window.location.search);
+      const shouldExpand =
+        searchParams.get('autoApplyExpand') === 'true' ||
+        window.location.hash === '#step-3-apply';
+
+      if (shouldExpand) {
+        setIsExpanded(true);
+      }
+    };
+
+    checkAndExpand();
+
+    const handleExpandTrigger = () => {
+      setIsExpanded(true);
+    };
+
+    window.addEventListener('auto-apply-expand-trigger', handleExpandTrigger);
+    window.addEventListener('hashchange', checkAndExpand);
+    window.addEventListener('popstate', checkAndExpand);
+
+    return () => {
+      window.removeEventListener('auto-apply-expand-trigger', handleExpandTrigger);
+      window.removeEventListener('hashchange', checkAndExpand);
+      window.removeEventListener('popstate', checkAndExpand);
+    };
+  }, []);
+
+  // Smooth scroll directly to the intervention / issue element once expanded
+  useEffect(() => {
+    if (!isExpanded) return;
+    if (typeof window === 'undefined') return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const shouldScroll =
+      searchParams.get('autoApplyExpand') === 'true' ||
+      window.location.hash === '#step-3-apply';
+
+    if (!shouldScroll) return;
+
+    const attempts = [100, 350, 750, 1200];
+    const timers: NodeJS.Timeout[] = [];
+
+    attempts.forEach((delay) => {
+      const timer = setTimeout(() => {
+        const issueElement =
+          document.querySelector('[id^="intervention-panel-"]') ||
+          document.getElementById('auto-apply-failure-banner') ||
+          document.getElementById('auto-apply-low-confidence-warning') ||
+          document.getElementById('step-3-apply');
+
+        if (issueElement) {
+          issueElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, delay);
+      timers.push(timer);
+    });
+
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, [isExpanded]);
+
   // Automatically start asset generation when opening accordion if user hasn't generated assets yet
   useEffect(() => {
     if (isExpanded && !localHasAssets && !isGeneratingAssets && !hasStartedGenerating) {
@@ -296,15 +362,18 @@ export function ApplyStepAccordion({
               ) : showLowConfidenceWarning ? (
                 !hasAttemptedCustomUrl ? (
                   /* Guided Link Helper Box (Initial Low Confidence State) */
-                  <div style={{
-                    background: 'rgba(59, 130, 246, 0.08)',
-                    border: '1px solid rgba(59, 130, 246, 0.25)',
-                    borderRadius: '10px',
-                    padding: '1.5rem 1.75rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                  }}>
+                  <div
+                    id="auto-apply-low-confidence-warning"
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.08)',
+                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                      borderRadius: '10px',
+                      padding: '1.5rem 1.75rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                    }}
+                  >
                     <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
                       <HelpCircle color="#3b82f6" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
                       <div>
