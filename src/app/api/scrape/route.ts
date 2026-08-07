@@ -31,10 +31,10 @@ export async function POST(request: Request) {
             select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
         });
         const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
-        let sources = settings.sources || { greenhouse: true, linkedin: true, remotepoc: true, remotive: true, nodesk: true, himalayas: true, jobicy: true, jobspresso: true };
+        let sources = settings.sources || { greenhouse: true, weworkremotely: true, remotive: true, nodesk: true, himalayas: true, jobicy: true, jobspresso: true };
 
         
-        const FREE_ALLOWED_SOURCES = new Set(['greenhouse', 'linkedin', 'remotepoc', 'remotive', 'nodesk', 'himalayas', 'jobicy', 'jobspresso']);
+        const FREE_ALLOWED_SOURCES = new Set(['greenhouse', 'weworkremotely', 'remotive', 'nodesk', 'himalayas', 'jobicy', 'jobspresso']);
 
         if (!isPro) {
             // Free tier users ONLY have access to approved free sources

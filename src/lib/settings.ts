@@ -69,19 +69,22 @@ export async function getUserSettings(userId: string): Promise<any> {
 
 export const FREE_ALLOWED_SOURCES = [
     'greenhouse',
-    'linkedin',
-    'remotepoc',
+    'weworkremotely',
     'remotive',
-    'nodesk'
+    'nodesk',
+    'himalayas',
+    'jobicy',
+    'jobspresso'
 ];
 
 export const PREMIUM_NON_INTL_SOURCES = [
     'indeed',
+    'linkedin',
     'ziprecruiter',
     'dice',
-    'weworkremotely',
     'remoteok',
     'workingnomads',
+    'remotepoc',
     'ycombinator',
     'otta',
     'lever',
