@@ -9,10 +9,10 @@ import { cleanCompanyName } from './cleaners';
 export async function normalizeAndSaveJobs(
     rawJobs: any[],
     userId: string,
-    options: { isEmailSync?: boolean; onProgress?: (count: number, message: string) => void } = {}
+    options: { isEmailSync?: boolean; skipAiTriage?: boolean; onProgress?: (count: number, message: string) => void } = {}
 ) {
     if (!rawJobs || rawJobs.length === 0) return [];
-    const { onProgress, isEmailSync } = options;
+    const { onProgress, isEmailSync, skipAiTriage } = options;
     const settings: any = await getUserSettings(userId);
     const remoteOnly = settings.remoteOnly || false;
     const noInternational = settings.noInternational || false;
@@ -181,7 +181,7 @@ export async function normalizeAndSaveJobs(
     // Tier 2: Batched Rapid Triage via DeepSeek (Lite Pass)
     const approvedCandidates: any[] = [];
 
-    if (brandNewCandidates.length > 0 && searchKeyword) {
+    if (brandNewCandidates.length > 0 && searchKeyword && !skipAiTriage) {
         console.log(`[AI Triage] Running DeepSeek rapid pre-screening on ${brandNewCandidates.length} new candidate jobs for keyword "${searchKeyword}"...`);
         onProgress?.(brandNewCandidates.length, `Running AI quality check on ${brandNewCandidates.length} new listing${brandNewCandidates.length === 1 ? '' : 's'}...`);
         

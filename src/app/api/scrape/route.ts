@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/jobs';
-import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeHimalayas, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational, scrapeDice } from '@/lib/scrapers/crawlee';
+import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeHimalayas, scrapeJobicy, scrapeJobspresso, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational, scrapeDice } from '@/lib/scrapers/crawlee';
 import { getUserSettings } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
@@ -31,13 +31,13 @@ export async function POST(request: Request) {
             select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
         });
         const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
-        let sources = settings.sources || { greenhouse: true, linkedin: true, remotepoc: true, remotive: true, nodesk: true };
+        let sources = settings.sources || { greenhouse: true, linkedin: true, remotepoc: true, remotive: true, nodesk: true, himalayas: true, jobicy: true, jobspresso: true };
 
         
-        const FREE_ALLOWED_SOURCES = new Set(['greenhouse', 'linkedin', 'remotepoc', 'remotive', 'nodesk']);
+        const FREE_ALLOWED_SOURCES = new Set(['greenhouse', 'linkedin', 'remotepoc', 'remotive', 'nodesk', 'himalayas', 'jobicy', 'jobspresso']);
 
         if (!isPro) {
-            // Free tier users ONLY have access to greenhouse, linkedin, remotepoc, remotive, and nodesk
+            // Free tier users ONLY have access to approved free sources
             for (const key of Object.keys(sources)) {
                 if (!FREE_ALLOWED_SOURCES.has(key)) {
                     sources[key] = false;
@@ -68,41 +68,52 @@ export async function POST(request: Request) {
 
                     const tasks: Promise<void>[] = [];
 
-                    const runScraperTask = async (name: string, fn: () => Promise<any[]>) => {
+                    const runScraperTask = async (name: string, fn: () => Promise<any[]>, timeoutMs = 25000) => {
                         sendEvent({ type: 'status', message: `Querying ${name}...` });
+                        let timerId: NodeJS.Timeout | null = null;
                         try {
-                            const res = await fn();
+                            const timeoutPromise = new Promise<any[]>((_, reject) => {
+                                timerId = setTimeout(() => reject(new Error(`${name} scraper timed out after ${timeoutMs}ms`)), timeoutMs);
+                            });
+                            const res = await Promise.race([fn(), timeoutPromise]);
                             if (res && res.length > 0) {
                                 allRawJobs.push(...res);
                                 totalRawJobsFound += res.length;
                                 sendEvent({ type: 'status', message: `Found ${res.length} jobs from ${name}` });
                             }
                         } catch (err: any) {
-                            console.error(`Error in ${name} scraper:`, err);
+                            console.warn(`Scraper task [${name}] issue: ${err.message}`);
+                        } finally {
+                            if (timerId) clearTimeout(timerId);
                         }
                     };
 
-                    if (sources.indeed) tasks.push(runScraperTask('Indeed', () => scrapeIndeed(keyword, location)));
-                    if (sources.linkedin) tasks.push(runScraperTask('LinkedIn', () => scrapeLinkedIn(keyword, location)));
-                    if (sources.ziprecruiter) tasks.push(runScraperTask('ZipRecruiter', () => scrapeZipRecruiter(keyword, location)));
-                    if (sources.dice && isPro) tasks.push(runScraperTask('Dice', () => scrapeDice(keyword, location)));
-                    if (customUrls.length > 0) tasks.push(runScraperTask('Custom Career Pages', () => scrapeCustomPages(customUrls)));
-                    if (sources.weworkremotely || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.himalayas || sources.nodesk) {
-                        tasks.push(runScraperTask('Remote Aggregators', () => scrapeRemoteAggregators(keyword, sources)));
+                    if (sources.indeed) tasks.push(runScraperTask('Indeed', () => scrapeIndeed(keyword, location), 25000));
+                    if (sources.linkedin) tasks.push(runScraperTask('LinkedIn', () => scrapeLinkedIn(keyword, location), 25000));
+                    if (sources.ziprecruiter) tasks.push(runScraperTask('ZipRecruiter', () => scrapeZipRecruiter(keyword, location), 25000));
+                    if (sources.dice && isPro) tasks.push(runScraperTask('Dice', () => scrapeDice(keyword, location), 25000));
+                    if (customUrls.length > 0) tasks.push(runScraperTask('Custom Career Pages', () => scrapeCustomPages(customUrls), 25000));
+                    if (sources.weworkremotely || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.nodesk) {
+                        tasks.push(runScraperTask('Remote Aggregators', () => scrapeRemoteAggregators(keyword, sources), 15000));
                     }
                     if (sources.himalayas) {
-                        tasks.push(runScraperTask('Himalayas', () => scrapeHimalayas(keyword)));
+                        tasks.push(runScraperTask('Himalayas', () => scrapeHimalayas(keyword), 10000));
+                    }
+                    if (sources.jobicy) {
+                        tasks.push(runScraperTask('Jobicy', () => scrapeJobicy(keyword), 10000));
+                    }
+                    if (sources.jobspresso) {
+                        tasks.push(runScraperTask('Jobspresso', () => scrapeJobspresso(keyword), 10000));
                     }
                     if (sources.remotepoc && (isPro || !globalSettings?.remotepocIsPro)) {
-                        tasks.push(runScraperTask('RemotePOC', () => scrapeRemotePOC(keyword)));
+                        tasks.push(runScraperTask('RemotePOC', () => scrapeRemotePOC(keyword), 12000));
                     }
                     const INTERNATIONAL_SOURCE_KEYS = ['themuse', 'computrabajo', 'jobbank', 'arbeitnow'];
                     if (isPro && INTERNATIONAL_SOURCE_KEYS.some((s: string) => sources[s])) {
-                        tasks.push(runScraperTask('International Boards', () => scrapeInternational(keyword, sources)));
+                        tasks.push(runScraperTask('International Boards', () => scrapeInternational(keyword, sources), 25000));
                     }
 
-                    const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 15000));
-                    await Promise.race([Promise.all(tasks), timeoutPromise]);
+                    await Promise.allSettled(tasks);
 
                     if (allRawJobs.length === 0) {
                         sendEvent({

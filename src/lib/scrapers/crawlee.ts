@@ -40,13 +40,17 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
                 } else {
                     return { $, usedFirecrawl: false };
                 }
-            } else {
-                console.warn(`Attempt ${attempt}: Failed to fetch ${url} (Status: ${res.statusCode})`);
+            } else if (res.statusCode === 403 || res.statusCode === 429) {
+                console.warn(`Attempt ${attempt}: Anti-bot status code ${res.statusCode} detected on ${url}`);
                 needsFallback = true;
+            } else {
+                console.warn(`Attempt ${attempt}: Non-ok status code ${res.statusCode} fetching ${url}`);
             }
         } catch (e: any) {
             console.warn(`Attempt ${attempt}: Error fetching ${url}: ${e.message}`);
-            needsFallback = true;
+            if (e.message?.includes('403') || e.message?.includes('429') || e.message?.toLowerCase().includes('cloudflare')) {
+                needsFallback = true;
+            }
         }
 
         if (needsFallback) {
@@ -875,49 +879,57 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 
 export async function scrapeRemotePOC(keyword: string) {
     const jobs: any[] = [];
+    let errorMsg: string | null = null;
+    const targetUrl = 'https://remotepoc.com/jm-ajax/get_listings/';
+
     try {
-        const params = new URLSearchParams();
-        params.append('search_keywords', keyword);
-        params.append('per_page', '50');
-        params.append('orderby', 'featured');
-        params.append('order', 'DESC');
-        
-        const response = await fetch('https://remotepoc.com/jm-ajax/get_listings/', {
+        const formData = new URLSearchParams();
+        if (keyword) formData.append('search_keywords', keyword);
+
+        const res = await fetch(targetUrl, {
             method: 'POST',
-            body: params
+            body: formData,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            signal: AbortSignal.timeout(12000)
         });
 
-        const body = await response.json();
-        if (body && body.html) {
-            const $ = cheerio.load(body.html);
-            $('li.job_listing').each((i, el) => {
-                const title = $(el).find('h3.job_listing-title').text().trim();
-                const company = $(el).find('.job_listing-company strong').text().trim();
-                const location = $(el).find('.job_listing-location').text().trim();
-                const url = $(el).find('a').attr('href');
-                if (title && url && title !== 'Unknown Role') {
-                    jobs.push({
-                        title,
-                        company: company || 'RemotePOC Company',
-                        location: location || 'Remote',
-                        url,
-                        source: 'remotepoc'
-                    });
-                }
-            });
+        if (!res.ok) {
+            errorMsg = `HTTP Error: ${res.status}`;
+        } else {
+            const data = await res.json();
+            if (data && data.html) {
+                const $ = cheerio.load(data.html);
+                $('.job_listing').each((_, el) => {
+                    const title = $(el).find('.job_listing-title, h3').text().trim();
+                    const company = $(el).find('.job_listing-company, .company').text().trim();
+                    const location = $(el).find('.job_listing-location').text().trim();
+                    const url = $(el).find('a').attr('href');
+                    if (title && url && title !== 'Unknown Role') {
+                        jobs.push({
+                            title,
+                            company: company || 'RemotePOC Company',
+                            location: location || 'Remote',
+                            url,
+                            source: 'remotepoc'
+                        });
+                    }
+                });
+            }
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("RemotePOC Scrape Error:", e);
+        errorMsg = e.message;
     }
     
     try {
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'RemotePOC',
-                targetUrl: 'https://remotepoc.com/jm-ajax/get_listings/',
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                targetUrl,
+                status: errorMsg ? 'FAILURE' : 'SUCCESS',
                 resultsCount: jobs.length,
-                usedFirecrawl: false
+                usedFirecrawl: false,
+                errorDetails: errorMsg
             }
         });
     } catch (logErr) {
@@ -930,39 +942,205 @@ export async function scrapeRemotePOC(keyword: string) {
 
 export async function scrapeHimalayas(keyword: string) {
     const jobs: any[] = [];
+    let errorMsg: string | null = null;
+    const targetUrl = keyword 
+        ? `https://himalayas.app/jobs/api?q=${encodeURIComponent(keyword)}`
+        : `https://himalayas.app/jobs/api?limit=50`;
+
     try {
-        const res = await fetch(`https://himalayas.app/jobs/api?limit=50`);
-        const data = await res.json();
-        
-        if (data && data.jobs) {
-            for (const job of data.jobs) {
-                // simple keyword filter since their API keyword search isn't always documented well
-                if (keyword && !job.title.toLowerCase().includes(keyword.toLowerCase()) && !job.companyName.toLowerCase().includes(keyword.toLowerCase())) {
-                    continue;
+        const res = await fetch(targetUrl);
+        if (!res.ok) {
+            errorMsg = `HTTP Error: ${res.status}`;
+        } else {
+            const data = await res.json();
+            if (data && Array.isArray(data.jobs)) {
+                for (const job of data.jobs) {
+                    if (keyword && !job.title?.toLowerCase().includes(keyword.toLowerCase()) && !job.companyName?.toLowerCase().includes(keyword.toLowerCase())) {
+                        continue;
+                    }
+                    jobs.push({
+                        title: job.title,
+                        company: job.companyName,
+                        location: job.location || 'Remote',
+                        url: job.applicationLink || job.jobUrl || job.himalayasUrl,
+                        salary: (job.minSalary && job.maxSalary) ? `$${job.minSalary} - $${job.maxSalary}` : null,
+                        source: 'himalayas'
+                    });
                 }
-                jobs.push({
-                    title: job.title,
-                    company: job.companyName,
-                    location: job.location || 'Remote',
-                    url: job.applicationLink || job.jobUrl,
-                    salary: (job.minSalary && job.maxSalary) ? `$${job.minSalary} - $${job.maxSalary}` : null,
-                    source: 'himalayas'
-                });
             }
         }
+    } catch (e: any) {
+        console.error("Himalayas Scrape Error:", e);
+        errorMsg = e.message;
+    }
 
+    try {
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'Himalayas',
-                targetUrl: 'https://himalayas.app/jobs/api',
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                targetUrl,
+                status: errorMsg ? 'FAILURE' : 'SUCCESS',
                 resultsCount: jobs.length,
-                usedFirecrawl: false
+                usedFirecrawl: false,
+                errorDetails: errorMsg
             }
         });
-    } catch (e) {
-        console.error("Himalayas Scrape Error:", e);
+    } catch (logErr) {}
+
+    return jobs;
+}
+
+export async function scrapeJobicy(keyword: string) {
+    const jobs: any[] = [];
+    let errorMsg: string | null = null;
+    const targetUrl = `https://jobicy.com/api/v2/remote-jobs?count=50&industry=engineering`;
+
+    try {
+        const res = await fetch(targetUrl, { signal: AbortSignal.timeout(10000) });
+        if (!res.ok) {
+            errorMsg = `HTTP Error: ${res.status}`;
+        } else {
+            const data = await res.json();
+            if (data && Array.isArray(data.jobs)) {
+                for (const j of data.jobs) {
+                    if (keyword && !j.jobTitle?.toLowerCase().includes(keyword.toLowerCase()) && !j.companyName?.toLowerCase().includes(keyword.toLowerCase())) {
+                        continue;
+                    }
+                    jobs.push({
+                        title: j.jobTitle || j.title || 'Untitled Role',
+                        company: j.companyName || 'Unknown Company',
+                        location: j.jobGeo || 'Remote',
+                        url: j.url,
+                        salary: (j.annualSalaryMin && j.annualSalaryMax) ? `$${j.annualSalaryMin} - $${j.annualSalaryMax}` : null,
+                        description: j.jobDescription ? cheerio.load(j.jobDescription).text().trim() : `Apply at: ${j.url}`,
+                        source: 'jobicy'
+                    });
+                }
+            }
+        }
+    } catch (e: any) {
+        console.error("Jobicy Scrape Error:", e);
+        errorMsg = e.message;
     }
+
+    try {
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Jobicy',
+                targetUrl,
+                status: errorMsg ? 'FAILURE' : 'SUCCESS',
+                resultsCount: jobs.length,
+                usedFirecrawl: false,
+                errorDetails: errorMsg
+            }
+        });
+    } catch (logErr) {}
+
+    return jobs;
+}
+
+export async function scrapeJobspresso(keyword: string) {
+    const jobs: any[] = [];
+    let errorMsg: string | null = null;
+    const targetUrl = `https://jobspresso.co/feed/`;
+
+    try {
+        const res = await fetch(targetUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+            signal: AbortSignal.timeout(10000)
+        });
+        if (!res.ok) {
+            errorMsg = `HTTP Error: ${res.status}`;
+        } else {
+            const xml = await res.text();
+            const $ = cheerio.load(xml, { xmlMode: true });
+            $('item').each((_, el) => {
+                const rawTitle = $(el).find('title').text().trim();
+                const link = $(el).find('link').text().trim() || $(el).find('guid').text().trim();
+                const descHtml = $(el).find('content\\:encoded, description').text();
+                const company = rawTitle.includes(' at ') ? rawTitle.split(' at ')[1]?.trim() : 'Jobspresso Listing';
+                const title = rawTitle.includes(' at ') ? rawTitle.split(' at ')[0]?.trim() : rawTitle;
+
+                if (keyword && !title.toLowerCase().includes(keyword.toLowerCase()) && !company.toLowerCase().includes(keyword.toLowerCase())) {
+                    return;
+                }
+
+                jobs.push({
+                    title,
+                    company,
+                    location: 'Remote',
+                    url: link,
+                    description: descHtml ? cheerio.load(descHtml).text().trim() : `Apply at: ${link}`,
+                    source: 'jobspresso'
+                });
+            });
+        }
+    } catch (e: any) {
+        console.error("Jobspresso Scrape Error:", e);
+        errorMsg = e.message;
+    }
+
+    try {
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Jobspresso',
+                targetUrl,
+                status: errorMsg ? 'FAILURE' : 'SUCCESS',
+                resultsCount: jobs.length,
+                usedFirecrawl: false,
+                errorDetails: errorMsg
+            }
+        });
+    } catch (logErr) {}
+
+    return jobs;
+}
+
+export async function scrapeLeverApi(companySlug: string) {
+    const jobs: any[] = [];
+    let errorMsg: string | null = null;
+    const targetUrl = `https://api.lever.co/v0/postings/${companySlug}`;
+
+    try {
+        const res = await gotScraping({
+            url: targetUrl,
+            responseType: 'json',
+            throwHttpErrors: false
+        });
+        if (res.statusCode >= 200 && res.statusCode < 300 && Array.isArray(res.body)) {
+            const rawJobs = res.body as any[];
+            const companyName = companySlug.charAt(0).toUpperCase() + companySlug.slice(1);
+            for (const j of rawJobs) {
+                jobs.push({
+                    title: j.text || 'Unknown Role',
+                    company: companyName,
+                    location: j.categories?.location || 'Unknown Location',
+                    description: j.descriptionPlain ? (j.descriptionPlain.replace(/\s+/g, ' ').trim() + `\n\nApply at: ${j.hostedUrl}`) : `Apply at: ${j.hostedUrl}`,
+                    url: j.hostedUrl || j.applyUrl,
+                    source: 'Lever'
+                });
+            }
+        } else {
+            errorMsg = `HTTP Error: ${res.statusCode}`;
+        }
+    } catch (e: any) {
+        console.error(`Lever API Scrape Error for ${companySlug}:`, e);
+        errorMsg = e.message;
+    }
+
+    try {
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: `Lever: ${companySlug}`,
+                targetUrl,
+                status: errorMsg ? 'FAILURE' : 'SUCCESS',
+                resultsCount: jobs.length,
+                usedFirecrawl: false,
+                errorDetails: errorMsg
+            }
+        });
+    } catch (logErr) {}
+
     return jobs;
 }
 
@@ -1002,13 +1180,25 @@ export async function scrapeIndeed(keyword: string, location: string) {
             data: {
                 scraperName: 'Indeed (Native)',
                 targetUrl,
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                status: 'SUCCESS',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
         });
-    } catch (e) {
+    } catch (e: any) {
         console.error("Indeed Scrape Error:", e);
+        try {
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'Indeed (Native)',
+                    targetUrl,
+                    status: 'FAILURE',
+                    resultsCount: 0,
+                    usedFirecrawl: false,
+                    errorDetails: e.message
+                }
+            });
+        } catch {}
     }
     
     return jobs;
@@ -1206,14 +1396,26 @@ export async function scrapeGlassdoor(keyword: string, location: string = 'Remot
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'Glassdoor (Native)',
-                targetUrl: usedUrl,
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                targetUrl,
+                status: 'SUCCESS',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
         });
-    } catch (e) {
+    } catch (e: any) {
         console.error("Glassdoor Scrape Error:", e);
+        try {
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'Glassdoor (Native)',
+                    targetUrl,
+                    status: 'FAILURE',
+                    resultsCount: 0,
+                    usedFirecrawl: false,
+                    errorDetails: e.message
+                }
+            });
+        } catch {}
     }
 
     return jobs;
@@ -1375,13 +1577,25 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
             data: {
                 scraperName: 'Dice (Native)',
                 targetUrl: searchUrl,
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                status: 'SUCCESS',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
         }).catch(console.error);
-    } catch (e) {
+    } catch (e: any) {
         console.error('Dice scrape error:', e);
+        try {
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'Dice (Native)',
+                    targetUrl: searchUrl,
+                    status: 'FAILURE',
+                    resultsCount: 0,
+                    usedFirecrawl: false,
+                    errorDetails: e.message
+                }
+            }).catch(() => {});
+        } catch {}
     }
 
     return jobs;
@@ -1422,15 +1636,27 @@ export async function scrapeLinkedIn(keyword: string, location: string = 'remote
             data: {
                 scraperName: 'LinkedIn (Native)',
                 targetUrl: url,
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                status: 'SUCCESS',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
         }).catch(console.error);
 
         return jobs;
-    } catch (error) {
+    } catch (error: any) {
         console.error("LinkedIn scrape error:", error);
+        try {
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'LinkedIn (Native)',
+                    targetUrl: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`,
+                    status: 'FAILURE',
+                    resultsCount: 0,
+                    usedFirecrawl: false,
+                    errorDetails: error.message
+                }
+            }).catch(() => {});
+        } catch {}
         return [];
     }
 }
@@ -1492,15 +1718,27 @@ export async function scrapeZipRecruiter(keyword: string, location: string = 're
             data: {
                 scraperName: 'ZipRecruiter (Native)',
                 targetUrl: url,
-                status: jobs.length > 0 ? 'SUCCESS' : 'FAILURE',
+                status: 'SUCCESS',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
         }).catch(console.error);
 
         return jobs;
-    } catch (error) {
+    } catch (error: any) {
         console.error("ZipRecruiter scrape error:", error);
+        try {
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'ZipRecruiter (Native)',
+                    targetUrl: `https://www.ziprecruiter.com/jobs-search?search=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`,
+                    status: 'FAILURE',
+                    resultsCount: 0,
+                    usedFirecrawl: false,
+                    errorDetails: error.message
+                }
+            }).catch(() => {});
+        } catch {}
         return [];
     }
 }
@@ -1535,7 +1773,7 @@ export async function scrapeInternational(keyword: string, sources: any) {
     async function logResult(scraperName: string, targetUrl: string, count: number, error?: string) {
         try {
             await prisma.scraperLog.create({
-                data: { scraperName, targetUrl, status: error ? 'FAILURE' : (count > 0 ? 'SUCCESS' : 'FAILURE'), resultsCount: count, usedFirecrawl: false, errorDetails: error || null }
+                data: { scraperName, targetUrl, status: error ? 'FAILURE' : 'SUCCESS', resultsCount: count, usedFirecrawl: false, errorDetails: error || null }
             });
         } catch (e) { console.error('Failed to log scraper:', e); }
     }
