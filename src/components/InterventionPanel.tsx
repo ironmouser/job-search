@@ -98,6 +98,7 @@ export function InterventionPanel({
     reason === 'unexpected_page' ||
     reason === 'resume_rejected' ||
     reason === 'assessment_required' ||
+    reason === 'login_required' ||
     description.toLowerCase().includes('not currently supported') ||
     description.toLowerCase().includes('apply manually') ||
     description.toLowerCase().includes('cannot automate');
