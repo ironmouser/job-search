@@ -123,9 +123,10 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
     ]);
 
     const handleApplyTemplate = (templateKey: string) => {
-        const tpl = PDF_TEMPLATES[templateKey];
+        const key = templateKey === 'techno' ? 'tech' : templateKey;
+        const tpl = PDF_TEMPLATES[key];
         if (!tpl) return;
-        onChange(`${prefix}Template`, templateKey);
+        onChange(`${prefix}Template`, key);
         onChange(`${prefix}FontFamily`, tpl.fontFamily);
         onChange(`${prefix}FontSize`, tpl.fontSize);
         onChange(`${prefix}LineHeight`, tpl.lineHeight);
@@ -559,8 +560,10 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                             }}
                         >
                             <option value="1.3">Line Spacing: 1.3 (Tight)</option>
+                            <option value="1.4">Line Spacing: 1.4 (Compact)</option>
                             <option value="1.45">Line Spacing: 1.45 (Standard)</option>
                             <option value="1.5">Line Spacing: 1.5 (Normal)</option>
+                            <option value="1.55">Line Spacing: 1.55 (Executive)</option>
                             <option value="1.65">Line Spacing: 1.65 (Relaxed)</option>
                         </select>
                         <ChevronDown size={14} color="#0f172a" style={{ position: 'absolute', right: '0.65rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />

@@ -31,12 +31,12 @@ export const PDF_TEMPLATES: Record<string, Required<Omit<PdfStyleOptions, 'templ
         headerLayout: 'split'
     },
     executive: {
-        fontFamily: 'Georgia, "Times New Roman", serif',
+        fontFamily: "Georgia, 'Times New Roman', serif",
         fontSize: '11pt',
         lineHeight: '1.55',
         primaryColor: '#1e3a8a',
         textColor: '#111827',
-        margin: '0.5in',
+        margin: '0.65in',
         headerLayout: 'centered'
     },
     tech: {
@@ -45,7 +45,7 @@ export const PDF_TEMPLATES: Record<string, Required<Omit<PdfStyleOptions, 'templ
         lineHeight: '1.4',
         primaryColor: '#1e3a8a',
         textColor: '#0f172a',
-        margin: '0.5in',
+        margin: '0.3in',
         headerLayout: 'left'
     },
     minimal: {
@@ -59,8 +59,11 @@ export const PDF_TEMPLATES: Record<string, Required<Omit<PdfStyleOptions, 'templ
     }
 };
 
+PDF_TEMPLATES.techno = PDF_TEMPLATES.tech;
+
 export function generateStyledPdfHtml(markdownText: string, options: PdfStyleOptions = {}): string {
-    const templateKey = options.template && PDF_TEMPLATES[options.template] ? options.template : 'classic';
+    const rawTemplate = options.template === 'techno' ? 'tech' : options.template;
+    const templateKey = rawTemplate && PDF_TEMPLATES[rawTemplate] ? rawTemplate : 'classic';
     const defaults = PDF_TEMPLATES[templateKey] || PDF_TEMPLATES.classic;
 
     const fontFamily = options.fontFamily || defaults.fontFamily;
@@ -78,7 +81,6 @@ export function generateStyledPdfHtml(markdownText: string, options: PdfStyleOpt
 
     if (headerLayout === 'centered') {
         h1StyleExtra = 'text-align: center;';
-        headerContainerExtra = 'text-align: center;';
     } else if (headerLayout === 'split') {
         h1StyleExtra = 'display: flex; justify-content: space-between; align-items: baseline;';
     }
