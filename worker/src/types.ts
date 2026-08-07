@@ -112,6 +112,8 @@ export interface UserProfile {
   willingToTravel?: string;
   isOver18?: string;
   willingToRelocate?: string;
+  accountPassword?: string;
+  accountEmail?: string;
 }
 
 export interface WorkflowContext {

@@ -986,6 +986,21 @@ export default function ProfileForm({
               </div>
             </div>
 
+            {/* Default Candidate Account Password for Auto Apply */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Default Job Portal Password</label>
+              <input
+                type="password"
+                value={settings.defaultAccountPassword || ''}
+                onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
+                placeholder="Optional password for automated candidate account creation"
+                style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+              />
+              <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                Used by the AI agent to automatically create candidate accounts on portals (e.g. Workday, Taleo) that require login.
+              </span>
+            </div>
+
             <div style={{ height: "1px", background: "var(--border-glass)", margin: "0.5rem 0" }} />
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
               <h4 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Voluntary Self-ID (EEOC)</h4>

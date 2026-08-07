@@ -95,7 +95,7 @@ export class WorkdayPlugin extends ATSPlugin {
     await logger.info('page_navigated', 'Navigated to Workday job posting');
 
     // Check for login/create account page before clicking Apply (some URLs go straight to auth/apply)
-    await this.checkLoginOrCreateAccount(page, context.jobUrl);
+    await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
     // Wait for and click the Apply button
     // Workday uses data-automation-id for most interactive elements
@@ -128,7 +128,7 @@ export class WorkdayPlugin extends ATSPlugin {
     await page.waitForTimeout(2500);
 
     // Check for login/create account page after clicking Apply
-    await this.checkLoginOrCreateAccount(page, context.jobUrl);
+    await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
     if (!clicked) {
       throw new InterventionError(
@@ -144,8 +144,8 @@ export class WorkdayPlugin extends ATSPlugin {
   /**
    * Helper to detect if Workday is currently showing a Sign In or Create Account screen.
    */
-  private async checkLoginOrCreateAccount(page: import('playwright').Page, fallbackUrl: string): Promise<void> {
-    await this.checkAccountGate(page, fallbackUrl, this.displayName);
+  private async checkLoginOrCreateAccount(page: import('playwright').Page, fallbackUrl: string, context?: WorkflowContext): Promise<void> {
+    await this.checkAccountGate(page, fallbackUrl, this.displayName, context);
   }
 
   // ─── Apply ────────────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ export class WorkdayPlugin extends ATSPlugin {
     logger: ExecutionLogger
   ): Promise<void> {
     const page = browser.page;
-    await this.checkLoginOrCreateAccount(page, context.jobUrl);
+    await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
     // Step 1: Upload resume
     const resumePath = await browser.writeMarkdownToPdf(

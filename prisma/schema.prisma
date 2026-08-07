@@ -385,6 +385,7 @@ model UserPreferences {
   willingToTravel     String? @map("willing_to_travel")
   isOver18            String? @map("is_over_18")
   willingToRelocate   String? @map("willing_to_relocate")
+  defaultAccountPassword String? @map("default_account_password")
 
   // PDF Styling Customization
   resumePdfTemplate         String? @default("classic") @map("resume_pdf_template")

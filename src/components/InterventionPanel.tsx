@@ -98,7 +98,6 @@ export function InterventionPanel({
     reason === 'unexpected_page' ||
     reason === 'resume_rejected' ||
     reason === 'assessment_required' ||
-    reason === 'login_required' ||
     description.toLowerCase().includes('not currently supported') ||
     description.toLowerCase().includes('apply manually') ||
     description.toLowerCase().includes('cannot automate');
@@ -253,7 +252,9 @@ export function InterventionPanel({
                 <ArrowRight size={16} /> What to do next
               </strong>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                {showAuthForm 
+                {reason === 'login_required'
+                  ? 'Enter your desired account email and password below so the AI agent can create or sign into your candidate account.'
+                  : showAuthForm 
                   ? 'Fill out your missing authorization details below or complete verification directly on the company site.' 
                   : 'Complete the verification or login directly on the job application page.'}
               </span>
@@ -264,20 +265,48 @@ export function InterventionPanel({
                 <Zap size={16} className="text-accent" /> What will happen next
               </strong>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Once verified, click <strong>Resume Automation</strong> so the AI agent can continue submitting your application automatically.
+                Once submitted, click <strong>Create Account & Resume</strong> so the AI agent can automatically fill out and submit your application.
               </span>
             </div>
           </div>
 
-          {showAuthForm && !loadingSettings && (
+          {(reason === 'login_required' || showAuthForm) && !loadingSettings && (
             <div style={{ background: 'var(--bg-secondary)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
               <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Key size={16} className="text-accent" /> Complete Authorization Settings
+                <Key size={16} className="text-accent" /> {reason === 'login_required' ? 'Candidate Account Credentials' : 'Complete Authorization Settings'}
               </h4>
               <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                You are missing required authorization and demographic data. Please fill this out so the AI can answer related application questions. This will be saved to your profile for future applications.
+                {reason === 'login_required'
+                  ? 'Provide the password you would like the AI agent to use to create or log into your candidate account for this job portal.'
+                  : 'You are missing required authorization and demographic data. Please fill this out so the AI can answer related application questions. This will be saved to your profile for future applications.'}
               </p>
               
+              {reason === 'login_required' && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Email</label>
+                    <input
+                      type="email"
+                      value={settings?.emailAddress || ''}
+                      onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
+                      placeholder="e.g. user@example.com"
+                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Password</label>
+                    <input
+                      type="password"
+                      value={settings?.defaultAccountPassword || ''}
+                      onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
+                      placeholder="Enter password for portal account"
+                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {showAuthForm && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
@@ -379,6 +408,7 @@ export function InterventionPanel({
                     <input type="url" value={settings?.linkedinUrl || ''} onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)} placeholder="e.g. https://linkedin.com/in/username" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }} />
                 </div>
               </div>
+              )}
             </div>
           )}
 
@@ -386,11 +416,11 @@ export function InterventionPanel({
             <button
               className="btn-primary"
               onClick={() => resolve('completed')}
-              disabled={resolving}
+              disabled={resolving || (reason === 'login_required' && !settings?.defaultAccountPassword)}
               style={{ flex: 2, minWidth: '160px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.65rem 1.25rem', fontSize: '0.9rem', fontWeight: 600 }}
               id={`intervention-resolve-${interventionId}`}
             >
-              {resolving && resolution === 'completed' ? 'Resuming…' : <><Check size={16} /> Resume Automation</>}
+              {resolving && resolution === 'completed' ? 'Resuming…' : <><Check size={16} /> {reason === 'login_required' ? 'Create Account & Resume' : 'Resume Automation'}</>}
             </button>
             {pageUrl && (
               <button

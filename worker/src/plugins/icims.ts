@@ -59,7 +59,7 @@ export class ICIMSPlugin extends ATSPlugin {
       await logger.info('iframe_detected', 'Found iCIMS application iframe');
     }
 
-    await this.checkAccountGate(browser.page, context.jobUrl, this.displayName);
+    await this.checkAccountGate(browser.page, context.jobUrl, this.displayName, context);
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {

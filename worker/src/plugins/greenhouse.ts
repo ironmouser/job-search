@@ -92,7 +92,7 @@ export class GreenhousePlugin extends ATSPlugin {
     // for either the direct form container or the Greenhouse iframe.
     await browser.navigate(context.jobUrl);
 
-    await this.checkAccountGate(page, context.jobUrl, this.displayName);
+    await this.checkAccountGate(page, context.jobUrl, this.displayName, context);
 
     // Wait for the Greenhouse app container or the application form fields
     const formSelectors = [

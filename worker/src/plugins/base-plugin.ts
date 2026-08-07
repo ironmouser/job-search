@@ -88,7 +88,8 @@ export abstract class ATSPlugin {
   protected async checkAccountGate(
     page: import('playwright').Page,
     fallbackUrl: string,
-    platformDisplayName: string
+    platformDisplayName: string,
+    context?: WorkflowContext
   ): Promise<void> {
     const currentUrl = page.url();
     const lowerUrl = currentUrl.toLowerCase();
@@ -121,9 +122,61 @@ export abstract class ATSPlugin {
     const domPasswordReq = (await page.locator(':has-text("Password Requirements")').count().catch(() => 0)) > 0;
     const domVerifyPassword = (await page.locator(':has-text("Verify New Password")').count().catch(() => 0)) > 0;
 
-    const isGuestOption = (await page.locator('button, a').filter({ hasText: /apply as guest|continue as guest|apply without account/i }).count().catch(() => 0)) > 0;
+    const guestBtn = page.locator('button, a').filter({ hasText: /apply as guest|continue as guest|apply without account/i }).first();
+    const isGuestOption = (await guestBtn.count().catch(() => 0)) > 0;
 
-    if (!isGuestOption && (urlMatch || titleMatch || hasPasswordField || domCreateAccount || domSignIn || domPasswordReq || domVerifyPassword)) {
+    if (isGuestOption) {
+      try {
+        await guestBtn.click();
+        await page.waitForTimeout(2000);
+        return;
+      } catch {
+        // Guest click failed — proceed to credential attempt or intervention
+      }
+    }
+
+    const isGateActive = urlMatch || titleMatch || hasPasswordField || domCreateAccount || domSignIn || domPasswordReq || domVerifyPassword;
+
+    if (isGateActive) {
+      const email = context?.userProfile?.accountEmail || context?.userProfile?.email;
+      const password = context?.userProfile?.accountPassword;
+
+      if (email && password) {
+        try {
+          const emailInput = page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
+          const passwordInput = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]').first();
+
+          if (await emailInput.count() > 0 && await passwordInput.count() > 0) {
+            await emailInput.fill(email);
+            await passwordInput.fill(password);
+
+            const confirmInput = page.locator('input[name*="confirm" i], input[name*="verify" i], [data-automation-id*="verifyPassword" i], [data-automation-id*="confirmPassword" i]').first();
+            if (await confirmInput.count() > 0) {
+              await confirmInput.fill(password);
+            }
+
+            const termsCheckbox = page.locator('input[type="checkbox"][name*="term" i], input[type="checkbox"][name*="privacy" i], [data-automation-id*="agree" i]').first();
+            if (await termsCheckbox.count() > 0) {
+              await termsCheckbox.check().catch(() => {});
+            }
+
+            const submitBtn = page.locator('button[type="submit"], [data-automation-id*="createAccount" i], [data-automation-id*="submit" i], [data-automation-id*="signIn" i], button:has-text("Create Account"), button:has-text("Sign In"), button:has-text("Register"), button:has-text("Log In")').first();
+            if (await submitBtn.count() > 0) {
+              await submitBtn.click();
+              await page.waitForTimeout(3000);
+
+              // Re-check if gate is still active after submitting credentials
+              const stillGated = (await page.locator('input[type="password"]').count().catch(() => 0)) > 0;
+              if (!stillGated) {
+                return; // Successfully created account or signed in!
+              }
+            }
+          }
+        } catch {
+          // Automated credential entry encountered error — fallback to intervention
+        }
+      }
+
       throw new InterventionError(
         InterventionReason.LOGIN_REQUIRED,
         `${platformDisplayName} requires candidate account creation or sign in. Please log in or create an account to proceed.`,

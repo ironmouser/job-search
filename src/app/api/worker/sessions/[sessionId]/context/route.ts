@@ -119,6 +119,8 @@ export async function GET(
         willingToTravel: (prefs as any)?.willingToTravel ?? undefined,
         isOver18: (prefs as any)?.isOver18 ?? undefined,
         willingToRelocate: (prefs as any)?.willingToRelocate ?? undefined,
+        accountPassword: (prefs as any)?.defaultAccountPassword ?? undefined,
+        accountEmail: prefs?.emailAddress || userEmail || undefined,
       },
     };
 
