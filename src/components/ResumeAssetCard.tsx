@@ -10,6 +10,7 @@ import ResumeActions from './ResumeActions';
 import DownloadPdfButton from './DownloadPdfButton';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
+import { trackAssetAction } from '@/lib/analytics';
 
 export default function ResumeAssetCard({
     jobId,

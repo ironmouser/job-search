@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { UploadCloud, FileText, Loader2, X, Sparkles } from 'lucide-react';
 import CloudResumePicker from '@/components/common/CloudResumePicker';
+import { trackJitResumeModalOpen, trackJitResumeModalDismiss, trackJitResumeUploadSuccess } from '@/lib/analytics';
 
 interface JitResumeUploadModalProps {
   isOpen: boolean;
@@ -36,8 +37,14 @@ export default function JitResumeUploadModal({
     if (isOpen) {
       setResumeText('');
       setErrorMsg('');
+      trackJitResumeModalOpen(title);
     }
-  }, [isOpen]);
+  }, [isOpen, title]);
+
+  const handleClose = () => {
+    trackJitResumeModalDismiss();
+    onClose();
+  };
 
   if (!isOpen || !mounted) return null;
 
@@ -94,6 +101,7 @@ export default function JitResumeUploadModal({
       });
 
       if (res.ok) {
+        trackJitResumeUploadSuccess();
         onSuccess(resumeText.trim());
         onClose();
       } else {

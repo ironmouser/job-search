@@ -5,6 +5,7 @@ import { Copy, Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, 
 import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadTextButton from './DownloadTextButton';
+import { trackAssetAction } from '@/lib/analytics';
 
 export default function NetworkingAssetCard({
     jobId,

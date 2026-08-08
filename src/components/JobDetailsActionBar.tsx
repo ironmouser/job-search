@@ -23,6 +23,7 @@ import {
 import FeedbackButtons from './FeedbackButtons';
 import { useJobNav } from './JobDetailsNavWrapper';
 import JobDetailsFilterModal from './JobDetailsFilterModal';
+import { trackDockAction } from '@/lib/analytics';
 
 interface JobDetailsActionBarProps {
   currentJobId: string;
@@ -176,6 +177,7 @@ export default function JobDetailsActionBar({
 
   const handleNext = () => {
     if (!nextJob) return;
+    trackDockAction('dock_next_job', currentJobId, { target_id: nextJob.id });
     const targetUrl = `/job/${nextJob.id}`;
     window.scrollTo({ top: 0, behavior: 'instant' });
     triggerNavigate('next', targetUrl, () => {
@@ -185,6 +187,7 @@ export default function JobDetailsActionBar({
 
   const handlePrev = () => {
     if (!prevJob) return;
+    trackDockAction('dock_prev_job', currentJobId, { target_id: prevJob.id });
     const targetUrl = `/job/${prevJob.id}`;
     window.scrollTo({ top: 0, behavior: 'instant' });
     triggerNavigate('prev', targetUrl, () => {
@@ -193,6 +196,7 @@ export default function JobDetailsActionBar({
   };
 
   const handleStep2Generate = async () => {
+    trackDockAction('dock_generate_assets_click', currentJobId);
     const section = document.getElementById('step-2-assets');
     if (section) {
       section.scrollIntoView({ behavior: 'smooth' });
@@ -219,6 +223,7 @@ export default function JobDetailsActionBar({
   };
 
   const handleStep3AutoApply = () => {
+    trackDockAction('dock_auto_apply_click', currentJobId);
     setShowApplyPopover(false);
     setMobileApplyOpen(false);
     setIsFabOpen(false);
@@ -229,6 +234,7 @@ export default function JobDetailsActionBar({
   };
 
   const handleStep3ApplyNewTab = () => {
+    trackDockAction('dock_external_apply_click', currentJobId);
     setShowApplyPopover(false);
     setMobileApplyOpen(false);
     setIsFabOpen(false);

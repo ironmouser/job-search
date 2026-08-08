@@ -10,6 +10,7 @@ import DownloadPdfButton from './DownloadPdfButton';
 import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 import { cleanCompanyName, cleanCompanyLocation } from '@/lib/cleaners';
 import { PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
+import { trackAssetAction } from '@/lib/analytics';
 
 const cleanContent = (text: string) => {
     if (!text) return '';

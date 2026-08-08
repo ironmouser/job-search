@@ -36,6 +36,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Cropper from "react-easy-crop";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { trackProfileView, trackProfileResumeUpdate, trackProfileSave } from "@/lib/analytics";
 
 interface ProfileFormProps {
   initialName: string;
@@ -109,6 +110,10 @@ export default function ProfileForm({
   const [redirecting, setRedirecting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  useEffect(() => {
+    trackProfileView();
+  }, []);
+
   // Accordion state
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     'personal-info': false,
@@ -159,14 +164,13 @@ export default function ProfileForm({
     fetch('/api/settings', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
-        setSettings(data || {});
-        setLoadingSettings(false);
+        if (data) setSettings(data);
       })
-      .catch(() => setLoadingSettings(false));
+      .finally(() => setLoadingSettings(false));
   }, []);
 
-  const handleSettingsChange = (key: string, value: any) => {
-    setSettings((prev: any) => ({ ...prev, [key]: value }));
+  const handleSettingsChange = (key: string, val: any) => {
+    setSettings((prev: any) => ({ ...prev, [key]: val }));
   };
 
   useEffect(() => {
@@ -197,42 +201,31 @@ export default function ProfileForm({
     }
   }, [session, planTier, update]);
 
+  const onCropComplete = (_croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!["image/jpeg", "image/png", "image/gif"].includes(file.type)) {
-      alert("Only JPEG, PNG, and GIF images are allowed.");
-      return;
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCropImageSrc(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-
-    setSelectedFile(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCropImageSrc(reader.result as string);
-      setZoom(1);
-      setCrop({ x: 0, y: 0 });
-    };
-    reader.readAsDataURL(file);
-    
-    e.target.value = '';
   };
 
   const handleConfirmCrop = async () => {
-    if (!cropImageSrc || !croppedAreaPixels || !selectedFile) return;
-
+    if (!cropImageSrc || !croppedAreaPixels) return;
     setSaving(true);
     try {
       const croppedBlob = await getCroppedImg(cropImageSrc, croppedAreaPixels);
-      if (!croppedBlob) throw new Error("Could not crop image");
-
-      if (croppedBlob.size > 512 * 1024) {
-        alert("Image is too large even after compression.");
-        return;
-      }
+      if (!croppedBlob) throw new Error("Failed to crop image");
 
       const formData = new FormData();
-      formData.append("file", croppedBlob, selectedFile.name);
+      formData.append("file", croppedBlob, selectedFile?.name || "avatar.jpg");
 
       const res = await fetch("/api/user/avatar", {
         method: "POST",
@@ -287,6 +280,7 @@ export default function ProfileForm({
     if (!file) return;
 
     setParsingResume(true);
+    trackProfileResumeUpdate("upload");
     const formData = new FormData();
     formData.append('file', file);
 
@@ -314,6 +308,7 @@ export default function ProfileForm({
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
+        trackProfileResumeUpdate("paste");
         handleSettingsChange('resumeMarkdown', text);
       }
     } catch (err) {
@@ -323,6 +318,7 @@ export default function ProfileForm({
 
   const handleSaveProfile = async () => {
     setSaving(true);
+    trackProfileSave();
     try {
       const res = await fetch("/api/user/profile", {
         method: "POST",

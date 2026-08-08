@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
@@ -11,6 +11,7 @@ import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
 import { Bot, Building2, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { trackAutoApplyAction } from '@/lib/analytics';
 
 interface AutoApplyPanelProps {
   jobId: string;
@@ -134,10 +135,11 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
     if (
       session?.status === AutoApplyStatus.APPLIED
     ) {
+      trackAutoApplyAction('auto_apply_completed', jobId, { platform: session.atsPlatform });
       sessionStorage.setItem('just_applied_job_id', jobId);
       router.refresh();
     }
-  }, [session?.status, jobId, router]);
+  }, [session?.status, jobId, router, session?.atsPlatform]);
 
   // Scroll directly to intervention / failure issue when session status is fetched
   useEffect(() => {

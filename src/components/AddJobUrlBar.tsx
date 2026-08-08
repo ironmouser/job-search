@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, FileText, CheckCircle2 } from 'lucide-react';
+import { trackAddJobUrl } from '@/lib/analytics';
 
 interface AddJobUrlBarProps {
   userPlanTier?: string;
@@ -60,6 +61,8 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       const data = await res.json();
 
       if (!res.ok) {
+        const errText = data.message || data.error || 'Failed to add job from URL';
+        trackAddJobUrl(url.trim(), 'error', errText);
         if (data.error === 'COULD_NOT_SCRAPE') {
           // Open manual fallback modal
           if (data.partialData) {
@@ -70,18 +73,21 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
           setShowManualModal(true);
           setErrorMsg('Unable to scrape this site directly. Please paste the job description manually below.');
         } else {
-          setErrorMsg(data.message || data.error || 'Failed to add job from URL');
+          setErrorMsg(errText);
         }
         setIsLoading(false);
         return;
       }
 
+      trackAddJobUrl(url.trim(), 'success');
       setUrl('');
       setSuccessMsg(data.message || 'Job successfully added to your pipeline!');
       onJobAdded(data.job);
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Network error occurred');
+      const errMsg = err.message || 'Network error occurred';
+      trackAddJobUrl(url.trim(), 'error', errMsg);
+      setErrorMsg(errMsg);
     } finally {
       setIsLoading(false);
       setStatusStep('');
@@ -111,11 +117,14 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMsg(data.message || data.error || 'Failed to submit job details');
+        const errText = data.message || data.error || 'Failed to submit job details';
+        trackAddJobUrl(url.trim(), 'error', `Manual submit: ${errText}`);
+        setErrorMsg(errText);
         setIsSubmittingManual(false);
         return;
       }
 
+      trackAddJobUrl(url.trim(), 'success', 'Manual submit');
       setShowManualModal(false);
       setUrl('');
       setManualTitle('');
@@ -126,7 +135,9 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       onJobAdded(data.job);
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Network error occurred');
+      const errMsg = err.message || 'Network error occurred';
+      trackAddJobUrl(url.trim(), 'error', `Manual submit: ${errMsg}`);
+      setErrorMsg(errMsg);
     } finally {
       setIsSubmittingManual(false);
     }

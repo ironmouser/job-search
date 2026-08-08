@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { trackJobSyncStart, trackJobSyncSuccess, trackJobSyncError } from '@/lib/analytics';
 
 interface SyncButtonProps {
   onSyncStateChange?: (isLoading: boolean, statusText: string, jobsFoundCount?: number, isRefining?: boolean) => void;
@@ -16,6 +17,7 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
     setIsLoading(true);
     setStatusText('Scraping Jobs...');
     onSyncStateChange?.(true, 'Initiating Omni-Scrape across job boards...', 0);
+    trackJobSyncStart();
     
     try {
       const response = await fetch('/api/scrape', {
@@ -29,6 +31,7 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
         const errorMessage = data.error || 'Failed to sync jobs across active platforms.';
         setStatusText('Sync Error');
         onSyncStateChange?.(false, 'Error Syncing');
+        trackJobSyncError(errorMessage);
         alert(`Could not complete job sync: ${errorMessage}`);
         setTimeout(() => setStatusText('Sync Jobs'), 3500);
         return;
@@ -92,6 +95,7 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
       } catch (e) {}
 
       const newJobsCount = data.new_jobs_saved || 0;
+      trackJobSyncSuccess(runningCount, newJobsCount);
       onSyncComplete?.(newJobsCount);
 
       if (newJobsCount === 0) {
@@ -111,10 +115,12 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
           window.location.reload();
         }, 1200);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      const errStr = e?.message || 'Unexpected network error';
       setStatusText('Error Syncing');
       onSyncStateChange?.(false, 'Error Syncing');
+      trackJobSyncError(errStr);
       alert('An unexpected network error occurred while attempting to sync jobs.');
       setTimeout(() => setStatusText('Sync Jobs'), 3500);
     } finally {

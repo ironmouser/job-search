@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { submitJobFeedback } from '@/app/(authenticated)/job/[id]/actions';
 import { ThumbsUp, ThumbsDown, X, Bookmark, BookmarkX } from 'lucide-react';
 import FeedbackNudgeTooltip from './FeedbackNudgeTooltip';
+import { trackJobFeedback, trackJobSaveToggle } from '@/lib/analytics';
 
 const DISLIKE_REASONS = [
   "Compensation too low",
@@ -76,6 +77,7 @@ export default function FeedbackButtons({
   const handleSaveForLater = async () => {
     const nextState = !isSaved;
     setIsSaved(nextState);
+    trackJobSaveToggle(jobId, nextState);
     try {
       await fetch(`/api/jobs/${jobId}/archive`, {
         method: 'POST',
@@ -91,6 +93,7 @@ export default function FeedbackButtons({
   const handleLike = async () => {
     setIsSubmitting(true);
     setFeedback('like');
+    trackJobFeedback(jobId, 'like', []);
     try {
       await fetch(`/api/jobs/${jobId}/feedback`, {
         method: 'POST',
@@ -118,6 +121,7 @@ export default function FeedbackButtons({
 
     setFeedback('dislike');
     setShowModal(false);
+    trackJobFeedback(jobId, 'dislike', finalReasons);
     try {
       await fetch(`/api/jobs/${jobId}/feedback`, {
         method: 'POST',

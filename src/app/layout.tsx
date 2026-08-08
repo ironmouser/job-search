@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import AuthProvider from "@/components/AuthProvider";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://www.jobagenthq.com";
 
@@ -55,6 +56,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="light-theme" suppressHydrationWarning>
+        <GoogleAnalytics />
         <AuthProvider>
           <ThemeProvider>
             {children}

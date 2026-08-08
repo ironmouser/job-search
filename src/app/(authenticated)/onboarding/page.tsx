@@ -6,6 +6,7 @@ import { Bot, Search, FileText, Target, CheckCircle, ChevronRight, ChevronLeft, 
 import { useSession } from 'next-auth/react';
 import CloudResumePicker from '@/components/common/CloudResumePicker';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { trackOnboardingStep, trackOnboardingResumeSkip, trackOnboardingComplete } from '@/lib/analytics';
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -19,6 +20,7 @@ export default function OnboardingPage() {
 
     useEffect(() => {
         setIsMounted(true);
+        trackOnboardingStep(1, "Target Search");
     }, []);
     
     const [formData, setFormData] = useState({
@@ -92,7 +94,21 @@ export default function OnboardingPage() {
         setFormData({ ...formData, [key]: value });
     };
 
-    const handleNext = () => setStep(s => Math.min(s + 1, 3));
+    const handleNext = () => {
+        setStep(s => {
+            const nextStep = Math.min(s + 1, 3);
+            if (nextStep === 2) {
+                trackOnboardingStep(2, "Base Resume");
+            } else if (nextStep === 3) {
+                trackOnboardingStep(3, "Scoring Rubric");
+                if (!formData.resumeMarkdown.trim()) {
+                    trackOnboardingResumeSkip();
+                }
+            }
+            return nextStep;
+        });
+    };
+    
     const handlePrev = () => setStep(s => Math.max(s - 1, 1));
 
     const handleFileParse = async (file: File) => {
@@ -159,6 +175,12 @@ ${goal}
             });
             
             if (res.ok) {
+                trackOnboardingComplete({
+                    has_resume: Boolean(formData.resumeMarkdown.trim()),
+                    search_keyword: formData.searchKeyword,
+                    search_location: formData.searchLocation,
+                    remote_only: formData.remoteOnly
+                });
                 // Update NextAuth session to trigger token update with new isOnboarded flag
                 await update({ isOnboarded: true });
                 // Hard navigate to dashboard to bypass any cached layout/middleware state

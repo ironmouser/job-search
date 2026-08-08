@@ -28,6 +28,7 @@ import { calculateResumeSimilarity } from '@/lib/similarity';
 import { marked } from 'marked';
 import JobDetailsNavWrapper from '@/components/JobDetailsNavWrapper';
 import JobDetailsActionBar from '@/components/JobDetailsActionBar';
+import JobDetailTracker from '@/components/JobDetailTracker';
 
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -187,6 +188,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   return (
     <JobDetailsNavWrapper jobId={job.id}>
       <div className="animate-fade-in" style={{ paddingBottom: '6rem' }}>
+        <JobDetailTracker jobId={id} company={job.company} title={job.title} score={totalScore} />
         <FeedbackNudgeTracker />
         <Link href="/dashboard" className="btn-outline" style={{ border: 'none', padding: '0.5rem 0', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
           <ArrowLeft size={16} /> Back to Dashboard

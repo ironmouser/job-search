@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Mail, Loader2, ArrowRight, ShieldCheck, LogOut } from "lucide-react";
 import { getAssetUrl } from "@/lib/assets";
+import { trackLogin } from "@/lib/analytics";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -35,6 +36,7 @@ function LoginForm() {
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    trackLogin("email");
     
     try {
       const res = await signIn("email", { 
@@ -56,6 +58,7 @@ function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
+    trackLogin("google");
     try {
       await signIn("google", { callbackUrl: "/onboarding" });
     } catch (error) {

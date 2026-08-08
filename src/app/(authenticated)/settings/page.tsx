@@ -13,6 +13,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { trackSettingsView, trackSettingsSave } from '@/lib/analytics';
 
 // Video instructions for email client setup
 const EMAIL_VIDEO_LINKS: Record<string, string> = {
@@ -118,6 +119,7 @@ export default function SettingsPage() {
 
     useEffect(() => {
         setMounted(true);
+        trackSettingsView();
         if (typeof window !== 'undefined') {
             const hash = window.location.hash;
             if (hash) {
@@ -254,6 +256,7 @@ export default function SettingsPage() {
                 body: JSON.stringify(settingsToSave)
             });
             if (!res.ok) throw new Error('Save failed');
+            trackSettingsSave();
             
             const savedState = JSON.parse(JSON.stringify(settingsToSave));
             if (savedState.emailAppPassword && savedState.emailAppPassword !== '********') {

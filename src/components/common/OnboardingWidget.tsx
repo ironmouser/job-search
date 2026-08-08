@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useHelp } from '../../contexts/HelpContext';
 import { Rocket, CheckCircle2, ArrowRight, X } from 'lucide-react';
-
 import { useRouter, usePathname } from 'next/navigation';
+import { trackEvent } from '@/lib/analytics';
 
 const CLOSE_COUNT_KEY = 'onboarding_banner_close_count';
 const NEVER_SHOW_KEY = 'onboarding_banner_never_show';
@@ -48,6 +48,7 @@ export default function OnboardingWidget() {
 
     const handleContinue = () => {
         setOverlayDismissed(true);
+        trackEvent('onboarding_widget_continue', { progress_pct: progress.percentage });
 
         // Find the first uncompleted task
         let nextTask: any = null;
