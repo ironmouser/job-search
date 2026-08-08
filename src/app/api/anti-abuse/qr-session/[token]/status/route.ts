@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,8 +13,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const resolvedParams = await Promise.resolve(params);
-    const token = resolvedParams?.token;
+    const { token } = await params;
     if (!token) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
