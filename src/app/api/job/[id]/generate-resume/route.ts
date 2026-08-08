@@ -38,6 +38,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             return NextResponse.json({ error: semanticCheck.reason }, { status: 400 });
         }
 
+        const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
+        if (!userPrefs?.resumeMarkdown?.trim()) {
+            return NextResponse.json({ error: 'Base resume is required to generate tailored assets.', errorCode: 'MISSING_BASE_RESUME' }, { status: 400 });
+        }
+
         const userJob = await prisma.userJob.findUnique({
             where: { userId_jobId: { userId: session.user.id, jobId } },
             include: { job: { include: { applicationAssets: { where: { userId: session.user.id } } } } }

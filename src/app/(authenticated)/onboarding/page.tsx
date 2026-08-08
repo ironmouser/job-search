@@ -259,8 +259,27 @@ ${goal}
                             <FileText className="text-accent" size={24} style={{ flexShrink: 0 }} />
                             <span>Base Resume</span>
                         </h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Upload a PDF/Word doc or paste your resume. The AI will convert it to Markdown to use as a template.</p>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.25rem', fontSize: '0.95rem' }}>Upload a PDF/Word doc or paste your resume. The AI will convert it to Markdown to use as a template.</p>
                         
+                        <div style={{
+                            background: 'rgba(99, 102, 241, 0.1)',
+                            border: '1px solid rgba(99, 102, 241, 0.3)',
+                            borderRadius: '8px',
+                            padding: '1rem',
+                            marginBottom: '1.5rem',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '0.75rem'
+                        }}>
+                            <Sparkles className="text-accent" size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                            <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                                <strong>Why upload now?</strong> Uploading your base resume enables deep AI skill matching and 1-click tailored application generation for all target jobs. 
+                                <span style={{ display: 'block', marginTop: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                                    Don't have your file ready? You can skip this step for now and upload it right before you apply!
+                                </span>
+                            </div>
+                        </div>
+
                         <div 
                             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                             onDragLeave={() => setIsDragging(false)}
@@ -519,13 +538,24 @@ ${goal}
                     </button>
                     
                     {step < 3 ? (
-                        <button 
-                            onClick={handleNext} 
-                            className="btn-primary" 
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem' }}
-                        >
-                            Next <ChevronRight size={18} />
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {step === 2 && (
+                                <button 
+                                    onClick={handleNext} 
+                                    className="btn-outline" 
+                                    style={{ padding: '0.65rem 1.15rem', fontSize: '0.9rem' }}
+                                >
+                                    Skip for now
+                                </button>
+                            )}
+                            <button 
+                                onClick={handleNext} 
+                                className="btn-primary" 
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem' }}
+                            >
+                                Next <ChevronRight size={18} />
+                            </button>
+                        </div>
                     ) : (
                         <button 
                             onClick={handleSubmit} 

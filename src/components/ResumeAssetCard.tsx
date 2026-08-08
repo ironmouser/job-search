@@ -9,6 +9,7 @@ import { generateStyledPdfHtml, PdfStyleOptions } from '@/lib/pdfGeneratorHelper
 import ResumeActions from './ResumeActions';
 import DownloadPdfButton from './DownloadPdfButton';
 import CopyToClipboardButton from './CopyToClipboardButton';
+import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 
 export default function ResumeAssetCard({
     jobId,
@@ -109,6 +110,9 @@ export default function ResumeAssetCard({
         return cleaned;
     };
 
+    const [showJitModal, setShowJitModal] = useState(false);
+    const [pendingInstruction, setPendingInstruction] = useState<string>('different');
+
     const handleRegenerate = async (instruction: string = 'different') => {
         if (!isPro || regensLeft <= 0) return;
         setShowCustomPrompt(false);
@@ -128,6 +132,12 @@ export default function ResumeAssetCard({
             
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
+                if (data.errorCode === 'MISSING_BASE_RESUME') {
+                    setPendingInstruction(instruction);
+                    setShowJitModal(true);
+                    setIsLoading(false);
+                    return;
+                }
                 throw new Error(data.error || 'Failed to regenerate');
             }
             
@@ -491,6 +501,16 @@ export default function ResumeAssetCard({
                     </div>
                 )}
             </div>
+            <JitResumeUploadModal
+                isOpen={showJitModal}
+                onClose={() => setShowJitModal(false)}
+                onSuccess={() => {
+                    setShowJitModal(false);
+                    handleRegenerate(pendingInstruction);
+                }}
+                title="Upload Base Resume to Generate Tailored Resume"
+                description="Please upload or paste your master resume template. The AI will use it to craft a customized resume for this position."
+            />
         </details>
     );
 }

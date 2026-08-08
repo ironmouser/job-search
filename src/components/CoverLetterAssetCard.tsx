@@ -7,6 +7,7 @@ import { marked } from 'marked';
 import { useRouter } from 'next/navigation';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadPdfButton from './DownloadPdfButton';
+import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 import { cleanCompanyName, cleanCompanyLocation } from '@/lib/cleaners';
 import { PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
 
@@ -161,6 +162,9 @@ export default function CoverLetterAssetCard({
         setIsEditing(true);
     };
 
+    const [showJitModal, setShowJitModal] = useState(false);
+    const [pendingInstruction, setPendingInstruction] = useState<string>('different');
+
     const handleRegenerate = async (instruction: string) => {
         if (!isPro || regensLeft <= 0) return;
         setShowCustomPrompt(false);
@@ -180,6 +184,12 @@ export default function CoverLetterAssetCard({
             
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
+                if (data.errorCode === 'MISSING_BASE_RESUME') {
+                    setPendingInstruction(instruction);
+                    setShowJitModal(true);
+                    setIsLoading(false);
+                    return;
+                }
                 throw new Error(data.error || 'Failed to regenerate');
             }
             
@@ -793,6 +803,16 @@ export default function CoverLetterAssetCard({
                     </div>
                 )}
             </div>
+            <JitResumeUploadModal
+                isOpen={showJitModal}
+                onClose={() => setShowJitModal(false)}
+                onSuccess={() => {
+                    setShowJitModal(false);
+                    handleRegenerate(pendingInstruction);
+                }}
+                title="Upload Base Resume to Generate Cover Letter"
+                description="Please upload or paste your base resume so the AI can pull your experience and metrics to write a tailored cover letter."
+            />
         </details>
     );
 }
