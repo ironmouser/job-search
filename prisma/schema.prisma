@@ -285,10 +285,17 @@ model User {
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   lastLoginAt            DateTime? @map("last_login_at") @db.Timestamptz(6)
 
+  // Anti-abuse & Multi-account tracking
+  normalizedEmail      String?   @map("normalized_email")
+  isTrialDeferred      Boolean   @default(false) @map("is_trial_deferred")
+  trialDeferralReason  String?   @map("trial_deferral_reason")
+  primaryUserId        String?   @map("primary_user_id")
+  unifiedQuotaGroupId  String?   @map("unified_quota_group_id")
+
   accounts      Account[]
   sessions      Session[]
   
-  organization         Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organization         Organization?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   userPreferences      UserPreferences?
   userJobs             UserJob[]
   scores               OpportunityScore[]
@@ -297,6 +304,9 @@ model User {
   appFeedbacks         AppFeedback[]
   autoApplySessions    AutoApplySession[]
   interventionRequests InterventionRequest[]
+  deviceVerifications  DeviceVerification[]
+  collisionLogsTarget  AccountCollisionLog[]   @relation("CollisionTarget")
+  collisionLogsPrimary AccountCollisionLog[]   @relation("CollisionPrimary")
 }
 
 
@@ -588,5 +598,55 @@ model AppFeedback {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("app_feedback")
+}
+
+model DeviceVerification {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  deviceFingerprint String   @map("device_fingerprint")
+  deviceType        String   @default("mobile") @map("device_type")
+  ipAddress         String?  @map("ip_address")
+  userAgent         String?  @map("user_agent")
+  cookieConsent     Boolean  @default(true) @map("cookie_consent")
+  verifiedAt        DateTime @default(now()) @map("verified_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deviceFingerprint])
+  @@index([userId])
+  @@map("device_verifications")
+}
+
+model AccountCollisionLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  targetUserId  String   @map("target_user_id")
+  primaryUserId String?  @map("primary_user_id")
+  signalType    String   @map("signal_type") // 'NORMALIZED_EMAIL', 'PHONE_MATCH', 'LINKEDIN_MATCH', 'RESUME_WORK_HISTORY', 'MOBILE_FINGERPRINT'
+  details       Json?
+  ipAddress     String?  @map("ip_address")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  targetUser  User  @relation("CollisionTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  primaryUser User? @relation("CollisionPrimary", fields: [primaryUserId], references: [id], onDelete: SetNull)
+
+  @@index([targetUserId])
+  @@index([primaryUserId])
+  @@index([createdAt(sort: Desc)])
+  @@map("account_collision_logs")
+}
+
+model QRSessionToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  token        String    @unique
+  userId       String    @map("user_id")
+  status       String    @default("pending") // 'pending', 'verified', 'rejected', 'expired'
+  verifiedByIp String?   @map("verified_by_ip")
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz(6)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([token])
+  @@index([userId])
+  @@map("qr_session_tokens")
 }
 

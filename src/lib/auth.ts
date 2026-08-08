@@ -4,6 +4,7 @@ import EmailProvider from "next-auth/providers/email"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
+import { evaluateAccountCollision } from "@/lib/anti-abuse/detector"
 
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -85,15 +86,22 @@ export const authOptions: AuthOptions = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: user.id },
-            select: { trialEndsAt: true, planTier: true }
+            select: { trialEndsAt: true, planTier: true, isTrialDeferred: true }
           });
-          // On first sign-in for a FREE user with no trial yet, grant 7-day Pro trial
+
           if (dbUser && !dbUser.trialEndsAt && dbUser.planTier === 'FREE') {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
-            });
+            // Evaluate account collision (email normalization & disposable domain check)
+            const collisionResult = await evaluateAccountCollision(user.id, user.email || '');
+
+            // Only grant 7-day Pro trial if no identity collision is detected
+            if (!collisionResult.isCollision) {
+              await prisma.user.update({
+                where: { id: user.id },
+                data: { trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+              });
+            }
           }
+
           await prisma.user.update({
             where: { id: user.id },
             data: { lastLoginAt: new Date() }
@@ -114,6 +122,7 @@ export const authOptions: AuthOptions = {
         token.subscriptionType = (user as any).subscriptionType || "FREE";
         token.organizationId = (user as any).organizationId || null;
         token.isDisabled = (user as any).isDisabled || false;
+        token.isTrialDeferred = (user as any).isTrialDeferred || false;
       } else if (token.id) {
         // Refresh org-related fields and verify user still exists
         const dbUser = await prisma.user.findUnique({
@@ -128,6 +137,8 @@ export const authOptions: AuthOptions = {
             isDisabled: true,
             orgAccessExpiresAt: true,
             trialEndsAt: true,
+            isTrialDeferred: true,
+            trialDeferralReason: true,
           }
         });
         if (!dbUser) {
@@ -148,6 +159,8 @@ export const authOptions: AuthOptions = {
         token.isDisabled = dbUser.isDisabled || false;
         token.orgAccessExpiresAt = dbUser.orgAccessExpiresAt?.toISOString() || null;
         token.trialEndsAt = dbUser.trialEndsAt?.toISOString() || null;
+        token.isTrialDeferred = dbUser.isTrialDeferred || false;
+        token.trialDeferralReason = dbUser.trialDeferralReason || null;
       }
       
       if (trigger === "update") {
@@ -158,6 +171,7 @@ export const authOptions: AuthOptions = {
         if (session?.role !== undefined) token.role = session.role;
         if (session?.subscriptionType !== undefined) token.subscriptionType = session.subscriptionType;
         if (session?.organizationId !== undefined) token.organizationId = session.organizationId;
+        if (session?.isTrialDeferred !== undefined) token.isTrialDeferred = session.isTrialDeferred;
       }
       
       return token;
@@ -184,6 +198,8 @@ export const authOptions: AuthOptions = {
         (session.user as any).isDisabled = token.isDisabled as boolean || false;
         (session.user as any).orgAccessExpiresAt = expiresAt;
         (session.user as any).trialEndsAt = token.trialEndsAt ? new Date(token.trialEndsAt as string) : null;
+        (session.user as any).isTrialDeferred = token.isTrialDeferred as boolean || false;
+        (session.user as any).trialDeferralReason = token.trialDeferralReason as string | null;
         if (token.image) session.user.image = token.image as string;
         if (token.name) session.user.name = token.name as string;
       }
@@ -191,3 +207,4 @@ export const authOptions: AuthOptions = {
     }
   }
 };
+

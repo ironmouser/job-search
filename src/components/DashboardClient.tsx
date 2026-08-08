@@ -22,6 +22,7 @@ import OnboardingWidget from '@/components/common/OnboardingWidget';
 import NonUsJobsFocusModal from '@/components/NonUsJobsFocusModal';
 import TrialStatusBanner from '@/components/TrialStatusBanner';
 import UpgradePrompt from '@/components/UpgradePrompt';
+import { AntiAbuseBanner } from '@/components/AntiAbuseBanner';
 
 
 const safeFormatDate = (dateVal: any) => {
@@ -849,6 +850,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           </PageHeaderActions>
         </PageHeader>
 
+        <AntiAbuseBanner />
         <TrialStatusBanner trialEndsAt={trialEndsAt} planTier={userPlanTier} />
 
         {showUpgradeModal && userPlanTier !== 'PRO' && (

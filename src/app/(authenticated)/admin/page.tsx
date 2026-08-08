@@ -95,11 +95,13 @@ const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: () =>
   );
 };
 
+import { AntiAbuseTab } from "./AntiAbuseTab";
+
 export default function AdminDashboard() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'gates' | 'scrapers' | 'alerts'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'gates' | 'scrapers' | 'alerts' | 'anti-abuse'>('users');
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -491,9 +493,18 @@ export default function AdminDashboard() {
         >
           <Cpu size={16} /> Scrapers
         </button>
+        <button
+          onClick={() => setActiveTab('anti-abuse')}
+          className={activeTab === 'anti-abuse' ? 'btn-primary' : 'btn-outline'}
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+        >
+          <ShieldAlert size={16} /> Multi-Account & Anti-Abuse
+        </button>
       </div>
 
       {/* Tab Contents */}
+      {activeTab === 'anti-abuse' && <AntiAbuseTab />}
+
       {activeTab === 'users' && (
         <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
