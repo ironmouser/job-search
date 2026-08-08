@@ -11,6 +11,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isVerifyView, setIsVerifyView] = useState(false);
+  const [isTestLoading, setIsTestLoading] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -23,9 +24,10 @@ function LoginForm() {
     try {
       localStorage.clear();
       sessionStorage.clear();
-      await signOut({ callbackUrl: "/login", redirect: true });
+      await signOut({ redirect: false });
     } catch (e) {
       console.error(e);
+    } finally {
       window.location.href = "/login";
     }
   };
@@ -35,12 +37,16 @@ function LoginForm() {
     setIsLoading(true);
     
     try {
-      await signIn("email", { 
+      const res = await signIn("email", { 
         email, 
         callbackUrl: "/onboarding",
         redirect: false 
       });
-      setIsVerifyView(true);
+      if (res?.error) {
+        window.location.href = `/login?error=${encodeURIComponent(res.error)}`;
+      } else {
+        setIsVerifyView(true);
+      }
     } catch (error) {
       console.error("Sign in error:", error);
     } finally {
@@ -58,12 +64,26 @@ function LoginForm() {
     }
   };
 
+  const handleTestSignIn = async () => {
+    setIsTestLoading(true);
+    try {
+      await signIn("credentials", { callbackUrl: "/onboarding" });
+    } catch (error) {
+      console.error("Test sign in error:", error);
+      setIsTestLoading(false);
+    }
+  };
+
   const errorParam = searchParams?.get("error");
   let errorMessage: string | null = null;
   if (errorParam === "OAuthAccountNotLinked") {
     errorMessage = "An account with this email address already exists. Google sign-in will securely link to your account.";
   } else if (errorParam === "AccessDenied") {
     errorMessage = "Access denied. You do not have permission to sign in.";
+  } else if (errorParam === "EmailSignin") {
+    errorMessage = "Failed to send magic link email. Please check your email configuration or try another sign-in method.";
+  } else if (errorParam === "OAuthCallback" || errorParam === "Callback") {
+    errorMessage = "OAuth authentication callback failed. Please check your network connection or Google OAuth configuration.";
   } else if (errorParam) {
     errorMessage = "An authentication error occurred. Clearing your session usually fixes this.";
   }
@@ -174,7 +194,7 @@ function LoginForm() {
               </button>
             </form>
 
-            <div style={{ marginTop: "2rem", position: "relative" }}>
+            <div style={{ marginTop: "1.5rem", position: "relative" }}>
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center" }}>
                 <div style={{ width: "100%", borderTop: "1px solid var(--border-glass)" }} />
               </div>
@@ -183,7 +203,7 @@ function LoginForm() {
               </div>
             </div>
 
-            <div style={{ marginTop: "2rem" }}>
+            <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <button
                 onClick={handleGoogleSignIn}
                 disabled={isGoogleLoading}
@@ -202,9 +222,25 @@ function LoginForm() {
                 )}
                 Google
               </button>
+
+              <button
+                type="button"
+                onClick={handleTestSignIn}
+                disabled={isTestLoading}
+                className="btn-outline"
+                style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", borderColor: "rgba(54, 149, 227, 0.4)", background: "rgba(54, 149, 227, 0.1)" }}
+              >
+                {isTestLoading ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <>
+                    <span>Sign in with Test Account</span>
+                  </>
+                )}
+              </button>
             </div>
 
-            <div style={{ marginTop: "2rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
+            <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
               <ShieldCheck size={14} />
               <span>Secure, passwordless authentication</span>
             </div>
