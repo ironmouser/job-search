@@ -807,6 +807,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
     }, 500);
 
     return () => clearTimeout(timer);
+  }, [currentJobs, router, userPlanTier, scoresExhausted]);
+
   // Auto-trigger sync on mount if redirected from onboarding
   useEffect(() => {
     const isAutoSyncParam = searchParams?.get('autoSync') === 'true';
