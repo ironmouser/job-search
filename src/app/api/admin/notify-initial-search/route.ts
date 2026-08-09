@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     const results: any[] = [];
 
     for (const user of targetUsers) {
+      if (!user.email) continue;
       try {
         const res = await sendInitialJobSearchNotificationEmail({
           to: user.email,
