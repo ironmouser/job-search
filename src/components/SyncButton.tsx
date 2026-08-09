@@ -11,11 +11,11 @@ interface SyncButtonProps {
 
 export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [statusText, setStatusText] = useState('Sync Jobs');
+  const [statusText, setStatusText] = useState('Find Online Jobs');
 
   const handleSync = async () => {
     setIsLoading(true);
-    setStatusText('Scraping Jobs...');
+    setStatusText('Searching 20+ Job Boards...');
     onSyncStateChange?.(true, 'Initiating Omni-Scrape across job boards...', 0);
     trackJobSyncStart();
     
@@ -28,12 +28,12 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        const errorMessage = data.error || 'Failed to sync jobs across active platforms.';
-        setStatusText('Sync Error');
-        onSyncStateChange?.(false, 'Error Syncing');
+        const errorMessage = data.error || 'Failed to search online jobs across active platforms.';
+        setStatusText('Search Error');
+        onSyncStateChange?.(false, 'Error Searching');
         trackJobSyncError(errorMessage);
-        alert(`Could not complete job sync: ${errorMessage}`);
-        setTimeout(() => setStatusText('Sync Jobs'), 3500);
+        alert(`Could not complete job search: ${errorMessage}`);
+        setTimeout(() => setStatusText('Find Online Jobs'), 3500);
         return;
       }
 
@@ -99,16 +99,16 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
       onSyncComplete?.(newJobsCount);
 
       if (newJobsCount === 0) {
-        setStatusText('0 New Jobs');
+        setStatusText('0 New Jobs Found');
         onSyncStateChange?.(false, 'No new jobs discovered');
-        alert('Sync complete! We scanned your active sources and found 0 new listings matching your current keyword and location settings.');
+        alert('Search complete! We scanned your active sources and found 0 new listings matching your current keyword and location settings.');
         setTimeout(() => {
-          setStatusText('Sync Jobs');
+          setStatusText('Find Online Jobs');
           // Refresh in case server saved jobs that weren't reflected in the count
           window.location.reload();
         }, 1500);
       } else {
-        const label = newJobsCount === 1 ? 'Added 1 Job!' : `Added ${newJobsCount} Jobs!`;
+        const label = newJobsCount === 1 ? 'Found 1 New Job!' : `Found ${newJobsCount} New Jobs!`;
         setStatusText(label);
         onSyncStateChange?.(true, label, runningCount);
         setTimeout(() => {
@@ -118,20 +118,36 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
     } catch (e: any) {
       console.error(e);
       const errStr = e?.message || 'Unexpected network error';
-      setStatusText('Error Syncing');
-      onSyncStateChange?.(false, 'Error Syncing');
+      setStatusText('Search Error');
+      onSyncStateChange?.(false, 'Error Searching');
       trackJobSyncError(errStr);
-      alert('An unexpected network error occurred while attempting to sync jobs.');
-      setTimeout(() => setStatusText('Sync Jobs'), 3500);
+      alert('An unexpected network error occurred while attempting to search online jobs.');
+      setTimeout(() => setStatusText('Find Online Jobs'), 3500);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <button className="btn-primary" onClick={handleSync} disabled={isLoading}>
+    <button 
+      className="btn-primary" 
+      onClick={handleSync} 
+      disabled={isLoading}
+      style={{
+        padding: '0.75rem 1.4rem',
+        borderRadius: '10px',
+        fontWeight: 700,
+        fontSize: '0.95rem',
+        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+        boxShadow: '0 4px 20px rgba(37, 99, 235, 0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.6rem',
+        cursor: isLoading ? 'not-allowed' : 'pointer'
+      }}
+    >
       <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /> 
-      {statusText}
+      <span>{statusText}</span>
     </button>
   );
 }

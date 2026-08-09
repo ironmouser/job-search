@@ -857,36 +857,75 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
         <OnboardingWidget />
 
-        {/* Sync Actions Bar - Positioned Above Quick Stat Cards */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <Button 
-            onClick={handleEmailSync} 
-            disabled={isEmailSyncing || isSyncing}
-            variant="outline"
-            size="sm"
-          >
-            <Mail size={15} />
-            {isEmailSyncing ? 'Syncing...' : 'Sync Emails'}
-          </Button>
-          <div data-tour="dashboard-sync-jobs">
-            <SyncButton 
-              onSyncStateChange={(loading, text, count, isRefining) => {
-                setIsSyncing(loading);
-                setSyncMessage(text);
-                if (loading) {
-                  if (count !== undefined) setJobsFoundCount(count);
-                  setIsRefiningJobs(!!isRefining);
-                } else {
-                  setJobsFoundCount(null);
-                  setIsRefiningJobs(false);
-                }
+        {/* Job Discovery Engine Hub - High Impact CTAs Positioned Above Quick Stat Cards */}
+        <div className="glass-card" style={{ 
+          padding: '1.25rem 1.5rem', 
+          marginBottom: '1.5rem', 
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.7) 100%)', 
+          border: '1px solid rgba(59, 130, 246, 0.3)', 
+          borderRadius: '16px', 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          gap: '1.25rem', 
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)' 
+        }}>
+          <div style={{ flex: '1 1 280px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+              <Sparkles size={20} style={{ color: 'var(--accent-primary)' }} />
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                Job Discovery Engine
+              </h3>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+              Find live matching job openings across 20+ job boards or import job alert notifications directly from your email inbox.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+            <Button 
+              onClick={handleEmailSync} 
+              disabled={isEmailSyncing || isSyncing}
+              variant="outline"
+              size="default"
+              style={{
+                padding: '0.75rem 1.25rem',
+                borderRadius: '10px',
+                fontWeight: 600,
+                fontSize: '0.925rem',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                background: 'rgba(255, 255, 255, 0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.55rem',
+                height: 'auto'
               }}
-              onSyncComplete={() => {
-                setTimeout(() => {
-                  checkAndTriggerDiscoveryNudge();
-                }, 600);
-              }}
-            />
+            >
+              <Mail size={17} style={{ color: '#38bdf8' }} />
+              <span>{isEmailSyncing ? 'Scanning Inbox...' : 'Scan Inbox for Jobs'}</span>
+            </Button>
+
+            <div data-tour="dashboard-sync-jobs">
+              <SyncButton 
+                onSyncStateChange={(loading, text, count, isRefining) => {
+                  setIsSyncing(loading);
+                  setSyncMessage(text);
+                  if (loading) {
+                    if (count !== undefined) setJobsFoundCount(count);
+                    setIsRefiningJobs(!!isRefining);
+                  } else {
+                    setJobsFoundCount(null);
+                    setIsRefiningJobs(false);
+                  }
+                }}
+                onSyncComplete={() => {
+                  setTimeout(() => {
+                    checkAndTriggerDiscoveryNudge();
+                  }, 600);
+                }}
+              />
+            </div>
           </div>
         </div>
 
