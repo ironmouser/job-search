@@ -809,28 +809,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
     return () => clearTimeout(timer);
   }, [currentJobs, router, userPlanTier, scoresExhausted]);
 
-  // Auto-trigger sync on mount if redirected from onboarding
-  useEffect(() => {
-    const isAutoSyncParam = searchParams?.get('autoSync') === 'true';
-    const isAutoSyncStorage = typeof window !== 'undefined' && localStorage.getItem('job_agent_auto_sync_on_mount') === 'true';
-    
-    if (isAutoSyncParam || isAutoSyncStorage) {
-      try {
-        localStorage.removeItem('job_agent_auto_sync_on_mount');
-      } catch (e) {}
-
-      // Automatically trigger job sync after 400ms mount delay
-      const timer = setTimeout(() => {
-        const syncBtn = document.querySelector('[data-tour="dashboard-sync-jobs"] button') as HTMLButtonElement | null;
-        if (syncBtn) {
-          syncBtn.click();
-        }
-      }, 400);
-
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams]);
-
   return (
     <>
       <div className="animate-fade-in">
@@ -859,12 +837,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
         <OnboardingWidget />
 
-        {/* Job Discovery Engine Hub - High Impact CTAs Positioned Above Quick Stat Cards */}
+        {/* Job Discovery Engine Hub - Positioned Above Quick Stat Cards */}
         <div className="glass-card" style={{ 
           padding: '1.25rem 1.5rem', 
           marginBottom: '1.5rem', 
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.7) 100%)', 
-          border: '1px solid rgba(59, 130, 246, 0.3)', 
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.75) 100%)', 
+          border: '1px solid rgba(59, 130, 246, 0.35)', 
           borderRadius: '16px', 
           display: 'flex', 
           flexWrap: 'wrap', 
@@ -892,19 +870,19 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
               variant="outline"
               size="default"
               style={{
-                padding: '0.75rem 1.25rem',
-                borderRadius: '10px',
+                padding: '0.85rem 1.4rem',
+                borderRadius: '12px',
                 fontWeight: 600,
-                fontSize: '0.925rem',
-                border: '1px solid rgba(255, 255, 255, 0.18)',
+                fontSize: '0.95rem',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 background: 'rgba(255, 255, 255, 0.05)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.55rem',
+                gap: '0.6rem',
                 height: 'auto'
               }}
             >
-              <Mail size={17} style={{ color: '#38bdf8' }} />
+              <Mail size={18} style={{ color: '#38bdf8' }} />
               <span>{isEmailSyncing ? 'Scanning Inbox...' : 'Scan Inbox for Jobs'}</span>
             </Button>
 
@@ -1506,10 +1484,81 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           })}
   
           {currentJobs.length === 0 && (
-            <div className="glass-card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 2rem' }}>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>No jobs match your current filters.</p>
+            <div 
+              className="glass-card" 
+              style={{ 
+                gridColumn: '1 / -1', 
+                textAlign: 'center', 
+                padding: '3.5rem 2rem',
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%)',
+                border: '1px dashed rgba(59, 130, 246, 0.4)',
+                borderRadius: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1.25rem',
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.3)'
+              }}
+            >
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                <Sparkles size={32} style={{ color: 'var(--accent-primary)' }} />
+              </div>
+
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {jobs.length === 0 ? "No Jobs Discovered Yet" : "No Jobs Match Selected Filters"}
+                </h3>
+                <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '520px', lineHeight: '1.5' }}>
+                  {jobs.length === 0 
+                    ? "No job listings are displaying yet. Click Search for Jobs to scan 20+ online job boards, or Scan Inbox for Jobs to import job alert emails."
+                    : "Try clearing or adjusting your keyword and location filters to view more opportunities."}
+                </p>
+              </div>
+
               {jobs.length === 0 && (
-                <p style={{ marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Run the scraping pipeline to populate your dashboard.</p>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
+                  <Button 
+                    onClick={handleEmailSync} 
+                    disabled={isEmailSyncing || isSyncing}
+                    variant="outline"
+                    size="default"
+                    style={{
+                      padding: '0.85rem 1.4rem',
+                      borderRadius: '12px',
+                      fontWeight: 600,
+                      fontSize: '0.95rem',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      height: 'auto'
+                    }}
+                  >
+                    <Mail size={18} style={{ color: '#38bdf8' }} />
+                    <span>{isEmailSyncing ? 'Scanning Inbox...' : 'Scan Inbox for Jobs'}</span>
+                  </Button>
+
+                  <SyncButton 
+                    onSyncStateChange={(loading, text, count, isRefining) => {
+                      setIsSyncing(loading);
+                      setSyncMessage(text);
+                      if (loading) {
+                        if (count !== undefined) setJobsFoundCount(count);
+                        setIsRefiningJobs(!!isRefining);
+                      } else {
+                        setJobsFoundCount(null);
+                        setIsRefiningJobs(false);
+                      }
+                    }}
+                    onSyncComplete={() => {
+                      setTimeout(() => {
+                        checkAndTriggerDiscoveryNudge();
+                      }, 600);
+                    }}
+                  />
+                </div>
               )}
             </div>
           )}
@@ -1704,6 +1753,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           }}
         />
       )}
+      </div>
     </>
   );
 }

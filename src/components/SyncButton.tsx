@@ -11,7 +11,7 @@ interface SyncButtonProps {
 
 export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [statusText, setStatusText] = useState('Find Online Jobs');
+  const [statusText, setStatusText] = useState('Search for Jobs');
 
   const handleSync = async () => {
     setIsLoading(true);
@@ -33,7 +33,7 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
         onSyncStateChange?.(false, 'Error Searching');
         trackJobSyncError(errorMessage);
         alert(`Could not complete job search: ${errorMessage}`);
-        setTimeout(() => setStatusText('Find Online Jobs'), 3500);
+        setTimeout(() => setStatusText('Search for Jobs'), 3500);
         return;
       }
 
@@ -103,7 +103,7 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
         onSyncStateChange?.(false, 'No new jobs discovered');
         alert('Search complete! We scanned your active sources and found 0 new listings matching your current keyword and location settings.');
         setTimeout(() => {
-          setStatusText('Find Online Jobs');
+          setStatusText('Search for Jobs');
           // Refresh in case server saved jobs that weren't reflected in the count
           window.location.reload();
         }, 1500);
@@ -122,7 +122,7 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
       onSyncStateChange?.(false, 'Error Searching');
       trackJobSyncError(errStr);
       alert('An unexpected network error occurred while attempting to search online jobs.');
-      setTimeout(() => setStatusText('Find Online Jobs'), 3500);
+      setTimeout(() => setStatusText('Search for Jobs'), 3500);
     } finally {
       setIsLoading(false);
     }
@@ -134,19 +134,19 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
       onClick={handleSync} 
       disabled={isLoading}
       style={{
-        padding: '0.75rem 1.4rem',
-        borderRadius: '10px',
+        padding: '0.85rem 1.6rem',
+        borderRadius: '12px',
         fontWeight: 700,
-        fontSize: '0.95rem',
+        fontSize: '1rem',
         background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-        boxShadow: '0 4px 20px rgba(37, 99, 235, 0.4)',
+        boxShadow: '0 4px 24px rgba(37, 99, 235, 0.45)',
         display: 'flex',
         alignItems: 'center',
-        gap: '0.6rem',
+        gap: '0.65rem',
         cursor: isLoading ? 'not-allowed' : 'pointer'
       }}
     >
-      <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /> 
+      <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} /> 
       <span>{statusText}</span>
     </button>
   );
