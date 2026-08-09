@@ -337,7 +337,7 @@ export async function sendInitialJobSearchNotificationEmail({
 }) {
   try {
     const pass = process.env.EMAIL_SERVER_PASSWORD;
-    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@jobagenthq.com>';
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@contact.jobagenthq.com>';
 
     // Formatting greeting: If name is missing, null, "No name", or "User" (case-insensitive), use "Hi,"
     let greeting = 'Hi,';
