@@ -1663,6 +1663,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           }}
         />
       )}
+      </div>
     </>
   );
 }
