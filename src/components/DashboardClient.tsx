@@ -807,7 +807,27 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [currentJobs, router, userPlanTier, scoresExhausted]);
+  // Auto-trigger sync on mount if redirected from onboarding
+  useEffect(() => {
+    const isAutoSyncParam = searchParams?.get('autoSync') === 'true';
+    const isAutoSyncStorage = typeof window !== 'undefined' && localStorage.getItem('job_agent_auto_sync_on_mount') === 'true';
+    
+    if (isAutoSyncParam || isAutoSyncStorage) {
+      try {
+        localStorage.removeItem('job_agent_auto_sync_on_mount');
+      } catch (e) {}
+
+      // Automatically trigger job sync after 400ms mount delay
+      const timer = setTimeout(() => {
+        const syncBtn = document.querySelector('[data-tour="dashboard-sync-jobs"] button') as HTMLButtonElement | null;
+        if (syncBtn) {
+          syncBtn.click();
+        }
+      }, 400);
+
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   return (
     <>
@@ -817,37 +837,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             <PageHeaderHeading>Mission Control</PageHeaderHeading>
             <PageHeaderDescription>Your central hub for opportunity management and application tracking</PageHeaderDescription>
           </div>
-          <PageHeaderActions>
-            <Button 
-              onClick={handleEmailSync} 
-              disabled={isEmailSyncing || isSyncing}
-              variant="outline"
-              size="sm"
-            >
-              <Mail size={15} />
-              {isEmailSyncing ? 'Syncing...' : 'Sync Emails'}
-            </Button>
-            <div data-tour="dashboard-sync-jobs">
-              <SyncButton 
-                onSyncStateChange={(loading, text, count, isRefining) => {
-                  setIsSyncing(loading);
-                  setSyncMessage(text);
-                  if (loading) {
-                    if (count !== undefined) setJobsFoundCount(count);
-                    setIsRefiningJobs(!!isRefining);
-                  } else {
-                    setJobsFoundCount(null);
-                    setIsRefiningJobs(false);
-                  }
-                }}
-                onSyncComplete={() => {
-                  setTimeout(() => {
-                    checkAndTriggerDiscoveryNudge();
-                  }, 600);
-                }}
-              />
-            </div>
-          </PageHeaderActions>
         </PageHeader>
 
         <AntiAbuseBanner />
@@ -868,7 +857,40 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
         <OnboardingWidget />
 
-      <div className="responsive-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
+        {/* Sync Actions Bar - Positioned Above Quick Stat Cards */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <Button 
+            onClick={handleEmailSync} 
+            disabled={isEmailSyncing || isSyncing}
+            variant="outline"
+            size="sm"
+          >
+            <Mail size={15} />
+            {isEmailSyncing ? 'Syncing...' : 'Sync Emails'}
+          </Button>
+          <div data-tour="dashboard-sync-jobs">
+            <SyncButton 
+              onSyncStateChange={(loading, text, count, isRefining) => {
+                setIsSyncing(loading);
+                setSyncMessage(text);
+                if (loading) {
+                  if (count !== undefined) setJobsFoundCount(count);
+                  setIsRefiningJobs(!!isRefining);
+                } else {
+                  setJobsFoundCount(null);
+                  setIsRefiningJobs(false);
+                }
+              }}
+              onSyncComplete={() => {
+                setTimeout(() => {
+                  checkAndTriggerDiscoveryNudge();
+                }, 600);
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="responsive-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'all' ? 'active' : ''}`}
           onClick={() => setActiveFilter('all')}

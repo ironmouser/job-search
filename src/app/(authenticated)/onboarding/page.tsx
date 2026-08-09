@@ -183,8 +183,11 @@ ${goal}
                 });
                 // Update NextAuth session to trigger token update with new isOnboarded flag
                 await update({ isOnboarded: true });
-                // Hard navigate to dashboard to bypass any cached layout/middleware state
-                window.location.href = '/dashboard';
+                try {
+                    localStorage.setItem('job_agent_auto_sync_on_mount', 'true');
+                } catch (e) {}
+                // Hard navigate to dashboard with autoSync flag
+                window.location.href = '/dashboard?autoSync=true';
             } else {
                 alert('Failed to save settings. Please try again.');
             }
