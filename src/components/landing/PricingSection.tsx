@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
 import { Check, Zap, Building2 } from 'lucide-react';
+import { trackPublicCtaClick } from '@/lib/analytics';
 
 export default function PricingSection() {
   return (
@@ -37,6 +40,7 @@ export default function PricingSection() {
             </div>
             <Link 
               href="/login" 
+              onClick={() => trackPublicCtaClick('Free Starter', 'pricing_section')}
               style={{ 
                 width: '100%', 
                 textAlign: 'center', 
@@ -111,6 +115,7 @@ export default function PricingSection() {
             </div>
             <Link 
               href="/login" 
+              onClick={() => trackPublicCtaClick('Upgrade to Pro', 'pricing_section')}
               style={{ 
                 width: '100%', 
                 textAlign: 'center', 
@@ -188,6 +193,7 @@ export default function PricingSection() {
             </div>
             <Link 
               href="/login" 
+              onClick={() => trackPublicCtaClick('Get Started for Orgs', 'pricing_section')}
               style={{ 
                 width: '100%', 
                 textAlign: 'center', 

@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
 import { getAssetUrl } from '@/lib/assets';
+import { trackPublicCtaClick } from '@/lib/analytics';
 
 export default function HeroSection() {
   return (
@@ -36,7 +39,7 @@ export default function HeroSection() {
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-          <Link href="/login" className="btn-primary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', fontWeight: 600, borderRadius: '8px', flexShrink: 0 }}>
+          <Link href="/login" className="btn-primary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', fontWeight: 600, borderRadius: '8px', flexShrink: 0 }} onClick={() => trackPublicCtaClick('Get Started Free', 'hero_section')}>
             Get Started Free
           </Link>
           <img 

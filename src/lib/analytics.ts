@@ -38,6 +38,14 @@ export const pageview = (url: string) => {
   }
 };
 
+// --- Public Landing Page & CTA Events ---
+export const trackPublicCtaClick = (label: string, location: string = "landing") => {
+  trackEvent("public_cta_click", {
+    cta_label: label,
+    location,
+  });
+};
+
 // --- Funnel & Auth Events ---
 export const trackLogin = (method: "email" | "google") => {
   trackEvent("login", { method });

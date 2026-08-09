@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { getAssetUrl } from '@/lib/assets';
+import { trackPublicCtaClick } from '@/lib/analytics';
 
 export default function PublicNav({ style }: { style?: React.CSSProperties }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,8 +37,8 @@ export default function PublicNav({ style }: { style?: React.CSSProperties }) {
         </div>
 
         <div className="public-nav-actions">
-          <Link href="/login" style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 600, textDecoration: 'none' }} onClick={closeMenu}>Login</Link>
-          <Link href="/login" className="btn-primary" style={{ textDecoration: 'none', padding: '0.6rem 1.25rem', fontSize: '0.95rem', borderRadius: '8px', fontWeight: 600, textAlign: 'center' }} onClick={closeMenu}>Get Started</Link>
+          <Link href="/login" style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 600, textDecoration: 'none' }} onClick={() => { closeMenu(); trackPublicCtaClick('Login', 'nav_header'); }}>Login</Link>
+          <Link href="/login" className="btn-primary" style={{ textDecoration: 'none', padding: '0.6rem 1.25rem', fontSize: '0.95rem', borderRadius: '8px', fontWeight: 600, textAlign: 'center' }} onClick={() => { closeMenu(); trackPublicCtaClick('Get Started', 'nav_header'); }}>Get Started</Link>
         </div>
       </div>
     </nav>
