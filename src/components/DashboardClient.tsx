@@ -841,7 +841,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         <div className="glass-card" style={{ 
           padding: '1.25rem 1.5rem', 
           marginBottom: '1.5rem', 
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.75) 100%)', 
           border: '1px solid rgba(59, 130, 246, 0.35)', 
           borderRadius: '16px', 
           display: 'flex', 
@@ -849,7 +848,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           justifyContent: 'space-between', 
           alignItems: 'center', 
           gap: '1.25rem', 
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)' 
+          boxShadow: '0 2px 8px rgb(28 88 175 / 25%)' 
         }}>
           <div style={{ flex: '1 1 280px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
