@@ -389,26 +389,30 @@ export async function sendInitialJobSearchNotificationEmail({
     `;
 
     if (pass && pass.startsWith('re_')) {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${pass}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from,
-          to,
-          subject,
-          html: htmlMessage,
-        }),
-      });
+      try {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${pass}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from,
+            to,
+            subject,
+            html: htmlMessage,
+          }),
+        });
 
-      if (response.ok) {
-        console.log(`Initial job search notification email sent via Resend API to ${to}`);
-        return { success: true };
+        if (response.ok) {
+          console.log(`Initial job search notification email sent via Resend API to ${to}`);
+          return { success: true };
+        }
+        const errText = await response.text();
+        console.warn('Resend API HTTP error, falling back to SMTP transport:', errText);
+      } catch (resendErr: any) {
+        console.warn('Resend API fetch failed, falling back to SMTP transport:', resendErr?.message || resendErr);
       }
-      const errText = await response.text();
-      console.warn('Resend API HTTP error:', errText);
     }
 
     const host = process.env.EMAIL_SERVER_HOST;
