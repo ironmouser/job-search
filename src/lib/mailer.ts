@@ -328,4 +328,112 @@ export async function sendEnterpriseInquiryEmail({
   }
 }
 
+export async function sendInitialJobSearchNotificationEmail({
+  to,
+  name,
+}: {
+  to: string;
+  name?: string | null;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@jobagenthq.com>';
+
+    // Formatting greeting: If name is missing, null, "No name", or "User" (case-insensitive), use "Hi,"
+    let greeting = 'Hi,';
+    if (name && typeof name === 'string' && name.trim().length > 0) {
+      const trimmed = name.trim();
+      const lower = trimmed.toLowerCase();
+      if (lower !== 'user' && lower !== 'no name') {
+        const firstName = trimmed.split(' ')[0];
+        greeting = `Hi ${firstName},`;
+      }
+    }
+
+    const subject = 'We found your first batch of jobs on Job Agent HQ!';
+
+    const htmlMessage = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div style="margin-bottom: 24px; text-align: center;">
+          <h1 style="color: #2563eb; font-size: 24px; font-weight: 700; margin: 0;">Job Agent HQ</h1>
+        </div>
+
+        <p style="font-size: 16px; margin-bottom: 16px; color: #0f172a; font-weight: 600;">${greeting}</p>
+
+        <p style="font-size: 15px; margin-bottom: 16px;">
+          Thank you for registering for Job Agent HQ.. We noticed you haven’t had a chance to search for jobs yet, so we took the liberty of running an initial search to help get you started.
+        </p>
+
+        <p style="font-size: 15px; margin-bottom: 16px;">
+          The next time you visit Job Agent HQ your search results will be visible.
+        </p>
+
+        <p style="font-size: 15px; margin-bottom: 24px;">
+          Whenever you're ready to run a new search, just click the <strong>"Search for Jobs"</strong> button on your main dashboard.
+        </p>
+
+        <div style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 16px 20px; border-radius: 8px; margin: 24px 0;">
+          <p style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">
+            Want even better matches?
+          </p>
+          <p style="font-size: 14px; color: #475569; margin: 0;">
+            Take 2 minutes to upload your resume and complete your profile. The more details you share, the better our system gets at surfacing roles tailored to your exact experience and goals.
+          </p>
+        </div>
+
+        <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 15px; color: #334155;">
+          <p style="margin: 0;">Best,</p>
+          <p style="margin: 4px 0 0 0; font-weight: 600; color: #0f172a;">The Job Agent HQ Team</p>
+        </div>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pass}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from,
+          to,
+          subject,
+          html: htmlMessage,
+        }),
+      });
+
+      if (response.ok) {
+        console.log(`Initial job search notification email sent via Resend API to ${to}`);
+        return { success: true };
+      }
+      const errText = await response.text();
+      console.warn('Resend API HTTP error:', errText);
+    }
+
+    const host = process.env.EMAIL_SERVER_HOST;
+    const port = parseInt(process.env.EMAIL_SERVER_PORT || '587', 10);
+    const user = process.env.EMAIL_SERVER_USER;
+
+    if (!host || !user || !pass) {
+      console.log('DEV FALLBACK - Initial Job Search Email Details:', { to, greeting, subject });
+      return { success: true, devMode: true };
+    }
+
+    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html: htmlMessage,
+    });
+
+    console.log(`Initial job search notification email sent via SMTP to ${to}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to send initial job search notification email:', err);
+    throw new Error(err.message || 'Failed to send initial job search notification email');
+  }
+}
+
 
