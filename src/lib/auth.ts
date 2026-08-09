@@ -27,19 +27,23 @@ export const authOptions: AuthOptions = {
       },
       from: process.env.EMAIL_FROM
     }),
-    CredentialsProvider({
-      name: "Test Account",
-      credentials: {},
-      async authorize() {
-        let user = await prisma.user.findUnique({ where: { email: "test@example.com" } });
-        if (!user) {
-          user = await prisma.user.create({
-            data: { email: "test@example.com", name: "Test User" }
-          });
-        }
-        return user as any;
-      }
-    }),
+    ...(process.env.NODE_ENV === "development"
+      ? [
+          CredentialsProvider({
+            name: "Test Account",
+            credentials: {},
+            async authorize() {
+              let user = await prisma.user.findUnique({ where: { email: "test@example.com" } });
+              if (!user) {
+                user = await prisma.user.create({
+                  data: { email: "test@example.com", name: "Test User" }
+                });
+              }
+              return user as any;
+            }
+          })
+        ]
+      : []),
   ],
   pages: {
     signIn: '/login',

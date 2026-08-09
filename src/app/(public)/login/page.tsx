@@ -226,21 +226,23 @@ function LoginForm() {
                 Google
               </button>
 
-              <button
-                type="button"
-                onClick={handleTestSignIn}
-                disabled={isTestLoading}
-                className="btn-outline"
-                style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", borderColor: "rgba(54, 149, 227, 0.4)", background: "rgba(54, 149, 227, 0.1)" }}
-              >
-                {isTestLoading ? (
-                  <Loader2 className="animate-spin" size={16} />
-                ) : (
-                  <>
-                    <span>Sign in with Test Account</span>
-                  </>
-                )}
-              </button>
+              {process.env.NODE_ENV === 'development' && (
+                <button
+                  type="button"
+                  onClick={handleTestSignIn}
+                  disabled={isTestLoading}
+                  className="btn-outline"
+                  style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", borderColor: "rgba(54, 149, 227, 0.4)", background: "rgba(54, 149, 227, 0.1)" }}
+                >
+                  {isTestLoading ? (
+                    <Loader2 className="animate-spin" size={16} />
+                  ) : (
+                    <>
+                      <span>Sign in with Test Account</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
