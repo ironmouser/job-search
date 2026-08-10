@@ -173,6 +173,36 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle action query params triggered from Settings / Profile page dock
+  useEffect(() => {
+    if (!searchParams) return;
+    if (searchParams.get('openFilter') === 'true') {
+      setIsFilterModalOpen(true);
+    }
+    if (searchParams.get('openAddJob') === 'true') {
+      setIsAddJobModalOpen(true);
+    }
+    if (searchParams.get('openCleanup') === 'true') {
+      setIsCleanupModalOpen(true);
+    }
+    if (searchParams.get('scanEmail') === 'true') {
+      handleEmailSync();
+    }
+    if (
+      searchParams.get('openFilter') ||
+      searchParams.get('openAddJob') ||
+      searchParams.get('openCleanup') ||
+      searchParams.get('scanEmail')
+    ) {
+      const next = new URL(window.location.href);
+      next.searchParams.delete('openFilter');
+      next.searchParams.delete('openAddJob');
+      next.searchParams.delete('openCleanup');
+      next.searchParams.delete('scanEmail');
+      window.history.replaceState({}, '', next.toString());
+    }
+  }, [searchParams]);
+
   // Restore page number and items per page from URL, localStorage, or sessionStorage on mount
   useEffect(() => {
     const urlPage = searchParams?.get('page');

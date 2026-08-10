@@ -2174,29 +2174,34 @@ body:not(.light-theme) .job-action-bar-divider {
   background: rgba(255, 255, 255, 0.15);
 }
 
-@media (max-width: 768px) {
+@media (min-width: 1025px) {
+  .dashboard-dock-desktop {
+    display: flex !important;
+  }
+  .dashboard-dock-mobile {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1024px) {
   .job-action-bar-desktop:not(.dashboard-dock) {
     display: none !important;
   }
 
-  .dashboard-dock {
-    max-width: 95vw;
-    overflow-x: auto;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    scrollbar-width: none; /* Firefox */
+  .dashboard-dock-desktop {
+    display: none !important;
   }
 
-  .dashboard-dock::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
-  }
-
-  .job-action-bar-mobile {
+  .dashboard-dock-mobile {
     display: block !important;
     position: fixed;
     bottom: 1.5rem;
     right: 1.5rem;
-    z-index: 1000;
+    z-index: 9999;
+  }
+
+  .floating-save-bar {
+    display: none !important;
   }
 }
 
