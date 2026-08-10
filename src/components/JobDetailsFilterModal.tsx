@@ -18,7 +18,7 @@ export default function JobDetailsFilterModal({
   onJumpToFirst
 }: JobDetailsFilterModalProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
-  const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote' | 'auto_apply'>('newest');
+  const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote'>('newest');
   const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
   const [keywordFilter, setKeywordFilter] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
@@ -345,7 +345,6 @@ export default function JobDetailsFilterModal({
                   <option value="score">Opportunity Score</option>
                   <option value="salary">Salary (High to Low)</option>
                   <option value="remote">Remote Jobs First</option>
-                  <option value="auto_apply">Auto-Apply Confidence</option>
                 </select>
               </div>
 

@@ -2,7 +2,7 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2 } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton from '@/components/SyncButton';
@@ -97,7 +97,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
-  const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote' | 'auto_apply'>('newest');
+  const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote'>('newest');
   const [locationFilter, setLocationFilter] = useState<string[]>([]);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const locationDropdownRef = useRef<HTMLDivElement>(null);
@@ -673,12 +673,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         const isRemoteB = isRemoteLocation(b.location || '') ? 1 : 0;
         return isRemoteB - isRemoteA;
       }
-      if (sortOption === 'auto_apply') {
-        const confA = a.automation_confidence || 0;
-        const confB = b.automation_confidence || 0;
-        // If confidence is the same, fallback to score or newest
-        if (confB !== confA) return confB - confA;
-      }
       // default 'newest' (relying on initial order from server or created_at)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
@@ -938,11 +932,92 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
       <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '1rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-          Matches ({filteredAndSortedJobs.length})
-        </h3>
-        
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Matches ({filteredAndSortedJobs.length})
+          </h3>
+
+          {/* Filter Button */}
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '8px',
+              border: '1px solid var(--border-glass)',
+              background: 'var(--bg-glass)',
+              color: 'var(--text-primary)',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'all 0.2s ease'
+            }}
+            title="Filter & Sort Job Feed"
+          >
+            <SlidersHorizontal size={14} />
+            <span>Filter</span>
+            {hasActiveFilters && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: '#0070f3',
+                  boxShadow: '0 0 6px #0070f3'
+                }}
+              />
+            )}
+          </button>
+
+          {/* Sort Selector Dropdown */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.4rem 0.6rem',
+              borderRadius: '8px',
+              border: '1px solid var(--border-glass)',
+              background: 'var(--bg-glass)',
+              color: 'var(--text-primary)',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              cursor: 'pointer'
+            }}
+            title="Sort Job Feed"
+          >
+            <ArrowUpDown size={14} style={{ color: 'var(--accent-primary, #3b82f6)' }} />
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as any)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                outline: 'none',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                paddingRight: '0.2rem'
+              }}
+            >
+              <option value="newest" style={{ background: '#1e293b', color: '#fff' }}>Newest First</option>
+              <option value="score" style={{ background: '#1e293b', color: '#fff' }}>Highest Match Score</option>
+              <option value="salary" style={{ background: '#1e293b', color: '#fff' }}>Highest Salary</option>
+              <option value="remote" style={{ background: '#1e293b', color: '#fff' }}>Remote First</option>
+            </select>
+          </div>
+        </div>
+
         <div className="dashboard-view-toggles" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <button 
             onClick={() => setViewMode('grid')}

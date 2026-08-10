@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Mail, SlidersHorizontal, PlusCircle, Trash2, Loader2, Sparkles, ArrowUpDown, X } from 'lucide-react';
 import SyncButton from '@/components/SyncButton';
 
-export type SortOptionType = 'newest' | 'score' | 'salary' | 'remote' | 'auto_apply';
+export type SortOptionType = 'newest' | 'score' | 'salary' | 'remote';
 
 export interface SectionShortcut {
   id: string;
@@ -170,7 +170,6 @@ export default function DashboardDock({
               <option value="score" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Match Score</option>
               <option value="salary" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Salary</option>
               <option value="remote" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Remote</option>
-              <option value="auto_apply" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Auto Apply</option>
             </select>
           </div>
         )}
@@ -336,7 +335,6 @@ export default function DashboardDock({
                       <option value="score" style={{ background: '#0f172a', color: '#f8fafc' }}>Match Score</option>
                       <option value="salary" style={{ background: '#0f172a', color: '#f8fafc' }}>Salary</option>
                       <option value="remote" style={{ background: '#0f172a', color: '#f8fafc' }}>Remote</option>
-                      <option value="auto_apply" style={{ background: '#0f172a', color: '#f8fafc' }}>Auto Apply</option>
                     </select>
                   </div>
                 )}

@@ -212,8 +212,7 @@ export default function DashboardFilterModal({
                   { id: 'newest', label: 'Newest First' },
                   { id: 'score', label: 'Match Score' },
                   { id: 'salary', label: 'Highest Salary' },
-                  { id: 'remote', label: 'Remote First' },
-                  { id: 'auto_apply', label: 'Auto Apply Ready' }
+                  { id: 'remote', label: 'Remote First' }
                 ].map((sort) => (
                   <button
                     key={sort.id}
