@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 4000",
-    "build": "prisma generate && prisma db push --skip-generate --accept-data-loss && next build",
+    "build": "prisma generate && next build",
+    "migrate": "prisma db push --skip-generate --accept-data-loss",
     "start": "next start",
     "lint": "eslint",
     "upload:lost-gif": "node scripts/upload-lost-gif.js",
