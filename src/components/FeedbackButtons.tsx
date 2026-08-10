@@ -113,11 +113,13 @@ export default function FeedbackButtons({
     setShowModal(true);
   };
 
-  const submitDislike = async () => {
+  const submitDislike = async (overrideReasons?: string[]) => {
     setIsSubmitting(true);
-    const finalReasons = selectedReasons.includes("Other") && otherReason.trim()
-      ? [...selectedReasons.filter(r => r !== "Other"), `Other: ${otherReason.trim()}`]
-      : selectedReasons;
+    const finalReasons = overrideReasons ?? (
+      selectedReasons.includes("Other") && otherReason.trim()
+        ? [...selectedReasons.filter(r => r !== "Other"), `Other: ${otherReason.trim()}`]
+        : selectedReasons
+    );
 
     setFeedback('dislike');
     setShowModal(false);
@@ -215,12 +217,45 @@ export default function FeedbackButtons({
           </div>
 
           <button 
-            onClick={submitDislike}
+            onClick={() => submitDislike()}
             disabled={isSubmitting || selectedReasons.length === 0}
             className="btn-primary"
             style={{ width: '100%', padding: '0.5rem' }}
           >
             {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+          </button>
+
+          <button
+            onClick={() => submitDislike([])}
+            disabled={isSubmitting}
+            style={{
+              width: '100%',
+              marginTop: '0.65rem',
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              fontSize: '0.85rem',
+              padding: '0.25rem',
+              textAlign: 'center',
+              textDecoration: 'none',
+              opacity: 0.8,
+              transition: 'opacity 0.2s, color 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              if (!isSubmitting) {
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSubmitting) {
+                e.currentTarget.style.opacity = '0.8';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }
+            }}
+          >
+            No Feedback
           </button>
         </div>
       </>
