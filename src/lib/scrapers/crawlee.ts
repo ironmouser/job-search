@@ -1585,15 +1585,10 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
             const fetchDiceDescription = async (job: any): Promise<void> => {
                 try {
                     let detailHtml = '';
-                    if (process.env.SCRAPEDO_API_KEY) {
-                        const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(job.url)}`;
-                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
-                        if (res.ok) {
-                            const text = await res.text();
-                            if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied')) detailHtml = text;
-                        }
-                    }
-                    if (!detailHtml) {
+
+                    // Direct fetch first — Dice detail pages are SSR'd by Next.js so no JS
+                    // rendering is needed and __NEXT_DATA__ is present in the raw HTML response.
+                    try {
                         const res = await fetch(job.url, {
                             signal: AbortSignal.timeout(12000),
                             headers: {
@@ -1602,9 +1597,28 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                                 'Accept-Language': 'en-US,en;q=0.9',
                             }
                         });
-                        if (res.ok) detailHtml = await res.text();
+                        if (res.ok) {
+                            const text = await res.text();
+                            if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied') && !text.includes('captcha')) {
+                                detailHtml = text;
+                            }
+                        }
+                    } catch { /* fall through to proxy */ }
+
+                    // Only use scrape.do if the direct fetch was blocked or returned nothing
+                    if (!detailHtml && process.env.SCRAPEDO_API_KEY) {
+                        try {
+                            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(job.url)}`;
+                            const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+                            if (res.ok) {
+                                const text = await res.text();
+                                if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied')) detailHtml = text;
+                            }
+                        } catch { /* give up */ }
                     }
+
                     if (!detailHtml) return;
+
 
                     const $d = cheerio.load(detailHtml);
 
