@@ -7,9 +7,10 @@ import { trackJobSyncStart, trackJobSyncSuccess, trackJobSyncError } from '@/lib
 interface SyncButtonProps {
   onSyncStateChange?: (isLoading: boolean, statusText: string, jobsFoundCount?: number, isRefining?: boolean) => void;
   onSyncComplete?: (newJobsCount: number) => void;
+  compact?: boolean;
 }
 
-export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncButtonProps) {
+export default function SyncButton({ onSyncStateChange, onSyncComplete, compact = false }: SyncButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState('Search for Jobs');
 
@@ -134,19 +135,22 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete }: SyncBu
       onClick={handleSync} 
       disabled={isLoading}
       style={{
-        padding: '0.85rem 1.6rem',
-        borderRadius: '12px',
-        fontWeight: 700,
-        fontSize: '1rem',
+        padding: compact ? '0.4rem 0.85rem' : '0.85rem 1.6rem',
+        borderRadius: compact ? '9999px' : '12px',
+        fontWeight: 600,
+        fontSize: compact ? '0.85rem' : '1rem',
         background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-        boxShadow: '0 4px 24px rgba(37, 99, 235, 0.45)',
+        color: '#ffffff',
+        boxShadow: compact ? '0 2px 10px rgba(37, 99, 235, 0.3)' : '0 4px 24px rgba(37, 99, 235, 0.45)',
         display: 'flex',
         alignItems: 'center',
-        gap: '0.65rem',
-        cursor: isLoading ? 'not-allowed' : 'pointer'
+        gap: compact ? '0.4rem' : '0.65rem',
+        cursor: isLoading ? 'not-allowed' : 'pointer',
+        border: 'none',
+        whiteSpace: 'nowrap'
       }}
     >
-      <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} /> 
+      <RefreshCw size={compact ? 15 : 20} className={isLoading ? "animate-spin" : ""} /> 
       <span>{statusText}</span>
     </button>
   );
