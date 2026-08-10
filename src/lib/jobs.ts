@@ -253,13 +253,13 @@ export async function normalizeAndSaveJobs(
     }
 
     // Tier 3: Persistence
-    // All discovered listings are saved to global Job DB; cap UserJob feed allocations to top 100 matches per sync
-    const finalJobsToSave = [...knownGoodJobs, ...approvedCandidates];
-    const userAllocationJobs = finalJobsToSave.slice(0, 100);
-    const userAllocationUrls = new Set(userAllocationJobs.map(j => j.url));
+    // Save existing roles and cap NEW UserJob feed allocations to top 100 brand-new candidate matches per sync
+    const newAllocatedCandidates = approvedCandidates.slice(0, 100);
+    const finalJobsToSave = [...knownGoodJobs, ...newAllocatedCandidates];
+    const userAllocationUrls = new Set(finalJobsToSave.map(j => j.url));
     let newSavedCount = 0;
 
-    const newCandidatesCount = approvedCandidates.length;
+    const newCandidatesCount = newAllocatedCandidates.length;
     if (newCandidatesCount === 0) {
         onProgress?.(0, 'No new job listings to add (all discovered roles were already in your list or filtered out)');
     } else {
