@@ -59,12 +59,11 @@ export const isGenericUsLocation = (loc: string): boolean => {
 // Returns true if a location is considered Remote (including generic "United States" without state/city info)
 export const isRemoteLocation = (loc: string): boolean => {
   if (!loc) return true;
-  const l = loc.toLowerCase();
+  const l = loc.toLowerCase().trim();
   if (
     l.includes('remote') ||
     l.includes('anywhere') ||
-    l.includes('anywhere in the world') ||
-    l.includes('work from anywhere') ||
+    l === 'world' ||
     l.includes('worldwide') ||
     l.includes('global') ||
     l.includes('everywhere') ||
@@ -72,7 +71,10 @@ export const isRemoteLocation = (loc: string): boolean => {
     l.includes('wfh') ||
     l.includes('telecommute') ||
     l.includes('distributed') ||
-    l.includes('work from home')
+    l.includes('work from home') ||
+    l.includes('work from anywhere') ||
+    l === 'international' ||
+    l.includes('international')
   ) {
     return true;
   }
@@ -80,10 +82,32 @@ export const isRemoteLocation = (loc: string): boolean => {
   return isGenericUsLocation(loc);
 };
 
+// A set of globally-scoped terms that are remote but NOT US-specific.
+// When a user selects US-only (noInternational), these should be excluded.
+const GLOBAL_NON_US_TERMS = [
+  'world',
+  'worldwide',
+  'anywhere',
+  'anywhere in the world',
+  'work from anywhere',
+  'global',
+  'everywhere',
+  'international',
+];
+
 // Returns true if a location string looks like it's outside the United States
 export const isInternationalLocation = (loc: string): boolean => {
   if (!loc) return false;
-  const locLower = loc.toLowerCase();
+  const locLower = loc.toLowerCase().trim();
+
+  // Global/open terms (e.g. "Anywhere", "World", "International") are not US-specific —
+  // treat them as international so US-only users don't see them.
+  if (GLOBAL_NON_US_TERMS.some(term => locLower === term || locLower.includes(term))) {
+    // If it explicitly also mentions the US (e.g. "US or Remote"), keep it
+    if (isUsLocation(loc)) return false;
+    return true;
+  }
+
   if (isRemoteLocation(loc)) {
     if (isUsLocation(loc)) return false;
     const intlKeywords = ['uk', 'europe', 'canada', 'emea', 'apac', 'latam', 'germany', 'france', 'india', 'brazil', 'australia', 'japan', 'china', 'singapore', 'mexico', 'united kingdom'];
