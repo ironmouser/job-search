@@ -50,6 +50,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
   const [isScoringBackground, setIsScoringBackground] = useState(false);
   const [showNonUsModal, setShowNonUsModal] = useState(false);
   const [intlJobCount, setIntlJobCount] = useState(0);
+  const hasDismissedNonUsModal = useRef(false);
 
   useEffect(() => {
     setJobList(jobs || []);
@@ -57,7 +58,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
   // Detect international jobs and show the focus prompt once
   useEffect(() => {
-    if (hasSeenNonUsPrompt || noInternational) return;
+    if (hasSeenNonUsPrompt || noInternational || hasDismissedNonUsModal.current) return;
     const intlJobs = (jobs || []).filter((j: any) => isInternationalLocation(j.location || ''));
     if (intlJobs.length > 0) {
       setIntlJobCount(intlJobs.length);
@@ -1494,8 +1495,12 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
       {showNonUsModal && (
         <NonUsJobsFocusModal
           intlJobCount={intlJobCount}
-          onKeepAll={() => setShowNonUsModal(false)}
+          onKeepAll={() => {
+            hasDismissedNonUsModal.current = true;
+            setShowNonUsModal(false);
+          }}
           onUsOnly={(deletedIds) => {
+            hasDismissedNonUsModal.current = true;
             setJobList((prev: any[]) => prev.filter((j: any) => !deletedIds.includes(j.id)));
             setShowNonUsModal(false);
           }}
