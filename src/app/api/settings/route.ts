@@ -3,18 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { encrypt } from '@/lib/encryption';
-import { ensureKeywordColumnsExist, ALL_PRO_SOURCES } from '@/lib/settings';
+import { ensureKeywordColumnsExist, ALL_PRO_SOURCES, DEFAULT_PRO_SOURCES } from '@/lib/settings';
+import { getEffectiveTier } from '@/lib/tier';
 import { logSuspiciousActivity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
-
-export const DEFAULT_FREE_SOURCES: Record<string, boolean> = {
-    greenhouse: true,
-    linkedin: true,
-    remotepoc: true,
-    remotive: true,
-    nodesk: true,
-};
 
 export async function GET() {
     try {
@@ -32,25 +25,9 @@ export async function GET() {
             where: { id: 'system' }
         });
 
-        const defaultSources = {
-            ...DEFAULT_FREE_SOURCES,
-            linkedin: false,
-            greenhouse: false,
-            lever: false,
-            ashby: false,
-            workable: false,
-            smartrecruiters: false,
-            breezy: false,
-            otta: false,
-            themuse: false,
-            arbeitnow: false,
-            computrabajo: false,
-            jobbank: false,
-        };
-
         const resolvedSources = prefs?.sources
-            ? { ...DEFAULT_FREE_SOURCES, ...(prefs.sources as Record<string, boolean>) }
-            : defaultSources;
+            ? { ...DEFAULT_PRO_SOURCES, ...(prefs.sources as Record<string, boolean>) }
+            : DEFAULT_PRO_SOURCES;
 
         if (!prefs) {
             return NextResponse.json({
@@ -192,7 +169,7 @@ export async function POST(request: Request) {
              return NextResponse.json({ error: 'Resume markdown is too long.' }, { status: 400 });
         }
 
-        const isPro = (session.user as any).planTier === 'PRO';
+        const isPro = getEffectiveTier(session.user as any) === 'PRO';
 
         // Strip Pro-only fields for free users
         if (!isPro) {
@@ -309,7 +286,7 @@ export async function POST(request: Request) {
                 websiteUrl: data.websiteUrl || '',
                 resumeCustomizationMaxPercentage: data.resumeCustomizationMaxPercentage || 50,
                 customCareerPages: data.customCareerPages || [],
-                sources: data.sources || { ...DEFAULT_FREE_SOURCES, linkedin: false, greenhouse: false, lever: false, ashby: false },
+                sources: data.sources || DEFAULT_PRO_SOURCES,
                 profile: data.profile || '',
                 resumeMarkdown: data.resumeMarkdown || '',
                 emailAddress: data.emailAddress || '',

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
+import { getEffectiveTier } from '@/lib/tier';
+
 export const maxDuration = 60;
 
 export async function POST() {
@@ -16,7 +18,7 @@ export async function POST() {
     const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
     const emailsSyncIsPro = globalSettings?.emailsSyncIsPro ?? true;
 
-    if (emailsSyncIsPro && (session.user as any).planTier !== 'PRO') {
+    if (emailsSyncIsPro && getEffectiveTier(session.user as any) !== 'PRO') {
       return NextResponse.json({ error: 'Email synchronization is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
     }
 

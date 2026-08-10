@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Filter, SlidersHorizontal, X, Search, Calendar, MapPin, Check, RotateCcw } from 'lucide-react';
 
+import { SortOptionType } from '@/components/DashboardDock';
+
 interface DashboardFilterModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,6 +21,8 @@ interface DashboardFilterModalProps {
   setLocationFilter: React.Dispatch<React.SetStateAction<string[]>>;
   uniqueLocations: string[];
   totalMatches: number;
+  sortOption?: SortOptionType;
+  setSortOption?: (val: SortOptionType) => void;
 }
 
 export default function DashboardFilterModal({
@@ -35,7 +39,9 @@ export default function DashboardFilterModal({
   locationFilter,
   setLocationFilter,
   uniqueLocations,
-  totalMatches
+  totalMatches,
+  sortOption = 'newest',
+  setSortOption
 }: DashboardFilterModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -50,7 +56,8 @@ export default function DashboardFilterModal({
     sourceFilter !== 'both' ||
     startDate ||
     endDate ||
-    locationFilter.length > 0
+    locationFilter.length > 0 ||
+    sortOption !== 'newest'
   );
 
   const handleClearAll = () => {
@@ -59,6 +66,7 @@ export default function DashboardFilterModal({
     setStartDate('');
     setEndDate('');
     setLocationFilter([]);
+    if (setSortOption) setSortOption('newest');
   };
 
   const modalContent = (
@@ -192,6 +200,44 @@ export default function DashboardFilterModal({
               ))}
             </div>
           </div>
+
+          {/* Sort Option */}
+          {setSortOption && (
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary, #94a3b8)' }}>
+                Sort Jobs By
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.5rem' }}>
+                {[
+                  { id: 'newest', label: 'Newest First' },
+                  { id: 'score', label: 'Match Score' },
+                  { id: 'salary', label: 'Highest Salary' },
+                  { id: 'remote', label: 'Remote First' },
+                  { id: 'auto_apply', label: 'Auto Apply Ready' }
+                ].map((sort) => (
+                  <button
+                    key={sort.id}
+                    type="button"
+                    onClick={() => setSortOption(sort.id as any)}
+                    style={{
+                      padding: '0.6rem 0.6rem',
+                      borderRadius: '8px',
+                      border: sortOption === sort.id ? '1px solid var(--accent-primary, #3b82f6)' : '1px solid var(--border-glass, rgba(255,255,255,0.12))',
+                      background: sortOption === sort.id ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      color: sortOption === sort.id ? 'var(--accent-primary, #3b82f6)' : 'var(--text-primary)',
+                      fontSize: '0.85rem',
+                      fontWeight: sortOption === sort.id ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {sort.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Date Range */}
           <div>

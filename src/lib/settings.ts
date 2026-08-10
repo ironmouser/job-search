@@ -106,6 +106,34 @@ export const ALL_PRO_SOURCES = [
     ...INTERNATIONAL_SOURCES
 ];
 
+export const DEFAULT_PRO_SOURCES: Record<string, boolean> = {
+    greenhouse: true,
+    linkedin: true,
+    indeed: true,
+    ziprecruiter: true,
+    dice: true,
+    weworkremotely: true,
+    remoteok: true,
+    workingnomads: true,
+    remotive: true,
+    remotepoc: true,
+    ycombinator: true,
+    nodesk: true,
+    otta: true,
+    lever: true,
+    ashby: true,
+    workable: true,
+    smartrecruiters: true,
+    breezy: true,
+    himalayas: true,
+    jobicy: true,
+    jobspresso: true,
+    themuse: false,
+    computrabajo: false,
+    jobbank: false,
+    arbeitnow: false,
+};
+
 export async function handleUserUpgradeToPro(userId: string) {
     await ensureKeywordColumnsExist();
 

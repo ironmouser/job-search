@@ -29,6 +29,7 @@ import { marked } from 'marked';
 import JobDetailsNavWrapper from '@/components/JobDetailsNavWrapper';
 import JobDetailsActionBar from '@/components/JobDetailsActionBar';
 import JobDetailTracker from '@/components/JobDetailTracker';
+import { getEffectiveTier } from '@/lib/tier';
 
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -53,7 +54,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
     where: { id: userId },
     include: { userPreferences: true }
   });
-  const planTier = user?.planTier || 'FREE';
+  const planTier = user ? getEffectiveTier(user) : 'FREE';
   const preferences = user?.userPreferences;
   
   let userName = 'My';

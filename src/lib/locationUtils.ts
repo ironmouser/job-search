@@ -63,7 +63,12 @@ export const isRemoteLocation = (loc: string): boolean => {
   if (
     l.includes('remote') ||
     l.includes('anywhere') ||
+    l.includes('anywhere in the world') ||
+    l.includes('work from anywhere') ||
     l.includes('worldwide') ||
+    l.includes('global') ||
+    l.includes('everywhere') ||
+    l.includes('any location') ||
     l.includes('wfh') ||
     l.includes('telecommute') ||
     l.includes('distributed') ||

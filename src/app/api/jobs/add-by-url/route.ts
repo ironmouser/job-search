@@ -10,6 +10,7 @@ import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { callDeepSeek } from '@/lib/deepseek';
 import { cleanJobUrl, isTrustedJobUrl } from '@/lib/urlUtils';
 import { logSuspiciousActivity } from '@/lib/security';
+import { getEffectiveTier } from '@/lib/tier';
 
 async function extractJobMetadataWithGemini(rawText: string) {
   if (!process.env.DEEPSEEK_API_KEY || !rawText || rawText.trim().length === 0) {
@@ -51,8 +52,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
-    const planTier = (session.user as any).planTier || 'FREE';
-    const isPro = planTier === 'PRO';
+    const isPro = getEffectiveTier(session.user as any) === 'PRO';
 
     const body = await request.json();
     const { url: rawUrl, manualTitle, manualCompany, manualDescription, manualLocation } = body;

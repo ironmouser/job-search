@@ -126,7 +126,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
     sourceFilter !== 'both' ||
     startDate ||
     endDate ||
-    locationFilter.length > 0
+    locationFilter.length > 0 ||
+    sortOption !== 'newest'
   );
 
   const searchParams = useSearchParams();
@@ -1526,6 +1527,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         hasActiveFilters={hasActiveFilters}
         onOpenAddJobModal={() => setIsAddJobModalOpen(true)}
         onOpenCleanupModal={() => setIsCleanupModalOpen(true)}
+        sortOption={sortOption}
+        setSortOption={setSortOption}
       />
 
       {/* Dashboard Filter Modal */}
@@ -1544,13 +1547,15 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         setLocationFilter={setLocationFilter}
         uniqueLocations={uniqueLocations}
         totalMatches={filteredAndSortedJobs.length}
+        sortOption={sortOption}
+        setSortOption={setSortOption}
       />
 
       {/* Add Job Modal */}
       <AddJobModal
         isOpen={isAddJobModalOpen}
         onClose={() => setIsAddJobModalOpen(false)}
-        userPlanTier={userPlanTier}
+        userPlanTier={userPlanTier === 'PRO' || (trialEndsAt && new Date(trialEndsAt) > new Date()) ? 'PRO' : 'FREE'}
         onJobAdded={(newJob) => setJobList((prev) => [newJob, ...prev])}
       />
 

@@ -1,7 +1,9 @@
 "use client";
 
-import { Mail, SlidersHorizontal, PlusCircle, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { Mail, SlidersHorizontal, PlusCircle, Trash2, Loader2, Sparkles, ArrowUpDown } from 'lucide-react';
 import SyncButton from '@/components/SyncButton';
+
+export type SortOptionType = 'newest' | 'score' | 'salary' | 'remote' | 'auto_apply';
 
 interface DashboardDockProps {
   onEmailSync: () => void;
@@ -13,6 +15,8 @@ interface DashboardDockProps {
   hasActiveFilters: boolean;
   onOpenAddJobModal: () => void;
   onOpenCleanupModal: () => void;
+  sortOption?: SortOptionType;
+  setSortOption?: (val: SortOptionType) => void;
 }
 
 export default function DashboardDock({
@@ -24,7 +28,9 @@ export default function DashboardDock({
   onOpenFilterModal,
   hasActiveFilters,
   onOpenAddJobModal,
-  onOpenCleanupModal
+  onOpenCleanupModal,
+  sortOption,
+  setSortOption
 }: DashboardDockProps) {
   return (
     <div className="job-action-bar-desktop dashboard-dock">
@@ -80,7 +86,42 @@ export default function DashboardDock({
         )}
       </button>
 
-      {/* 4. Scrape & Add Job Button */}
+      {/* 4. Sort Selector Button */}
+      {sortOption !== undefined && setSortOption && (
+        <div
+          className="job-step-btn"
+          title="Sort Job Feed"
+          style={{ paddingRight: '0.4rem', cursor: 'pointer' }}
+        >
+          <ArrowUpDown size={15} style={{ color: 'var(--accent-primary, #3b82f6)' }} />
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as SortOptionType)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'inherit',
+              fontSize: 'inherit',
+              fontWeight: 'inherit',
+              cursor: 'pointer',
+              outline: 'none',
+              paddingRight: '0.2rem',
+              fontFamily: 'inherit',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+            }}
+          >
+            <option value="newest" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Newest</option>
+            <option value="score" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Match Score</option>
+            <option value="salary" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Salary</option>
+            <option value="remote" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Remote</option>
+            <option value="auto_apply" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Auto Apply</option>
+          </select>
+        </div>
+      )}
+
+      {/* 5. Scrape & Add Job Button */}
       <button
         onClick={onOpenAddJobModal}
         className="job-step-btn"
@@ -90,7 +131,7 @@ export default function DashboardDock({
         <span>Scrape & Add Job</span>
       </button>
 
-      {/* 5. Clean Up Button */}
+      {/* 6. Clean Up Button */}
       <button
         onClick={onOpenCleanupModal}
         className="job-step-btn"
@@ -103,3 +144,4 @@ export default function DashboardDock({
     </div>
   );
 }
+

@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { trackSettingsView, trackSettingsSave } from '@/lib/analytics';
+import { getEffectiveTier } from '@/lib/tier';
+import { FREE_ALLOWED_SOURCES, INTERNATIONAL_SOURCES } from '@/lib/settings';
 
 // Video instructions for email client setup
 const EMAIL_VIDEO_LINKS: Record<string, string> = {
@@ -226,7 +228,7 @@ export default function SettingsPage() {
 
     const { data: session } = useSession();
     const isAdmin = (session?.user as any)?.role === 'SYSTEM_ADMIN';
-    const isPro = (session?.user as any)?.planTier === 'PRO';
+    const isPro = session?.user ? getEffectiveTier(session.user as any) === 'PRO' : false;
 
     const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true;
 
@@ -559,8 +561,7 @@ export default function SettingsPage() {
                                         </h4>
                                         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                                             {group.sources.map(source => {
-                                                // Free tier users only have access to greenhouse, linkedin, remotepoc, remotive, and nodesk
-                                                const FREE_SOURCES_SET = new Set(['greenhouse', 'linkedin', 'remotepoc', 'remotive', 'nodesk']);
+                                                const FREE_SOURCES_SET = new Set(FREE_ALLOWED_SOURCES);
                                                 const isProRequired = !FREE_SOURCES_SET.has(source);
                                                 
                                                 const isDisabled = isProRequired && !isPro;
@@ -569,7 +570,7 @@ export default function SettingsPage() {
                                                     <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
                                                         <input 
                                                             type="checkbox" 
-                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : (!isProRequired))}
+                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : (!INTERNATIONAL_SOURCES.includes(source)))}
                                                             disabled={isDisabled}
                                                             onChange={(e) => {
                                                                 const newSources = { ...settings.sources, [source]: e.target.checked };
