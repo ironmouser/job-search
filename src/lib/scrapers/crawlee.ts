@@ -1488,6 +1488,8 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                             const loc: string = job?.jobLocation?.[0]?.address?.addressLocality || job?.location || job?.workplaceType || location;
                             const id: string = job?.id || job?.jobId || job?.adId || '';
                             const slug: string = job?.slug || '';
+                            // Inline description (occasionally present in listing JSON)
+                            const inlineDesc: string = job?.description || job?.jobDescription || job?.summary || '';
                             let jobUrl = '';
                             if (id) {
                                 jobUrl = `https://www.dice.com/job-detail/${id}`;
@@ -1500,6 +1502,7 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                                     company: cleanCompanyName(company) || 'Unknown Company',
                                     location: loc,
                                     url: jobUrl,
+                                    description: inlineDesc ? cheerio.load(inlineDesc).text().trim() : '',
                                     source: 'dice'
                                 });
                             }
@@ -1570,6 +1573,94 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                         source: 'dice'
                     });
                 });
+            }
+        }
+
+        // === SECOND PASS: Fetch full descriptions for jobs missing them ===
+        // Dice loads full descriptions only on the /job-detail/{id} page.
+        // We batch-fetch up to 10 concurrently to stay within timeout budgets.
+        const jobsMissingDesc = jobs.filter(j => !j.description || j.description.trim().length < 80);
+        if (jobsMissingDesc.length > 0) {
+            const BATCH_SIZE = 10;
+            const fetchDiceDescription = async (job: any): Promise<void> => {
+                try {
+                    let detailHtml = '';
+                    if (process.env.SCRAPEDO_API_KEY) {
+                        const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(job.url)}`;
+                        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+                        if (res.ok) {
+                            const text = await res.text();
+                            if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied')) detailHtml = text;
+                        }
+                    }
+                    if (!detailHtml) {
+                        const res = await fetch(job.url, {
+                            signal: AbortSignal.timeout(12000),
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                'Accept-Language': 'en-US,en;q=0.9',
+                            }
+                        });
+                        if (res.ok) detailHtml = await res.text();
+                    }
+                    if (!detailHtml) return;
+
+                    const $d = cheerio.load(detailHtml);
+
+                    // Priority 1: __NEXT_DATA__ embedded JSON (most reliable for Dice)
+                    const nextDataRaw = $d('script#__NEXT_DATA__').html();
+                    if (nextDataRaw) {
+                        try {
+                            const nd = JSON.parse(nextDataRaw);
+                            const jobData =
+                                nd?.props?.pageProps?.job ||
+                                nd?.props?.pageProps?.initialState?.jobDetail?.payload ||
+                                nd?.props?.pageProps?.jobDetail ||
+                                null;
+                            const rawDesc: string =
+                                jobData?.description ||
+                                jobData?.jobDescription ||
+                                jobData?.descriptionHtml ||
+                                '';
+                            if (rawDesc && rawDesc.trim().length > 80) {
+                                job.description = cheerio.load(rawDesc).text().trim();
+                                return;
+                            }
+                        } catch { /* fall through */ }
+                    }
+
+                    // Priority 2: JSON-LD JobPosting
+                    $d('script[type="application/ld+json"]').each((_, el) => {
+                        try {
+                            const data = JSON.parse($d(el).html() || '');
+                            const arr = Array.isArray(data) ? data : [data];
+                            for (const item of arr) {
+                                if (item['@type'] === 'JobPosting' && item.description) {
+                                    const desc = cheerio.load(item.description).text().trim();
+                                    if (desc.length > 80) { job.description = desc; return; }
+                                }
+                            }
+                        } catch { /* ignore */ }
+                    });
+                    if (job.description && job.description.length > 80) return;
+
+                    // Priority 3: CSS selectors for rendered description containers
+                    const descEl = $d(
+                        '[data-cy="jobDescription"], .job-description, #jobDescription, [class*="description"], [class*="job-detail__description"]'
+                    ).first();
+                    if (descEl.length) {
+                        const desc = descEl.text().trim();
+                        if (desc.length > 80) { job.description = desc; return; }
+                    }
+                } catch (err: any) {
+                    console.warn(`[Dice Detail Fetch] Could not fetch description for ${job.url}: ${err.message}`);
+                }
+            };
+
+            for (let i = 0; i < jobsMissingDesc.length; i += BATCH_SIZE) {
+                const batch = jobsMissingDesc.slice(i, i + BATCH_SIZE);
+                await Promise.allSettled(batch.map(j => fetchDiceDescription(j)));
             }
         }
 
