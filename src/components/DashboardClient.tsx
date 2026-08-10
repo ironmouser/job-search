@@ -9,6 +9,9 @@ import SyncButton from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
+import DashboardDock from '@/components/DashboardDock';
+import DashboardFilterModal from '@/components/DashboardFilterModal';
+import AddJobModal from '@/components/AddJobModal';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
 import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInternationalLocation } from '@/lib/locationUtils';
 import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
@@ -114,6 +117,17 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [confettiJobId, setConfettiJobId] = useState<string | null>(null);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
+  const [isCleanupModalOpen, setIsCleanupModalOpen] = useState(false);
+
+  const hasActiveFilters = Boolean(
+    keywordFilter ||
+    sourceFilter !== 'both' ||
+    startDate ||
+    endDate ||
+    locationFilter.length > 0
+  );
 
   const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
@@ -811,16 +825,18 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
   return (
     <>
-      <div className="animate-fade-in">
-        <PageHeader>
-          <div>
+      <div className="animate-fade-in" style={{ paddingBottom: '5.5rem' }}>
+        <PageHeader className="dashboard-page-header">
+          <div className="page-header-title-col">
             <PageHeaderHeading>Mission Control</PageHeaderHeading>
             <PageHeaderDescription>Your central hub for opportunity management and application tracking</PageHeaderDescription>
           </div>
+          <PageHeaderActions className="page-header-banner-col">
+            <TrialStatusBanner trialEndsAt={trialEndsAt} planTier={userPlanTier} compact={true} />
+          </PageHeaderActions>
         </PageHeader>
 
         <AntiAbuseBanner />
-        <TrialStatusBanner trialEndsAt={trialEndsAt} planTier={userPlanTier} />
 
         {showUpgradeModal && userPlanTier !== 'PRO' && (
           <UpgradePrompt
@@ -836,77 +852,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         )}
 
         <OnboardingWidget />
-
-        {/* Job Discovery Engine Hub - Positioned Above Quick Stat Cards */}
-        <div className="glass-card" style={{ 
-          padding: '1.25rem 1.5rem', 
-          marginBottom: '1.5rem', 
-          border: '1px solid rgba(59, 130, 246, 0.35)', 
-          borderRadius: '16px', 
-          display: 'flex', 
-          flexWrap: 'wrap', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          gap: '1.25rem', 
-          boxShadow: '0 2px 8px rgb(28 88 175 / 25%)' 
-        }}>
-          <div style={{ flex: '1 1 280px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-              <Sparkles size={20} style={{ color: 'var(--accent-primary)' }} />
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-                Job Discovery Engine
-              </h3>
-            </div>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              Find live matching job openings across 20+ job boards or import job alert notifications directly from your email inbox.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-            <Button 
-              onClick={handleEmailSync} 
-              disabled={isEmailSyncing || isSyncing}
-              variant="outline"
-              size="default"
-              style={{
-                padding: '0.85rem 1.4rem',
-                borderRadius: '12px',
-                fontWeight: 600,
-                fontSize: '0.95rem',
-                border: '1px solid rgb(13 12 12 / 20%)',
-                background: 'rgba(255, 255, 255, 0.05)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                height: 'auto'
-              }}
-            >
-              <Mail size={18} style={{ color: '#38bdf8' }} />
-              <span>{isEmailSyncing ? 'Scanning Inbox...' : 'Scan Inbox for Jobs'}</span>
-            </Button>
-
-            <div data-tour="dashboard-sync-jobs">
-              <SyncButton 
-                onSyncStateChange={(loading, text, count, isRefining) => {
-                  setIsSyncing(loading);
-                  setSyncMessage(text);
-                  if (loading) {
-                    if (count !== undefined) setJobsFoundCount(count);
-                    setIsRefiningJobs(!!isRefining);
-                  } else {
-                    setJobsFoundCount(null);
-                    setIsRefiningJobs(false);
-                  }
-                }}
-                onSyncComplete={() => {
-                  setTimeout(() => {
-                    checkAndTriggerDiscoveryNudge();
-                  }, 600);
-                }}
-              />
-            </div>
-          </div>
-        </div>
 
         <div className="responsive-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
         <div 
@@ -961,223 +906,26 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
       <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
 
-      <div className="dashboard-controls-container">
-        <div className="dashboard-controls-header">
-          <div className="dashboard-matches-title">
-            <h3>Matches ({filteredAndSortedJobs.length})</h3>
-            <DashboardCleanup 
-              checkedJobs={Array.from(checkedJobs)}
-              onCleanupComplete={() => {
-                router.refresh();
-                setCheckedJobs(new Set());
-              }} 
-            />
-          </div>
-          
-          <div className="dashboard-view-toggles">
-            <button 
-              onClick={() => setViewMode('grid')}
-              style={{ background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'grid' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
-              title="Grid View"
-            >
-              <LayoutGrid size={16} />
-            </button>
-            <button 
-              onClick={() => setViewMode('table')}
-              style={{ background: viewMode === 'table' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'table' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
-              title="Table View"
-            >
-              <List size={16} />
-            </button>
-          </div>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '1rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+          Matches ({filteredAndSortedJobs.length})
+        </h3>
         
-        <div className="dashboard-filters-bar">
-          <div className="filter-search-wrapper">
-            <Search size={14} className="filter-search-icon" />
-            <input
-              type="text"
-              placeholder="Filter words or description..."
-              value={keywordFilter}
-              onChange={(e) => setKeywordFilter(e.target.value)}
-            />
-            {keywordFilter && (
-              <button
-                onClick={() => setKeywordFilter('')}
-                className="filter-search-clear"
-                title="Clear filter"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          <div className="filter-dropdowns-wrapper">
-            <div className="filter-item">
-              <span className="filter-item-label">Source:</span>
-              <select 
-                value={sourceFilter} 
-                onChange={(e) => setSourceFilter(e.target.value as any)}
-              >
-                <option value="both">Both</option>
-                <option value="email">Email Only</option>
-                <option value="scraped">Scraped Only</option>
-              </select>
-            </div>
-
-            <div className="filter-item">
-              <span className="filter-item-label">Date:</span>
-              <div className="date-range-wrapper">
-                <div className="date-picker-custom" title="Start Date">
-                  <Calendar size={14} color={startDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-                  {startDate && <span>{safeFormatDate(startDate)}</span>}
-                  <input 
-                    type="date" 
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                
-                <span className="date-range-separator">to</span>
-                
-                <div className="date-picker-custom" title="End Date">
-                  <Calendar size={14} color={endDate ? 'var(--accent-primary)' : 'var(--text-secondary)'} />
-                  {endDate && <span>{safeFormatDate(endDate)}</span>}
-                  <input 
-                    type="date" 
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div ref={locationDropdownRef} style={{ position: 'relative' }}>
-              <div className="filter-item">
-                <span className="filter-item-label">Location:</span>
-                <button 
-                  type="button"
-                  onClick={() => setIsLocationDropdownOpen(prev => !prev)}
-                  className="filter-dropdown-btn"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Filter size={14} color="var(--text-secondary)" />
-                    <span>
-                      {locationFilter.length === 0 
-                        ? 'All Locations' 
-                        : locationFilter.length === 1 
-                          ? locationFilter[0] 
-                          : `${locationFilter.length} Locations Selected`}
-                    </span>
-                  </div>
-                  <ChevronDown size={14} color="var(--text-secondary)" style={{ transform: isLocationDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
-                </button>
-              </div>
-
-              {isLocationDropdownOpen && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)',
-                  left: 0,
-                  background: 'var(--bg-color)',
-                  border: '1px solid var(--border-glass)',
-                  borderRadius: '8px',
-                  padding: '0.5rem',
-                  zIndex: 100,
-                  minWidth: '220px',
-                  maxHeight: '280px',
-                  overflowY: 'auto',
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.25rem'
-                }}>
-                  <div 
-                    onClick={() => { setLocationFilter([]); }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0.4rem 0.6rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: locationFilter.length === 0 ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                      background: locationFilter.length === 0 ? 'rgba(102, 252, 241, 0.08)' : 'transparent'
-                    }}
-                  >
-                    <span>All Locations</span>
-                    {locationFilter.length > 0 && (
-                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Clear</span>
-                    )}
-                  </div>
-
-                  <div style={{ borderBottom: '1px solid var(--border-glass)', margin: '0.25rem 0' }} />
-
-                  {uniqueLocations.map(loc => {
-                    const isChecked = locationFilter.includes(loc);
-                    return (
-                      <label 
-                        key={loc}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.6rem',
-                          padding: '0.35rem 0.6rem',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem',
-                          color: isChecked ? 'var(--accent-primary)' : 'var(--text-primary)',
-                          background: isChecked ? 'rgba(102, 252, 241, 0.05)' : 'transparent',
-                          userSelect: 'none'
-                        }}
-                      >
-                        <input 
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {
-                            setLocationFilter(prev => 
-                              prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc]
-                            );
-                          }}
-                          style={{ cursor: 'pointer', accentColor: 'var(--accent-primary)', width: '15px', height: '15px' }}
-                        />
-                        <span>{loc}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="filter-item">
-              <span className="filter-item-label">Sort by:</span>
-              <select 
-                value={sortOption} 
-                onChange={(e) => setSortOption(e.target.value as any)}
-              >
-                <option value="newest">Newest First</option>
-                <option value="score">Score (High to Low)</option>
-                <option value="salary">Salary (High to Low)</option>
-                <option value="remote">Remote First</option>
-                <option value="auto_apply">Auto Apply Confidence</option>
-              </select>
-            </div>
-
-            <div className="filter-item">
-              <span className="filter-item-label">Per page:</span>
-              <select 
-                value={itemsPerPage} 
-                onChange={(e) => changeItemsPerPage(Number(e.target.value))}
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-            </div>
-          </div>
+        <div className="dashboard-view-toggles" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <button 
+            onClick={() => setViewMode('grid')}
+            style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'grid' ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer' }}
+            title="Grid View"
+          >
+            <LayoutGrid size={16} />
+          </button>
+          <button 
+            onClick={() => setViewMode('table')}
+            style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: viewMode === 'table' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'table' ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer' }}
+            title="Table View"
+          >
+            <List size={16} />
+          </button>
         </div>
       </div>
       
@@ -1752,6 +1500,71 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           }}
         />
       )}
+
+      {/* Floating Dashboard Dock */}
+      <DashboardDock
+        onEmailSync={handleEmailSync}
+        isEmailSyncing={isEmailSyncing}
+        isSyncing={isSyncing}
+        onSyncStateChange={(loading, text, count, isRefining) => {
+          setIsSyncing(loading);
+          setSyncMessage(text);
+          if (loading) {
+            if (count !== undefined) setJobsFoundCount(count);
+            setIsRefiningJobs(!!isRefining);
+          } else {
+            setJobsFoundCount(null);
+            setIsRefiningJobs(false);
+          }
+        }}
+        onSyncComplete={() => {
+          setTimeout(() => {
+            checkAndTriggerDiscoveryNudge();
+          }, 600);
+        }}
+        onOpenFilterModal={() => setIsFilterModalOpen(true)}
+        hasActiveFilters={hasActiveFilters}
+        onOpenAddJobModal={() => setIsAddJobModalOpen(true)}
+        onOpenCleanupModal={() => setIsCleanupModalOpen(true)}
+      />
+
+      {/* Dashboard Filter Modal */}
+      <DashboardFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        keywordFilter={keywordFilter}
+        setKeywordFilter={setKeywordFilter}
+        sourceFilter={sourceFilter}
+        setSourceFilter={setSourceFilter}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        locationFilter={locationFilter}
+        setLocationFilter={setLocationFilter}
+        uniqueLocations={uniqueLocations}
+        totalMatches={filteredAndSortedJobs.length}
+      />
+
+      {/* Add Job Modal */}
+      <AddJobModal
+        isOpen={isAddJobModalOpen}
+        onClose={() => setIsAddJobModalOpen(false)}
+        userPlanTier={userPlanTier}
+        onJobAdded={(newJob) => setJobList((prev) => [newJob, ...prev])}
+      />
+
+      {/* Cleanup Modal */}
+      <DashboardCleanup
+        isOpen={isCleanupModalOpen}
+        onClose={() => setIsCleanupModalOpen(false)}
+        hideTriggerButton={true}
+        checkedJobs={[...checkedJobs]}
+        onCleanupComplete={() => {
+          setCheckedJobs(new Set());
+          router.refresh();
+        }}
+      />
     </>
   );
 }

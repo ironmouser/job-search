@@ -2042,6 +2042,45 @@ body.light-theme .accordion-summary-box {
   position: relative;
 }
 
+/* Dashboard Page Header 50/50 Split */
+.dashboard-page-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1.25rem !important;
+}
+
+.dashboard-page-header .page-header-title-col {
+  flex: 0 0 calc(25% - 0.65rem);
+  max-width: calc(25% - 0.65rem);
+  width: 100%;
+}
+
+.dashboard-page-header .page-header-banner-col {
+  flex: 1 1 calc(75% - 0.65rem);
+  max-width: calc(75% - 0.65rem);
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-page-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .dashboard-page-header .page-header-title-col,
+  .dashboard-page-header .page-header-banner-col {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+  }
+
+  .dashboard-page-header .page-header-banner-col {
+    justify-content: flex-start;
+  }
+}
+
 /* Desktop Action Bar Container — Light Mode Default */
 .job-action-bar-desktop {
   position: fixed;
@@ -2124,9 +2163,32 @@ body.light-theme .accordion-summary-box {
   color: #0f172a;
 }
 
+body:not(.light-theme) .job-action-bar-desktop {
+  background: rgba(18, 18, 18, 0.92);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+body:not(.light-theme) .job-action-bar-divider {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 @media (max-width: 768px) {
-  .job-action-bar-desktop {
+  .job-action-bar-desktop:not(.dashboard-dock) {
     display: none !important;
+  }
+
+  .dashboard-dock {
+    max-width: 95vw;
+    overflow-x: auto;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .dashboard-dock::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
   }
 
   .job-action-bar-mobile {
@@ -2160,6 +2222,18 @@ body.light-theme .accordion-summary-box {
   background: #f1f5f9;
   border-color: #94a3b8;
   color: #0f172a;
+}
+
+body:not(.light-theme) .job-step-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
+body:not(.light-theme) .job-step-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 .job-step-number {

@@ -6,6 +6,7 @@ import { Sparkles, Zap, ArrowRight, Clock } from 'lucide-react';
 interface TrialStatusBannerProps {
   trialEndsAt: Date | string | null;
   planTier: string;
+  compact?: boolean;
 }
 
 /**
@@ -14,7 +15,7 @@ interface TrialStatusBannerProps {
  *   - Days 2–7: countdown ("3 days left of your Pro trial")
  *   - Trial expired + FREE: nothing (upgrade prompts shown at action moments instead)
  */
-export default function TrialStatusBanner({ trialEndsAt, planTier }: TrialStatusBannerProps) {
+export default function TrialStatusBanner({ trialEndsAt, planTier, compact = false }: TrialStatusBannerProps) {
   // Paid users see nothing
   if (planTier === 'PRO') return null;
 
@@ -37,8 +38,8 @@ export default function TrialStatusBanner({ trialEndsAt, planTier }: TrialStatus
   return (
     <div
       style={{
-        marginBottom: '2rem',
-        padding: '1.25rem 1.75rem',
+        marginBottom: compact ? 0 : '2rem',
+        padding: compact ? '0.75rem 1.25rem' : '1.25rem 1.75rem',
         background: isWelcomeWindow
           ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(54, 149, 227, 0.12) 100%)'
           : 'linear-gradient(135deg, rgba(38, 99, 235, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
@@ -50,8 +51,10 @@ export default function TrialStatusBanner({ trialEndsAt, planTier }: TrialStatus
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '1rem',
+        gap: compact ? '0.75rem' : '1rem',
         animation: 'fadeIn 0.4s ease',
+        width: '100%',
+        maxWidth: '1050px'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '240px' }}>

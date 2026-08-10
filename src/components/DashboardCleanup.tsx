@@ -7,12 +7,31 @@ import { Trash2, X, AlertCircle } from 'lucide-react';
 interface DashboardCleanupProps {
   onCleanupComplete: () => void;
   checkedJobs?: string[];
+  isOpen?: boolean;
+  onClose?: () => void;
+  hideTriggerButton?: boolean;
 }
 
-export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }: DashboardCleanupProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function DashboardCleanup({
+  onCleanupComplete,
+  checkedJobs = [],
+  isOpen: externalIsOpen,
+  onClose: externalOnClose,
+  hideTriggerButton = false
+}: DashboardCleanupProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const isModalOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+
+  const handleClose = () => {
+    if (externalOnClose) {
+      externalOnClose();
+    } else {
+      setInternalIsOpen(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -55,7 +74,7 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
         if (res.ok) {
           const data = await res.json();
           alert(`Successfully deleted ${data.count} jobs.`);
-          setIsOpen(false);
+          handleClose();
           setFilters({ disliked: false, viewed: false, applied: false, archived: false, checked: false, olderThanDays: '' });
           onCleanupComplete();
         } else {
@@ -73,21 +92,23 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(true)}
-        className="btn-outline"
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderColor: 'var(--danger)', color: 'var(--danger)' }}
-        title="Clean up dashboard"
-      >
-        <Trash2 size={16} />
-        <span>Cleanup</span>
-      </button>
+      {!hideTriggerButton && (
+        <button 
+          onClick={() => setInternalIsOpen(true)}
+          className="btn-outline"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderColor: 'var(--danger)', color: 'var(--danger)' }}
+          title="Clean up dashboard"
+        >
+          <Trash2 size={16} />
+          <span>Cleanup</span>
+        </button>
+      )}
 
-      {mounted && isOpen && createPortal(
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div className="modal-content glass-card" style={{ backgroundColor: 'var(--bg-surface)', padding: '2rem', maxWidth: '500px', width: '90%', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
+      {mounted && isModalOpen && createPortal(
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }} onClick={handleClose}>
+          <div className="modal-content glass-card" style={{ backgroundColor: 'var(--bg-surface, #0f172a)', padding: '2rem', maxWidth: '500px', width: '100%', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <button 
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
             >
               <X size={20} />
@@ -171,7 +192,7 @@ export default function DashboardCleanup({ onCleanupComplete, checkedJobs = [] }
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
               <button 
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="btn-outline"
                 disabled={isCleaning}
               >
