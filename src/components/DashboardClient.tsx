@@ -938,6 +938,56 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             Matches ({filteredAndSortedJobs.length})
           </h3>
 
+          {/* Search for Jobs (SyncButton) */}
+          <SyncButton
+            compact={true}
+            onSyncStateChange={(loading, text, count, isRefining) => {
+              setIsSyncing(loading);
+              setSyncMessage(text);
+              if (loading) {
+                if (count !== undefined) setJobsFoundCount(count);
+                setIsRefiningJobs(!!isRefining);
+              } else {
+                setJobsFoundCount(null);
+                setIsRefiningJobs(false);
+              }
+            }}
+            onSyncComplete={() => {
+              setTimeout(() => {
+                checkAndTriggerDiscoveryNudge();
+              }, 600);
+            }}
+          />
+
+          {/* Scan Inbox */}
+          <button
+            onClick={handleEmailSync}
+            disabled={isEmailSyncing || isSyncing}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.4rem 0.75rem',
+              borderRadius: '8px',
+              border: '1px solid var(--border-glass)',
+              background: 'var(--bg-glass)',
+              color: 'var(--text-primary)',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              cursor: isEmailSyncing || isSyncing ? 'not-allowed' : 'pointer',
+              opacity: isEmailSyncing || isSyncing ? 0.6 : 1,
+              transition: 'all 0.2s ease'
+            }}
+            title="Scan email inbox for job alert notifications"
+          >
+            {isEmailSyncing ? (
+              <Loader2 size={14} className="animate-spin" style={{ color: '#38bdf8' }} />
+            ) : (
+              <Mail size={14} style={{ color: '#38bdf8' }} />
+            )}
+            <span>{isEmailSyncing ? 'Scanning Inbox...' : 'Scan Inbox'}</span>
+          </button>
+
           {/* Filter Button */}
           <button
             onClick={() => setIsFilterModalOpen(true)}
