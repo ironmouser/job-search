@@ -11,6 +11,49 @@ const cleanNullBytes = (str: string | null | undefined): string => {
     return str.replace(/\u0000/g, '');
 };
 
+export async function bulkIngestRawJobsToGlobalDb(rawJobs: any[]) {
+    if (!rawJobs || rawJobs.length === 0) return;
+    try {
+        const createData: any[] = [];
+        const seenUrls = new Set<string>();
+
+        for (const j of rawJobs) {
+            const rawUrl = j.url || j.link;
+            if (!rawUrl || !j.title) continue;
+            const cleanedUrl = cleanJobUrl(rawUrl);
+            if (!cleanedUrl || seenUrls.has(cleanedUrl)) continue;
+            seenUrls.add(cleanedUrl);
+
+            const safeTitle = cleanNullBytes(j.title?.trim()) || 'Untitled Position';
+            const safeCompany = cleanNullBytes(cleanCompanyName(j.company)) || 'Unknown Company';
+            const safeLocation = cleanNullBytes(j.location) || 'Remote';
+            const safeSalaryRange = cleanNullBytes(j.salary_range || j.salary);
+            const safeDescription = cleanNullBytes(j.description) || `Found via job search: ${cleanedUrl}`;
+            const safeSource = cleanNullBytes(j.source) || 'Direct';
+
+            createData.push({
+                title: safeTitle,
+                company: safeCompany,
+                location: safeLocation,
+                salaryRange: safeSalaryRange || null,
+                description: safeDescription,
+                url: cleanedUrl,
+                source: safeSource
+            });
+        }
+
+        if (createData.length > 0) {
+            await prisma.job.createMany({
+                data: createData,
+                skipDuplicates: true
+            });
+            console.log(`[Global Pool Ingestion] Bulk ingested ${createData.length} scraped jobs into global DB pool.`);
+        }
+    } catch (err: any) {
+        console.warn(`[Global Pool Ingestion Issue] Background bulk ingestion warning: ${err.message}`);
+    }
+}
+
 export async function normalizeAndSaveJobs(
     rawJobs: any[],
     userId: string,
@@ -27,27 +70,57 @@ export async function normalizeAndSaveJobs(
     const profileText: string = (settings.profile || settings.resumeMarkdown || '').slice(0, 800);
 
     const rawCount = rawJobs.length;
-    let normalizedJobs = rawJobs.map((job) => {
-        const title = job.title?.trim() || 'Untitled Position';
+
+    // Stage 1: URL Canonicalization & Early In-Batch Deduplication
+    const deduplicatedJobs: any[] = [];
+    const seenUrls = new Set<string>();
+    const seenTitleCompany = new Set<string>();
+
+    for (const job of rawJobs) {
+        const rawUrl = job.url || job.link;
+        const title = job.title?.trim();
+        if (!rawUrl || !title) continue;
+
+        const cleanedUrl = cleanJobUrl(rawUrl);
+        if (seenUrls.has(cleanedUrl)) continue;
+
         const company = cleanCompanyName(job.company) || 'Unknown Company';
-        const fallbackDesc = `Found via email link: ${job.url || ''}`;
+        const titleCompanyKey = `${title.toLowerCase().trim()}|${company.toLowerCase().trim()}`;
+        if (seenTitleCompany.has(titleCompanyKey)) {
+            console.log(`[Early Dedup] Skipping duplicate title+company: "${title}" at "${company}"`);
+            continue;
+        }
+
+        seenUrls.add(cleanedUrl);
+        seenTitleCompany.add(titleCompanyKey);
+
+        const fallbackDesc = `Found via email link: ${cleanedUrl}`;
         const description = (job.description && job.description.trim().length > 0) ? job.description.trim() : fallbackDesc;
 
-        return {
+        deduplicatedJobs.push({
             title,
             company,
             location: job.location || 'Remote',
             salaryRange: job.salary_range || job.salary || null,
             description,
             requirements: null,
-            url: job.url,
+            url: cleanedUrl,
             source: job.source || 'Direct',
-        };
-    }).filter(j => j.url && j.title);
-    const droppedInvalid = rawCount - normalizedJobs.length;
-    if (droppedInvalid > 0) {
-        onProgress?.(normalizedJobs.length, `Removed ${droppedInvalid} listing${droppedInvalid === 1 ? '' : 's'} with invalid or missing URLs`);
+        });
     }
+
+    const droppedInvalidOrDupes = rawCount - deduplicatedJobs.length;
+    if (droppedInvalidOrDupes > 0) {
+        onProgress?.(deduplicatedJobs.length, `Removed ${droppedInvalidOrDupes} duplicate or invalid listing${droppedInvalidOrDupes === 1 ? '' : 's'}`);
+    }
+
+    // Stage 2: Fire non-blocking background task to bulk populate all valid scraped jobs into global DB pool
+    bulkIngestRawJobsToGlobalDb(deduplicatedJobs).catch(err => {
+        console.warn(`[Global Pool Ingestion Background Error]: ${err.message}`);
+    });
+
+    // Stage 3: User Personal Deterministic Location & Keyword Filters
+    let normalizedJobs = [...deduplicatedJobs];
 
     if (remoteOnly) {
         const before = normalizedJobs.length;
@@ -63,7 +136,6 @@ export async function normalizeAndSaveJobs(
         if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} international listing${dropped === 1 ? '' : 's'} based on your location preferences`);
     }
 
-    // Tier 1: Deterministic Keyword Exclusion & Inclusion Filter
     const excludeTerms = excludeKeywordsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
     const includeTerms = includeKeywordsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
@@ -91,12 +163,7 @@ export async function normalizeAndSaveJobs(
             const match = includeTerms.some(term => contentLower.includes(term));
 
             if (match) return true;
-
-            // If it's an email job with only a bare URL stub, pass open so we don't discard
-            // before the full URL is scraped in the background.
-            if (isEmailSync && isStubOnly) {
-                return true;
-            }
+            if (isEmailSync && isStubOnly) return true;
 
             console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to missing required keywords.`);
             return false;
@@ -105,31 +172,8 @@ export async function normalizeAndSaveJobs(
         if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} listing${dropped === 1 ? '' : 's'} missing your required keywords`);
     }
 
-    // URL cleaning and deduplication
-    const deduplicatedJobs: any[] = [];
-    const seenUrls = new Set<string>();
-    const seenTitleCompany = new Set<string>();
-
-    for (const job of normalizedJobs) {
-        const cleanedUrl = cleanJobUrl(job.url);
-        if (seenUrls.has(cleanedUrl)) continue;
-        // Also deduplicate by exact title+company within this batch
-        const titleCompanyKey = `${job.title.toLowerCase().trim()}|${job.company.toLowerCase().trim()}`;
-        if (seenTitleCompany.has(titleCompanyKey)) {
-            console.log(`[Batch Dedup] Skipping duplicate title+company: "${job.title}" at "${job.company}"`);
-            continue;
-        }
-        seenUrls.add(cleanedUrl);
-        seenTitleCompany.add(titleCompanyKey);
-        deduplicatedJobs.push({ ...job, url: cleanedUrl });
-    }
-    const droppedDupes = normalizedJobs.length - deduplicatedJobs.length;
-    if (droppedDupes > 0) {
-        onProgress?.(deduplicatedJobs.length, `Removed ${droppedDupes} duplicate listing${droppedDupes === 1 ? '' : 's'} found across multiple sources`);
-    }
-
     // Check existing jobs in DB to separate truly new candidates from already discovered jobs
-    const urlsToProcess = deduplicatedJobs.map(j => j.url);
+    const urlsToProcess = normalizedJobs.map(j => j.url);
     const existingJobs = await prisma.job.findMany({
         where: { url: { in: urlsToProcess } },
         select: { id: true, url: true }
@@ -163,7 +207,7 @@ export async function normalizeAndSaveJobs(
     const brandNewCandidates: any[] = [];
     let dbDedupDropped = 0;
 
-    for (const jobData of deduplicatedJobs) {
+    for (const jobData of normalizedJobs) {
         const match = existingJobs.find(e => e.url === jobData.url);
         if (match && userExistingJobIds.has(match.id)) {
             knownGoodJobs.push(jobData);

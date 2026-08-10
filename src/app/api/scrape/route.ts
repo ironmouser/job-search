@@ -66,6 +66,27 @@ export async function POST(request: Request) {
                     let totalRawJobsFound = 0;
                     const allRawJobs: any[] = [];
 
+                    // DB-First Instant Matching: Pull recent matching jobs from global database pool
+                    try {
+                        const dbFirstJobs = await prisma.job.findMany({
+                            where: {
+                                createdAt: { gte: new Date(Date.now() - 48 * 60 * 60 * 1000) },
+                                OR: [
+                                    { title: { contains: keyword, mode: 'insensitive' } },
+                                    { description: { contains: keyword, mode: 'insensitive' } }
+                                ]
+                            },
+                            take: 100
+                        });
+                        if (dbFirstJobs.length > 0) {
+                            allRawJobs.push(...dbFirstJobs);
+                            totalRawJobsFound += dbFirstJobs.length;
+                            sendEvent({ type: 'status', message: `Found ${dbFirstJobs.length} instant matching roles in global database pool!` });
+                        }
+                    } catch (dbErr: any) {
+                        console.warn(`[DB-First Pre-Check Warning]: ${dbErr.message}`);
+                    }
+
                     const tasks: Promise<void>[] = [];
 
                     const runScraperTask = async (name: string, fn: () => Promise<any[]>, timeoutMs = 25000) => {
