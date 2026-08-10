@@ -25,9 +25,22 @@ export async function GET() {
             where: { id: 'system' }
         });
 
-        const resolvedSources = prefs?.sources
-            ? { ...DEFAULT_PRO_SOURCES, ...(prefs.sources as Record<string, boolean>) }
-            : DEFAULT_PRO_SOURCES;
+        const isPro = getEffectiveTier(session.user as any) === 'PRO';
+
+        let resolvedSources: Record<string, boolean> = { ...DEFAULT_PRO_SOURCES };
+
+        if (prefs?.sources) {
+            const userSources = prefs.sources as Record<string, boolean>;
+            resolvedSources = { ...DEFAULT_PRO_SOURCES, ...userSources };
+
+            if (isPro && !userSources.hasCustomizedProSources) {
+                for (const [src, defaultVal] of Object.entries(DEFAULT_PRO_SOURCES)) {
+                    if (defaultVal === true) {
+                        resolvedSources[src] = true;
+                    }
+                }
+            }
+        }
 
         if (!prefs) {
             return NextResponse.json({
@@ -179,6 +192,8 @@ export async function POST(request: Request) {
                     data.sources[src] = false;
                 }
             }
+        } else if (data.sources && typeof data.sources === 'object') {
+            data.sources.hasCustomizedProSources = true;
         }
 
 
