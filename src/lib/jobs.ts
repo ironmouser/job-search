@@ -6,6 +6,11 @@ import { callDeepSeek } from './deepseek';
 import { isInternationalLocation, isRemoteLocation } from './locationUtils';
 import { cleanCompanyName } from './cleaners';
 
+const cleanNullBytes = (str: string | null | undefined): string => {
+    if (!str) return '';
+    return str.replace(/\u0000/g, '');
+};
+
 export async function normalizeAndSaveJobs(
     rawJobs: any[],
     userId: string,
@@ -263,60 +268,75 @@ export async function normalizeAndSaveJobs(
     const processedUrls: string[] = [];
 
     for (const jobData of finalJobsToSave) {
-      const cleanedUrl = jobData.url;
-      if (processedUrls.includes(cleanedUrl)) continue;
-      processedUrls.push(cleanedUrl);
+      try {
+        const cleanedUrl = cleanJobUrl(jobData.url);
+        if (!cleanedUrl || processedUrls.includes(cleanedUrl)) continue;
+        processedUrls.push(cleanedUrl);
 
-      let job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
-      if (!job) {
-          try {
-              job = await prisma.job.create({
-                  data: {
-                      title: jobData.title,
-                      company: jobData.company,
-                      location: jobData.location,
-                      salaryRange: jobData.salaryRange,
-                      description: jobData.description,
-                      url: cleanedUrl,
-                      source: jobData.source,
-                  }
-              });
-          } catch (e: any) {
-              // Handle race condition: another process may have created this exact job just now
-              if (e.code === 'P2002') {
-                  job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
-                  if (!job) throw e;
-              } else {
-                  throw e;
-              }
-          }
-      } else if (!job.description || job.description.trim().length === 0) {
-          await prisma.job.update({
-              where: { id: job.id },
-              data: { description: jobData.description }
-          });
-      }
-      
-      // Link to UserJob only for top 100 allocated matches for this sync run
-      if (userAllocationUrls.has(cleanedUrl)) {
-        const existingUj = await prisma.userJob.findUnique({
-            where: { userId_jobId: { userId, jobId: job.id } },
-            select: { id: true }
-        });
-        if (!existingUj) {
-            newSavedCount++;
-        }
-        await prisma.userJob.upsert({
-            where: { userId_jobId: { userId, jobId: job.id } },
-            update: {
-                status: 'discovered'
-            },
-            create: {
-                userId,
-                jobId: job.id,
-                status: 'discovered'
+        const safeTitle = cleanNullBytes(jobData.title) || 'Untitled Position';
+        const safeCompany = cleanNullBytes(jobData.company) || 'Unknown Company';
+        const safeLocation = cleanNullBytes(jobData.location) || 'Remote';
+        const safeSalaryRange = cleanNullBytes(jobData.salaryRange);
+        const safeDescription = cleanNullBytes(jobData.description) || `Found via job search: ${cleanedUrl}`;
+        const safeSource = cleanNullBytes(jobData.source) || 'Direct';
+
+        let job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
+        if (!job) {
+            try {
+                job = await prisma.job.create({
+                    data: {
+                        title: safeTitle,
+                        company: safeCompany,
+                        location: safeLocation,
+                        salaryRange: safeSalaryRange || null,
+                        description: safeDescription,
+                        url: cleanedUrl,
+                        source: safeSource,
+                    }
+                });
+            } catch (e: any) {
+                if (e.code === 'P2002') {
+                    job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
+                }
+                if (!job) {
+                    console.error(`[Job Save Error] Could not create job "${safeTitle}" at "${safeCompany}":`, e);
+                    continue;
+                }
             }
-        });
+        } else if (!job.description || job.description.trim().length === 0) {
+            try {
+                await prisma.job.update({
+                    where: { id: job.id },
+                    data: { description: safeDescription }
+                });
+            } catch (e) {
+                console.warn(`[Job Update Description Error] Failed to update description for ${job.id}:`, e);
+            }
+        }
+
+        // Link to UserJob for top 100 allocated matches for this sync run
+        if (userAllocationUrls.has(cleanedUrl) || userAllocationUrls.has(jobData.url)) {
+          const existingUj = await prisma.userJob.findUnique({
+              where: { userId_jobId: { userId, jobId: job.id } },
+              select: { id: true, status: true }
+          });
+          if (!existingUj) {
+              newSavedCount++;
+          }
+          await prisma.userJob.upsert({
+              where: { userId_jobId: { userId, jobId: job.id } },
+              update: {
+                  ...(existingUj?.status === 'deleted' ? {} : { status: 'discovered' })
+              },
+              create: {
+                  userId,
+                  jobId: job.id,
+                  status: 'discovered'
+              }
+          });
+        }
+      } catch (itemErr: any) {
+        console.error(`[Job Persistence Error] Error processing listing:`, itemErr);
       }
     }
     

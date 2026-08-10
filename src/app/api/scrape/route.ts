@@ -137,7 +137,9 @@ export async function POST(request: Request) {
                             sendEvent({ type: 'normalization', foundCount: count, message });
                         }
                     });
-                    const newJobsSaved = (savedJobs as any)?.newSavedCount ?? savedJobs?.length ?? 0;
+                    const newJobsSaved = (typeof (savedJobs as any)?.newSavedCount === 'number' && (savedJobs as any).newSavedCount > 0)
+                        ? (savedJobs as any).newSavedCount
+                        : (savedJobs?.length || 0);
 
                     sendEvent({
                         type: 'complete',
