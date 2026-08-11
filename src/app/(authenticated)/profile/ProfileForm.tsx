@@ -489,7 +489,7 @@ export default function ProfileForm({
       </div>
 
       {/* -- 1. My Info & Auto-Fill Information Section ----------------------------- */}
-      <div className={`glass-card accordion-card ${openSections['personal-info'] ? 'open' : ''}`} id="personal-info" style={{ padding: '1.5rem 2rem' }}>
+      <div className={`glass-card accordion-card responsive-card-padding ${openSections['personal-info'] ? 'open' : ''}`} id="personal-info">
         <div className="accordion-card-header" onClick={() => toggleSection('personal-info')}>
           <div>
             <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
@@ -508,30 +508,32 @@ export default function ProfileForm({
         {openSections['personal-info'] && (
           <div className="accordion-body">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
-              <div>
+              <div style={{ flex: '1 1 240px' }}>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
                   Your contact details used to automatically complete job applications.
                 </p>
               </div>
 
-          <button
-            type="button"
-            onClick={handleExtractFromResume}
-            disabled={extracting}
-            className="btn-outline"
-            style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", padding: "0.5rem 0.9rem" }}
-          >
-            {extracting ? (
-              <>
-                <Loader2 size={14} className="animate-spin" /> Extracting...
-              </>
-            ) : (
-              <>
-                <Sparkles size={14} className="text-accent" /> Auto-Fill from Resume
-              </>
-            )}
-          </button>
-        </div>
+              <div className="card-action-grid" style={{ width: '100%' }}>
+                <button
+                  type="button"
+                  onClick={handleExtractFromResume}
+                  disabled={extracting}
+                  className="btn-outline full-width-mobile full-width-tablet"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", fontSize: "0.85rem", padding: "0.6rem 1rem", minHeight: "44px", width: "100%" }}
+                >
+                  {extracting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Extracting...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} className="text-accent" /> Auto-Fill from Resume
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
 
         {/* Informational Banner */}
         <div
@@ -802,8 +804,8 @@ export default function ProfileForm({
       )}
       </div>
 
-      {/* -- 2. Authorization & Demographics Section ------------------------------- */}
-      <div className={`glass-card accordion-card ${openSections['work-auth'] ? 'open' : ''}`} id="work-auth" style={{ padding: '1.5rem 2rem' }}>
+      {/* -- 2. Work Authorization Section ----------------------------- */}
+      <div className={`glass-card accordion-card responsive-card-padding ${openSections['work-auth'] ? 'open' : ''}`} id="work-auth">
         <div className="accordion-card-header" onClick={() => toggleSection('work-auth')}>
           <div>
             <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
@@ -1104,7 +1106,7 @@ export default function ProfileForm({
       </div>
 
       {/* -- 3. Target Profile Section ------------------------------------------ */}
-      <div className={`glass-card accordion-card ${openSections['target-profile'] ? 'open' : ''}`} id="target-profile" data-tour="target-profile" style={{ padding: '1.5rem 2rem' }}>
+      <div className={`glass-card accordion-card responsive-card-padding ${openSections['target-profile'] ? 'open' : ''}`} id="target-profile" data-tour="target-profile">
         <div className="accordion-card-header" onClick={() => toggleSection('target-profile')}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <Target size={20} className="text-accent" /> Target Profile & Scoring Rubric
@@ -1144,7 +1146,7 @@ export default function ProfileForm({
       </div>
 
       {/* ── 4. Base Resume Section ────────────────────────────────────────────── */}
-      <div className={`glass-card accordion-card ${openSections['base-resume'] ? 'open' : ''}`} id="base-resume" data-tour="assets-editor" style={{ padding: '1.5rem 2rem' }}>
+      <div className={`glass-card accordion-card responsive-card-padding ${openSections['base-resume'] ? 'open' : ''}`} id="base-resume" data-tour="assets-editor">
         <div className="accordion-card-header" onClick={() => toggleSection('base-resume')}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <FileText size={20} className="text-accent" /> Base Resume Text
@@ -1162,13 +1164,13 @@ export default function ProfileForm({
           <div className="accordion-body">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Master Resume Text</span>
-              <div style={{ display: 'flex', gap: '0.5rem' }} data-tour="assets-upload">
+              <div className="card-action-grid" data-tour="assets-upload">
                 <button 
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={parsingResume}
-                  className="btn-outline"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  className="btn-outline full-width-mobile full-width-tablet"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: '44px' }}
                 >
                   {parsingResume ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} 
                   {parsingResume ? 'Parsing...' : 'Upload PDF/DOC'}
@@ -1183,8 +1185,8 @@ export default function ProfileForm({
                 <button 
                   type="button"
                   onClick={handlePasteResume}
-                  className="btn-outline"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  className="btn-outline full-width-mobile full-width-tablet"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: '44px' }}
                 >
                   <Clipboard size={16} /> Paste
                 </button>
@@ -1211,7 +1213,7 @@ export default function ProfileForm({
       </div>
 
       {/* ── 5. Profile Avatar & Display Settings ────────────────────────────────── */}
-      <div className={`glass-card accordion-card ${openSections['avatar-settings'] ? 'open' : ''}`} id="avatar-settings" style={{ padding: '1.5rem 2rem' }}>
+      <div className={`glass-card accordion-card responsive-card-padding ${openSections['avatar-settings'] ? 'open' : ''}`} id="avatar-settings">
         <div className="accordion-card-header" onClick={() => toggleSection('avatar-settings')}>
           <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
             <ImageIcon size={20} className="text-accent" /> Profile Avatar & Display Settings
@@ -1273,7 +1275,7 @@ export default function ProfileForm({
       </div>
 
       {/* ── 6. Subscription Section ────────────────────────────────────────────── */}
-      <div className={`glass-card accordion-card ${openSections.subscription ? 'open' : ''}`} id="subscription" style={{ padding: '1.5rem 2rem' }}>
+      <div className={`glass-card accordion-card responsive-card-padding ${openSections.subscription ? 'open' : ''}`} id="subscription">
         <div className="accordion-card-header" onClick={() => toggleSection('subscription')}>
           <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
             <CreditCard size={20} className="text-accent" /> Subscription Plan

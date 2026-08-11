@@ -345,7 +345,7 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
                 {/* Global Preferences */}
-                <div className={`glass-card accordion-card ${openSections.general ? 'open' : ''}`} id="general" style={{ padding: '1.5rem 2rem' }}>
+                <div className={`glass-card accordion-card responsive-card-padding ${openSections.general ? 'open' : ''}`} id="general">
                     <div className="accordion-card-header" onClick={() => toggleSection('general')}>
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
                             <Layout size={22} className="text-accent" /> Global Preferences
@@ -379,10 +379,8 @@ export default function SettingsPage() {
                     )}
                 </div>
 
-
-
                 {/* Job Discovery */}
-                <div className={`glass-card accordion-card ${openSections['job-discovery'] ? 'open' : ''}`} id="job-discovery" data-tour="job-preferences" style={{ padding: '1.5rem 2rem' }}>
+                <div className={`glass-card accordion-card responsive-card-padding ${openSections['job-discovery'] ? 'open' : ''}`} id="job-discovery" data-tour="job-preferences">
                     <div className="accordion-card-header" onClick={() => toggleSection('job-discovery')}>
                         <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
                             <Search size={22} className="text-accent" /> Job Discovery Settings
@@ -702,7 +700,7 @@ export default function SettingsPage() {
         </div>
 
         {/* AI Configuration */}
-        <div className={`glass-card accordion-card ${openSections.scoring ? 'open' : ''}`} id="scoring" style={{ padding: '1.5rem 2rem' }}>
+        <div className={`glass-card accordion-card responsive-card-padding ${openSections.scoring ? 'open' : ''}`} id="scoring">
             <div className="accordion-card-header" onClick={() => toggleSection('scoring')}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
                     <Bot size={22} className="text-accent" /> AI Generation Preferences
@@ -753,24 +751,28 @@ export default function SettingsPage() {
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
                                 Manage your target job criteria, ideal roles, and scoring rubric on the My Profile page.
                             </p>
-                            <Link href="/profile#target-profile" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
-                                <Target size={16} /> Target & Profile
-                            </Link>
+                            <div className="card-action-grid">
+                                <Link href="/profile#target-profile" className="btn-outline full-width-mobile full-width-tablet" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                    <Target size={16} /> Target & Profile
+                                </Link>
+                            </div>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }} data-tour="resume-upload">
                             <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Base Resume</label>
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>To update the base resume the AI uses as a template, visit your My Profile page.</p>
-                            <Link href="/profile#base-resume" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'fit-content', marginTop: '0.25rem' }}>
-                                <FileText size={16} /> Manage Base Resume
-                            </Link>
+                            <div className="card-action-grid">
+                                <Link href="/profile#base-resume" className="btn-outline full-width-mobile full-width-tablet" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                    <FileText size={16} /> Manage Base Resume
+                                </Link>
+                            </div>
                         </div>
                     </div>
             )}
         </div>
 
         {/* Authorization / Auto Apply Settings Shortcut */}
-        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div className="glass-card responsive-card-padding" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <Key size={22} className="text-accent" />
                 <div>
@@ -780,17 +782,19 @@ export default function SettingsPage() {
                     </p>
                 </div>
             </div>
-            <button 
-                onClick={() => router.push('/profile')} 
-                className="btn-outline"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
-            >
-                Go to Profile Page <ExternalLink size={14} />
-            </button>
+            <div className="card-action-grid" style={{ width: '100%' }}>
+                <button 
+                    onClick={() => router.push('/profile')} 
+                    className="btn-outline full-width-mobile full-width-tablet"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+                >
+                    Go to Profile Page <ExternalLink size={14} />
+                </button>
+            </div>
         </div>
 
         {/* PDF Styling Customizer */}
-        <div className={`glass-card accordion-card ${openSections['pdf-customizer'] ? 'open' : ''}`} id="pdf-customizer" style={{ padding: '1.5rem 2rem' }}>
+        <div className={`glass-card accordion-card responsive-card-padding ${openSections['pdf-customizer'] ? 'open' : ''}`} id="pdf-customizer">
             <div className="accordion-card-header" onClick={() => toggleSection('pdf-customizer')}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
                     <FileText size={22} className="text-accent" /> Resume & PDF Customizer
@@ -812,7 +816,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Email Sync Configuration */}
-        <div className={`glass-card accordion-card ${openSections['email-sync'] ? 'open' : ''}`} id="email-sync" style={{ padding: '1.5rem 2rem' }}>
+        <div className={`glass-card accordion-card responsive-card-padding ${openSections['email-sync'] ? 'open' : ''}`} id="email-sync">
             <div className="accordion-card-header" onClick={() => toggleSection('email-sync')}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
                     <Mail size={22} className="text-accent" /> Email Sync & Credentials
