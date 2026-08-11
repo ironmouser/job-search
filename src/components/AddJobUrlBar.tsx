@@ -175,8 +175,8 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmitUrl} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 300px' }}>
+      <form onSubmit={handleSubmitUrl} className="add-job-url-form" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 300px', width: '100%' }}>
           <input
             type="url"
             value={url}
@@ -186,11 +186,11 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
             required
             style={{
               width: '100%',
-              height: '38px',
+              minHeight: '44px',
               padding: '0 2.75rem 0 0.875rem',
               borderRadius: 'var(--radius, 6px)',
               border: '1px solid var(--input-border, var(--border))',
-              fontSize: '0.875rem',
+              fontSize: '16px',
               outline: 'none',
               transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
               background: 'var(--input, var(--card))',
@@ -211,9 +211,12 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
               border: 'none',
               cursor: 'pointer',
               color: 'var(--muted-foreground)',
-              padding: '4px',
+              padding: '8px',
+              minWidth: '40px',
+              minHeight: '40px',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
             <Clipboard style={{ width: 18, height: 18 }} />
@@ -223,13 +226,14 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
         <button
           type="submit"
           disabled={isLoading || !url.trim()}
+          className="add-job-url-btn btn-primary"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0.5rem',
             padding: '0 1.25rem',
-            height: '38px',
+            minHeight: '44px',
             borderRadius: 'var(--radius, 6px)',
             background: 'var(--primary)',
             color: 'var(--primary-foreground)',

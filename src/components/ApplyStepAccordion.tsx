@@ -216,23 +216,25 @@ export function ApplyStepAccordion({
   return (
     <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: '0', overflow: 'hidden' }}>
       {/* Top Main Section: Manual Apply */}
-      <div style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
+      <div className="step-card-main-padding" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ flex: '1 1 280px' }}>
           <h3 style={{ margin: '0 0 0.5rem 0' }}>Apply to Job</h3>
           <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>
             Ready to apply? Click the "Apply to Job" button to open the job application on the company's career page.
           </p>
         </div>
-        <AutofillButton 
-          jobId={jobId} 
-          jobUrl={activeUrl} 
-          jobTitle={jobTitle} 
-          jobCompany={jobCompany} 
-          isPro={isPro} 
-          appliesThisWeek={appliesThisWeek} 
-          hasAssets={localHasAssets}
-          generationsLeftThisWeek={generationsLeftThisWeek}
-        />
+        <div className="full-width-mobile" style={{ flexShrink: 0 }}>
+          <AutofillButton 
+            jobId={jobId} 
+            jobUrl={activeUrl} 
+            jobTitle={jobTitle} 
+            jobCompany={jobCompany} 
+            isPro={isPro} 
+            appliesThisWeek={appliesThisWeek} 
+            hasAssets={localHasAssets}
+            generationsLeftThisWeek={generationsLeftThisWeek}
+          />
+        </div>
       </div>
 
       {/* Accordion Divider */}
@@ -243,7 +245,6 @@ export function ApplyStepAccordion({
         onClick={() => setIsExpanded(!isExpanded)}
         style={{
           width: '100%',
-          padding: '1rem 2rem',
           background: '#2663eb22',
           border: 'none',
           display: 'flex',
@@ -253,7 +254,7 @@ export function ApplyStepAccordion({
           textAlign: 'left',
           transition: 'background 0.2s',
         }}
-        className="accordion-header"
+        className="accordion-header step-card-header-padding"
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>
           <Sparkles size={16} color="var(--accent-primary)" />
@@ -267,7 +268,7 @@ export function ApplyStepAccordion({
 
       {/* Accordion Content */}
       {isExpanded && (
-        <div style={{ padding: '2rem', borderTop: '1px solid var(--border-glass)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="step-card-content-padding" style={{ borderTop: '1px solid var(--border-glass)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           {isGeneratingAssets ? (
             /* ONLY show generating message container while assets are generating */

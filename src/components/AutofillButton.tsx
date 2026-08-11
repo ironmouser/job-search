@@ -160,16 +160,19 @@ export default function AutofillButton({
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+    <div className="full-width-mobile" style={{ width: '100%' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
         <button
           onClick={handleApplyClick}
           disabled={isLaunching}
-          className="btn-primary"
+          className="btn-primary full-width-mobile"
           style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '0.5rem',
+            width: '100%',
+            minHeight: '44px',
             ...(copied ? { background: '#10b981', color: '#fff' } : {}),
             transition: 'background 0.3s'
           }}

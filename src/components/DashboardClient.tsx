@@ -932,9 +932,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
       <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+      <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: '1rem' }}>
+        <div className="matches-header-left">
+          <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
             Matches ({filteredAndSortedJobs.length})
           </h3>
 
@@ -958,55 +958,35 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
               }, 600);
             }}
           />
+        </div>
 
+        {/* Action Controls: Scan Inbox | Filter | Sort */}
+        <div className="matches-action-controls">
           {/* Scan Inbox */}
           <button
             onClick={handleEmailSync}
             disabled={isEmailSyncing || isSyncing}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.4rem 0.75rem',
-              borderRadius: '8px',
-              border: '1px solid var(--border-glass)',
-              background: 'var(--bg-glass)',
-              color: 'var(--text-primary)',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              cursor: isEmailSyncing || isSyncing ? 'not-allowed' : 'pointer',
-              opacity: isEmailSyncing || isSyncing ? 0.6 : 1,
-              transition: 'all 0.2s ease'
-            }}
+            className="action-control-btn"
             title="Scan email inbox for job alert notifications"
+            style={{
+              opacity: isEmailSyncing || isSyncing ? 0.6 : 1,
+              cursor: isEmailSyncing || isSyncing ? 'not-allowed' : 'pointer'
+            }}
           >
             {isEmailSyncing ? (
               <Loader2 size={14} className="animate-spin" style={{ color: '#38bdf8' }} />
             ) : (
               <Mail size={14} style={{ color: '#38bdf8' }} />
             )}
-            <span>{isEmailSyncing ? 'Scanning Inbox...' : 'Scan Inbox'}</span>
+            <span>{isEmailSyncing ? 'Scanning...' : 'Scan Inbox'}</span>
           </button>
 
           {/* Filter Button */}
           <button
             onClick={() => setIsFilterModalOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.4rem 0.75rem',
-              borderRadius: '8px',
-              border: '1px solid var(--border-glass)',
-              background: 'var(--bg-glass)',
-              color: 'var(--text-primary)',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'all 0.2s ease'
-            }}
+            className="action-control-btn"
             title="Filter & Sort Job Feed"
+            style={{ position: 'relative' }}
           >
             <SlidersHorizontal size={14} />
             <span>Filter</span>
@@ -1028,22 +1008,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
           {/* Sort Selector Dropdown */}
           <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.4rem 0.6rem',
-              borderRadius: '8px',
-              border: '1px solid var(--border-glass)',
-              background: 'var(--bg-glass)',
-              color: 'var(--text-primary)',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              cursor: 'pointer'
-            }}
+            className="action-control-btn"
             title="Sort Job Feed"
           >
-            <ArrowUpDown size={14} style={{ color: 'var(--accent-primary, #3b82f6)' }} />
+            <ArrowUpDown size={14} style={{ color: 'var(--accent-primary, #3b82f6)', flexShrink: 0 }} />
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value as any)}
@@ -1057,12 +1025,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                 outline: 'none',
                 appearance: 'none',
                 WebkitAppearance: 'none',
-                paddingRight: '0.2rem'
+                width: '100%'
               }}
             >
               <option value="newest" style={{ background: '#1e293b', color: '#fff' }}>Newest First</option>
-              <option value="score" style={{ background: '#1e293b', color: '#fff' }}>Highest Match Score</option>
-              <option value="salary" style={{ background: '#1e293b', color: '#fff' }}>Highest Salary</option>
+              <option value="score_desc" style={{ background: '#1e293b', color: '#fff' }}>Match Score (High-Low)</option>
+              <option value="score_asc" style={{ background: '#1e293b', color: '#fff' }}>Match Score (Low-High)</option>
+              <option value="company" style={{ background: '#1e293b', color: '#fff' }}>Company (A-Z)</option>
+              <option value="salary_desc" style={{ background: '#1e293b', color: '#fff' }}>Salary (High-Low)</option>
               <option value="remote" style={{ background: '#1e293b', color: '#fff' }}>Remote First</option>
             </select>
           </div>

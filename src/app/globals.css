@@ -1143,6 +1143,105 @@ details.glass-card > summary::marker { display: none; content: ''; }
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-lg);
   }
+
+  /* Responsive Card Padding & Full-Width Mobile Controls */
+  .step-card-main-padding {
+    padding: 1.25rem 1rem !important;
+  }
+
+  .step-card-header-padding {
+    padding: 0.875rem 1rem !important;
+  }
+
+  .step-card-content-padding {
+    padding: 1.25rem 1rem !important;
+  }
+
+  .full-width-mobile {
+    width: 100% !important;
+  }
+
+  .add-job-url-form {
+    flex-direction: column !important;
+  }
+
+  .add-job-url-btn {
+    width: 100% !important;
+  }
+
+  /* Matches Header Mobile 3-Column Grid */
+  .matches-header-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.875rem !important;
+  }
+
+  .matches-header-left {
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .matches-action-controls {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+
+  .action-control-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    padding: 0 0.5rem !important;
+    font-size: 0.8rem !important;
+    justify-content: center !important;
+  }
+}
+
+.matches-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.matches-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.matches-action-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-control-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  min-height: 38px;
+  transition: all 0.15s ease;
+}
+
+.step-card-main-padding {
+  padding: 2rem;
+}
+
+.step-card-header-padding {
+  padding: 1rem 2rem;
+}
+
+.step-card-content-padding {
+  padding: 2rem;
 }
 
 @media (max-width: 640px) {
