@@ -1256,24 +1256,26 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             
             return (
               <div key={job.id} id={`job-item-${job.id}`} className={`glass-card job-card${confettiJobId === job.id ? ' confetti' : ''}`} style={cardStyle}>
-                <div className="job-header">
-                  <div>
-                    <div className="job-company" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {/* Top Header: Company Name, Badges & Score */}
+                <div className="job-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-primary, #0070f3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {cleanCompanyName(job.company)}
                       {getConfidenceBadge(job.automation_confidence)}
                       {isUserAdded && (
-                        <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>
+                        <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>Custom Added</span>
                       )}
                       {isEmailJob && (
-                        <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Emailed Job</span>
+                        <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>Emailed Job</span>
                       )}
                     </div>
                     <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} style={{ textDecoration: 'none' }} className={isEmailJob ? 'email-job-title' : 'job-title'}>
-                      <h3 style={{ cursor: 'pointer', margin: 0 }}>{job.title}</h3>
+                      <h3 style={{ cursor: 'pointer', margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{job.title}</h3>
                     </Link>
                   </div>
+
                   {score ? (
-                    <div className={`score-badge ${scoreClass}`}>
+                    <div className={`score-badge ${scoreClass}`} style={{ fontSize: '1.2rem', fontWeight: 700, padding: '0.4rem 0.75rem', borderRadius: '12px', flexShrink: 0 }}>
                       {score}
                     </div>
                   ) : scoresExhausted ? (
@@ -1281,97 +1283,43 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       onClick={() => setShowUpgradeModal(true)} 
                       title="Weekly score allowance reached. Click to upgrade to Pro!" 
                       className="score-badge" 
-                      style={{ cursor: 'pointer', background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.2)', color: 'var(--text-secondary)' }}
+                      style={{ cursor: 'pointer', background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.2)', color: 'var(--text-secondary)', padding: '0.4rem 0.75rem', borderRadius: '12px', flexShrink: 0 }}
                     >
                       <Lock size={16} />
                     </div>
                   ) : null}
                 </div>
                 
-                <div className="job-meta">
-                  <span className="job-meta-item"><MapPin size={14} /> {job.location || 'Remote'}</span>
-                  <span className="job-meta-item"><DollarSign size={14} /> {job.salary_range || 'Not Listed'}</span>
-                  <span className="job-meta-item" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    <Clock size={13} /> {safeFormatDate(job.created_at)}
+                {/* Metadata Row */}
+                <div className="job-meta" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.875rem' }}>
+                  <span className="job-meta-item" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    <MapPin size={15} /> {job.location || 'Remote'}
+                  </span>
+                  <span className="job-meta-item" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    <DollarSign size={15} /> {job.salary_range || 'Not Listed'}
+                  </span>
+                  <span className="job-meta-item" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    <Clock size={14} /> {safeFormatDate(job.created_at)}
                   </span>
                 </div>
                 
+                {/* Status Badge */}
                 <div style={{ marginTop: 'auto', marginBottom: '1rem' }}>
                   {getEffectiveStatus(job) === 'applied' ? (
-                    <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={14} /> Applied {safeFormatDate(job.applied_at)}
+                    <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(0, 112, 243, 0.1)', border: '1px solid rgba(0, 112, 243, 0.3)', color: 'var(--accent-primary)', fontSize: '0.85rem', fontWeight: 500 }}>
+                      <CheckCircle2 size={15} /> Applied {safeFormatDate(job.applied_at)}
                     </span>
                   ) : (
-                    <span className={`badge badge-${getEffectiveStatus(job)}`}>{getEffectiveStatus(job).replace('_', ' ')}</span>
+                    <span className={`badge badge-${getEffectiveStatus(job)}`} style={{ padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.85rem', fontWeight: 500 }}>
+                      {getEffectiveStatus(job).replace('_', ' ')}
+                    </span>
                   )}
                 </div>
                 
-                <div className="job-card-actions-container" style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {job.company?.includes('(Scraped via Email)') && (!job.description || job.description.length < 500) && (
-                     <button 
-                       onClick={() => handleQueueFetch({ id: job.id, title: job.title, company: job.company })} 
-                       disabled={fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success'} 
-                       className={`btn-outline ${fetchStatuses[job.id] === 'error' ? 'error' : ''}`} 
-                       style={{ 
-                         width: '100%',
-                         minHeight: '44px',
-                         fontSize: '0.85rem',
-                         borderColor: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : '',
-                         color: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : ''
-                       }}
-                     >
-                       {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 
-                        fetchStatuses[job.id] === 'queued' ? 'Queued' : 
-                        fetchStatuses[job.id] === 'success' ? <><Check size={14} /> Fetched</> : 
-                        fetchStatuses[job.id] === 'error' ? 'Failed - Retry' : 'Fetch Details'}
-                     </button>
-                  )}
-
-                  {/* Row 1: 4-Column Equal Width Button Grid (Delete, Save, Original, Details) */}
-                  <div className="job-card-btn-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', width: '100%' }}>
-                    {/* 1. Delete */}
-                    <button 
-                      onClick={() => deleteJob(job.id)} 
-                      className="btn-outline job-card-action-btn" 
-                      style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} 
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-
-                    {/* 2. Save / Bookmark */}
-                    <button 
-                      onClick={() => toggleArchive(job.id)} 
-                      className="btn-outline job-card-action-btn" 
-                      style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
-                      title={job.is_archived ? "Unsave" : "Save"}
-                    >
-                      {job.is_archived ? <BookmarkX size={16} /> : <Bookmark size={16} />}
-                    </button>
-
-                    {/* 3. Original */}
-                    <a 
-                      href={job.url} 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      onClick={() => handleMarkViewed(job.id)} 
-                      className="btn-outline job-card-action-btn"
-                    >
-                      Original <ExternalLink size={14} />
-                    </a>
-
-                    {/* 4. Details */}
-                    <Link 
-                      href={`/job/${job.id}`} 
-                      onClick={() => handleMarkViewed(job.id)} 
-                      className="btn-primary job-card-action-btn"
-                    >
-                      Details
-                    </Link>
-                  </div>
-
-                  {/* Row 2: Feedback Thumbs (Left) & Selection Checkbox (Right) */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '0.25rem' }}>
+                {/* Horizontal Action Bar (Single Line: Thumbs, Delete, Save, Original, Details, Checkbox) */}
+                <div className="dashboard-job-action-row" style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%', overflowX: 'auto' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                    {/* Thumbs Up & Thumbs Down */}
                     <FeedbackButtons
                       jobId={job.id}
                       initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
@@ -1382,14 +1330,55 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       onFeedbackGiven={handleNudgeFeedbackGiven}
                     />
 
-                    <input 
-                      type="checkbox" 
-                      checked={checkedJobs.has(job.id)} 
-                      onChange={() => toggleJobCheck(job.id)}
-                      style={{ cursor: 'pointer', width: '20px', height: '20px', borderRadius: '4px' }}
-                      title="Select job"
-                    />
+                    {/* Delete */}
+                    <button 
+                      onClick={() => deleteJob(job.id)} 
+                      className="btn-outline card-icon-action-btn" 
+                      style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} 
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+
+                    {/* Save / Bookmark */}
+                    <button 
+                      onClick={() => toggleArchive(job.id)} 
+                      className="btn-outline card-icon-action-btn" 
+                      style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
+                      title={job.is_archived ? "Unsave" : "Save"}
+                    >
+                      {job.is_archived ? <BookmarkX size={16} /> : <Bookmark size={16} />}
+                    </button>
+
+                    {/* Original */}
+                    <a 
+                      href={job.url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      onClick={() => handleMarkViewed(job.id)} 
+                      className="btn-outline card-label-action-btn"
+                    >
+                      Original <ExternalLink size={14} />
+                    </a>
+
+                    {/* Details */}
+                    <Link 
+                      href={`/job/${job.id}`} 
+                      onClick={() => handleMarkViewed(job.id)} 
+                      className="btn-primary card-label-action-btn"
+                    >
+                      Details
+                    </Link>
                   </div>
+
+                  {/* Checkbox */}
+                  <input 
+                    type="checkbox" 
+                    checked={checkedJobs.has(job.id)} 
+                    onChange={() => toggleJobCheck(job.id)}
+                    style={{ cursor: 'pointer', width: '20px', height: '20px', borderRadius: '4px', flexShrink: 0, marginLeft: 'auto' }}
+                    title="Select job"
+                  />
                 </div>
               </div>
             );

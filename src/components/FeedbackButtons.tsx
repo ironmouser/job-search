@@ -279,9 +279,9 @@ export default function FeedbackButtons({
       <button 
         onClick={handleLike} 
         disabled={isSubmitting || feedback === 'like'}
-        className="btn-outline" 
+        className={`btn-outline ${compact ? 'card-icon-action-btn' : ''}`}
         style={{ 
-          padding: compact ? '0.24rem 0.42rem' : '0.5rem', 
+          padding: compact ? 0 : '0.5rem', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
@@ -298,9 +298,9 @@ export default function FeedbackButtons({
       <button 
         onClick={handleDislikeClick} 
         disabled={isSubmitting || feedback === 'dislike'}
-        className="btn-outline" 
+        className={`btn-outline ${compact ? 'card-icon-action-btn' : ''}`}
         style={{ 
-          padding: compact ? '0.24rem 0.42rem' : '0.5rem', 
+          padding: compact ? 0 : '0.5rem', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
