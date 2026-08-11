@@ -144,12 +144,12 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
   };
 
   return (
-    <div style={{
+    <div className="add-job-card" style={{
       marginBottom: '1.5rem',
       background: 'var(--card)',
       border: '1px solid var(--border)',
       borderRadius: 'var(--radius-lg, 0.625rem)',
-      padding: '1.25rem 1.5rem',
+      padding: '1.25rem',
       boxShadow: 'var(--shadow-sm)',
       transition: 'all 0.15s ease-in-out'
     }}>
@@ -167,7 +167,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
             <span>Paste any job URL to scrape, score & add to pipeline. <strong>Private submission (not shared with global feed)</strong>.</span>
           ) : (
             <>
-              <Sparkles style={{ width: 16, height: 16 }} />
+              <Sparkles style={{ width: 16, height: 16, flexShrink: 0 }} />
               <span>Paste a job URL to scrape & score it immediately. <strong>+1 Free Resume & Cover Letter generation unlocked!</strong></span>
             </>
           )}
@@ -175,8 +175,8 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmitUrl} className="add-job-url-form" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 300px', width: '100%' }}>
+      <form onSubmit={handleSubmitUrl} className="add-job-url-form" style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+        <div style={{ position: 'relative', flex: '1 1 auto', width: '100%' }}>
           <input
             type="url"
             value={url}
@@ -204,17 +204,15 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
             disabled={isLoading}
             style={{
               position: 'absolute',
-              right: '8px',
+              right: '6px',
               top: '50%',
               transform: 'translateY(-50%)',
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
               color: 'var(--muted-foreground)',
-              padding: '8px',
-              minWidth: '40px',
-              minHeight: '40px',
-              display: 'flex',
+              padding: '6px',
+              display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}
@@ -243,7 +241,8 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
             cursor: isLoading || !url.trim() ? 'not-allowed' : 'pointer',
             opacity: isLoading || !url.trim() ? 0.6 : 1,
             transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           {isLoading ? (

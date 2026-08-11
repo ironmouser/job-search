@@ -145,15 +145,20 @@ export default function OnboardingChecklist() {
                                                     </ol>
                                                 )}
 
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.5rem', width: '100%' }}>
                                                     {task.route && (
                                                         <a 
                                                             href={task.route}
-                                                            className="btn-outline"
+                                                            className="btn-outline full-width-mobile"
                                                             style={{ 
                                                                 padding: '0.4rem 0.8rem', 
                                                                 fontSize: '0.8rem',
-                                                                textDecoration: 'none'
+                                                                textDecoration: 'none',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                minHeight: '38px',
+                                                                width: '100%'
                                                             }}
                                                         >
                                                             Go to Page
@@ -162,13 +167,16 @@ export default function OnboardingChecklist() {
                                                     {task.tourId && (
                                                         <button 
                                                             onClick={() => startTour(task.tourId!)}
-                                                            className="btn-primary"
+                                                            className="btn-primary full-width-mobile"
                                                             style={{ 
                                                                 padding: '0.4rem 0.8rem', 
                                                                 fontSize: '0.8rem',
-                                                                display: 'flex',
+                                                                display: 'inline-flex',
                                                                 alignItems: 'center',
-                                                                gap: '0.25rem'
+                                                                justifyContent: 'center',
+                                                                gap: '0.25rem',
+                                                                minHeight: '38px',
+                                                                width: '100%'
                                                             }}
                                                         >
                                                             <Play size={14} /> Start Tour

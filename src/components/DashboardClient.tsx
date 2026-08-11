@@ -1441,31 +1441,31 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
       {filteredAndSortedJobs.length > 0 && (
         <div 
+          className="dashboard-pagination-card"
           style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
-            flexWrap: 'wrap', 
             gap: '1rem', 
             marginTop: '2rem', 
             marginBottom: '2rem', 
-            padding: '1rem', 
-            background: 'rgba(255, 255, 255, 0.03)', 
-            borderRadius: '8px', 
-            border: '1px solid var(--border-glass)' 
+            padding: '1.25rem', 
+            background: 'var(--card)', 
+            borderRadius: 'var(--radius-lg, 0.625rem)', 
+            border: '1px solid var(--border)' 
           }}
         >
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
             Showing <strong style={{ color: 'var(--text-primary)' }}>{filteredAndSortedJobs.length > 0 ? startIndex + 1 : 0}–{endIndex}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{filteredAndSortedJobs.length}</strong> jobs
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <div className="dashboard-pagination-controls" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Per page:</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Per page:</span>
               <select 
                 value={itemsPerPage} 
                 onChange={(e) => changeItemsPerPage(Number(e.target.value))}
-                style={{ background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-glass)', padding: '0.4rem', borderRadius: '4px' }}
+                style={{ background: 'var(--input, var(--card))', color: 'var(--text-primary)', border: '1px solid var(--border)', padding: '0.4rem 0.6rem', borderRadius: 'var(--radius, 6px)', fontSize: '16px', minHeight: '38px' }}
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -1475,7 +1475,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             </div>
 
             {totalPages > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="pagination-nav-grid" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <button 
                   className="btn-outline" 
                   disabled={currentPage === 1}
@@ -1483,11 +1483,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                     changePage(Math.max(1, currentPage - 1));
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
+                  style={{ padding: '0.5rem 1rem', minHeight: '44px' }}
                 >
                   Previous
                 </button>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', minWidth: '80px', textAlign: 'center' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
                   Page {currentPage} of {totalPages}
                 </span>
                 <button 
@@ -1497,7 +1497,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                     changePage(Math.min(totalPages, currentPage + 1));
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
+                  style={{ padding: '0.5rem 1rem', minHeight: '44px' }}
                 >
                   Next
                 </button>

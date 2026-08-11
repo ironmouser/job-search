@@ -178,18 +178,18 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
         )}
 
         {(!showManual && status === 'error') ? (
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+          <div className="card-action-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', width: '100%' }}>
             <button 
                 onClick={() => setRetryCount(c => c + 1)}
-                className="btn-outline"
-                style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                className="btn-outline full-width-mobile"
+                style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: '44px', width: '100%' }}
             >
                 <RefreshCw size={16} /> Retry Auto-Fetch
             </button>
             <button 
                 onClick={() => setShowManual(true)}
-                className="btn-primary"
-                style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                className="btn-primary full-width-mobile"
+                style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', minHeight: '44px', width: '100%' }}
             >
                 <Edit3 size={16} /> Paste Description Manually
             </button>

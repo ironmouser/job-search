@@ -72,12 +72,12 @@ export default function GenerateAssetsButton({
 
   return (
     <>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div className="full-width-mobile" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="btn-outline"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+          className="btn-outline full-width-mobile"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', whiteSpace: 'nowrap', minHeight: '44px', width: '100%' }}
         >
           {isGenerating ? (
             <>

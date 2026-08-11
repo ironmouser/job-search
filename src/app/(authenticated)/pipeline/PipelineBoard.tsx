@@ -92,13 +92,67 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                {/* Mobile Column Selector Pills */}
-                <div className="mobile-col-pills" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem', maxWidth: '100%' }}>
+            <div className="pipeline-controls-bar" style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '1.25rem' }}>
+                {/* Row 1: View Mode Switcher (Kanban | Table) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        Stages ({jobs.length} total)
+                    </h3>
+                    <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--card)', border: '1px solid var(--border)', padding: '0.25rem', borderRadius: 'var(--radius-lg, 8px)' }}>
+                        <button 
+                            onClick={() => setViewMode('kanban')}
+                            className="btn-outline"
+                            style={{ 
+                                padding: '0.4rem 0.85rem', 
+                                borderRadius: 'var(--radius, 6px)', 
+                                border: 'none', 
+                                background: viewMode === 'kanban' ? 'var(--primary)' : 'transparent', 
+                                color: viewMode === 'kanban' ? '#fff' : 'var(--text-secondary)', 
+                                cursor: 'pointer', 
+                                fontWeight: viewMode === 'kanban' ? 600 : 400, 
+                                minHeight: '36px',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            Kanban
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('table')}
+                            className="btn-outline"
+                            style={{ 
+                                padding: '0.4rem 0.85rem', 
+                                borderRadius: 'var(--radius, 6px)', 
+                                border: 'none', 
+                                background: viewMode === 'table' ? 'var(--primary)' : 'transparent', 
+                                color: viewMode === 'table' ? '#fff' : 'var(--text-secondary)', 
+                                cursor: 'pointer', 
+                                fontWeight: viewMode === 'table' ? 600 : 400, 
+                                minHeight: '36px',
+                                fontSize: '0.85rem'
+                            }}
+                        >
+                            Table
+                        </button>
+                    </div>
+                </div>
+
+                {/* Row 2: Mobile Column Selector Pills */}
+                <div 
+                    className="mobile-col-pills no-scrollbar" 
+                    style={{ 
+                        display: 'flex', 
+                        gap: '0.4rem', 
+                        overflowX: 'auto', 
+                        paddingBottom: '0.25rem', 
+                        maxWidth: '100%',
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarWidth: 'none'
+                    }}
+                >
                     <button
                         onClick={() => setMobileActiveCol('all')}
                         style={{
-                            padding: '0.35rem 0.75rem',
+                            padding: '0.4rem 0.85rem',
                             borderRadius: '9999px',
                             border: '1px solid var(--border)',
                             background: mobileActiveCol === 'all' ? 'var(--accent-primary)' : 'var(--muted)',
@@ -107,7 +161,8 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                             fontWeight: 500,
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
-                            minHeight: '36px'
+                            minHeight: '36px',
+                            flexShrink: 0
                         }}
                     >
                         All ({jobs.length})
@@ -120,7 +175,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                 key={col.id}
                                 onClick={() => setMobileActiveCol(col.id)}
                                 style={{
-                                    padding: '0.35rem 0.75rem',
+                                    padding: '0.4rem 0.85rem',
                                     borderRadius: '9999px',
                                     border: `1px solid ${isActive ? col.color : 'var(--border)'}`,
                                     background: isActive ? col.color : 'var(--muted)',
@@ -129,28 +184,14 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                     fontWeight: 500,
                                     cursor: 'pointer',
                                     whiteSpace: 'nowrap',
-                                    minHeight: '36px'
+                                    minHeight: '36px',
+                                    flexShrink: 0
                                 }}
                             >
                                 {col.label} ({count})
                             </button>
                         );
                     })}
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '8px', marginLeft: 'auto' }}>
-                    <button 
-                        onClick={() => setViewMode('kanban')}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'kanban' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'kanban' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'kanban' ? 600 : 400, minHeight: '36px' }}
-                    >
-                        Kanban
-                    </button>
-                    <button 
-                        onClick={() => setViewMode('table')}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'table' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'table' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'table' ? 600 : 400, minHeight: '36px' }}
-                    >
-                        Table
-                    </button>
                 </div>
             </div>
 
