@@ -61,6 +61,18 @@ export default function Navigation() {
 
   return (
     <>
+      {isOpen && (
+        <div 
+          className="mobile-nav-backdrop"
+          onClick={closeMenu}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.6)',
+            zIndex: 90,
+          }}
+        />
+      )}
       <aside className={`sidebar ${isMinimized ? 'minimized' : ''}`}>
         {/* Header */}
         <div className="mobile-nav-header">

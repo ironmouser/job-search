@@ -84,19 +84,70 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
         }
     };
 
+    const [mobileActiveCol, setMobileActiveCol] = useState<string>('all');
+
+    const visibleColumns = mobileActiveCol === 'all' 
+        ? COLUMNS 
+        : COLUMNS.filter(c => c.id === mobileActiveCol);
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                {/* Mobile Column Selector Pills */}
+                <div className="mobile-col-pills" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.25rem', maxWidth: '100%' }}>
+                    <button
+                        onClick={() => setMobileActiveCol('all')}
+                        style={{
+                            padding: '0.35rem 0.75rem',
+                            borderRadius: '9999px',
+                            border: '1px solid var(--border)',
+                            background: mobileActiveCol === 'all' ? 'var(--accent-primary)' : 'var(--muted)',
+                            color: mobileActiveCol === 'all' ? '#fff' : 'var(--text-secondary)',
+                            fontSize: '0.8rem',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            minHeight: '36px'
+                        }}
+                    >
+                        All ({jobs.length})
+                    </button>
+                    {COLUMNS.map(col => {
+                        const count = jobs.filter(j => j.status?.toLowerCase() === col.id).length;
+                        const isActive = mobileActiveCol === col.id;
+                        return (
+                            <button
+                                key={col.id}
+                                onClick={() => setMobileActiveCol(col.id)}
+                                style={{
+                                    padding: '0.35rem 0.75rem',
+                                    borderRadius: '9999px',
+                                    border: `1px solid ${isActive ? col.color : 'var(--border)'}`,
+                                    background: isActive ? col.color : 'var(--muted)',
+                                    color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    minHeight: '36px'
+                                }}
+                            >
+                                {col.label} ({count})
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: '8px', marginLeft: 'auto' }}>
                     <button 
                         onClick={() => setViewMode('kanban')}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'kanban' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'kanban' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'kanban' ? 600 : 400 }}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'kanban' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'kanban' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'kanban' ? 600 : 400, minHeight: '36px' }}
                     >
                         Kanban
                     </button>
                     <button 
                         onClick={() => setViewMode('table')}
-                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'table' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'table' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'table' ? 600 : 400 }}
+                        style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: viewMode === 'table' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'table' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: viewMode === 'table' ? 600 : 400, minHeight: '36px' }}
                     >
                         Table
                     </button>
@@ -104,9 +155,9 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
             </div>
 
             {viewMode === 'kanban' ? (
-                <div style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1 }} data-tour="pipeline-kanban">
-                    {COLUMNS.map(col => (
-                        <div key={col.id} style={{ flex: '0 0 320px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, scrollSnapType: 'x mandatory' }} data-tour="pipeline-kanban">
+                    {visibleColumns.map(col => (
+                        <div key={col.id} style={{ flex: mobileActiveCol === 'all' ? '0 0 min(300px, 85vw)' : '1 1 100%', display: 'flex', flexDirection: 'column', gap: '1rem', scrollSnapAlign: 'start' }}>
                             <div style={{ 
                                 padding: '0.75rem', 
                                 background: 'rgba(255,255,255,0.03)', 
@@ -139,8 +190,9 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                                         border: '1px solid var(--border-glass)', 
                                                         color: 'var(--text-primary)', 
                                                         borderRadius: '4px',
-                                                        fontSize: '0.8rem',
-                                                        padding: '0.1rem 0.3rem',
+                                                        fontSize: '16px',
+                                                        padding: '0.2rem 0.4rem',
+                                                        minHeight: '36px',
                                                         cursor: 'pointer'
                                                     }}
                                                 >
@@ -155,12 +207,15 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
                                                         border: 'none', 
                                                         color: 'var(--danger)', 
                                                         cursor: 'pointer',
-                                                        padding: '0.2rem',
+                                                        padding: '0.4rem',
+                                                        minWidth: '36px',
+                                                        minHeight: '36px',
                                                         display: 'inline-flex',
-                                                        alignItems: 'center'
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
                                                     }}
                                                 >
-                                                    <Trash2 size={14} />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </div>
