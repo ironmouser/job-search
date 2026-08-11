@@ -2040,6 +2040,8 @@ body.light-theme .accordion-summary-box {
 .job-nav-wrapper {
   width: 100%;
   position: relative;
+  /* Allow vertical scroll natively; JS handles horizontal swipe */
+  touch-action: pan-y;
 }
 
 /* Dashboard Page Header 50/50 Split */

@@ -45,7 +45,7 @@ export default function JobDetailsActionBar({
   isPro = false
 }: JobDetailsActionBarProps) {
   const router = useRouter();
-  const { triggerNavigate } = useJobNav();
+  const { triggerNavigate, registerSwipeHandlers } = useJobNav();
 
   const [sequence, setSequence] = useState<any[]>([]);
   const [loadingSeq, setLoadingSeq] = useState(true);
@@ -194,6 +194,19 @@ export default function JobDetailsActionBar({
       router.push(targetUrl);
     });
   };
+
+  // Register swipe handlers with the nav wrapper so mobile users can swipe
+  // left/right anywhere on the page to navigate between jobs.
+  useEffect(() => {
+    registerSwipeHandlers(
+      nextJob ? handleNext : null,
+      prevJob ? handlePrev : null
+    );
+    return () => {
+      registerSwipeHandlers(null, null);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextJob, prevJob]);
 
   const handleStep2Generate = async () => {
     trackDockAction('dock_generate_assets_click', currentJobId);
