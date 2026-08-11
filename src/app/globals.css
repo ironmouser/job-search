@@ -1286,31 +1286,110 @@ details.glass-card > summary::marker { display: none; content: ''; }
     min-height: 44px !important;
   }
 
-  /* Matches Header 3-Column Grid */
+  /* Mobile Matches Header Controls (User Mockup Spec) */
   .matches-header-bar {
+    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 0.875rem !important;
-  }
-
-  .matches-header-left {
-    justify-content: space-between !important;
+    gap: 0.75rem !important;
     width: 100% !important;
   }
 
+  .matches-header-top-row {
+    width: 100% !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .matches-header-title {
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* Row 1: Search for Jobs (Full Width Solid Blue Pill) */
+  .matches-search-btn-wrapper {
+    width: 100% !important;
+  }
+
+  .matches-search-btn-wrapper button {
+    width: 100% !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    border-radius: 9999px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    justify-content: center !important;
+    background: #2563eb !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
+  }
+
+  /* Action Controls Container */
   .matches-action-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+  }
+
+  /* Row 2: Scan Inbox (Full Width Outline Pill Button) */
+  .btn-scan-inbox {
+    width: 100% !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    border-radius: 9999px !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    border: 1px solid var(--border-glass) !important;
+    background: var(--bg-glass) !important;
+    justify-content: center !important;
+  }
+
+  /* Row 3: Filter & Sort (2-Column Grid of Outline Pill Buttons) */
+  .matches-filter-sort-row {
     display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+  }
+
+  .btn-filter,
+  .btn-sort {
+    width: 100% !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    border-radius: 9999px !important;
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    border: 1px solid var(--border-glass) !important;
+    background: var(--bg-glass) !important;
+    justify-content: center !important;
+  }
+
+  /* Row 4: View Mode Switcher (2-Column Segmented Control Box) */
+  .dashboard-view-toggles {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
     gap: 0.5rem !important;
     width: 100% !important;
+    padding: 4px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
   }
 
-  .action-control-btn {
+  .view-toggle-btn {
     width: 100% !important;
     min-height: 44px !important;
-    padding: 0 0.5rem !important;
-    font-size: 0.8rem !important;
+    height: 44px !important;
+    border-radius: 8px !important;
     justify-content: center !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .view-toggle-btn.active {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: var(--accent-primary) !important;
   }
 
   /* Pagination Card Mobile Grid */
@@ -1361,16 +1440,52 @@ details.glass-card > summary::marker { display: none; content: ''; }
   gap: 0.75rem;
 }
 
-.matches-header-left {
+.matches-header-top-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.matches-search-btn-wrapper {
+  display: inline-flex;
+  align-items: center;
 }
 
 .matches-action-controls {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.matches-filter-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dashboard-view-toggles {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.view-toggle-btn {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.view-toggle-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .action-control-btn {

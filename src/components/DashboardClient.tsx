@@ -933,12 +933,14 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
       <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
 
       <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: '1rem' }}>
-        <div className="matches-header-left">
-          <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+        <div className="matches-header-top-row">
+          <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
             Matches ({filteredAndSortedJobs.length})
           </h3>
+        </div>
 
-          {/* Search for Jobs (SyncButton) */}
+        {/* Search for Jobs (SyncButton) */}
+        <div className="matches-search-btn-wrapper">
           <SyncButton
             compact={true}
             onSyncStateChange={(loading, text, count, isRefining) => {
@@ -966,7 +968,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           <button
             onClick={handleEmailSync}
             disabled={isEmailSyncing || isSyncing}
-            className="action-control-btn"
+            className="action-control-btn btn-scan-inbox"
             title="Scan email inbox for job alert notifications"
             style={{
               opacity: isEmailSyncing || isSyncing ? 0.6 : 1,
@@ -974,84 +976,87 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             }}
           >
             {isEmailSyncing ? (
-              <Loader2 size={14} className="animate-spin" style={{ color: '#38bdf8' }} />
+              <Loader2 size={15} className="animate-spin" style={{ color: '#38bdf8' }} />
             ) : (
-              <Mail size={14} style={{ color: '#38bdf8' }} />
+              <Mail size={15} style={{ color: '#38bdf8' }} />
             )}
             <span>{isEmailSyncing ? 'Scanning...' : 'Scan Inbox'}</span>
           </button>
 
-          {/* Filter Button */}
-          <button
-            onClick={() => setIsFilterModalOpen(true)}
-            className="action-control-btn"
-            title="Filter & Sort Job Feed"
-            style={{ position: 'relative' }}
-          >
-            <SlidersHorizontal size={14} />
-            <span>Filter</span>
-            {hasActiveFilters && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '4px',
-                  right: '4px',
-                  width: '7px',
-                  height: '7px',
-                  borderRadius: '50%',
-                  background: '#0070f3',
-                  boxShadow: '0 0 6px #0070f3'
-                }}
-              />
-            )}
-          </button>
-
-          {/* Sort Selector Dropdown */}
-          <div
-            className="action-control-btn"
-            title="Sort Job Feed"
-          >
-            <ArrowUpDown size={14} style={{ color: 'var(--accent-primary, #3b82f6)', flexShrink: 0 }} />
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value as any)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'inherit',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-                outline: 'none',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                width: '100%'
-              }}
+          {/* Filter & Sort Grid Row */}
+          <div className="matches-filter-sort-row">
+            {/* Filter Button */}
+            <button
+              onClick={() => setIsFilterModalOpen(true)}
+              className="action-control-btn btn-filter"
+              title="Filter & Sort Job Feed"
+              style={{ position: 'relative' }}
             >
-              <option value="newest" style={{ background: '#1e293b', color: '#fff' }}>Newest First</option>
-              <option value="score_desc" style={{ background: '#1e293b', color: '#fff' }}>Match Score (High-Low)</option>
-              <option value="score_asc" style={{ background: '#1e293b', color: '#fff' }}>Match Score (Low-High)</option>
-              <option value="company" style={{ background: '#1e293b', color: '#fff' }}>Company (A-Z)</option>
-              <option value="salary_desc" style={{ background: '#1e293b', color: '#fff' }}>Salary (High-Low)</option>
-              <option value="remote" style={{ background: '#1e293b', color: '#fff' }}>Remote First</option>
-            </select>
+              <SlidersHorizontal size={15} />
+              <span>Filter</span>
+              {hasActiveFilters && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    background: '#0070f3',
+                    boxShadow: '0 0 6px #0070f3'
+                  }}
+                />
+              )}
+            </button>
+
+            {/* Sort Selector Dropdown */}
+            <div
+              className="action-control-btn btn-sort"
+              title="Sort Job Feed"
+            >
+              <ArrowUpDown size={15} style={{ color: 'var(--accent-primary, #3b82f6)', flexShrink: 0 }} />
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as any)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'inherit',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  outline: 'none',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  width: '100%'
+                }}
+              >
+                <option value="newest" style={{ background: '#1e293b', color: '#fff' }}>Newest First</option>
+                <option value="score_desc" style={{ background: '#1e293b', color: '#fff' }}>Match Score (High-Low)</option>
+                <option value="score_asc" style={{ background: '#1e293b', color: '#fff' }}>Match Score (Low-High)</option>
+                <option value="company" style={{ background: '#1e293b', color: '#fff' }}>Company (A-Z)</option>
+                <option value="salary_desc" style={{ background: '#1e293b', color: '#fff' }}>Salary (High-Low)</option>
+                <option value="remote" style={{ background: '#1e293b', color: '#fff' }}>Remote First</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="dashboard-view-toggles" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+        <div className="dashboard-view-toggles">
           <button 
             onClick={() => setViewMode('grid')}
-            style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: viewMode === 'grid' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'grid' ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer' }}
+            className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
             title="Grid View"
           >
-            <LayoutGrid size={16} />
+            <LayoutGrid size={18} />
           </button>
           <button 
             onClick={() => setViewMode('table')}
-            style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: viewMode === 'table' ? 'rgba(255,255,255,0.1)' : 'transparent', color: viewMode === 'table' ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer' }}
+            className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
             title="Table View"
           >
-            <List size={16} />
+            <List size={18} />
           </button>
         </div>
       </div>
