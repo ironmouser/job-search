@@ -1356,9 +1356,10 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       target="_blank" 
                       rel="noreferrer" 
                       onClick={() => handleMarkViewed(job.id)} 
-                      className="btn-outline card-label-action-btn"
+                      className="btn-outline card-label-action-btn original-link-btn"
+                      title="Original Job Listing"
                     >
-                      Original <ExternalLink size={14} />
+                      <span className="original-btn-text">Original</span> <ExternalLink size={14} />
                     </a>
 
                     {/* Details */}

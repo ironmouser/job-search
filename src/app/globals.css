@@ -1261,6 +1261,17 @@ details.glass-card > summary::marker { display: none; content: ''; }
     padding: 1rem !important;
   }
 
+  /* Mobile Original Job Link Button Icon-Only Spec (< 768px) */
+  .original-btn-text {
+    display: none !important;
+  }
+  .original-link-btn {
+    min-width: 40px !important;
+    width: 40px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+  }
+
   /* Single Column Card Grid on Mobile (< 768px) */
   .card-action-grid {
     grid-template-columns: 1fr !important;
