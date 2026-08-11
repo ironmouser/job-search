@@ -1302,38 +1302,68 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                   )}
                 </div>
                 
-                <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-start', alignItems: 'center' }}>
-                    {job.company?.includes('(Scraped via Email)') && (!job.description || job.description.length < 500) && (
-                       <button 
-                         onClick={() => handleQueueFetch({ id: job.id, title: job.title, company: job.company })} 
-                         disabled={fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success'} 
-                         className={`btn-outline ${fetchStatuses[job.id] === 'error' ? 'error' : ''}`} 
-                         style={{ 
-                           padding: '0.24rem 0.42rem', 
-                           fontSize: '0.85rem',
-                           borderColor: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : '',
-                           color: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : ''
-                         }}
-                       >
-                         {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 
-                          fetchStatuses[job.id] === 'queued' ? 'Queued' : 
-                          fetchStatuses[job.id] === 'success' ? <><Check size={14} /> Fetched</> : 
-                          fetchStatuses[job.id] === 'error' ? 'Failed - Retry' : 'Fetch Details'}
-                       </button>
-                    )}
-                    <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem', color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} title={job.is_archived ? "Unsave" : "Save"}>
-                      {job.is_archived ? <BookmarkX size={14} /> : <Bookmark size={14} />}
+                <div className="job-card-actions-container" style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {job.company?.includes('(Scraped via Email)') && (!job.description || job.description.length < 500) && (
+                     <button 
+                       onClick={() => handleQueueFetch({ id: job.id, title: job.title, company: job.company })} 
+                       disabled={fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success'} 
+                       className={`btn-outline ${fetchStatuses[job.id] === 'error' ? 'error' : ''}`} 
+                       style={{ 
+                         width: '100%',
+                         minHeight: '44px',
+                         fontSize: '0.85rem',
+                         borderColor: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : '',
+                         color: fetchStatuses[job.id] === 'error' ? 'var(--danger)' : fetchStatuses[job.id] === 'success' ? 'var(--success)' : ''
+                       }}
+                     >
+                       {fetchStatuses[job.id] === 'fetching' ? 'Fetching...' : 
+                        fetchStatuses[job.id] === 'queued' ? 'Queued' : 
+                        fetchStatuses[job.id] === 'success' ? <><Check size={14} /> Fetched</> : 
+                        fetchStatuses[job.id] === 'error' ? 'Failed - Retry' : 'Fetch Details'}
+                     </button>
+                  )}
+
+                  {/* Row 1: 4-Column Equal Width Button Grid */}
+                  <div className="job-card-btn-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', width: '100%' }}>
+                    <button 
+                      onClick={() => toggleArchive(job.id)} 
+                      className="btn-outline job-card-action-btn" 
+                      style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
+                      title={job.is_archived ? "Unsave" : "Save"}
+                    >
+                      {job.is_archived ? <BookmarkX size={16} /> : <Bookmark size={16} />}
                     </button>
-                    <button onClick={() => deleteJob(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Delete">
-                      <Trash2 size={14} />
+
+                    <button 
+                      onClick={() => deleteJob(job.id)} 
+                      className="btn-outline job-card-action-btn" 
+                      style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} 
+                      title="Delete"
+                    >
+                      <Trash2 size={16} />
                     </button>
-                    <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className="btn-primary" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
+
+                    <Link 
+                      href={`/job/${job.id}`} 
+                      onClick={() => handleMarkViewed(job.id)} 
+                      className="btn-primary job-card-action-btn"
+                    >
                       Details
                     </Link>
-                    <a href={job.url} target="_blank" rel="noreferrer" onClick={() => handleMarkViewed(job.id)} className="btn-outline" style={{ padding: '0.24rem 0.42rem', fontSize: '0.85rem' }}>
+
+                    <a 
+                      href={job.url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      onClick={() => handleMarkViewed(job.id)} 
+                      className="btn-outline job-card-action-btn"
+                    >
                       Original <ExternalLink size={14} />
                     </a>
+                  </div>
+
+                  {/* Row 2: Feedback Thumbs (Left) & Selection Checkbox (Right) */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '0.25rem' }}>
                     <FeedbackButtons
                       jobId={job.id}
                       initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
@@ -1343,13 +1373,13 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       onNudgeDismiss={handleNudgeDismiss}
                       onFeedbackGiven={handleNudgeFeedbackGiven}
                     />
-                  </div>
-                  <div style={{ marginLeft: 'auto', marginRight: '-12px', marginBottom: '-36px' }}>
+
                     <input 
                       type="checkbox" 
                       checked={checkedJobs.has(job.id)} 
                       onChange={() => toggleJobCheck(job.id)}
-                      style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                      style={{ cursor: 'pointer', width: '20px', height: '20px', borderRadius: '4px' }}
+                      title="Select job"
                     />
                   </div>
                 </div>
