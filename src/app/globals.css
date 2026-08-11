@@ -1214,27 +1214,27 @@ details.glass-card > summary::marker { display: none; content: ''; }
 
 /* Dashboard Action Bar Specifications */
 .card-icon-action-btn {
-  min-width: 40px !important;
-  width: 40px !important;
-  height: 40px !important;
+  min-width: 34px !important;
+  width: 34px !important;
+  height: 34px !important;
   padding: 0 !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   box-sizing: border-box !important;
 }
 
 .card-label-action-btn {
-  height: 40px !important;
-  padding: 0 0.9rem !important;
-  font-size: 0.85rem !important;
+  height: 34px !important;
+  padding: 0 0.55rem !important;
+  font-size: 0.78rem !important;
   font-weight: 500 !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 0.35rem !important;
-  border-radius: 8px !important;
+  gap: 0.25rem !important;
+  border-radius: 6px !important;
   white-space: nowrap !important;
   box-sizing: border-box !important;
 }
@@ -1245,6 +1245,8 @@ details.glass-card > summary::marker { display: none; content: ''; }
   align-items: center !important;
   justify-content: space-between !important;
   flex-wrap: nowrap !important;
+  gap: 0.3rem !important;
+  overflow-x: hidden !important;
 }
 
 @media (max-width: 768px) {
@@ -1266,8 +1268,8 @@ details.glass-card > summary::marker { display: none; content: ''; }
     display: none !important;
   }
   .original-link-btn {
-    min-width: 40px !important;
-    width: 40px !important;
+    min-width: 34px !important;
+    width: 34px !important;
     padding: 0 !important;
     justify-content: center !important;
   }

@@ -1322,8 +1322,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                 </div>
                 
                 {/* Horizontal Action Bar (Single Line: Thumbs, Delete, Save, Original, Details, Checkbox) */}
-                <div className="dashboard-job-action-row" style={{ paddingTop: '1rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', width: '100%', overflowX: 'auto' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                <div className="dashboard-job-action-row" style={{ paddingTop: '0.85rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.3rem', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0 }}>
                     {/* Thumbs Up & Thumbs Down */}
                     <FeedbackButtons
                       jobId={job.id}
@@ -1342,7 +1342,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} 
                       title="Delete"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
 
                     {/* Save / Bookmark */}
@@ -1352,7 +1352,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
                       title={job.is_archived ? "Unsave" : "Save"}
                     >
-                      {job.is_archived ? <BookmarkX size={16} /> : <Bookmark size={16} />}
+                      {job.is_archived ? <BookmarkX size={15} /> : <Bookmark size={15} />}
                     </button>
 
                     {/* Original */}
