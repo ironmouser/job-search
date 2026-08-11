@@ -131,42 +131,46 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, i
           <strong>Feature Overview:</strong> Use this tool to answer tricky job application questions (e.g., "Why this company?") or to prepare for your upcoming interviews. Simply paste any question below, and your agent will generate a strategic, highly tailored response that perfectly aligns your background with the specific needs of this role.
         </p>
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ position: 'relative' }}>
-          <textarea
-            value={question}
-            onChange={(e) => setQuestion(e.target.value.slice(0, MAX_QUESTION_CHARS))}
-            placeholder="e.g. Why do you want to work at this company?"
-            maxLength={MAX_QUESTION_CHARS}
-            style={{
-              width: '100%',
-              minHeight: '80px',
-              padding: '1rem',
-              paddingBottom: '1.8rem',
-              background: 'var(--bg-color)',
-              border: '1px solid var(--border-glass)',
-              borderRadius: '8px',
-              color: 'var(--text-primary)',
-              resize: 'vertical',
-              fontFamily: 'inherit'
-            }}
-          />
-          <span style={{ position: 'absolute', bottom: '0.5rem', right: '0.75rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            {question.length}/{MAX_QUESTION_CHARS}
-          </span>
-        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+          <div style={{ position: 'relative' }}>
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value.slice(0, MAX_QUESTION_CHARS))}
+              placeholder="e.g. Why do you want to work at this company?"
+              maxLength={MAX_QUESTION_CHARS}
+              style={{
+                width: '100%',
+                minHeight: '90px',
+                padding: '0.875rem',
+                paddingBottom: '2rem',
+                background: 'var(--input, var(--card))',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius, 8px)',
+                color: 'var(--text-primary)',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                fontSize: '16px'
+              }}
+            />
+            <span style={{ position: 'absolute', bottom: '0.5rem', right: '0.75rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              {question.length}/{MAX_QUESTION_CHARS}
+            </span>
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <select 
             value={tone} 
             onChange={(e) => setTone(e.target.value)}
             style={{
-              padding: '0.5rem 1rem',
-              background: 'var(--bg-color)',
-              border: '1px solid var(--border-glass)',
-              borderRadius: '8px',
+              width: '100%',
+              minHeight: '44px',
+              padding: '0.6rem 0.875rem',
+              background: 'var(--input, var(--card))',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius, 8px)',
               color: 'var(--text-primary)',
-              fontSize: '0.9rem'
+              fontSize: '16px',
+              outline: 'none',
+              cursor: 'pointer'
             }}
           >
             <option value="Confident and strategic">Confident and Strategic (Default)</option>
@@ -175,16 +179,23 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, i
             <option value="Highly technical and detailed">Highly Technical</option>
           </select>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginLeft: 'auto' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <div className="card-action-grid" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
               Generations left: {regensLeft} / {limit}
             </span>
             <button 
               onClick={() => handleGenerate()}
               disabled={isLoading || !question.trim() || regensLeft <= 0}
-              className="btn-primary"
+              className="btn-primary full-width-mobile full-width-tablet"
               title={regensLeft <= 0 && !isPro ? "Upgrade to Pro for more generations" : ""}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                width: '100%',
+                minHeight: '44px'
+              }}
             >
               {isLoading && !answer ? (
                 <><Loader2 size={16} className="animate-spin" /> Generating...</>
@@ -380,7 +391,6 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, i
             )}
           </div>
         )}
-      </div>
       </div>
     </details>
   );
