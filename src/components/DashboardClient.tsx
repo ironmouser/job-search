@@ -1188,18 +1188,22 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                             onNudgeDismiss={handleNudgeDismiss}
                             onFeedbackGiven={handleNudgeFeedbackGiven}
                           />
-                          <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} title={job.is_archived ? "Unsave" : "Save"}>
-                            {job.is_archived ? <BookmarkX size={14} /> : <Bookmark size={14} />}
-                          </button>
+                          {/* 1. Delete */}
                           <button onClick={() => deleteJob(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Delete">
                             <Trash2 size={14} />
                           </button>
-                          <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>
-                            Details
-                          </Link>
+                          {/* 2. Save */}
+                          <button onClick={() => toggleArchive(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} title={job.is_archived ? "Unsave" : "Save"}>
+                            {job.is_archived ? <BookmarkX size={14} /> : <Bookmark size={14} />}
+                          </button>
+                          {/* 3. Original */}
                           <a href={job.url} target="_blank" rel="noreferrer" onClick={() => handleMarkViewed(job.id)} className="btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }} title="Original">
                             <ExternalLink size={14} />
                           </a>
+                          {/* 4. Details */}
+                          <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>
+                            Details
+                          </Link>
                         </div>
                       </td>
                     </tr>
@@ -1323,17 +1327,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                      </button>
                   )}
 
-                  {/* Row 1: 4-Column Equal Width Button Grid */}
+                  {/* Row 1: 4-Column Equal Width Button Grid (Delete, Save, Original, Details) */}
                   <div className="job-card-btn-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', width: '100%' }}>
-                    <button 
-                      onClick={() => toggleArchive(job.id)} 
-                      className="btn-outline job-card-action-btn" 
-                      style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
-                      title={job.is_archived ? "Unsave" : "Save"}
-                    >
-                      {job.is_archived ? <BookmarkX size={16} /> : <Bookmark size={16} />}
-                    </button>
-
+                    {/* 1. Delete */}
                     <button 
                       onClick={() => deleteJob(job.id)} 
                       className="btn-outline job-card-action-btn" 
@@ -1343,14 +1339,17 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       <Trash2 size={16} />
                     </button>
 
-                    <Link 
-                      href={`/job/${job.id}`} 
-                      onClick={() => handleMarkViewed(job.id)} 
-                      className="btn-primary job-card-action-btn"
+                    {/* 2. Save / Bookmark */}
+                    <button 
+                      onClick={() => toggleArchive(job.id)} 
+                      className="btn-outline job-card-action-btn" 
+                      style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
+                      title={job.is_archived ? "Unsave" : "Save"}
                     >
-                      Details
-                    </Link>
+                      {job.is_archived ? <BookmarkX size={16} /> : <Bookmark size={16} />}
+                    </button>
 
+                    {/* 3. Original */}
                     <a 
                       href={job.url} 
                       target="_blank" 
@@ -1360,6 +1359,15 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                     >
                       Original <ExternalLink size={14} />
                     </a>
+
+                    {/* 4. Details */}
+                    <Link 
+                      href={`/job/${job.id}`} 
+                      onClick={() => handleMarkViewed(job.id)} 
+                      className="btn-primary job-card-action-btn"
+                    >
+                      Details
+                    </Link>
                   </div>
 
                   {/* Row 2: Feedback Thumbs (Left) & Selection Checkbox (Right) */}
