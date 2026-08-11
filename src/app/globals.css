@@ -2131,12 +2131,16 @@ body.light-theme .accordion-summary-box {
 /* Mobile Multi-Action FAB Container */
 .job-action-bar-mobile {
   display: none;
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
 }
 
 .job-fab-menu {
-  position: absolute;
-  bottom: 4.25rem;
-  right: 0;
+  position: fixed;
+  bottom: 5.5rem;
+  right: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -2147,8 +2151,12 @@ body.light-theme .accordion-summary-box {
   border-radius: 16px;
   padding: 1rem;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-  min-width: 220px;
+  min-width: 240px;
+  max-width: calc(100vw - 3rem);
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
   animation: fadeIn 0.2s ease-out forwards;
+  z-index: 10000;
 }
 
 .job-fab-menu .btn-outline {
@@ -2186,6 +2194,13 @@ body:not(.light-theme) .job-action-bar-divider {
 @media (max-width: 1024px) {
   .job-action-bar-desktop:not(.dashboard-dock) {
     display: none !important;
+  }
+
+  /* Show the job details FAB on mobile/tablet */
+  .job-action-bar-mobile {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-end;
   }
 
   .dashboard-dock-desktop {
