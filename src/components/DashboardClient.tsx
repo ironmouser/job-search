@@ -1687,8 +1687,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         hasActiveFilters={hasActiveFilters}
         onOpenAddJobModal={() => setIsAddJobModalOpen(true)}
         onOpenCleanupModal={() => setIsCleanupModalOpen(true)}
-        sortOption={sortOption}
-        setSortOption={setSortOption}
       />
 
       {/* Dashboard Filter Modal */}
@@ -1709,6 +1707,8 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         totalMatches={filteredAndSortedJobs.length}
         sortOption={sortOption}
         setSortOption={setSortOption}
+        activeFilter={activeFilter}
+        setActiveFilter={setActiveFilter}
       />
 
       {/* Add Job Modal */}

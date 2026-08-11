@@ -140,39 +140,6 @@ export default function DashboardDock({
           )}
         </button>
 
-        {/* 4. Sort Selector Button */}
-        {sortOption !== undefined && setSortOption && (
-          <div
-            className="job-step-btn"
-            title="Sort Job Feed"
-            style={{ paddingRight: '0.4rem', cursor: 'pointer' }}
-          >
-            <ArrowUpDown size={15} style={{ color: 'var(--accent-primary, #3b82f6)' }} />
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value as SortOptionType)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'inherit',
-                fontSize: 'inherit',
-                fontWeight: 'inherit',
-                cursor: 'pointer',
-                outline: 'none',
-                paddingRight: '0.2rem',
-                fontFamily: 'inherit',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-              }}
-            >
-              <option value="newest" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Newest</option>
-              <option value="score" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Match Score</option>
-              <option value="salary" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Salary</option>
-              <option value="remote" style={{ background: '#0f172a', color: '#f8fafc' }}>Sort: Remote</option>
-            </select>
-          </div>
-        )}
 
         {/* 5. Scrape & Add Job Button */}
         <button
@@ -305,39 +272,6 @@ export default function DashboardDock({
                   )}
                 </button>
 
-                {/* 4. Sort Feed */}
-                {sortOption !== undefined && setSortOption && (
-                  <div
-                    className="btn-outline"
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <ArrowUpDown size={16} style={{ color: '#ec4899' }} /> Sort
-                    </span>
-                    <select
-                      value={sortOption}
-                      onChange={(e) => {
-                        setSortOption(e.target.value as SortOptionType);
-                        setIsFabOpen(false);
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'inherit',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        outline: 'none',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <option value="newest" style={{ background: '#0f172a', color: '#f8fafc' }}>Newest</option>
-                      <option value="score" style={{ background: '#0f172a', color: '#f8fafc' }}>Match Score</option>
-                      <option value="salary" style={{ background: '#0f172a', color: '#f8fafc' }}>Salary</option>
-                      <option value="remote" style={{ background: '#0f172a', color: '#f8fafc' }}>Remote</option>
-                    </select>
-                  </div>
-                )}
 
                 {/* 5. Scrape & Add Job */}
                 <button
