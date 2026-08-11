@@ -126,6 +126,10 @@ export default function AdminDashboard() {
   // System Alerts State
   const [systemAlerts, setSystemAlerts] = useState<any[]>([]);
   const [dailyCost, setDailyCost] = useState<number>(0);
+  const [aiCostToday, setAiCostToday] = useState<{ total: number; byProvider: { provider: string; cost: number; calls: number }[] } | null>(null);
+  const [aiCostMonth, setAiCostMonth] = useState<{ total: number; byProvider: { provider: string; cost: number; calls: number }[] } | null>(null);
+  const [scrapeDoCredits, setScrapeDoCredits] = useState<{ remaining: number | null; total: number | null; plan: string | null; error?: string } | null>(null);
+  const [s3Stats, setS3Stats] = useState<{ objectCount: number | null; totalSizeBytes: number | null; estimatedMonthlyCostUsd: number | null; error?: string } | null>(null);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
 
   // Gates State
@@ -209,6 +213,10 @@ export default function AdminDashboard() {
           if (data && !data.error) {
             setSystemAlerts(data.alerts || []);
             setDailyCost(data.dailyCost || 0);
+            setAiCostToday(data.aiCostToday || null);
+            setAiCostMonth(data.aiCostMonth || null);
+            setScrapeDoCredits(data.scrapeDoCredits || null);
+            setS3Stats(data.s3Stats || null);
           }
         })
         .catch(console.error)
@@ -763,68 +771,245 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'alerts' && (
-        <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ fontSize: "1.25rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <AlertTriangle size={20} className="text-accent" /> Action Required Alerts
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+          {/* ── Service Cost Overview ───────────────────────────── */}
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.75rem' }}>
+              <Cpu size={18} style={{ color: 'var(--accent-primary)' }} /> Service Cost Overview
             </h3>
-            <div style={{ background: "rgba(255, 60, 60, 0.1)", border: "1px solid rgba(255, 60, 60, 0.2)", padding: "0.5rem 1rem", borderRadius: "8px", color: "var(--text-primary)" }}>
-              Today's AI Cost: <strong>${dailyCost.toFixed(4)}</strong> / $5.00
-            </div>
-          </div>
-          
-          {loadingAlerts ? (
-            <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>Loading alerts...</div>
-          ) : systemAlerts.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)", background: "rgba(0,0,0,0.1)", borderRadius: "12px" }}>
-              <Check size={48} style={{ margin: "0 auto 1rem", opacity: 0.5, color: "#4caf50" }} />
-              <p>All clear! No active system alerts.</p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {systemAlerts.map(alert => (
-                <div key={alert.id} style={{ padding: "1.5rem", border: "1px solid rgba(255,60,60,0.3)", background: "rgba(255,60,60,0.05)", borderRadius: "12px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                        <span style={{ background: "#ff3b30", color: "#fff", fontSize: "0.75rem", padding: "0.2rem 0.5rem", borderRadius: "4px", fontWeight: "bold" }}>
-                          {alert.type}
-                        </span>
-                        <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                          {new Date(alert.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <p style={{ fontWeight: 500, fontSize: "1.1rem", marginBottom: "1rem" }}>{alert.message}</p>
-                      
-                      {alert.metadata && (
-                        <pre style={{ background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "8px", fontSize: "0.85rem", overflowX: "auto" }}>
-                          {JSON.stringify(alert.metadata, null, 2)}
-                        </pre>
-                      )}
-                    </div>
-                    
-                    <button 
-                      className="btn-primary" 
-                      onClick={async () => {
-                        try {
-                          await fetch('/api/admin/alerts', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ alertId: alert.id })
-                          });
-                          setSystemAlerts(systemAlerts.filter(a => a.id !== alert.id));
-                        } catch (e) {
-                          console.error(e);
-                        }
-                      }}
-                    >
-                      Dismiss
-                    </button>
+
+            {loadingAlerts ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Loading cost data...</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+
+                {/* AI APIs */}
+                <div style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <Sparkles size={16} style={{ color: '#818cf8' }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>AI APIs</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(99,102,241,0.12)', padding: '1px 8px', borderRadius: '99px' }}>pay-per-token</span>
                   </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem 0.75rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Today</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#818cf8' }}>${(aiCostToday?.total ?? dailyCost).toFixed(4)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>This Month</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#818cf8' }}>${(aiCostMonth?.total ?? 0).toFixed(4)}</div>
+                    </div>
+                  </div>
+                  {(aiCostToday?.byProvider ?? []).length > 0 && (
+                    <div style={{ borderTop: '1px solid rgba(99,102,241,0.2)', paddingTop: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      {(aiCostToday?.byProvider ?? []).map(p => (
+                        <div key={p.provider} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>{p.provider}</span>
+                          <span style={{ fontWeight: 600 }}>${p.cost.toFixed(4)} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>({p.calls} calls)</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(aiCostToday?.byProvider ?? []).length === 0 && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>No AI calls logged today.</div>
+                  )}
+                  <div style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Daily safeguard limit: <strong>$5.00</strong></div>
                 </div>
-              ))}
+
+                {/* Scrape.do */}
+                <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <Shield size={16} style={{ color: '#34d399' }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Scrape.do</span>
+                    {scrapeDoCredits?.plan && (
+                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#34d399', background: 'rgba(16,185,129,0.12)', padding: '1px 8px', borderRadius: '99px' }}>{scrapeDoCredits.plan}</span>
+                    )}
+                  </div>
+                  {scrapeDoCredits?.error ? (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--danger)' }}>{scrapeDoCredits.error}</div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem 0.75rem', marginBottom: '0.65rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Credits Used</div>
+                          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#34d399' }}>
+                            {scrapeDoCredits?.total != null && scrapeDoCredits?.remaining != null
+                              ? (scrapeDoCredits.total - scrapeDoCredits.remaining).toLocaleString()
+                              : '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Remaining</div>
+                          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#34d399' }}>
+                            {scrapeDoCredits?.remaining != null ? scrapeDoCredits.remaining.toLocaleString() : '—'}
+                          </div>
+                        </div>
+                      </div>
+                      {scrapeDoCredits?.total != null && scrapeDoCredits?.remaining != null && (
+                        <>
+                          <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden', marginBottom: '0.4rem' }}>
+                            <div style={{ height: '100%', width: `${Math.min(100, ((scrapeDoCredits.total - scrapeDoCredits.remaining) / scrapeDoCredits.total) * 100)}%`, background: '#34d399', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                            {Math.round(((scrapeDoCredits.total - scrapeDoCredits.remaining) / scrapeDoCredits.total) * 100)}% of {scrapeDoCredits.total.toLocaleString()} monthly credits used
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* AWS S3 */}
+                <div style={{ background: 'rgba(251,146,60,0.07)', border: '1px solid rgba(251,146,60,0.25)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '1rem' }}>🪣</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>AWS S3</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'rgba(251,146,60,0.12)', padding: '1px 8px', borderRadius: '99px' }}>the-job-agent</span>
+                  </div>
+                  {s3Stats?.error ? (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--danger)' }}>{s3Stats.error}</div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem 0.75rem', marginBottom: '0.65rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Objects</div>
+                          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fb923c' }}>
+                            {s3Stats?.objectCount != null ? s3Stats.objectCount.toLocaleString() : '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Storage</div>
+                          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fb923c' }}>
+                            {s3Stats?.totalSizeBytes != null
+                              ? s3Stats.totalSizeBytes < 1_048_576
+                                ? `${(s3Stats.totalSizeBytes / 1024).toFixed(1)} KB`
+                                : s3Stats.totalSizeBytes < 1_073_741_824
+                                  ? `${(s3Stats.totalSizeBytes / 1_048_576).toFixed(1)} MB`
+                                  : `${(s3Stats.totalSizeBytes / 1_073_741_824).toFixed(2)} GB`
+                              : '—'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(251,146,60,0.2)', paddingTop: '0.6rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Est. monthly cost: <strong style={{ color: '#fb923c' }}>
+                          {s3Stats?.estimatedMonthlyCostUsd != null ? `$${s3Stats.estimatedMonthlyCostUsd.toFixed(4)}` : '—'}
+                        </strong>
+                        <span style={{ fontSize: '0.7rem', display: 'block', marginTop: '2px', opacity: 0.7 }}>Based on $0.023/GB storage + 20% egress estimate</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Railway — static reference */}
+                <div style={{ background: 'rgba(168,85,247,0.07)', border: '1px solid rgba(168,85,247,0.25)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '1rem' }}>🚂</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Railway</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#c084fc', background: 'rgba(168,85,247,0.12)', padding: '1px 8px', borderRadius: '99px' }}>static ref</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    {[
+                      { label: 'App hosting', value: '~$5–20/mo', note: 'usage-based (CPU/RAM/egress)' },
+                      { label: 'PostgreSQL DB', value: '~$5–10/mo', note: 'included in Railway Postgres add-on' },
+                    ].map(row => (
+                      <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+                        <span style={{ fontWeight: 600, color: '#c084fc' }}>{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: '0.6rem', fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.7 }}>Check railway.app/billing for live spend.</div>
+                </div>
+
+                {/* DigitalOcean — static reference */}
+                <div style={{ background: 'rgba(14,165,233,0.07)', border: '1px solid rgba(14,165,233,0.25)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '1rem' }}>🌊</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>DigitalOcean</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#38bdf8', background: 'rgba(14,165,233,0.12)', padding: '1px 8px', borderRadius: '99px' }}>static ref</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    {[
+                      { label: 'Auto Apply Droplet', value: '$6/mo', note: 'Basic 1vCPU 1GB RAM' },
+                    ].map(row => (
+                      <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+                        <span style={{ fontWeight: 600, color: '#38bdf8' }}>{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: '0.6rem', fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.7 }}>Check cloud.digitalocean.com/billing for account-wide spend.</div>
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {/* ── Action Required Alerts ──────────────────────────── */}
+          <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "1.25rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <AlertTriangle size={20} className="text-accent" /> Action Required Alerts
+              </h3>
+              <div style={{ background: "rgba(255, 60, 60, 0.1)", border: "1px solid rgba(255, 60, 60, 0.2)", padding: "0.5rem 1rem", borderRadius: "8px", color: "var(--text-primary)" }}>
+                Today's AI Cost: <strong>${dailyCost.toFixed(4)}</strong> / $5.00
+              </div>
             </div>
-          )}
+
+            {loadingAlerts ? (
+              <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>Loading alerts...</div>
+            ) : systemAlerts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)", background: "rgba(0,0,0,0.1)", borderRadius: "12px" }}>
+                <Check size={48} style={{ margin: "0 auto 1rem", opacity: 0.5, color: "#4caf50" }} />
+                <p>All clear! No active system alerts.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {systemAlerts.map(alert => (
+                  <div key={alert.id} style={{ padding: "1.5rem", border: "1px solid rgba(255,60,60,0.3)", background: "rgba(255,60,60,0.05)", borderRadius: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                          <span style={{ background: "#ff3b30", color: "#fff", fontSize: "0.75rem", padding: "0.2rem 0.5rem", borderRadius: "4px", fontWeight: "bold" }}>
+                            {alert.type}
+                          </span>
+                          <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                            {new Date(alert.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p style={{ fontWeight: 500, fontSize: "1.1rem", marginBottom: "1rem" }}>{alert.message}</p>
+
+                        {alert.metadata && (
+                          <pre style={{ background: "rgba(0,0,0,0.3)", padding: "1rem", borderRadius: "8px", fontSize: "0.85rem", overflowX: "auto" }}>
+                            {JSON.stringify(alert.metadata, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+
+                      <button
+                        className="btn-primary"
+                        onClick={async () => {
+                          try {
+                            await fetch('/api/admin/alerts', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ alertId: alert.id })
+                            });
+                            setSystemAlerts(systemAlerts.filter(a => a.id !== alert.id));
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
