@@ -24,6 +24,10 @@ function getCustomerId(cust: any): string | null {
   return null;
 }
 
+export async function GET() {
+  return NextResponse.json({ message: "Stripe webhook endpoint active. Please use POST for webhooks." }, { status: 200 });
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const headersList = await headers();
@@ -103,24 +107,36 @@ export async function POST(req: Request) {
     }
 
     // ── Personal (Premium) subscription ──
-    if (!session?.metadata?.userId) {
-      console.warn(`[Stripe Webhook] Missing metadata.userId in checkout session ${session.id}`);
+    const sessionEmail = session.customer_details?.email || session.customer_email;
+    const sessionCustId = getCustomerId(session.customer);
+
+    let user = session?.metadata?.userId
+      ? await prisma.user.findUnique({ where: { id: session.metadata.userId } })
+      : null;
+
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            ...(sessionCustId ? [{ stripeCustomerId: sessionCustId }] : []),
+            ...(sessionEmail ? [{ email: { equals: sessionEmail.trim(), mode: "insensitive" as const } }] : []),
+          ],
+        },
+      });
+    }
+
+    if (!user) {
+      console.warn(`[Stripe Webhook] No matching user found for checkout session ${session.id} (email: ${sessionEmail}, customer: ${sessionCustId})`);
       return new NextResponse(null, { status: 200 });
     }
 
-    const userId = session.metadata.userId;
+    const userId = user.id;
     try {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user) {
-        console.warn(`[Stripe Webhook] User ${userId} not found in database for checkout session ${session.id}`);
-        return new NextResponse(null, { status: 200 });
-      }
-
       const subscriptionId = getSubscriptionId(session.subscription);
 
       if (subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        const customerId = getCustomerId(subscription.customer) || getCustomerId(session.customer);
+        const customerId = getCustomerId(subscription.customer) || sessionCustId;
         const priceId = subscription.items.data[0]?.price?.id || null;
         const periodEnd = getPeriodEnd(subscription);
 
@@ -138,11 +154,10 @@ export async function POST(req: Request) {
         await handleUserUpgradeToPro(userId);
       } else {
         // One-time payment fallback
-        const customerId = getCustomerId(session.customer);
         await prisma.user.update({
           where: { id: userId },
           data: {
-            stripeCustomerId: customerId || user.stripeCustomerId,
+            stripeCustomerId: sessionCustId || user.stripeCustomerId,
             planTier: "PRO",
             subscriptionType: "PREMIUM",
           },
@@ -168,13 +183,13 @@ export async function POST(req: Request) {
         const periodEnd = getPeriodEnd(subscription);
         const subCustomerId = getCustomerId(subscription.customer) || customerId;
 
-        // Try matching user by stripeSubscriptionId, stripeCustomerId, or customerEmail
+        // Try matching user by stripeSubscriptionId, stripeCustomerId, or customerEmail (case-insensitive)
         const user = await prisma.user.findFirst({
           where: {
             OR: [
               { stripeSubscriptionId: subscription.id },
               ...(subCustomerId ? [{ stripeCustomerId: subCustomerId }] : []),
-              ...(customerEmail ? [{ email: customerEmail }] : []),
+              ...(customerEmail ? [{ email: { equals: customerEmail.trim(), mode: "insensitive" as const } }] : []),
             ],
           },
         });
@@ -191,7 +206,8 @@ export async function POST(req: Request) {
               subscriptionType: "PREMIUM",
             },
           });
-          console.log(`[Stripe Webhook] Updated user ${user.id} from invoice.payment_succeeded`);
+          await handleUserUpgradeToPro(user.id);
+          console.log(`[Stripe Webhook] Updated user ${user.id} to PRO from invoice.payment_succeeded`);
         } else {
           // Try matching organization
           const org = await prisma.organization.findFirst({
@@ -235,7 +251,7 @@ export async function POST(req: Request) {
       const priceId = subscription.items.data[0]?.price?.id;
       const periodEnd = getPeriodEnd(subscription);
 
-      const user = await prisma.user.findFirst({
+      let user = await prisma.user.findFirst({
         where: {
           OR: [
             { stripeSubscriptionId: subscription.id },
@@ -244,16 +260,37 @@ export async function POST(req: Request) {
         },
       });
 
+      if (!user && customerId) {
+        // Retrieve customer email if needed
+        try {
+          const custObj = await stripe.customers.retrieve(customerId);
+          if (!("deleted" in custObj && custObj.deleted) && custObj.email) {
+            user = await prisma.user.findFirst({
+              where: { email: { equals: custObj.email.trim(), mode: "insensitive" } },
+            });
+          }
+        } catch (e) {
+          console.warn("[Stripe Webhook] Error fetching customer email for subscription update:", e);
+        }
+      }
+
       if (user) {
+        const isNowActive = subscription.status === "active";
         await prisma.user.update({
           where: { id: user.id },
           data: {
+            stripeSubscriptionId: subscription.id,
+            stripeCustomerId: customerId || user.stripeCustomerId,
             stripePriceId: priceId || user.stripePriceId,
             stripeCurrentPeriodEnd: periodEnd || user.stripeCurrentPeriodEnd,
-            planTier: subscription.status === "active" ? "PRO" : user.planTier,
+            planTier: isNowActive ? "PRO" : user.planTier,
+            subscriptionType: isNowActive ? "PREMIUM" : user.subscriptionType,
           },
         });
-        console.log(`[Stripe Webhook] Updated user ${user.id} from customer.subscription.updated`);
+        if (isNowActive) {
+          await handleUserUpgradeToPro(user.id);
+        }
+        console.log(`[Stripe Webhook] Updated user ${user.id} from customer.subscription.updated (active: ${isNowActive})`);
       }
     } catch (err) {
       console.error("[Stripe Webhook] Error processing customer.subscription.updated:", err);

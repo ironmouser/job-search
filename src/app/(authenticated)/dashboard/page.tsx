@@ -85,15 +85,15 @@ export default async function Dashboard() {
   const hasSeenNonUsPrompt = userPrefs?.hasSeenNonUsPrompt || false;
   const noInternational = userPrefs?.noInternational || false;
 
-  // Scoring is blocked for free tier (post-trial). Mark as exhausted unless they have Pro access.
   const userRecord = await prisma.user.findUnique({
     where: { id: userId },
     select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
   });
-  const initialScoresExhausted = userRecord ? getEffectiveTier(userRecord) !== 'PRO' : planTier !== 'PRO';
-
+  const effectiveTier = userRecord ? getEffectiveTier(userRecord) : planTier;
+  const effectiveTrialEndsAt = userRecord?.trialEndsAt ?? trialEndsAt;
+  const initialScoresExhausted = effectiveTier !== 'PRO';
 
   return (
-    <DashboardClient jobs={jobs} userPlanTier={planTier} trialEndsAt={trialEndsAt} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} />
+    <DashboardClient jobs={jobs} userPlanTier={effectiveTier} trialEndsAt={effectiveTrialEndsAt} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} />
   );
 }

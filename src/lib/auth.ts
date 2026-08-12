@@ -120,15 +120,9 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
-        token.isOnboarded = (user as any).isOnboarded || false;
-        token.planTier = (user as any).planTier || "FREE";
-        token.role = (user as any).role || "USER";
-        token.subscriptionType = (user as any).subscriptionType || "FREE";
-        token.organizationId = (user as any).organizationId || null;
-        token.isDisabled = (user as any).isDisabled || false;
-        token.isTrialDeferred = (user as any).isTrialDeferred || false;
-      } else if (token.id) {
-        // Refresh org-related fields and verify user still exists
+      }
+      if (token.id) {
+        // Refresh org/plan/subscription fields directly from DB to prevent stale session tiers
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: {

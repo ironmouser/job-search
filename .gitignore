@@ -64,3 +64,8 @@ result.json
 CLAUDE.md
 
 /src/generated/prisma
+
+# Standalone System Analytics (local only)
+src/app/(authenticated)/system-analytics/
+src/app/api/system-analytics/
+

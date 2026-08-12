@@ -15,10 +15,13 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
-    const emailsSyncIsPro = globalSettings?.emailsSyncIsPro ?? true;
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+    });
+    const isPro = dbUser ? getEffectiveTier(dbUser) === 'PRO' : getEffectiveTier(session.user as any) === 'PRO';
 
-    if (emailsSyncIsPro && getEffectiveTier(session.user as any) !== 'PRO') {
+    if (emailsSyncIsPro && !isPro) {
       return NextResponse.json({ error: 'Email synchronization is a Pro feature. Please upgrade to Pro.' }, { status: 403 });
     }
 

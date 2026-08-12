@@ -52,7 +52,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const userId = session.user.id;
-    const isPro = getEffectiveTier(session.user as any) === 'PRO';
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+    });
+    const isPro = dbUser ? getEffectiveTier(dbUser) === 'PRO' : getEffectiveTier(session.user as any) === 'PRO';
 
     const body = await request.json();
     const { url: rawUrl, manualTitle, manualCompany, manualDescription, manualLocation } = body;

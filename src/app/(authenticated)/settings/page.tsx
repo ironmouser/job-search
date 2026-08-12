@@ -227,7 +227,7 @@ export default function SettingsPage() {
         }
     };
 
-    const { data: session } = useSession();
+    const { data: session, update } = useSession();
     const isAdmin = (session?.user as any)?.role === 'SYSTEM_ADMIN';
     const isPro = session?.user ? getEffectiveTier(session.user as any) === 'PRO' : false;
 
@@ -241,9 +241,12 @@ export default function SettingsPage() {
                 setInitialSettings(JSON.parse(JSON.stringify(data)));
                 setIsDirty(false);
                 setLoading(false);
+                if (typeof window !== 'undefined' && window.location.search.includes('success=true')) {
+                    update();
+                }
             })
             .catch(() => setLoading(false));
-    }, []);
+    }, [update]);
 
     const handleSave = async (settingsOverride?: any, silent = false) => {
         setSaving(true);

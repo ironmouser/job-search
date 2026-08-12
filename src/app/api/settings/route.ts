@@ -25,7 +25,12 @@ export async function GET() {
             where: { id: 'system' }
         });
 
-        const isPro = getEffectiveTier(session.user as any) === 'PRO';
+        const dbUser = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+        });
+
+        const isPro = dbUser ? getEffectiveTier(dbUser) === 'PRO' : getEffectiveTier(session.user as any) === 'PRO';
 
         let resolvedSources: Record<string, boolean> = { ...DEFAULT_PRO_SOURCES };
 
@@ -182,7 +187,12 @@ export async function POST(request: Request) {
              return NextResponse.json({ error: 'Resume markdown is too long.' }, { status: 400 });
         }
 
-        const isPro = getEffectiveTier(session.user as any) === 'PRO';
+        const dbUser = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+        });
+
+        const isPro = dbUser ? getEffectiveTier(dbUser) === 'PRO' : getEffectiveTier(session.user as any) === 'PRO';
 
         // Strip Pro-only fields for free users
         if (!isPro) {
