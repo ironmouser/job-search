@@ -193,16 +193,14 @@ export default function Navigation() {
             </>
           )}
 
-          {(userRole === 'SYSTEM_ADMIN' || userRole === 'ORGANIZATION_ADMIN') && (
+          {userRole === 'SYSTEM_ADMIN' && (
             <>
-              {userRole === 'SYSTEM_ADMIN' && (
-                <li className="nav-item">
-                  <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={closeMenu} title="Admin Panel">
-                    <Shield size={16} />
-                    <span className="nav-text">Admin Panel</span>
-                  </Link>
-                </li>
-              )}
+              <li className="nav-item">
+                <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={closeMenu} title="Admin Panel">
+                  <Shield size={16} />
+                  <span className="nav-text">Admin Panel</span>
+                </Link>
+              </li>
               <li className="nav-item">
                 <Link href="/org-admin" className={pathname.startsWith('/org-admin') ? 'active' : ''} onClick={closeMenu} title="Org Admin">
                   <Shield size={16} />
