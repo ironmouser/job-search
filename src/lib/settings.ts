@@ -111,7 +111,7 @@ export const DEFAULT_PRO_SOURCES: Record<string, boolean> = {
     linkedin: true,
     indeed: true,
     ziprecruiter: true,
-    dice: true,
+    dice: false,
     weworkremotely: true,
     remoteok: true,
     workingnomads: true,
@@ -148,27 +148,21 @@ export async function handleUserUpgradeToPro(userId: string) {
         where: { userId }
     });
 
-    const currentSources = (prefs?.sources as Record<string, boolean>) || {
-        indeed: true,
-        ziprecruiter: true,
-        dice: true,
-        weworkremotely: true,
-        nodesk: true,
-        remoteok: true,
-        workingnomads: true,
-        remotive: true,
-        remotepoc: true,
-        arbeitnow: false,
-        ycombinator: true
-    };
+    const currentSources = (prefs?.sources as Record<string, boolean>) || { ...DEFAULT_PRO_SOURCES };
 
-    // 3. Automatically enable all non-international premium sources
+    // 3. Automatically enable non-international Pro sources except Dice (unless already customized)
     const updatedSources = { ...currentSources };
     for (const src of PREMIUM_NON_INTL_SOURCES) {
-        updatedSources[src] = true;
+        if (src === 'dice') {
+            if (updatedSources[src] === undefined) {
+                updatedSources[src] = false;
+            }
+        } else {
+            updatedSources[src] = true;
+        }
     }
 
-    // 4. Preserve existing user choices for international sources (do not auto-enable)
+    // 4. Preserve/default international sources to false unless explicitly customized
     for (const src of INTERNATIONAL_SOURCES) {
         if (updatedSources[src] === undefined) {
             updatedSources[src] = false;

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/jobs';
 import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeHimalayas, scrapeJobicy, scrapeJobspresso, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational, scrapeDice } from '@/lib/scrapers/crawlee';
-import { getUserSettings } from '@/lib/settings';
+import { getUserSettings, DEFAULT_PRO_SOURCES } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -31,9 +31,8 @@ export async function POST(request: Request) {
             select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
         });
         const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
-        let sources = settings.sources || { greenhouse: true, weworkremotely: true, remotive: true, nodesk: true, himalayas: true, jobicy: true, jobspresso: true };
+        let sources = settings.sources ? { ...settings.sources } : (isPro ? { ...DEFAULT_PRO_SOURCES } : { greenhouse: true, weworkremotely: true, remotive: true, nodesk: true, himalayas: true, jobicy: true, jobspresso: true });
 
-        
         const FREE_ALLOWED_SOURCES = new Set(['greenhouse', 'weworkremotely', 'remotive', 'nodesk', 'himalayas', 'jobicy', 'jobspresso']);
 
         if (!isPro) {
@@ -41,6 +40,13 @@ export async function POST(request: Request) {
             for (const key of Object.keys(sources)) {
                 if (!FREE_ALLOWED_SOURCES.has(key)) {
                     sources[key] = false;
+                }
+            }
+        } else {
+            // Ensure any un-configured Pro sources use DEFAULT_PRO_SOURCES
+            for (const [key, defaultVal] of Object.entries(DEFAULT_PRO_SOURCES)) {
+                if (sources[key] === undefined) {
+                    sources[key] = defaultVal;
                 }
             }
         }
