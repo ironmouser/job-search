@@ -879,7 +879,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
 
         <OnboardingWidget />
 
-        <div className="responsive-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
+        <div className="responsive-grid stat-cards-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
         <div 
           className={`glass-card filter-card top-stat-card ${activeFilter === 'all' ? 'active' : ''}`}
           onClick={() => setActiveFilter('all')}
@@ -1251,7 +1251,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                 '--accent-primary': '#a855f7',
                 '--accent-secondary': '#9333ea',
                 '--accent-glow': 'rgba(168, 85, 247, 0.15)',
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)'
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%)'
               } : isEmailJob ? {
                 '--accent-primary': '#0cc22d',
                 '--accent-secondary': '#09a026',

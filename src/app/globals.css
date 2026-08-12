@@ -78,7 +78,7 @@
   --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
 
-  --card-tint-opacity: 5%;
+  --card-tint-opacity: 2%;
 }
 
 @media (min-width: 768px) {
@@ -305,6 +305,12 @@ details[open] summary .accordion-chevron {
 
 /* ─── Stat Cards ─────────────────────────────────────────────────────── */
 
+.stat-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
 .top-stat-card {
   padding: 1rem !important;
   background-color: var(--card) !important;
@@ -317,6 +323,150 @@ body.light-theme .top-stat-card.active {
   background-color: rgba(0, 112, 243, 0.08) !important;
   border: 1px solid rgba(0, 112, 243, 0.3) !important;
   box-shadow: 0 0 0 1px rgba(0, 112, 243, 0.1) !important;
+}
+
+/* ─── Scrape & Add Accordion Card (Dark & Light Mode) ─────────────────── */
+
+.add-job-card {
+  margin-bottom: 3rem;
+  border-radius: var(--radius-lg, 0.625rem);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease-in-out;
+  overflow: hidden;
+  /* Dark Mode Default */
+  background-color: #162032;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+body.light-theme .add-job-card {
+  background-color: #E1EBFC;
+  border: 1px solid #c5d8f9;
+}
+
+.add-job-card-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 500;
+  user-select: none;
+}
+
+.add-job-card-trigger-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.add-job-card-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #60a5fa;
+}
+
+body.light-theme .add-job-card-icon {
+  color: #0A0A0A;
+}
+
+.add-job-card-text {
+  color: #f1f5f9;
+}
+
+.add-job-card-text strong {
+  color: #93c5fd;
+}
+
+body.light-theme .add-job-card-text {
+  color: #0A0A0A;
+}
+
+body.light-theme .add-job-card-text strong {
+  color: #0A0A0A;
+}
+
+.add-job-card-chevron {
+  width: 20px;
+  height: 20px;
+  color: #94a3b8;
+}
+
+body.light-theme .add-job-card-chevron {
+  color: #0A0A0A;
+}
+
+.add-job-card-divider {
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .add-job-card-divider {
+  border-top: 1px solid rgba(10, 10, 10, 0.12);
+}
+
+.add-job-card-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 2.75rem 0 0.875rem;
+  border-radius: var(--radius, 6px);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  background-color: #0f172a;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.add-job-card-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+body.light-theme .add-job-card-input {
+  background-color: #ffffff;
+  color: #0a0a0a;
+  border: 1px solid #cbd5e1;
+}
+
+body.light-theme .add-job-card-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.add-job-card-paste-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.add-job-card-paste-btn:hover {
+  color: #f8fafc;
+}
+
+body.light-theme .add-job-card-paste-btn {
+  color: #64748b;
+}
+
+body.light-theme .add-job-card-paste-btn:hover {
+  color: #0a0a0a;
 }
 
 /* ─── App Layout ─────────────────────────────────────────────────────── */
@@ -856,6 +1006,7 @@ h4.job-company {
 }
 
 .job-title {
+  font-family: var(--font-sans);
   font-size: 1.05rem;
   line-height: 1.35;
   font-weight: 600;
@@ -869,6 +1020,7 @@ body.light-theme .job-title {
 }
 
 .email-job-title {
+  font-family: var(--font-sans);
   font-size: 1.05rem;
   line-height: 1.35;
   font-weight: 600;
@@ -886,6 +1038,7 @@ body.light-theme .email-job-title {
 .pipeline-card h1, .pipeline-card h2, .pipeline-card h3,
 .pipeline-card h4, .pipeline-card h5, .pipeline-card h6 {
   color: var(--foreground);
+  font-family: var(--font-sans);
 }
 
 .job-title h1, .job-title h2, .job-title h3,
@@ -893,6 +1046,7 @@ body.light-theme .email-job-title {
 .email-job-title h1, .email-job-title h2, .email-job-title h3,
 .email-job-title h4, .email-job-title h5, .email-job-title h6 {
   color: inherit;
+  font-family: var(--font-sans);
 }
 
 .job-title:hover,
@@ -975,7 +1129,7 @@ body.light-theme .email-job-title {
 
 .responsive-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
 }
 

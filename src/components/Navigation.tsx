@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, MessageSquareHeart, Users, Mail, Cpu, Activity, Zap } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, MessageSquareHeart, Users, Mail, Cpu, Activity, Zap, User } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useHelp } from '@/contexts/HelpContext';
 import { getAssetUrl } from '@/lib/assets';
@@ -164,6 +164,12 @@ export default function Navigation() {
                 <Link href="/pipeline" className={pathname === '/pipeline' ? 'active' : ''} onClick={closeMenu} title="Tracker">
                   <Briefcase size={16} />
                   <span className="nav-text">Tracker</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/profile" className={pathname === '/profile' ? 'active' : ''} onClick={closeMenu} title="Profile">
+                  <User size={16} />
+                  <span className="nav-text">Profile</span>
                 </Link>
               </li>
               <li className="nav-item">

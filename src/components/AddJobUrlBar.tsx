@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, FileText, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, FileText, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { trackAddJobUrl } from '@/lib/analytics';
 
 interface AddJobUrlBarProps {
@@ -12,6 +12,7 @@ interface AddJobUrlBarProps {
 
 export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJobUrlBarProps) {
   const isPro = userPlanTier === 'PRO';
+  const [isOpen, setIsOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [statusStep, setStatusStep] = useState<string>('');
@@ -144,140 +145,114 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
   };
 
   return (
-    <div className="add-job-card" style={{
-      marginBottom: '1.5rem',
-      background: 'var(--card)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg, 0.625rem)',
-      padding: '1.25rem',
-      boxShadow: 'var(--shadow-sm)',
-      transition: 'all 0.15s ease-in-out'
-    }}>
-      {/* Banner / Helper Text */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '0.75rem',
-        fontSize: '0.875rem',
-        fontWeight: 500
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: isPro ? '#60a5fa' : 'var(--success)' }}>
-          {isPro ? (
-            <span>Paste any job URL to scrape, score & add to pipeline. <strong>Private submission (not shared with global feed)</strong>.</span>
+    <div className="add-job-card">
+      {/* Accordion Header / Trigger */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        className="add-job-card-trigger"
+      >
+        <div className="add-job-card-trigger-left">
+          <PlusCircle className="add-job-card-icon" />
+          <span className="add-job-card-text">
+            Paste any job URL to scrape, score & add to pipeline. <strong>Private submission (not shared with global feed)</strong>.
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', marginLeft: '0.75rem', flexShrink: 0 }}>
+          {isOpen ? (
+            <ChevronUp className="add-job-card-chevron" />
           ) : (
-            <>
-              <Sparkles style={{ width: 16, height: 16, flexShrink: 0 }} />
-              <span>Paste a job URL to scrape & score it immediately. <strong>+1 Free Resume & Cover Letter generation unlocked!</strong></span>
-            </>
+            <ChevronDown className="add-job-card-chevron" />
           )}
         </div>
-      </div>
+      </button>
 
-      {/* Input Form */}
-      <form onSubmit={handleSubmitUrl} className="add-job-url-form" style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
-        <div style={{ position: 'relative', flex: '1 1 auto', width: '100%' }}>
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Paste job URL here (e.g. https://boards.greenhouse.io/company/jobs/12345)"
-            disabled={isLoading}
-            required
-            style={{
-              width: '100%',
-              minHeight: '44px',
-              padding: '0 2.75rem 0 0.875rem',
-              borderRadius: 'var(--radius, 6px)',
-              border: '1px solid var(--input-border, var(--border))',
-              fontSize: '16px',
-              outline: 'none',
-              transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-              background: 'var(--input, var(--card))',
-              color: 'var(--foreground)'
-            }}
-          />
-          <button
-            type="button"
-            onClick={handlePaste}
-            title="Paste from clipboard"
-            disabled={isLoading}
-            style={{
-              position: 'absolute',
-              right: '6px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--muted-foreground)',
-              padding: '6px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <Clipboard style={{ width: 18, height: 18 }} />
-          </button>
-        </div>
+      {/* Accordion Collapsible Content */}
+      {isOpen && (
+        <div className="add-job-card-divider">
+          {/* Input Form */}
+          <form onSubmit={handleSubmitUrl} className="add-job-url-form" style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+            <div style={{ position: 'relative', flex: '1 1 auto', width: '100%' }}>
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Paste job URL here (e.g. https://boards.greenhouse.io/company/jobs/12345)"
+                disabled={isLoading}
+                required
+                className="add-job-card-input"
+              />
+              <button
+                type="button"
+                onClick={handlePaste}
+                title="Paste from clipboard"
+                disabled={isLoading}
+                className="add-job-card-paste-btn"
+              >
+                <Clipboard style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
 
-        <button
-          type="submit"
-          disabled={isLoading || !url.trim()}
-          className="add-job-url-btn btn-primary"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            padding: '0 1.25rem',
-            minHeight: '44px',
-            borderRadius: 'var(--radius, 6px)',
-            background: 'var(--primary)',
-            color: 'var(--primary-foreground)',
-            fontWeight: 500,
-            fontSize: '0.875rem',
-            border: 'none',
-            cursor: isLoading || !url.trim() ? 'not-allowed' : 'pointer',
-            opacity: isLoading || !url.trim() ? 0.6 : 1,
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-            flexShrink: 0
-          }}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
-              <span>Scraping...</span>
-            </>
-          ) : (
-            <>
-              <PlusCircle style={{ width: 16, height: 16 }} />
-              <span>Scrape & Add Job</span>
-            </>
+            <button
+              type="submit"
+              disabled={isLoading || !url.trim()}
+              className="add-job-url-btn btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                padding: '0 1.25rem',
+                minHeight: '44px',
+                borderRadius: 'var(--radius, 6px)',
+                background: 'var(--primary)',
+                color: 'var(--primary-foreground)',
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                border: 'none',
+                cursor: isLoading || !url.trim() ? 'not-allowed' : 'pointer',
+                opacity: isLoading || !url.trim() ? 0.6 : 1,
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
+                  <span>Scraping...</span>
+                </>
+              ) : (
+                <>
+                  <PlusCircle style={{ width: 16, height: 16 }} />
+                  <span>Scrape & Add Job</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Progress & Alert Indicators */}
+          {isLoading && statusStep && (
+            <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#1e40af' }}>
+              <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} />
+              <span>{statusStep}</span>
+            </div>
           )}
-        </button>
-      </form>
 
-      {/* Progress & Alert Indicators */}
-      {isLoading && statusStep && (
-        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#60a5fa' }}>
-          <Loader2 className="animate-spin" style={{ width: 14, height: 14 }} />
-          <span>{statusStep}</span>
-        </div>
-      )}
+          {errorMsg && !showManualModal && (
+            <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#dc2626' }}>
+              <AlertCircle style={{ width: 16, height: 16 }} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
 
-      {errorMsg && !showManualModal && (
-        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--danger)' }}>
-          <AlertCircle style={{ width: 16, height: 16 }} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {successMsg && (
-        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 500 }}>
-          <CheckCircle2 style={{ width: 16, height: 16 }} />
-          <span>{successMsg}</span>
+          {successMsg && (
+            <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#15803d', fontWeight: 500 }}>
+              <CheckCircle2 style={{ width: 16, height: 16 }} />
+              <span>{successMsg}</span>
+            </div>
+          )}
         </div>
       )}
 
