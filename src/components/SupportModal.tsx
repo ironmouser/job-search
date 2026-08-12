@@ -102,12 +102,12 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
         style={{
           width: '100%',
           maxWidth: '520px',
-          backgroundColor: '#ffffff',
-          border: '1px solid #e5e7eb',
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
           overflow: 'hidden',
-          color: '#111827',
+          color: 'var(--card-foreground)',
           position: 'relative',
         }}
       >
@@ -115,18 +115,18 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
         <div
           style={{
             padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#f9fafb',
+            background: 'var(--card-header-bg)',
           }}
         >
           <div>
-            <h2 id="support-modal-title" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: '#111827' }}>
+            <h2 id="support-modal-title" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: 'var(--foreground)' }}>
               Contact Support
             </h2>
-            <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: '4px 0 0 0' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', margin: '4px 0 0 0' }}>
               Send a request directly to Support@jobagenthq.com
             </p>
           </div>
@@ -136,7 +136,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#6b7280',
+              color: 'var(--muted-foreground)',
               cursor: 'pointer',
               padding: '6px',
               borderRadius: '8px',
@@ -145,8 +145,6 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               justifyContent: 'center',
               transition: 'all 0.15s ease',
             }}
-            onMouseOver={(e) => (e.currentTarget.style.color = '#111827')}
-            onMouseOut={(e) => (e.currentTarget.style.color = '#6b7280')}
           >
             <X size={20} />
           </button>
@@ -161,27 +159,27 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                   width: '56px',
                   height: '56px',
                   borderRadius: '50%',
-                  backgroundColor: '#dcfce7',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 1.25rem auto',
-                  color: '#16a34a',
+                  color: '#10b981',
                 }}
               >
                 <CheckCircle2 size={32} />
               </div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111827' }}>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--foreground)' }}>
                 Thank You!
               </h3>
-              <p style={{ color: '#4b5563', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              <p style={{ color: 'var(--muted-foreground)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
                 Thank you for reaching out. Your support request has been submitted successfully, and our team will get back to you shortly.
               </p>
               <button
                 onClick={handleReset}
                 style={{
                   padding: '0.75rem 1.75rem',
-                  backgroundColor: '#4f46e5',
+                  backgroundColor: 'var(--accent-primary)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
@@ -212,27 +210,27 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                   style={{
                     padding: '0.85rem 1rem',
                     borderRadius: '8px',
-                    backgroundColor: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    color: '#991b1b',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#ef4444',
                     fontSize: '0.875rem',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.35rem',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: '#dc2626' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: '#ef4444' }}>
                     <AlertCircle size={18} style={{ flexShrink: 0 }} />
                     <span>Oops! Something went wrong</span>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#991b1b', lineHeight: 1.4 }}>
-                    {error} Please email <a href="mailto:support@jobagenthq.com" style={{ color: '#4f46e5', textDecoration: 'underline' }}>support@jobagenthq.com</a> directly for assistance.
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#ef4444', lineHeight: 1.4 }}>
+                    {error} Please email <a href="mailto:support@jobagenthq.com" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>support@jobagenthq.com</a> directly for assistance.
                   </p>
                 </div>
               )}
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
                   Your Name *
                 </label>
                 <input
@@ -245,9 +243,9 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     width: '100%',
                     padding: '0.65rem 0.85rem',
                     borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    color: '#111827',
+                    backgroundColor: 'var(--input)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--foreground)',
                     fontSize: '0.925rem',
                     outline: 'none',
                     boxSizing: 'border-box',
@@ -256,7 +254,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
                   Email Address *
                 </label>
                 <input
@@ -269,9 +267,9 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     width: '100%',
                     padding: '0.65rem 0.85rem',
                     borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    color: '#111827',
+                    backgroundColor: 'var(--input)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--foreground)',
                     fontSize: '0.925rem',
                     outline: 'none',
                     boxSizing: 'border-box',
@@ -280,7 +278,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
                   Subject *
                 </label>
                 <input
@@ -293,9 +291,9 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     width: '100%',
                     padding: '0.65rem 0.85rem',
                     borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    color: '#111827',
+                    backgroundColor: 'var(--input)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--foreground)',
                     fontSize: '0.925rem',
                     outline: 'none',
                     boxSizing: 'border-box',
@@ -304,7 +302,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
                   Message *
                 </label>
                 <textarea
@@ -317,9 +315,9 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     width: '100%',
                     padding: '0.65rem 0.85rem',
                     borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    color: '#111827',
+                    backgroundColor: 'var(--input)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--foreground)',
                     fontSize: '0.925rem',
                     outline: 'none',
                     resize: 'vertical',
@@ -336,9 +334,9 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                   disabled={loading}
                   style={{
                     padding: '0.65rem 1.25rem',
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'var(--secondary)',
+                    color: 'var(--foreground)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     fontWeight: 500,
                     fontSize: '0.9rem',
@@ -352,7 +350,7 @@ export default function SupportModal({ isOpen, onClose }: SupportModalProps) {
                   disabled={loading}
                   style={{
                     padding: '0.65rem 1.4rem',
-                    backgroundColor: '#4f46e5',
+                    backgroundColor: 'var(--accent-primary)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',

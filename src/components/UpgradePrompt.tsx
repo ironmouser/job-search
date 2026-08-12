@@ -164,13 +164,14 @@ function ModalUpgradePrompt({ stats, feature, onDismiss }: UpgradePromptProps) {
     >
       <div
         style={{
-          background: 'var(--card-bg, #1a1a2e)',
-          border: '1px solid rgba(168, 85, 247, 0.4)',
+          background: 'var(--card)',
+          color: 'var(--card-foreground)',
+          border: '1px solid var(--border)',
           borderRadius: '20px',
           padding: '2.5rem',
           maxWidth: '480px',
           width: '90%',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
           textAlign: 'center',
           position: 'relative',
         }}

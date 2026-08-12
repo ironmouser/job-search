@@ -104,15 +104,15 @@ export function ContactSalesModal({
     >
       <div
         style={{
-          background: "#111827",
-          border: "1px solid rgba(255, 255, 255, 0.12)",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 16,
           width: "100%",
           maxWidth: 520,
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.4)",
           padding: "1.75rem",
           position: "relative",
-          color: "#f3f4f6",
+          color: "var(--card-foreground)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -125,7 +125,7 @@ export function ContactSalesModal({
             right: 16,
             background: "transparent",
             border: "none",
-            color: "#9ca3af",
+            color: "var(--muted-foreground)",
             cursor: "pointer",
             padding: 4,
             borderRadius: 6,

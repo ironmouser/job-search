@@ -110,12 +110,12 @@ export function BuySeatsModal({ isOpen, onClose, orgId, orgName, userEmail = "",
           maxWidth: 620,
           maxHeight: "90vh",
           overflowY: "auto",
-          background: "#111827",
-          border: "1px solid rgba(255, 255, 255, 0.12)",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
           borderRadius: 16,
           padding: "1.75rem",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.7)",
-          color: "#f9fafb",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.4)",
+          color: "var(--card-foreground)",
           position: "relative",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -124,13 +124,13 @@ export function BuySeatsModal({ isOpen, onClose, orgId, orgName, userEmail = "",
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <ShoppingCart size={20} color="#3695e3" />
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>
+              <ShoppingCart size={20} color="var(--accent-primary)" />
+              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
                 Purchase Organization Passes
               </h2>
             </div>
-            <p style={{ fontSize: "0.875rem", color: "#9ca3af", margin: 0 }}>
-              Acquire seat passes for <strong style={{ color: "#f3f4f6" }}>{orgName}</strong>
+            <p style={{ fontSize: "0.875rem", color: "var(--muted-foreground)", margin: 0 }}>
+              Acquire seat passes for <strong style={{ color: "var(--foreground)" }}>{orgName}</strong>
             </p>
           </div>
           <button
@@ -138,7 +138,7 @@ export function BuySeatsModal({ isOpen, onClose, orgId, orgName, userEmail = "",
             style={{
               background: "transparent",
               border: "none",
-              color: "#9ca3af",
+              color: "var(--muted-foreground)",
               cursor: "pointer",
               padding: 4,
               borderRadius: 6,

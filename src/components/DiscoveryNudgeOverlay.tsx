@@ -64,12 +64,12 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
         style={{
           width: '100%',
           maxWidth: '500px',
-          backgroundColor: '#ffffff',
-          border: '1px solid #e5e7eb',
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
           overflow: 'hidden',
-          color: '#111827',
+          color: 'var(--card-foreground)',
           position: 'relative',
           padding: '2rem',
         }}
@@ -84,7 +84,7 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
             right: '1.25rem',
             background: 'transparent',
             border: 'none',
-            color: '#6b7280',
+            color: 'var(--muted-foreground)',
             cursor: 'pointer',
             padding: '6px',
             borderRadius: '8px',
@@ -93,8 +93,6 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
             justifyContent: 'center',
             transition: 'color 0.15s ease',
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = '#111827')}
-          onMouseOut={(e) => (e.currentTarget.style.color = '#6b7280')}
         >
           <X size={20} />
         </button>
@@ -106,13 +104,13 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              backgroundColor: '#eef2ff',
-              border: '1px solid #e0e7ff',
+              backgroundColor: 'var(--accent-glow)',
+              border: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: '1.25rem',
-              color: '#4f46e5',
+              color: 'var(--accent-primary)',
             }}
           >
             <Search size={28} />
@@ -120,7 +118,7 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
 
           <h2
             id="discovery-nudge-title"
-            style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0 0 0.75rem 0', color: '#111827' }}
+            style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0 0 0.75rem 0', color: 'var(--foreground)' }}
           >
             Fine-Tune Your Job Search
           </h2>
@@ -128,7 +126,7 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
           <p
             style={{
               fontSize: '0.975rem',
-              color: '#4b5563',
+              color: 'var(--muted-foreground)',
               lineHeight: 1.6,
               margin: '0 0 1.75rem 0',
               fontWeight: 400,
@@ -144,24 +142,14 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
             onClick={onClose}
             style={{
               padding: '0.7rem 1.25rem',
-              backgroundColor: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #e5e7eb',
+              backgroundColor: 'var(--secondary)',
+              color: 'var(--foreground)',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
               fontWeight: 500,
               fontSize: '0.9rem',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.color = '#111827';
-              e.currentTarget.style.backgroundColor = '#e5e7eb';
-              e.currentTarget.style.borderColor = '#d1d5db';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.color = '#374151';
-              e.currentTarget.style.backgroundColor = '#f3f4f6';
-              e.currentTarget.style.borderColor = '#e5e7eb';
             }}
           >
             Dismiss
@@ -170,7 +158,7 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
             onClick={handleGoToSettings}
             style={{
               padding: '0.7rem 1.4rem',
-              backgroundColor: '#4f46e5',
+              backgroundColor: 'var(--accent-primary)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '8px',
@@ -182,8 +170,6 @@ export default function DiscoveryNudgeOverlay({ isOpen, onClose }: DiscoveryNudg
               gap: '0.5rem',
               transition: 'opacity 0.15s ease',
             }}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
           >
             <Settings size={16} />
             Go to Settings

@@ -178,15 +178,15 @@ export default function AddJobModal({
       <div
         className="glass-card"
         style={{
-          backgroundColor: 'var(--bg-surface, #0f172a)',
-          border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
           padding: '1.75rem',
           maxWidth: '560px',
           width: '100%',
           position: 'relative',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
-          color: 'var(--text-primary, #f8fafc)'
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+          color: 'var(--card-foreground)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -198,7 +198,7 @@ export default function AddJobModal({
             right: '1rem',
             background: 'none',
             border: 'none',
-            color: 'var(--text-secondary, #94a3b8)',
+            color: 'var(--muted-foreground)',
             cursor: 'pointer',
             padding: '4px',
             borderRadius: '50%'
@@ -209,11 +209,11 @@ export default function AddJobModal({
         </button>
 
         <h2 style={{ marginTop: 0, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.35rem', fontWeight: 700 }}>
-          <PlusCircle size={24} style={{ color: 'var(--accent-primary, #3b82f6)' }} />
+          <PlusCircle size={24} style={{ color: 'var(--accent-primary)' }} />
           Scrape & Add Job
         </h2>
 
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary, #94a3b8)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
           {isPro ? (
             <span>Paste any job opening URL to instantly extract job details, score match & add to your pipeline.</span>
           ) : (
@@ -236,11 +236,11 @@ export default function AddJobModal({
                   height: '44px',
                   padding: '0 2.75rem 0 0.875rem',
                   borderRadius: '10px',
-                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.2))',
+                  border: '1px solid var(--border)',
                   fontSize: '0.9rem',
                   outline: 'none',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: 'var(--text-primary, #f8fafc)'
+                  background: 'var(--input)',
+                  color: 'var(--foreground)'
                 }}
               />
               <button
@@ -256,7 +256,7 @@ export default function AddJobModal({
                   background: 'transparent',
                   border: 'none',
                   cursor: 'pointer',
-                  color: 'var(--text-secondary, #94a3b8)',
+                  color: 'var(--muted-foreground)',
                   padding: '4px',
                   display: 'flex',
                   alignItems: 'center'
@@ -312,7 +312,7 @@ export default function AddJobModal({
         ) : (
           <form onSubmit={handleManualSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Job Title</label>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Job Title</label>
               <input
                 type="text"
                 value={manualTitle}
@@ -323,16 +323,16 @@ export default function AddJobModal({
                   height: '38px',
                   padding: '0 0.75rem',
                   borderRadius: '8px',
-                  border: '1px solid var(--border-glass)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'var(--text-primary)'
+                  border: '1px solid var(--border)',
+                  background: 'var(--input)',
+                  color: 'var(--foreground)'
                 }}
               />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Company</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Company</label>
                 <input
                   type="text"
                   value={manualCompany}
@@ -343,14 +343,14 @@ export default function AddJobModal({
                     height: '38px',
                     padding: '0 0.75rem',
                     borderRadius: '8px',
-                    border: '1px solid var(--border-glass)',
-                    background: 'rgba(255,255,255,0.05)',
-                    color: 'var(--text-primary)'
+                    border: '1px solid var(--border)',
+                    background: 'var(--input)',
+                    color: 'var(--foreground)'
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Location</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Location</label>
                 <input
                   type="text"
                   value={manualLocation}
@@ -361,16 +361,16 @@ export default function AddJobModal({
                     height: '38px',
                     padding: '0 0.75rem',
                     borderRadius: '8px',
-                    border: '1px solid var(--border-glass)',
-                    background: 'rgba(255,255,255,0.05)',
-                    color: 'var(--text-primary)'
+                    border: '1px solid var(--border)',
+                    background: 'var(--input)',
+                    color: 'var(--foreground)'
                   }}
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem' }}>Job Description *</label>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Job Description *</label>
               <textarea
                 value={manualDescription}
                 onChange={(e) => setManualDescription(e.target.value)}
@@ -381,9 +381,9 @@ export default function AddJobModal({
                   width: '100%',
                   padding: '0.75rem',
                   borderRadius: '8px',
-                  border: '1px solid var(--border-glass)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--input)',
+                  color: 'var(--foreground)',
                   fontSize: '0.85rem',
                   resize: 'vertical'
                 }}

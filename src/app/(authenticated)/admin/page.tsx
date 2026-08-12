@@ -1449,26 +1449,26 @@ export default function AdminDashboard() {
             style={{
               width: '100%',
               maxWidth: '440px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
+              backgroundColor: 'var(--card)',
+              border: '1px solid var(--border)',
               borderRadius: '16px',
               padding: '1.75rem',
-              color: '#0f172a',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+              color: 'var(--card-foreground)',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
               display: 'flex',
               flexDirection: 'column',
               gap: '1.25rem'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ padding: '0.5rem', borderRadius: '50%', background: '#fee2e2', color: '#dc2626' }}>
+              <div style={{ padding: '0.5rem', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
                 <Trash2 size={24} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: '#0f172a' }}>Confirm User Deletion</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: 'var(--foreground)' }}>Confirm User Deletion</h3>
             </div>
 
-            <p style={{ fontSize: '0.9rem', color: '#475569', margin: 0, lineHeight: 1.5 }}>
-              Are you sure you want to permanently delete <strong style={{ color: '#0f172a' }}>{userToDelete.name || userToDelete.email}</strong> ({userToDelete.email})?
+            <p style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)', margin: 0, lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete <strong style={{ color: 'var(--foreground)' }}>{userToDelete.name || userToDelete.email}</strong> ({userToDelete.email})?
               All associated data (saved jobs, assets, and preferences) will be permanently purged.
             </p>
 
@@ -1482,9 +1482,9 @@ export default function AdminDashboard() {
                   borderRadius: '8px',
                   fontSize: '0.875rem',
                   fontWeight: 500,
-                  backgroundColor: '#f1f5f9',
-                  color: '#334155',
-                  border: '1px solid #e2e8f0',
+                  backgroundColor: 'var(--secondary)',
+                  color: 'var(--foreground)',
+                  border: '1px solid var(--border)',
                   cursor: 'pointer',
                 }}
               >

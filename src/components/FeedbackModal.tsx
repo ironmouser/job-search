@@ -105,12 +105,12 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
         style={{
           width: '100%',
           maxWidth: '480px',
-          backgroundColor: '#ffffff',
-          border: '1px solid #e5e7eb',
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
           overflow: 'hidden',
-          color: '#111827',
+          color: 'var(--card-foreground)',
           position: 'relative',
         }}
       >
@@ -118,18 +118,18 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
         <div
           style={{
             padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#f9fafb',
+            background: 'var(--card-header-bg)',
           }}
         >
           <div>
-            <h2 id="feedback-modal-title" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: '#111827' }}>
+            <h2 id="feedback-modal-title" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: 'var(--foreground)' }}>
               Rate Your Experience
             </h2>
-            <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: '4px 0 0 0' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', margin: '4px 0 0 0' }}>
               Your feedback helps us make Job Agent even better
             </p>
           </div>
@@ -139,7 +139,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#6b7280',
+              color: 'var(--muted-foreground)',
               cursor: 'pointer',
               padding: '6px',
               borderRadius: '8px',
@@ -148,8 +148,6 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               justifyContent: 'center',
               transition: 'all 0.15s ease',
             }}
-            onMouseOver={(e) => (e.currentTarget.style.color = '#111827')}
-            onMouseOut={(e) => (e.currentTarget.style.color = '#6b7280')}
           >
             <X size={20} />
           </button>
@@ -164,27 +162,27 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                   width: '56px',
                   height: '56px',
                   borderRadius: '50%',
-                  backgroundColor: '#dcfce7',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 1.25rem auto',
-                  color: '#16a34a',
+                  color: '#10b981',
                 }}
               >
                 <CheckCircle2 size={32} />
               </div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111827' }}>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--foreground)' }}>
                 Thank You for Your Feedback!
               </h3>
-              <p style={{ color: '#4b5563', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              <p style={{ color: 'var(--muted-foreground)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
                 We appreciate you taking the time to rate our platform. Your response has been saved.
               </p>
               <button
                 onClick={handleReset}
                 style={{
                   padding: '0.75rem 1.75rem',
-                  backgroundColor: '#4f46e5',
+                  backgroundColor: 'var(--accent-primary)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
@@ -204,23 +202,23 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                   style={{
                     padding: '0.85rem 1rem',
                     borderRadius: '8px',
-                    backgroundColor: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    color: '#991b1b',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#ef4444',
                     fontSize: '0.875rem',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
                   }}
                 >
-                  <AlertCircle size={18} style={{ flexShrink: 0, color: '#dc2626' }} />
+                  <AlertCircle size={18} style={{ flexShrink: 0, color: '#ef4444' }} />
                   <span>{error}</span>
                 </div>
               )}
 
               {/* Star Rating Section */}
               <div style={{ textAlign: 'center' }}>
-                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#374151', marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.75rem' }}>
                   How would you rate Job Agent HQ? *
                 </label>
                 <div
@@ -246,14 +244,14 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                       <Star
                         size={32}
                         fill={starIndex <= activeStarCount ? '#f59e0b' : 'none'}
-                        color={starIndex <= activeStarCount ? '#f59e0b' : '#d1d5db'}
+                        color={starIndex <= activeStarCount ? '#f59e0b' : 'var(--muted-foreground)'}
                         strokeWidth={1.5}
                       />
                     </button>
                   ))}
                 </div>
                 {rating > 0 && (
-                  <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.4rem', fontWeight: 500 }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', marginTop: '0.4rem', fontWeight: 500 }}>
                     {rating === 1 && 'Poor'}
                     {rating === 2 && 'Fair'}
                     {rating === 3 && 'Good'}
@@ -265,7 +263,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
 
               {/* Comments Input */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151', marginBottom: '0.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
                   Comments or Suggestions
                 </label>
                 <textarea
@@ -277,9 +275,9 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                     width: '100%',
                     padding: '0.65rem 0.85rem',
                     borderRadius: '8px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #d1d5db',
-                    color: '#111827',
+                    backgroundColor: 'var(--input)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--foreground)',
                     fontSize: '0.925rem',
                     outline: 'none',
                     resize: 'vertical',
@@ -297,9 +295,9 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                   disabled={loading}
                   style={{
                     padding: '0.65rem 1.25rem',
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'var(--secondary)',
+                    color: 'var(--foreground)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     fontWeight: 500,
                     fontSize: '0.9rem',
@@ -313,7 +311,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                   disabled={loading || rating === 0}
                   style={{
                     padding: '0.65rem 1.4rem',
-                    backgroundColor: '#4f46e5',
+                    backgroundColor: 'var(--accent-primary)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',

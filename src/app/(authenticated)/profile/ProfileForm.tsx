@@ -385,13 +385,14 @@ export default function ProfileForm({
             style={{
               width: "100%",
               maxWidth: "500px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #e2e8f0",
+              backgroundColor: "var(--card)",
+              color: "var(--card-foreground)",
+              border: "1px solid var(--border)",
               borderRadius: "16px",
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)",
             }}
           >
             <div style={{ position: "relative", width: "100%", height: "360px", backgroundColor: "#0f172a" }}>
@@ -407,7 +408,7 @@ export default function ProfileForm({
                 onZoomChange={setZoom}
               />
             </div>
-            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem", backgroundColor: "#ffffff" }}>
+            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem", backgroundColor: "var(--card)" }}>
               <input
                 type="range"
                 value={zoom}

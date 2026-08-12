@@ -152,32 +152,32 @@ export default function OrgAdminMembersPage() {
               role="dialog"
               aria-modal="true"
               style={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
+                backgroundColor: "var(--card)",
+                color: "var(--card-foreground)",
+                border: "1px solid var(--border)",
                 borderRadius: 16,
                 padding: "1.75rem",
                 width: "100%",
                 maxWidth: 420,
-                color: "#0f172a",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)",
                 display: "flex",
                 flexDirection: "column",
                 gap: "1.25rem",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 600, color: "#0f172a" }}>Remove Member</h3>
+                <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 600, color: "var(--foreground)" }}>Remove Member</h3>
                 <button
                   onClick={() => setUserToRemove(null)}
                   disabled={removing}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "4px", borderRadius: "6px" }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)", padding: "4px", borderRadius: "6px" }}
                 >
                   <X size={18} />
                 </button>
               </div>
-              <p style={{ color: "#475569", margin: 0, fontSize: "0.88rem", lineHeight: 1.5 }}>
+              <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: "0.88rem", lineHeight: 1.5 }}>
                 Are you sure you want to remove{" "}
-                <strong style={{ color: "#0f172a" }}>
+                <strong style={{ color: "var(--foreground)" }}>
                   {userToRemove.name ?? userToRemove.email}
                 </strong>{" "}
                 from the organization? This will free their seat immediately.

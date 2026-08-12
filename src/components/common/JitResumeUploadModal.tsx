@@ -139,23 +139,24 @@ export default function JitResumeUploadModal({
           maxWidth: '620px',
           maxHeight: '90vh',
           overflowY: 'auto',
-          background: 'var(--bg-surface, #1e1e2d)',
+          background: 'var(--card)',
           borderRadius: '12px',
-          border: '1px solid var(--border-glass, rgba(255,255,255,0.1))',
+          border: '1px solid var(--border)',
           padding: '1.75rem',
           boxSizing: 'border-box',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+          color: 'var(--card-foreground)',
           position: 'relative',
         }}
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--foreground)' }}>
               <FileText className="text-accent" size={22} />
               {title}
             </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: '0.35rem', marginBottom: 0, lineHeight: 1.4 }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '0.88rem', marginTop: '0.35rem', marginBottom: 0, lineHeight: 1.4 }}>
               {description}
             </p>
           </div>
@@ -164,7 +165,7 @@ export default function JitResumeUploadModal({
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-secondary)',
+              color: 'var(--muted-foreground)',
               cursor: 'pointer',
               padding: '0.25rem',
               display: 'flex',
@@ -193,8 +194,8 @@ export default function JitResumeUploadModal({
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           style={{
-            border: `2px dashed ${isDragging ? 'var(--accent-primary, #6366f1)' : 'var(--border-glass, rgba(255,255,255,0.15))'}`,
-            background: isDragging ? 'rgba(99, 102, 241, 0.1)' : 'rgba(0,0,0,0.2)',
+            border: `2px dashed ${isDragging ? 'var(--accent-primary)' : 'var(--border)'}`,
+            background: isDragging ? 'var(--accent-glow)' : 'var(--secondary)',
             padding: '1.5rem',
             borderRadius: '8px',
             textAlign: 'center',

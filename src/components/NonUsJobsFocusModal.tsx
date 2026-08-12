@@ -42,7 +42,9 @@ export default function NonUsJobsFocusModal({
     >
       <div
         style={{
-          background: '#ffffff',
+          background: 'var(--card)',
+          color: 'var(--card-foreground)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
           padding: '32px',
           maxWidth: '460px',
@@ -57,7 +59,7 @@ export default function NonUsJobsFocusModal({
             margin: '0 0 12px',
             fontSize: '1.25rem',
             fontWeight: 700,
-            color: '#111827',
+            color: 'var(--foreground)',
           }}
         >
           Focus on U.S. Jobs?
@@ -66,12 +68,12 @@ export default function NonUsJobsFocusModal({
           style={{
             margin: '0 0 24px',
             fontSize: '0.95rem',
-            color: '#6b7280',
+            color: 'var(--muted-foreground)',
             lineHeight: 1.6,
           }}
         >
           We found{' '}
-          <strong style={{ color: '#111827' }}>
+          <strong style={{ color: 'var(--foreground)' }}>
             {intlJobCount} international {intlJobCount === 1 ? 'job' : 'jobs'}
           </strong>{' '}
           in your pipeline. Would you like to remove them and focus only on U.S.
@@ -84,9 +86,9 @@ export default function NonUsJobsFocusModal({
               flex: 1,
               padding: '10px 16px',
               borderRadius: '8px',
-              border: '1.5px solid #d1d5db',
-              background: '#ffffff',
-              color: '#374151',
+              border: '1px solid var(--border)',
+              background: 'var(--secondary)',
+              color: 'var(--foreground)',
               fontWeight: 600,
               fontSize: '0.9rem',
               cursor: 'pointer',
@@ -101,7 +103,7 @@ export default function NonUsJobsFocusModal({
               padding: '10px 16px',
               borderRadius: '8px',
               border: 'none',
-              background: '#2563eb',
+              background: 'var(--accent-primary)',
               color: '#ffffff',
               fontWeight: 600,
               fontSize: '0.9rem',

@@ -1397,18 +1397,19 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                 gridColumn: '1 / -1', 
                 textAlign: 'center', 
                 padding: '3.5rem 2rem',
-                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%)',
-                border: '1px dashed rgba(59, 130, 246, 0.4)',
+                background: 'var(--card)',
+                border: '1px dashed var(--accent-primary)',
                 borderRadius: '20px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '1.25rem',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.3)'
+                boxShadow: 'var(--shadow-md)',
+                color: 'var(--card-foreground)'
               }}
             >
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--accent-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)' }}>
                 <Sparkles size={32} style={{ color: 'var(--accent-primary)' }} />
               </div>
 
@@ -1435,8 +1436,9 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
                       borderRadius: '12px',
                       fontWeight: 600,
                       fontSize: '0.95rem',
-                      border: '1px solid rgb(13 12 12 / 20%)',
-                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--secondary)',
+                      color: 'var(--foreground)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.6rem',
