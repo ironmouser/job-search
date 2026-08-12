@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useHelp } from '../../contexts/HelpContext';
 import { CheckCircle2, Circle, ChevronDown, ChevronRight, Play } from 'lucide-react';
