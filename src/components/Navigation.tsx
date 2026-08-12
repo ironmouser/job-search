@@ -173,7 +173,7 @@ export default function Navigation() {
                 </Link>
               </li>
               <li className="nav-item">
-                <Link href="/profile" className={pathname === '/profile' ? 'active' : ''} onClick={closeMenu} title="Profile & Settings">
+                <Link href="/settings" className={pathname === '/settings' ? 'active' : ''} onClick={closeMenu} title="Settings" data-tour="settings-menu">
                   <Settings size={16} />
                   <span className="nav-text">Settings</span>
                 </Link>

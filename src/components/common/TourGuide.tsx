@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useJoyride, STATUS } from 'react-joyride';
 import { useHelp } from '../../contexts/HelpContext';
 import { useRouter, usePathname } from 'next/navigation';
@@ -64,7 +64,10 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
     const { activeTour, activeTourId, endTour, startTour, hasSeenTour, markOnboardingTaskComplete, openHelpPanel, onboardingTasks } = useHelp();
     const router = useRouter();
     const pathname = usePathname();
-    
+
+    const [isNavigating, setIsNavigating] = useState(false);
+    const [targetReady, setTargetReady] = useState(false);
+
     // Compute steps synchronously to ensure Joyride gets them immediately
     const steps = useMemo(() => {
         if (!activeTour) return [];
@@ -77,30 +80,27 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
         }));
     }, [activeTour]);
 
-    const { state, Tour, controls } = useJoyride({
-        steps,
-        run: !!activeTour && steps.length > 0,
-        continuous: true,
-        skipBeacon: true,
-        // Disable Joyride's built-in scroll — we handle it ourselves below
-        // so we can position the element precisely relative to the viewport.
-        disableScrolling: true,
-        styles: {
-            // @ts-expect-error: options is a valid prop at runtime but missing from types
-            options: {
-                primaryColor: '#3b82f6',
-                zIndex: 10000,
-            }
-        }
-    });
+    const normalizedPathname = useMemo(() => {
+        return pathname === '/' ? '/dashboard' : pathname;
+    }, [pathname]);
 
-    // Reset the internal step index when a tour finishes or is closed,
-    // so the next tour starts fresh from step 0.
+    // Compute target route for the current step
+    const currentStepRoute = useMemo(() => {
+        if (!activeTour) return undefined;
+        // Check current step route or fallback to tour level route
+        const currentStep = activeTour.steps[0]; // We check step 0 initially
+        const rawRoute = (activeTour.steps as any[])[0]?.route || activeTour.route;
+        if (!rawRoute) return undefined;
+        return rawRoute === '/' ? '/dashboard' : rawRoute;
+    }, [activeTour]);
+
+    // Reset the internal state when active tour finishes or closes
     useEffect(() => {
         if (!activeTour) {
-            controls.reset(false);
+            setIsNavigating(false);
+            setTargetReady(false);
         }
-    }, [activeTour, controls]);
+    }, [activeTour]);
 
     // Auto-start tour if specified via props and not seen yet
     useEffect(() => {
@@ -111,17 +111,102 @@ const TourGuide: React.FC<TourGuideProps> = ({ tourId }) => {
         }
     }, [tourId, hasSeenTour, activeTourId, startTour]);
 
-    // Handle cross-page navigation
+    // Handle initial & step navigation
+    useEffect(() => {
+        if (!activeTour) return;
+
+        // Determine step route for current step index (or step 0 if initializing)
+        const stepIndex = 0; // We resolve dynamically
+        const currentStep = activeTour.steps[stepIndex] as any;
+        const targetRouteRaw = currentStep?.route || activeTour.route;
+        if (!targetRouteRaw) return;
+
+        const targetRoute = targetRouteRaw === '/' ? '/dashboard' : targetRouteRaw;
+
+        if (normalizedPathname !== targetRoute) {
+            setIsNavigating(true);
+            router.push(targetRoute);
+        } else {
+            setIsNavigating(false);
+        }
+    }, [activeTour, normalizedPathname, router]);
+
+    // Wait until target element is mounted in DOM before letting Joyride run
+    useEffect(() => {
+        if (!activeTour || isNavigating || steps.length === 0) {
+            setTargetReady(false);
+            return;
+        }
+
+        const targetSelector = steps[0]?.target;
+        if (!targetSelector) {
+            setTargetReady(true);
+            return;
+        }
+
+        let mounted = true;
+        let attempts = 0;
+        const maxAttempts = 30; // 3s max timeout
+
+        const checkElement = () => {
+            if (!mounted) return;
+            const el = document.querySelector(targetSelector);
+            if (el) {
+                setTargetReady(true);
+            } else if (attempts < maxAttempts) {
+                attempts++;
+                setTimeout(checkElement, 100);
+            } else {
+                setTargetReady(true); // Proceed fallback
+            }
+        };
+
+        setTargetReady(false);
+        checkElement();
+
+        return () => {
+            mounted = false;
+        };
+    }, [activeTour, isNavigating, steps, normalizedPathname]);
+
+    const shouldRun = !!activeTour && steps.length > 0 && !isNavigating && targetReady;
+
+    const { state, Tour, controls } = useJoyride({
+        steps,
+        run: shouldRun,
+        continuous: true,
+        skipBeacon: true,
+        disableScrolling: true,
+        styles: {
+            // @ts-expect-error: options is a valid prop at runtime but missing from types
+            options: {
+                primaryColor: '#3b82f6',
+                zIndex: 10000,
+            }
+        }
+    });
+
+    // Reset internal controls when activeTour becomes null
+    useEffect(() => {
+        if (!activeTour) {
+            controls.reset(false);
+        }
+    }, [activeTour, controls]);
+
+    // Handle mid-tour step navigation if step has a distinct route
     useEffect(() => {
         if (state.status === 'running' && activeTour && state.index >= 0 && state.index < steps.length) {
             const currentStep = (activeTour.steps[state.index] as any);
-            if (currentStep.route && currentStep.route !== pathname) {
-                router.push(currentStep.route);
+            if (currentStep.route) {
+                const targetRoute = currentStep.route === '/' ? '/dashboard' : currentStep.route;
+                if (targetRoute !== normalizedPathname) {
+                    router.push(targetRoute);
+                }
             }
         }
-    }, [state.index, state.status, activeTour, pathname, router, steps.length]);
+    }, [state.index, state.status, activeTour, normalizedPathname, router, steps.length]);
 
-    // Scroll to center the step tooltip modal in the viewport when step or route changes
+    // Scroll to center step tooltip modal in viewport when step or route changes
     useEffect(() => {
         if (state.status === 'running' && activeTour && state.index >= 0 && state.index < steps.length) {
             const target = steps[state.index]?.target;

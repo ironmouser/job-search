@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useHelp } from '../../contexts/HelpContext';
 import OnboardingChecklist from './OnboardingChecklist';
 import { X, Play, RotateCcw } from 'lucide-react';
 
 export default function HelpPanel() {
+    const router = useRouter();
     const { 
         isHelpPanelOpen, 
         closeHelpPanel, 
@@ -138,7 +139,15 @@ export default function HelpPanel() {
                                             alignItems: 'center',
                                             cursor: 'pointer'
                                         }}
-                                        onClick={() => startTour(id)}
+                                        onClick={() => {
+                                            if (tour.route) {
+                                                const targetRoute = tour.route === '/' ? '/dashboard' : tour.route;
+                                                if (pathname !== targetRoute) {
+                                                    router.push(targetRoute);
+                                                }
+                                            }
+                                            startTour(id);
+                                        }}
                                     >
                                         <div>
                                             <h4 style={{ margin: '0 0 0.25rem 0', color: 'var(--text-primary)' }}>{tour.name}</h4>

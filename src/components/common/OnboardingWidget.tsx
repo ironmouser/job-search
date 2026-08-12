@@ -63,17 +63,17 @@ export default function OnboardingWidget() {
         }
 
         if (nextTask) {
-            if (nextTask.tourId) {
-                startTour(nextTask.tourId);
-            } else {
-                openHelpPanel(0);
-            }
-
             if (nextTask.route) {
                 const targetRoute = nextTask.route === '/' ? '/dashboard' : nextTask.route;
                 if (pathname !== targetRoute && !(nextTask.route === '/' && pathname === '/dashboard')) {
                     router.push(targetRoute);
                 }
+            }
+
+            if (nextTask.tourId) {
+                startTour(nextTask.tourId);
+            } else {
+                openHelpPanel(0);
             }
         } else {
             openHelpPanel(0);

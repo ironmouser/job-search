@@ -5,24 +5,28 @@
             "description": "Learn how to navigate your dashboard and track job applications.",
             "roles": ["*"],
             "autoStart": false,
+            "route": "/dashboard",
             "steps": [
                 {
                     "target": "[data-tour='dashboard-stats']",
                     "title": "Job Stats",
                     "content": "View your total discovered jobs, scored jobs, and jobs that are a high fit based on your search criteria.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/dashboard"
                 },
                 {
                     "target": "[data-tour='recent-jobs']",
                     "title": "Recent Jobs",
                     "content": "View jobs that match your profile and see how well they score as a fit.",
-                    "placement": "top"
+                    "placement": "top",
+                    "route": "/dashboard"
                 },
                 {
                     "target": "[data-tour='dashboard-sync-jobs']",
                     "title": "Job results",
                     "content": "Click the sync jobs button to search top job boards and web sites for your dream job.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/dashboard"
                 }
             ]
         },
@@ -31,18 +35,21 @@
             "description": "Learn how to manage your active job applications.",
             "roles": ["*"],
             "autoStart": false,
+            "route": "/pipeline",
             "steps": [
                 {
                     "target": "[data-tour='pipeline-kanban']",
                     "title": "Pipeline Board",
                     "content": "Track your applications visually as they move from Applied to Offer.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/pipeline"
                 },
                 {
                     "target": "[data-tour='pipeline-status-dropdown']",
                     "title": "Update Status",
                     "content": "Quickly change a job's status by using the dropdown on any job card.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/pipeline"
                 }
             ]
         },
@@ -51,12 +58,14 @@
             "description": "Learn how to configure your job preferences.",
             "roles": ["*"],
             "autoStart": false,
+            "route": "/settings",
             "steps": [
                 {
                     "target": "[data-tour='settings-menu']",
                     "title": "Settings",
                     "content": "Navigate to the settings menu to configure your preferences.",
-                    "placement": "right"
+                    "placement": "right",
+                    "route": "/settings"
                 },
                 {
                     "target": "[data-tour='job-preferences']",
@@ -86,12 +95,14 @@
             "description": "Improve your automated job matching by refining keywords and goals.",
             "roles": ["*"],
             "autoStart": false,
+            "route": "/settings",
             "steps": [
                 {
                     "target": "[data-tour='settings-menu']",
                     "title": "Settings",
                     "content": "Go to the setting page.",
-                    "placement": "right"
+                    "placement": "right",
+                    "route": "/settings"
                 },
                 {
                     "target": "[data-tour='job-preferences']",
@@ -114,24 +125,28 @@
             "description": "Learn how to track your application metrics.",
             "roles": ["*"],
             "autoStart": false,
+            "route": "/analytics",
             "steps": [
                 {
                     "target": "[data-tour='analytics-stats']",
                     "title": "High-Level Metrics",
                     "content": "View your total discovered, scored, applied, and interviewing stats.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/analytics"
                 },
                 {
                     "target": "[data-tour='analytics-funnel']",
                     "title": "Conversion Funnel",
                     "content": "See how well you're converting from scored to applied, and applied to interviews.",
-                    "placement": "right"
+                    "placement": "right",
+                    "route": "/analytics"
                 },
                 {
                     "target": "[data-tour='analytics-status']",
                     "title": "Pipeline Status",
                     "content": "Breakdown of jobs currently in every stage of your pipeline.",
-                    "placement": "left"
+                    "placement": "left",
+                    "route": "/analytics"
                 }
             ]
         },
@@ -140,18 +155,21 @@
             "description": "Learn how to manage your target profile, scoring rubric, and master resume for AI generation.",
             "roles": ["*"],
             "autoStart": false,
+            "route": "/profile",
             "steps": [
                 {
                     "target": "[data-tour='assets-editor']",
                     "title": "Base Resume Editor",
                     "content": "This is your master resume text. The AI uses this to tailor a unique version for every job application.",
-                    "placement": "right"
+                    "placement": "right",
+                    "route": "/profile"
                 },
                 {
                     "target": "[data-tour='assets-upload']",
                     "title": "Upload or Paste",
                     "content": "Upload your existing PDF/Word resume, or paste its text directly to populate the editor.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/profile"
                 }
             ]
         },
@@ -160,24 +178,28 @@
             "description": "Learn how the AI analyzes and helps you apply to jobs.",
             "roles": ["*"],
             "autoStart": false,
+            "route": "/dashboard",
             "steps": [
                 {
                     "target": "[data-tour='job-detail-score']",
                     "title": "AI Opportunity Score",
                     "content": "A detailed breakdown of how well this job matches your preferences and profile.",
-                    "placement": "left"
+                    "placement": "left",
+                    "route": "/dashboard"
                 },
                 {
                     "target": "[data-tour='job-detail-description']",
                     "title": "Review Job Description",
                     "content": "The original job description scraped from the web.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/dashboard"
                 },
                 {
                     "target": "[data-tour='job-detail-assets']",
                     "title": "Application Assets",
                     "content": "Generate a tailored cover letter, networking message, and resume extract specifically for this role.",
-                    "placement": "bottom"
+                    "placement": "bottom",
+                    "route": "/dashboard"
                 }
             ]
         }

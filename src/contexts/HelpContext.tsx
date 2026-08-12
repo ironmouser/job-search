@@ -38,6 +38,7 @@ export interface Tour {
     description: string;
     roles: string[];
     autoStart: boolean;
+    route?: string;
     steps: TourStep[];
 }
 
