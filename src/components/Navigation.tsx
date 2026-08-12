@@ -193,7 +193,7 @@ export default function Navigation() {
             </>
           )}
 
-          {userRole === 'SYSTEM_ADMIN' && (
+          {userRole === 'SYSTEM_ADMIN' && process.env.NODE_ENV === 'development' && (
             <li className="nav-item">
               <Link href="/system-analytics" className={pathname === '/system-analytics' ? 'active' : ''} onClick={closeMenu} title="System Analytics">
                 <Shield size={16} />
