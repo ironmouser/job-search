@@ -314,7 +314,7 @@ details[open] summary .accordion-chevron {
 /* ─── Dashboard Top Section Banner (Mockup Spec) ─────────────────────────── */
 
 .dashboard-top-section {
-  background-color: #031B4E !important;
+  background: linear-gradient(#ffffff 0%, #dcdcdc 100%) !important;
   margin: -2rem -2.5rem 50px -2.5rem !important;
   padding: 2rem 2.5rem 1.5rem 2.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -333,15 +333,16 @@ details[open] summary .accordion-chevron {
   padding-bottom: 0 !important;
 }
 
-.dashboard-mission-control-title {
-  color: #00c49f !important;
+.dashboard-mission-control-title,
+.ui-page-header-heading {
+  color: #04af9e !important;
   font-size: 1.5rem !important;
   font-weight: 700 !important;
   letter-spacing: -0.02em !important;
 }
 
 .dashboard-mission-control-subtitle {
-  color: #94a3b8 !important;
+  color: #475569 !important;
   font-size: 0.875rem !important;
   font-weight: 400 !important;
 }
@@ -372,7 +373,7 @@ details[open] summary .accordion-chevron {
 .dashboard-top-section .top-stat-card.active,
 .dashboard-top-section .top-stat-card.stat-card-found.active {
   background-color: #BFDBFE !important;
-  border: 2px solid #2563eb !important;
+  border: 1px solid #2563eb !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
 }
 
@@ -436,7 +437,7 @@ details[open] summary .accordion-chevron {
 .top-stat-card.active,
 body.light-theme .top-stat-card.active {
   background-color: #bfdbfe !important;
-  border: 2px solid #2563eb !important;
+  border: 1px solid #2563eb !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
 }
 
@@ -597,7 +598,7 @@ body.light-theme .add-job-card-paste-btn:hover {
   width: 220px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
-  padding: 1rem 0.75rem;
+  padding: 34px 0.75rem 1rem 0.75rem !important;
   display: flex;
   flex-direction: column;
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s ease;
