@@ -15,6 +15,9 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
+    const emailsSyncIsPro = globalSettings?.emailsSyncIsPro ?? true;
+
     const dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
