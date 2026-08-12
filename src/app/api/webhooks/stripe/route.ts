@@ -28,6 +28,21 @@ export async function GET() {
   return NextResponse.json({ message: "Stripe webhook endpoint active. Please use POST for webhooks." }, { status: 200 });
 }
 
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Allow": "GET, POST, HEAD, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, HEAD, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Stripe-Signature",
+    },
+  });
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const headersList = await headers();
@@ -184,7 +199,7 @@ export async function POST(req: Request) {
         const subCustomerId = getCustomerId(subscription.customer) || customerId;
 
         // Try matching user by stripeSubscriptionId, stripeCustomerId, or customerEmail (case-insensitive)
-        const user = await prisma.user.findFirst({
+        let user = await prisma.user.findFirst({
           where: {
             OR: [
               { stripeSubscriptionId: subscription.id },
@@ -193,6 +208,26 @@ export async function POST(req: Request) {
             ],
           },
         });
+
+        // Fallback: retrieve the Stripe customer object to get their email.
+        // This handles the race condition where invoice.payment_succeeded fires before
+        // checkout.session.completed has written stripeCustomerId to the DB, or when
+        // invoice.customer_email is null.
+        if (!user && subCustomerId) {
+          try {
+            const custObj = await stripe.customers.retrieve(subCustomerId);
+            if (!("deleted" in custObj && custObj.deleted) && custObj.email) {
+              user = await prisma.user.findFirst({
+                where: { email: { equals: custObj.email.trim(), mode: "insensitive" } },
+              });
+              if (user) {
+                console.log(`[Stripe Webhook] invoice.payment_succeeded: matched user ${user.id} via Stripe customer email fallback`);
+              }
+            }
+          } catch (e) {
+            console.warn("[Stripe Webhook] Error fetching Stripe customer for email fallback:", e);
+          }
+        }
 
         if (user) {
           await prisma.user.update({
