@@ -13,7 +13,8 @@ import DashboardDock from '@/components/DashboardDock';
 import DashboardFilterModal from '@/components/DashboardFilterModal';
 import AddJobModal from '@/components/AddJobModal';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
-import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInternationalLocation } from '@/lib/locationUtils';
+import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInternationalLocation, isOutsideUsLocation } from '@/lib/locationUtils';
+import InternationalLocationModal from '@/components/InternationalLocationModal';
 import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,19 +43,36 @@ const getConfidenceBadge = (score?: number) => {
     return null;
 };
 
-export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEndsAt = null, hasEmailCredentials = false, initialScoresExhausted = false, hasSeenNonUsPrompt = false, noInternational = false }: { jobs: any[], userPlanTier?: string, trialEndsAt?: Date | string | null, hasEmailCredentials?: boolean, initialScoresExhausted?: boolean, hasSeenNonUsPrompt?: boolean, noInternational?: boolean }) {
+export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEndsAt = null, hasEmailCredentials = false, initialScoresExhausted = false, hasSeenNonUsPrompt = false, noInternational = false, searchLocation = '' }: { jobs: any[], userPlanTier?: string, trialEndsAt?: Date | string | null, hasEmailCredentials?: boolean, initialScoresExhausted?: boolean, hasSeenNonUsPrompt?: boolean, noInternational?: boolean, searchLocation?: string }) {
 
   const router = useRouter();
   const [jobList, setJobList] = useState<any[]>(jobs || []);
   const [scoresExhausted, setScoresExhausted] = useState(initialScoresExhausted);
   const [isScoringBackground, setIsScoringBackground] = useState(false);
   const [showNonUsModal, setShowNonUsModal] = useState(false);
+  const [showIntlLocationModal, setShowIntlLocationModal] = useState(false);
   const [intlJobCount, setIntlJobCount] = useState(0);
   const hasDismissedNonUsModal = useRef(false);
 
   useEffect(() => {
     setJobList(jobs || []);
   }, [jobs]);
+
+  // Check if job sync just completed and location preference is outside US
+  useEffect(() => {
+    try {
+      const justSynced = localStorage.getItem('job_agent_just_completed_job_sync') === 'true';
+      if (justSynced) {
+        localStorage.removeItem('job_agent_just_completed_job_sync');
+        if (isOutsideUsLocation(searchLocation)) {
+          const dismissedForLoc = localStorage.getItem('intl_sources_notice_dismissed_loc');
+          if (dismissedForLoc !== searchLocation) {
+            setShowIntlLocationModal(true);
+          }
+        }
+      }
+    } catch (e) {}
+  }, [searchLocation]);
 
   // Detect international jobs and show the focus prompt once
   useEffect(() => {
@@ -852,214 +870,218 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
   return (
     <>
       <div className="animate-fade-in" style={{ paddingBottom: '5.5rem' }}>
-        <PageHeader className="dashboard-page-header">
-          <div className="page-header-title-col">
-            <PageHeaderHeading>Mission Control</PageHeaderHeading>
-            <PageHeaderDescription>Your central hub for opportunity management and application tracking</PageHeaderDescription>
-          </div>
-          <PageHeaderActions className="page-header-banner-col">
-            <TrialStatusBanner trialEndsAt={trialEndsAt} planTier={userPlanTier} compact={true} />
-          </PageHeaderActions>
-        </PageHeader>
-
-        <AntiAbuseBanner />
-
-        {showUpgradeModal && userPlanTier !== 'PRO' && (
-          <UpgradePrompt
-            variant="modal"
-            feature="email-sync"
-            stats={{
-              resumesTailored: jobList?.filter((j: any) => j.opportunity_scores?.[0]?.total_score).length,
-              jobsApplied: jobList?.filter((j: any) => j.applied_at || j.status === 'applied').length,
-              jobsSynced: jobList?.length,
-            }}
-            onDismiss={() => setShowUpgradeModal(false)}
-          />
-        )}
-
-        <OnboardingWidget />
-
-        <div className="responsive-grid stat-cards-grid" style={{ marginBottom: '1.5rem' }} data-tour="dashboard-stats">
-        <div 
-          className={`glass-card filter-card top-stat-card ${activeFilter === 'all' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('all')}
-          style={{ cursor: 'pointer', padding: '1rem', position: 'relative' }}
-        >
-          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Jobs Found</h4>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalDiscovered}</h2>
-          {totalDiscovered > 200 && (
-            <div style={{ marginTop: '-10px', color: 'red', fontSize: '0.8rem', fontWeight: 500, position: 'absolute', left: '1rem' }}>
-              Consider a cleanup
+        {/* Dark Navy Header Section Container */}
+        <div className="dashboard-top-section">
+          <PageHeader className="dashboard-page-header">
+            <div className="page-header-title-col">
+              <PageHeaderHeading className="dashboard-mission-control-title">Mission Control</PageHeaderHeading>
+              <PageHeaderDescription className="dashboard-mission-control-subtitle">Your central hub for opportunity management and application tracking</PageHeaderDescription>
             </div>
+            <PageHeaderActions className="page-header-banner-col">
+              <TrialStatusBanner trialEndsAt={trialEndsAt} planTier={userPlanTier} compact={true} />
+            </PageHeaderActions>
+          </PageHeader>
+
+          <AntiAbuseBanner />
+
+          {showUpgradeModal && userPlanTier !== 'PRO' && (
+            <UpgradePrompt
+              variant="modal"
+              feature="email-sync"
+              stats={{
+                resumesTailored: jobList?.filter((j: any) => j.opportunity_scores?.[0]?.total_score).length,
+                jobsApplied: jobList?.filter((j: any) => j.applied_at || j.status === 'applied').length,
+                jobsSynced: jobList?.length,
+              }}
+              onDismiss={() => setShowUpgradeModal(false)}
+            />
           )}
-        </div>
-        <div 
-          className={`glass-card filter-card top-stat-card ${activeFilter === 'scored' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('scored')}
-          style={{ cursor: 'pointer', padding: '1rem' }}
-        >
-          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <span>Scored</span>
-            {isScoringBackground && (
-              <span title="Background scoring in progress..." style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <Loader2 
-                  size={13} 
-                  className="animate-spin" 
-                  style={{ color: 'var(--accent-primary)', animation: 'spin 1s linear infinite' }} 
-                />
-              </span>
-            )}
-          </h4>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalScored}</h2>
-        </div>
-        <div 
-          className={`glass-card filter-card top-stat-card ${activeFilter === 'high_fit' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('high_fit')}
-          style={{ cursor: 'pointer', padding: '1rem' }}
-        >
-          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Great Matches (&gt;80)</h4>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--accent-primary)', margin: 0, marginTop: '0.25rem' }}>{highlyScored}</h2>
-        </div>
-        <div 
-          className={`glass-card filter-card top-stat-card ${activeFilter === 'archived' ? 'active' : ''}`}
-          onClick={() => setActiveFilter('archived')}
-          style={{ cursor: 'pointer', padding: '1rem' }}
-        >
-          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontWeight: 500, margin: 0 }}>Saved</h4>
-          <h2 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', margin: 0, marginTop: '0.25rem' }}>{totalArchived}</h2>
-        </div>
-      </div>
 
-      <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
+          <OnboardingWidget />
 
-      <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: '1rem' }}>
-        <div className="matches-header-top-row">
-          <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-            Matches ({filteredAndSortedJobs.length})
-          </h3>
-        </div>
-
-        {/* Search for Jobs (SyncButton) */}
-        <div className="matches-search-btn-wrapper">
-          <SyncButton
-            compact={true}
-            onSyncStateChange={(loading, text, count, isRefining) => {
-              setIsSyncing(loading);
-              setSyncMessage(text);
-              if (loading) {
-                if (count !== undefined) setJobsFoundCount(count);
-                setIsRefiningJobs(!!isRefining);
-              } else {
-                setJobsFoundCount(null);
-                setIsRefiningJobs(false);
-              }
-            }}
-            onSyncComplete={() => {
-              setTimeout(() => {
-                checkAndTriggerDiscoveryNudge();
-              }, 600);
-            }}
-          />
-        </div>
-
-        {/* Action Controls: Scan Inbox | Filter | Sort */}
-        <div className="matches-action-controls">
-          {/* Scan Inbox */}
-          <button
-            onClick={handleEmailSync}
-            disabled={isEmailSyncing || isSyncing}
-            className="action-control-btn btn-scan-inbox"
-            title="Scan email inbox for job alert notifications"
-            style={{
-              opacity: isEmailSyncing || isSyncing ? 0.6 : 1,
-              cursor: isEmailSyncing || isSyncing ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {isEmailSyncing ? (
-              <Loader2 size={15} className="animate-spin" style={{ color: '#38bdf8' }} />
-            ) : (
-              <Mail size={15} style={{ color: '#38bdf8' }} />
-            )}
-            <span>{isEmailSyncing ? 'Scanning...' : 'Scan Inbox'}</span>
-          </button>
-
-          {/* Filter & Sort Grid Row */}
-          <div className="matches-filter-sort-row">
-            {/* Filter Button */}
-            <button
-              onClick={() => setIsFilterModalOpen(true)}
-              className="action-control-btn btn-filter"
-              title="Filter & Sort Job Feed"
-              style={{ position: 'relative' }}
+          <div className="responsive-grid stat-cards-grid" style={{ marginBottom: '1.25rem' }} data-tour="dashboard-stats">
+            <div 
+              className={`glass-card filter-card top-stat-card stat-card-found ${activeFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('all')}
+              style={{ cursor: 'pointer', padding: '1.1rem 1.25rem', position: 'relative' }}
             >
-              <SlidersHorizontal size={15} />
-              <span>Filter</span>
-              {hasActiveFilters && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '4px',
-                    right: '4px',
-                    width: '7px',
-                    height: '7px',
-                    borderRadius: '50%',
-                    background: '#0070f3',
-                    boxShadow: '0 0 6px #0070f3'
-                  }}
-                />
+              <h4 className="stat-card-label">Jobs Found</h4>
+              <h2 className="stat-card-number">{totalDiscovered}</h2>
+              {totalDiscovered > 200 && (
+                <div className="stat-card-subtext-red">
+                  Consider a cleanup
+                </div>
               )}
+            </div>
+            <div 
+              className={`glass-card filter-card top-stat-card stat-card-white ${activeFilter === 'scored' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('scored')}
+              style={{ cursor: 'pointer', padding: '1.1rem 1.25rem' }}
+            >
+              <h4 className="stat-card-label">
+                <span>Scored</span>
+                {isScoringBackground && (
+                  <span title="Background scoring in progress..." style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '0.35rem' }}>
+                    <Loader2 
+                      size={13} 
+                      className="animate-spin" 
+                      style={{ color: '#2563eb', animation: 'spin 1s linear infinite' }} 
+                    />
+                  </span>
+                )}
+              </h4>
+              <h2 className="stat-card-number">{totalScored}</h2>
+            </div>
+            <div 
+              className={`glass-card filter-card top-stat-card stat-card-white ${activeFilter === 'high_fit' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('high_fit')}
+              style={{ cursor: 'pointer', padding: '1.1rem 1.25rem' }}
+            >
+              <h4 className="stat-card-label">Great Matches (&gt;80)</h4>
+              <h2 className="stat-card-number number-blue">{highlyScored}</h2>
+            </div>
+            <div 
+              className={`glass-card filter-card top-stat-card stat-card-white ${activeFilter === 'archived' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('archived')}
+              style={{ cursor: 'pointer', padding: '1.1rem 1.25rem' }}
+            >
+              <h4 className="stat-card-label">Saved</h4>
+              <h2 className="stat-card-number">{totalArchived}</h2>
+            </div>
+          </div>
+
+          <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
+        </div>
+
+        {/* Matches Section Header Bar */}
+        <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: '1.5rem' }}>
+          <div className="matches-header-left-group">
+            <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+              Matches ({filteredAndSortedJobs.length})
+            </h3>
+
+            {/* Search for Jobs (SyncButton) */}
+            <div className="matches-search-btn-wrapper">
+              <SyncButton
+                compact={true}
+                onSyncStateChange={(loading, text, count, isRefining) => {
+                  setIsSyncing(loading);
+                  setSyncMessage(text);
+                  if (loading) {
+                    if (count !== undefined) setJobsFoundCount(count);
+                    setIsRefiningJobs(!!isRefining);
+                  } else {
+                    setJobsFoundCount(null);
+                    setIsRefiningJobs(false);
+                  }
+                }}
+                onSyncComplete={() => {
+                  setTimeout(() => {
+                    checkAndTriggerDiscoveryNudge();
+                  }, 600);
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Action Controls: Scan Inbox | Filter | Sort */}
+          <div className="matches-action-controls">
+            {/* Scan Inbox */}
+            <button
+              onClick={handleEmailSync}
+              disabled={isEmailSyncing || isSyncing}
+              className="action-control-btn btn-scan-inbox"
+              title="Scan email inbox for job alert notifications"
+              style={{
+                opacity: isEmailSyncing || isSyncing ? 0.6 : 1,
+                cursor: isEmailSyncing || isSyncing ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isEmailSyncing ? (
+                <Loader2 size={15} className="animate-spin" style={{ color: '#2563eb' }} />
+              ) : (
+                <Mail size={15} style={{ color: '#2563eb' }} />
+              )}
+              <span>{isEmailSyncing ? 'Scanning...' : 'Scan Inbox'}</span>
             </button>
 
-            {/* Sort Selector Dropdown */}
-            <div
-              className="action-control-btn btn-sort"
-              title="Sort Job Feed"
-            >
-              <ArrowUpDown size={15} style={{ color: 'var(--accent-primary, #3b82f6)', flexShrink: 0 }} />
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as any)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'inherit',
-                  fontSize: '0.85rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  outline: 'none',
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  width: '100%'
-                }}
+            {/* Filter & Sort Grid Row */}
+            <div className="matches-filter-sort-row">
+              {/* Filter Button */}
+              <button
+                onClick={() => setIsFilterModalOpen(true)}
+                className="action-control-btn btn-filter"
+                title="Filter & Sort Job Feed"
+                style={{ position: 'relative' }}
               >
-                <option value="newest" style={{ background: '#1e293b', color: '#fff' }}>Newest First</option>
-                <option value="score_desc" style={{ background: '#1e293b', color: '#fff' }}>Match Score (High-Low)</option>
-                <option value="score_asc" style={{ background: '#1e293b', color: '#fff' }}>Match Score (Low-High)</option>
-                <option value="company" style={{ background: '#1e293b', color: '#fff' }}>Company (A-Z)</option>
-                <option value="salary_desc" style={{ background: '#1e293b', color: '#fff' }}>Salary (High-Low)</option>
-                <option value="remote" style={{ background: '#1e293b', color: '#fff' }}>Remote First</option>
-              </select>
+                <SlidersHorizontal size={15} />
+                <span>Filter</span>
+                {hasActiveFilters && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '4px',
+                      right: '4px',
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: '#0070f3',
+                      boxShadow: '0 0 6px #0070f3'
+                    }}
+                  />
+                )}
+              </button>
+
+              {/* Sort Selector Dropdown */}
+              <div
+                className="action-control-btn btn-sort"
+                title="Sort Job Feed"
+              >
+                <ArrowUpDown size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as any)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'inherit',
+                    fontSize: '0.85rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    width: '100%'
+                  }}
+                >
+                  <option value="newest" style={{ background: '#ffffff', color: '#0f172a' }}>Newest First</option>
+                  <option value="score_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (High-Low)</option>
+                  <option value="score_asc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (Low-High)</option>
+                  <option value="company" style={{ background: '#ffffff', color: '#0f172a' }}>Company (A-Z)</option>
+                  <option value="salary_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Salary (High-Low)</option>
+                  <option value="remote" style={{ background: '#ffffff', color: '#0f172a' }}>Remote First</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="dashboard-view-toggles">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                title="Grid View"
+              >
+                <LayoutGrid size={18} />
+              </button>
+              <button 
+                onClick={() => setViewMode('table')}
+                className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                title="Table View"
+              >
+                <List size={18} />
+              </button>
             </div>
           </div>
         </div>
-
-        <div className="dashboard-view-toggles">
-          <button 
-            onClick={() => setViewMode('grid')}
-            className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
-            title="Grid View"
-          >
-            <LayoutGrid size={18} />
-          </button>
-          <button 
-            onClick={() => setViewMode('table')}
-            className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-            title="Table View"
-          >
-            <List size={18} />
-          </button>
-        </div>
-      </div>
       
       {viewMode === 'table' ? (
         <div data-tour="recent-jobs" style={{ overflowX: 'auto', background: 'var(--bg-glass)', borderRadius: '12px', border: '1px solid var(--border-glass)', marginBottom: '2rem' }}>
@@ -1666,6 +1688,19 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
           }}
         />
       )}
+
+      <InternationalLocationModal
+        isOpen={showIntlLocationModal}
+        locationPreference={searchLocation}
+        onClose={() => {
+          try {
+            if (searchLocation) {
+              localStorage.setItem('intl_sources_notice_dismissed_loc', searchLocation);
+            }
+          } catch (e) {}
+          setShowIntlLocationModal(false);
+        }}
+      />
 
       {/* Floating Dashboard Dock */}
       <DashboardDock

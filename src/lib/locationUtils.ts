@@ -115,3 +115,14 @@ export const isInternationalLocation = (loc: string): boolean => {
   }
   return !isUsLocation(loc);
 };
+
+// Returns true if user's location preference is outside the US (excluding generic Remote)
+export const isOutsideUsLocation = (loc: string): boolean => {
+  if (!loc) return false;
+  const trimmed = loc.trim().toLowerCase();
+  if (trimmed === 'remote' || trimmed === 'remote, us' || trimmed === 'us remote' || trimmed === 'work from home' || trimmed === 'wfh') {
+    return false;
+  }
+  return isInternationalLocation(loc);
+};
+

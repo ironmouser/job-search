@@ -125,12 +125,19 @@ export default function SettingsPage() {
         if (typeof window !== 'undefined') {
             const hash = window.location.hash;
             if (hash) {
-                const targetId = hash.startsWith('#pdf-styling') ? 'pdf-customizer' : hash.replace('#', '');
-                toggleSection(targetId, true);
+                const rawHash = hash.replace('#', '');
+                let sectionId = rawHash;
+                if (rawHash === 'active-scrapers' || rawHash === 'active-scraper-sources' || rawHash === 'job-preferences') {
+                    sectionId = 'job-discovery';
+                } else if (rawHash.startsWith('pdf-styling')) {
+                    sectionId = 'pdf-customizer';
+                }
+
+                toggleSection(sectionId, true);
                 let attempts = 0;
                 const scrollToElement = () => {
-                    let el = document.getElementById(targetId);
-                    if (!el && (hash === '#job-discovery' || hash === '#job-preferences')) {
+                    let el = document.getElementById(rawHash);
+                    if (!el && sectionId === 'job-discovery') {
                         el = document.getElementById('job-discovery') || document.querySelector('[data-tour="job-preferences"]');
                     }
                     if (el) {
@@ -142,6 +149,7 @@ export default function SettingsPage() {
                 };
                 setTimeout(scrollToElement, 100);
             }
+
         }
     }, []);
 
@@ -521,7 +529,7 @@ export default function SettingsPage() {
                             </span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
+                        <div id="active-scrapers" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Active Scraper Sources</label>
                                 {isAdmin && (

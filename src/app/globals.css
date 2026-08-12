@@ -311,6 +311,121 @@ details[open] summary .accordion-chevron {
   gap: 1.25rem;
 }
 
+/* ─── Dashboard Top Section Banner (Mockup Spec) ─────────────────────────── */
+
+.dashboard-top-section {
+  background-color: #031B4E !important;
+  margin: -2rem -2.5rem 50px -2.5rem !important;
+  padding: 2rem 2.5rem 1.5rem 2.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 768px) {
+  .dashboard-top-section {
+    margin: -1.25rem -1rem 50px -1rem !important;
+    padding: 1.25rem 1rem;
+  }
+}
+
+.dashboard-top-section .ui-page-header {
+  border-bottom: none !important;
+  margin-bottom: 1.25rem !important;
+  padding-bottom: 0 !important;
+}
+
+.dashboard-mission-control-title {
+  color: #00c49f !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.dashboard-mission-control-subtitle {
+  color: #94a3b8 !important;
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+}
+
+/* Stat Cards inside Dark Top Banner */
+.dashboard-top-section .stat-cards-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 1rem !important;
+  margin-bottom: 1.25rem !important;
+}
+
+@media (max-width: 768px) {
+  .dashboard-top-section .stat-cards-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+  }
+}
+
+.dashboard-top-section .top-stat-card {
+  border-radius: 12px !important;
+  background-color: #ffffff !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.dashboard-top-section .top-stat-card.active,
+.dashboard-top-section .top-stat-card.stat-card-found.active {
+  background-color: #BFDBFE !important;
+  border: 2px solid #2563eb !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
+}
+
+.stat-card-label {
+  font-size: 0.85rem !important;
+  color: #475569 !important;
+  font-weight: 500 !important;
+  margin: 0 0 0.35rem 0 !important;
+}
+
+.stat-card-number {
+  font-size: 2.25rem !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  line-height: 1.1 !important;
+}
+
+.stat-card-number.number-blue {
+  color: #2563eb !important;
+}
+
+.stat-card-subtext-red {
+  color: #dc2626 !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  margin-top: 0.25rem !important;
+}
+
+/* Scrape & Add Accordion inside Dark Banner */
+.dashboard-top-section .add-job-card {
+  background-color: #dbeafe !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: 12px !important;
+  margin-bottom: -50px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+
+.dashboard-top-section .add-job-card-text {
+  color: #0f172a !important;
+  font-size: 0.875rem !important;
+}
+
+.dashboard-top-section .add-job-card-text strong {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.dashboard-top-section .add-job-card-icon,
+.dashboard-top-section .add-job-card-chevron {
+  color: #0f172a !important;
+}
+
 .top-stat-card {
   padding: 1rem !important;
   background-color: var(--card) !important;
@@ -320,15 +435,15 @@ details[open] summary .accordion-chevron {
 
 .top-stat-card.active,
 body.light-theme .top-stat-card.active {
-  background-color: rgba(0, 112, 243, 0.08) !important;
-  border: 1px solid rgba(0, 112, 243, 0.3) !important;
-  box-shadow: 0 0 0 1px rgba(0, 112, 243, 0.1) !important;
+  background-color: #bfdbfe !important;
+  border: 2px solid #2563eb !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
 }
 
 /* ─── Scrape & Add Accordion Card (Dark & Light Mode) ─────────────────── */
 
 .add-job-card {
-  margin-bottom: 3rem;
+  margin-bottom: -50px !important;
   border-radius: var(--radius-lg, 0.625rem);
   padding: 1rem 1.25rem;
   box-shadow: var(--shadow-sm);
@@ -1440,27 +1555,33 @@ details.glass-card > summary::marker { display: none; content: ''; }
     width: 100% !important;
   }
 
+  .matches-header-left-group,
   .matches-header-top-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
     width: 100% !important;
-    margin-bottom: 0.25rem !important;
   }
 
   .matches-header-title {
-    font-size: 1.4rem !important;
+    font-size: 1.3rem !important;
     font-weight: 700 !important;
   }
 
-  /* Row 1: Search for Jobs (Full Width Solid Blue Pill) */
+  /* Row 1: Search for Jobs (Pill next to Matches) */
   .matches-search-btn-wrapper {
-    width: 100% !important;
+    width: auto !important;
+    display: inline-flex !important;
   }
 
   .matches-search-btn-wrapper button {
-    width: 100% !important;
-    min-height: 48px !important;
-    height: 48px !important;
+    width: auto !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0.4rem 0.85rem !important;
     border-radius: 9999px !important;
-    font-size: 0.95rem !important;
+    font-size: 0.85rem !important;
     font-weight: 600 !important;
     justify-content: center !important;
     background: #2563eb !important;
@@ -1585,6 +1706,7 @@ details.glass-card > summary::marker { display: none; content: ''; }
   gap: 0.75rem;
 }
 
+.matches-header-left-group,
 .matches-header-top-row {
   display: flex;
   align-items: center;

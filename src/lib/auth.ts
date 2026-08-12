@@ -29,10 +29,11 @@ export const authOptions: AuthOptions = {
     }),
     ...(process.env.NODE_ENV === "development"
       ? [
-          CredentialsProvider({
-            name: "Test Account",
-            credentials: {},
-            async authorize() {
+        CredentialsProvider({
+          name: "Test Account",
+          credentials: {},
+          async authorize() {
+            try {
               let user = await prisma.user.findUnique({ where: { email: "test@example.com" } });
               if (!user) {
                 user = await prisma.user.create({
@@ -40,9 +41,13 @@ export const authOptions: AuthOptions = {
                 });
               }
               return user as any;
+            } catch (e) {
+              console.error("DB unavailable for Test Account, falling back to mock dev user:", e);
+              return { id: "test-user-dev-id", email: "test@example.com", name: "Test User", isOnboarded: true, planTier: "PRO", role: "USER" } as any;
             }
-          })
-        ]
+          }
+        })
+      ]
       : []),
   ],
   pages: {
@@ -50,6 +55,15 @@ export const authOptions: AuthOptions = {
     verifyRequest: '/login?verify=true',
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      try {
+        if (new URL(url).origin === new URL(baseUrl).origin) return url;
+      } catch (e) {
+        // Invalid URL
+      }
+      return baseUrl;
+    },
     async signIn({ user, account }) {
       if (account?.provider === 'google' && user?.email) {
         try {
@@ -122,45 +136,49 @@ export const authOptions: AuthOptions = {
         token.id = user.id;
       }
       if (token.id) {
-        // Refresh org/plan/subscription fields directly from DB to prevent stale session tiers
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: {
-            id: true,
-            isOnboarded: true,
-            planTier: true,
-            role: true,
-            subscriptionType: true,
-            organizationId: true,
-            isDisabled: true,
-            orgAccessExpiresAt: true,
-            trialEndsAt: true,
-            isTrialDeferred: true,
-            trialDeferralReason: true,
+        try {
+          // Refresh org/plan/subscription fields directly from DB to prevent stale session tiers
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: {
+              id: true,
+              isOnboarded: true,
+              planTier: true,
+              role: true,
+              subscriptionType: true,
+              organizationId: true,
+              isDisabled: true,
+              orgAccessExpiresAt: true,
+              trialEndsAt: true,
+              isTrialDeferred: true,
+              trialDeferralReason: true,
+            }
+          });
+          if (!dbUser) {
+            // User was deleted from DB; invalidate token
+            token.id = "";
+            return token;
           }
-        });
-        if (!dbUser) {
-          // User was deleted from DB; invalidate token
-          token.id = "";
-          return token;
+          // Invalidate session for disabled users
+          if (dbUser.isDisabled) {
+            token.id = "";
+            return token;
+          }
+          token.isOnboarded = dbUser.isOnboarded;
+          token.planTier = dbUser.planTier;
+          token.role = dbUser.role;
+          token.subscriptionType = dbUser.subscriptionType || "FREE";
+          token.organizationId = dbUser.organizationId;
+          token.isDisabled = dbUser.isDisabled || false;
+          token.orgAccessExpiresAt = dbUser.orgAccessExpiresAt?.toISOString() || null;
+          token.trialEndsAt = dbUser.trialEndsAt?.toISOString() || null;
+          token.isTrialDeferred = dbUser.isTrialDeferred || false;
+          token.trialDeferralReason = dbUser.trialDeferralReason || null;
+        } catch (e) {
+          console.error("Database connection error in jwt callback:", e);
         }
-        // Invalidate session for disabled users
-        if (dbUser.isDisabled) {
-          token.id = "";
-          return token;
-        }
-        token.isOnboarded = dbUser.isOnboarded;
-        token.planTier = dbUser.planTier;
-        token.role = dbUser.role;
-        token.subscriptionType = dbUser.subscriptionType || "FREE";
-        token.organizationId = dbUser.organizationId;
-        token.isDisabled = dbUser.isDisabled || false;
-        token.orgAccessExpiresAt = dbUser.orgAccessExpiresAt?.toISOString() || null;
-        token.trialEndsAt = dbUser.trialEndsAt?.toISOString() || null;
-        token.isTrialDeferred = dbUser.isTrialDeferred || false;
-        token.trialDeferralReason = dbUser.trialDeferralReason || null;
       }
-      
+
       if (trigger === "update") {
         if (session?.isOnboarded !== undefined) token.isOnboarded = session.isOnboarded;
         if (session?.planTier !== undefined) token.planTier = session.planTier;
@@ -171,7 +189,7 @@ export const authOptions: AuthOptions = {
         if (session?.organizationId !== undefined) token.organizationId = session.organizationId;
         if (session?.isTrialDeferred !== undefined) token.isTrialDeferred = session.isTrialDeferred;
       }
-      
+
       return token;
     },
     async session({ session, token }) {
@@ -190,7 +208,7 @@ export const authOptions: AuthOptions = {
         if (subType === "GROUP" && expiresAt && expiresAt < new Date()) {
           subType = "FREE";
         }
-        
+
         (session.user as any).subscriptionType = subType;
         (session.user as any).organizationId = token.organizationId as string | null;
         (session.user as any).isDisabled = token.isDisabled as boolean || false;

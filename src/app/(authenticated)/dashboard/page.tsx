@@ -93,7 +93,9 @@ export default async function Dashboard() {
   const effectiveTrialEndsAt = userRecord?.trialEndsAt ?? trialEndsAt;
   const initialScoresExhausted = effectiveTier !== 'PRO';
 
+  const searchLocation = userPrefs?.searchLocation || '';
+
   return (
-    <DashboardClient jobs={jobs} userPlanTier={effectiveTier} trialEndsAt={effectiveTrialEndsAt} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} />
+    <DashboardClient jobs={jobs} userPlanTier={effectiveTier} trialEndsAt={effectiveTrialEndsAt} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} searchLocation={searchLocation} />
   );
 }
