@@ -44,11 +44,22 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# scratch/test files
+# scratch/test/debug files (root-level only — keep scripts/ directory)
 scratch_*.js
+scratch-*.js
+check-*.js
+check-*.ts
+test-*.js
+test-*.ts
+test-*.mjs
+test.ts
 test_*.mjs
 test_*.ts
-test-db.js
+fix-*.js
+backfill.js
+clear-cache.js
+replace_onboarding.js
+reformat-existing-jobs.ts
 result.json
 
 # local storage
