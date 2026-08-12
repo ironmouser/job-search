@@ -44,7 +44,7 @@ export default function Navigation() {
     localStorage.setItem('sidebarMinimized', JSON.stringify(!isMinimized));
   };
 
-  if (status === 'loading' || !session) {
+  if (!session) {
     return null;
   }
 
@@ -161,15 +161,9 @@ export default function Navigation() {
                 </Link>
               </li>
               <li className="nav-item">
-                <Link href="/pipeline" className={pathname === '/pipeline' ? 'active' : ''} onClick={closeMenu} title="Pipeline">
+                <Link href="/pipeline" className={pathname === '/pipeline' ? 'active' : ''} onClick={closeMenu} title="Tracker">
                   <Briefcase size={16} />
-                  <span className="nav-text">Pipeline</span>
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link href="/profile" className={pathname === '/profile' ? 'active' : ''} onClick={closeMenu} title="My Profile">
-                  <FileText size={16} />
-                  <span className="nav-text">My Profile</span>
+                  <span className="nav-text">Tracker</span>
                 </Link>
               </li>
               <li className="nav-item">
@@ -179,39 +173,39 @@ export default function Navigation() {
                 </Link>
               </li>
               <li className="nav-item">
-                <Link href="/settings" className={pathname === '/settings' ? 'active' : ''} onClick={closeMenu} data-tour="settings-menu" title="Settings">
+                <Link href="/profile" className={pathname === '/profile' ? 'active' : ''} onClick={closeMenu} title="Profile & Settings">
                   <Settings size={16} />
                   <span className="nav-text">Settings</span>
                 </Link>
               </li>
-              {userRole === 'SYSTEM_ADMIN' && (
-                <>
-                  <li className="nav-item">
-                    <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={closeMenu} title="Admin Panel">
-                      <Shield size={16} />
-                      <span className="nav-text">Admin Panel</span>
-                    </Link>
-                  </li>
-                  <li className="nav-item">
-                    <Link href="/org-admin" className={pathname.startsWith('/org-admin') ? 'active' : ''} onClick={closeMenu} title="Org Admin">
-                      <Shield size={16} />
-                      <span className="nav-text">Org Admin</span>
-                    </Link>
-                  </li>
-                </>
-              )}
               <li className="nav-item">
-                <button
-                  onClick={() => { closeMenu(); openHelpPanel(); }}
-                  className="help-btn"
-                  title="Help & Tours"
-                >
-                  <HelpCircle size={16} />
-                  <span className="nav-text">Help & Tours</span>
-                </button>
+                <Link href="/upgrade" className={pathname === '/upgrade' ? 'active' : ''} onClick={closeMenu} title="Pricing">
+                  <Zap size={16} />
+                  <span className="nav-text">Pricing</span>
+                </Link>
               </li>
             </>
           )}
+
+          {userRole === 'SYSTEM_ADMIN' && (
+            <li className="nav-item">
+              <Link href="/system-analytics" className={pathname === '/system-analytics' ? 'active' : ''} onClick={closeMenu} title="System Analytics">
+                <Shield size={16} />
+                <span className="nav-text">System Analytics</span>
+              </Link>
+            </li>
+          )}
+
+          <li className="nav-item">
+            <button
+              onClick={() => { closeMenu(); openHelpPanel(); }}
+              className="help-btn"
+              title="Help & Tours"
+            >
+              <HelpCircle size={16} />
+              <span className="nav-text">Help & Tours</span>
+            </button>
+          </li>
 
           <li className="nav-item">
             <button
@@ -271,7 +265,7 @@ export default function Navigation() {
                     )}
                   </Link>
                   {!isMinimized && isInTrial && (
-                    <Link
+                    <a
                       href="/api/stripe/checkout"
                       style={{
                         padding: '0.2rem 0.5rem',
@@ -292,10 +286,10 @@ export default function Navigation() {
                       className="upgrade-btn"
                     >
                       {trialDaysLeft}d left — Upgrade
-                    </Link>
+                    </a>
                   )}
                   {!isMinimized && !isPro && !isInTrial && (
-                    <Link
+                    <a
                       href="/api/stripe/checkout"
                       style={{
                         padding: '0.2rem 0.5rem',
@@ -316,7 +310,7 @@ export default function Navigation() {
                       className="upgrade-btn"
                     >
                       Upgrade
-                    </Link>
+                    </a>
                   )}
                 </div>
                 <button onClick={() => signOut()} className="logout-btn" title="Logout">

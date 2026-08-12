@@ -117,26 +117,49 @@ export default function PricingSection() {
               <span style={{ fontSize: '3rem', fontWeight: 800, color: '#ffffff' }}>$20</span>
               <span style={{ color: '#94a3b8', fontWeight: 500 }}>/month</span>
             </div>
-            <Link 
-              href={proHref} 
-              onClick={() => trackPublicCtaClick('Upgrade to Pro', 'pricing_section')}
-              style={{ 
-                width: '100%', 
-                textAlign: 'center', 
-                textDecoration: 'none', 
-                marginBottom: '2rem',
-                padding: '0.85rem 1.5rem',
-                borderRadius: '10px',
-                fontWeight: 700,
-                fontSize: '1rem',
-                color: '#ffffff',
-                background: '#2563eb',
-                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
-                display: 'inline-block'
-              }}
-            >
-              Upgrade to Pro
-            </Link>
+            {session ? (
+              <a
+                href="/api/stripe/checkout"
+                onClick={() => trackPublicCtaClick('Upgrade to Pro', 'pricing_section')}
+                style={{ 
+                  width: '100%', 
+                  textAlign: 'center', 
+                  textDecoration: 'none', 
+                  marginBottom: '2rem',
+                  padding: '0.85rem 1.5rem',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  color: '#ffffff',
+                  background: '#2563eb',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                  display: 'inline-block'
+                }}
+              >
+                Upgrade to Pro
+              </a>
+            ) : (
+              <Link 
+                href="/checkout" 
+                onClick={() => trackPublicCtaClick('Upgrade to Pro', 'pricing_section')}
+                style={{ 
+                  width: '100%', 
+                  textAlign: 'center', 
+                  textDecoration: 'none', 
+                  marginBottom: '2rem',
+                  padding: '0.85rem 1.5rem',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  color: '#ffffff',
+                  background: '#2563eb',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+                  display: 'inline-block'
+                }}
+              >
+                Upgrade to Pro
+              </Link>
+            )}
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {[
                 'Everything in Free Starter',

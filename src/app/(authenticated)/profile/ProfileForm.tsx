@@ -196,8 +196,10 @@ export default function ProfileForm({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
+  const hasSyncedPlanRef = useRef(false);
   useEffect(() => {
-    if (session && (session.user as any)?.planTier !== planTier) {
+    if (session && (session.user as any)?.planTier !== planTier && !hasSyncedPlanRef.current) {
+      hasSyncedPlanRef.current = true;
       update({ planTier });
     }
   }, [session, planTier, update]);

@@ -174,9 +174,9 @@ export async function GET(request: Request) {
     });
 
     if (stripeSession.url) {
-      return NextResponse.redirect(stripeSession.url);
+      return NextResponse.redirect(stripeSession.url, 303);
     } else {
-      return NextResponse.redirect(new URL("/upgrade", request.url));
+      return NextResponse.redirect(new URL("/upgrade", request.url), 303);
     }
   } catch (error) {
     console.error("STRIPE_CHECKOUT_GET_ERROR", error);

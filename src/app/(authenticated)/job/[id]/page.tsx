@@ -218,9 +218,9 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 {totalScore}
               </div>
             ) : scoresExhausted ? (
-              <Link href="/api/stripe/checkout" title="Weekly score allowance reached. Click to upgrade to Pro!" className="score-badge" style={{ width: '64px', height: '64px', background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.2)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <a href="/api/stripe/checkout" title="Weekly score allowance reached. Click to upgrade to Pro!" className="score-badge" style={{ width: '64px', height: '64px', background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.2)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Lock size={22} />
-              </Link>
+              </a>
             ) : null}
           </div>
         </div>
@@ -422,9 +422,9 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '1.5rem' }}>
                    You have reached your weekly allowance of 10 AI opportunity scores on the Free plan. Upgrade to our Pro plan to unlock unlimited AI opportunity evaluations, custom resume tailoring, and interview preparation!
                  </p>
-                 <Link href="/api/stripe/checkout" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                 <a href="/api/stripe/checkout" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                    Upgrade to Pro Plan
-                 </Link>
+                 </a>
                </div>
             ) : (
                <OpportunityScoreRefresh jobId={job.id} />
