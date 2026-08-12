@@ -5,6 +5,17 @@ interface RateLimitRecord {
 
 const tracker = new Map<string, RateLimitRecord>();
 
+// Proactively evict expired entries every 5 minutes so the Map never grows
+// unbounded in the long-lived Railway process.
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [k, v] of tracker.entries()) {
+      if (now > v.resetTime) tracker.delete(k);
+    }
+  }, 5 * 60 * 1000).unref?.(); // .unref() so the timer doesn't prevent process exit
+}
+
 /**
  * Basic memory rate limiter by IP address or key.
  * @param key Unique key (e.g. IP address)

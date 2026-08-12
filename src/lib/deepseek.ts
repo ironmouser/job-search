@@ -135,21 +135,26 @@ export async function* streamDeepSeek(options: CallDeepSeekOptions): AsyncGenera
 
     const decoder = new TextDecoder();
     let buffer = '';
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
-                try {
-                    const data = JSON.parse(trimmedLine.slice(6));
-                    const content = data.choices[0]?.delta?.content;
-                    if (content) yield content;
-                } catch (e) {}
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
+                    try {
+                        const data = JSON.parse(trimmedLine.slice(6));
+                        const content = data.choices[0]?.delta?.content;
+                        if (content) yield content;
+                    } catch (e) {}
+                }
             }
         }
+    } finally {
+        // Always release the reader so the underlying TCP connection/buffer is freed.
+        reader.cancel().catch(() => {});
     }
 }
