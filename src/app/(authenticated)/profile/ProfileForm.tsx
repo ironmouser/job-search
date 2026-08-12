@@ -37,7 +37,6 @@ import { useSession } from "next-auth/react";
 import Cropper from "react-easy-crop";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { trackProfileView, trackProfileResumeUpdate, trackProfileSave } from "@/lib/analytics";
-import DashboardDock from "@/components/DashboardDock";
 
 interface ProfileFormProps {
   initialName: string;
@@ -1415,17 +1414,6 @@ export default function ProfileForm({
         </div>,
         document.body
       )}
-
-      <DashboardDock
-        sectionShortcuts={[
-          { id: "contact-info", label: "Contact", onClick: () => handleDockNav("contact-info"), active: openSections["contact-info"] },
-          { id: "work-auth", label: "Work Auth", onClick: () => handleDockNav("work-auth"), active: openSections["work-auth"] },
-          { id: "skills-career", label: "Skills", onClick: () => handleDockNav("skills-career"), active: openSections["skills-career"] },
-          { id: "resume-source", label: "Resume", onClick: () => handleDockNav("resume-source"), active: openSections["resume-source"] },
-          { id: "avatar-settings", label: "Avatar", onClick: () => handleDockNav("avatar-settings"), active: openSections["avatar-settings"] },
-          { id: "subscription", label: "Plan", onClick: () => handleDockNav("subscription"), active: openSections.subscription },
-        ]}
-      />
     </div>
   );
 }

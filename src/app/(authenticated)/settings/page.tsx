@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { trackSettingsView, trackSettingsSave } from '@/lib/analytics';
 import { getEffectiveTier } from '@/lib/tier';
 import { FREE_ALLOWED_SOURCES, INTERNATIONAL_SOURCES } from '@/lib/settings';
-import DashboardDock from '@/components/DashboardDock';
 
 // Video instructions for email client setup
 const EMAIL_VIDEO_LINKS: Record<string, string> = {
@@ -1217,18 +1216,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </div>,
-                document.body
             )}
-
-            <DashboardDock
-                sectionShortcuts={[
-                    { id: 'search-rules', label: 'Search Rules', onClick: () => handleDockNav('search-rules'), active: openSections['search-rules'] },
-                    { id: 'job-sources', label: 'Sources', onClick: () => handleDockNav('job-sources'), active: openSections['job-sources'] },
-                    { id: 'ai-strictness', label: 'AI Rules', onClick: () => handleDockNav('scoring'), active: openSections['scoring'] },
-                    { id: 'email-sync', label: 'Email Sync', onClick: () => handleDockNav('email-sync'), active: openSections['email-sync'] },
-                    { id: 'pdf-customizer', label: 'PDF Format', onClick: () => handleDockNav('pdf-customizer'), active: openSections['pdf-customizer'] },
-                ]}
-            />
         </div>
     );
 }

@@ -8,13 +8,6 @@ import SyncButton from '@/components/SyncButton';
 
 export type SortOptionType = 'newest' | 'score' | 'salary' | 'remote';
 
-export interface SectionShortcut {
-  id: string;
-  label: string;
-  onClick: () => void;
-  active?: boolean;
-}
-
 interface DashboardDockProps {
   onEmailSync?: () => void;
   isEmailSyncing?: boolean;
@@ -27,7 +20,6 @@ interface DashboardDockProps {
   onOpenCleanupModal?: () => void;
   sortOption?: SortOptionType;
   setSortOption?: (val: SortOptionType) => void;
-  sectionShortcuts?: SectionShortcut[];
 }
 
 export default function DashboardDock({
@@ -42,7 +34,6 @@ export default function DashboardDock({
   onOpenCleanupModal,
   sortOption = 'newest',
   setSortOption,
-  sectionShortcuts
 }: DashboardDockProps) {
   const router = useRouter();
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -190,37 +181,6 @@ export default function DashboardDock({
                     <X size={16} />
                   </button>
                 </div>
-
-                {/* Section Shortcuts if provided (for Settings & Profile) */}
-                {sectionShortcuts && sectionShortcuts.length > 0 && (
-                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.35rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-glass, #e2e8f0)' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary, #64748b)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Page Sections
-                    </span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                      {sectionShortcuts.map(sec => (
-                        <button
-                          key={sec.id}
-                          onClick={() => {
-                            sec.onClick();
-                            setIsFabOpen(false);
-                          }}
-                          className={`btn-outline ${sec.active ? 'active' : ''}`}
-                          style={{
-                            fontSize: '0.78rem',
-                            padding: '0.3rem 0.6rem',
-                            borderRadius: '8px',
-                            background: sec.active ? 'var(--accent-primary, #0070f3)' : undefined,
-                            color: sec.active ? '#ffffff' : undefined,
-                            borderColor: sec.active ? 'var(--accent-primary, #0070f3)' : undefined,
-                          }}
-                        >
-                          {sec.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* 1. Search / Sync Jobs */}
                 <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.2rem 0' }}>
