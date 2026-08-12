@@ -1311,7 +1311,7 @@ export default function ProfileForm({
                   </button>
                 ) : (
                   <button
-                    onClick={() => router.push("/pricing")}
+                    onClick={() => { window.location.href = "/api/stripe/checkout"; }}
                     className="btn-primary"
                   >
                     Upgrade to Pro

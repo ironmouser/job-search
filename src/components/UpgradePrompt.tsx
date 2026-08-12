@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+
 import { Zap, ArrowRight, TrendingUp } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useState, useEffect } from 'react';
@@ -75,7 +75,6 @@ function buildMessage(
 
 /** Inline variant — renders in-place where limit was hit */
 function InlineUpgradePrompt({ stats, feature, onDismiss }: UpgradePromptProps) {
-  const router = useRouter();
   const { headline, sub } = buildMessage(feature, stats);
 
   return (
@@ -102,7 +101,7 @@ function InlineUpgradePrompt({ stats, feature, onDismiss }: UpgradePromptProps) 
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <button
-          onClick={() => router.push('/upgrade')}
+          onClick={() => { window.location.href = '/api/stripe/checkout'; }}
           className="btn-primary"
           style={{
             padding: '0.5rem 1.1rem',
@@ -143,7 +142,6 @@ function InlineUpgradePrompt({ stats, feature, onDismiss }: UpgradePromptProps) 
 
 /** Modal variant — centered overlay via portal */
 function ModalUpgradePrompt({ stats, feature, onDismiss }: UpgradePromptProps) {
-  const router = useRouter();
   const { headline, sub } = buildMessage(feature, stats);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -217,7 +215,7 @@ function ModalUpgradePrompt({ stats, feature, onDismiss }: UpgradePromptProps) {
           {sub}
         </p>
         <button
-          onClick={() => router.push('/upgrade')}
+          onClick={() => { window.location.href = '/api/stripe/checkout'; }}
           className="btn-primary"
           style={{
             width: '100%',

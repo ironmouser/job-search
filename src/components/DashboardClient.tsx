@@ -1560,7 +1560,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                <button onClick={() => setShowUpgradeModal(false)} className="btn-outline">Cancel</button>
-              <Link href="/pricing" className="btn-primary" onClick={() => setShowUpgradeModal(false)}>Upgrade Plan</Link>
+              <Link href="/api/stripe/checkout" className="btn-primary" onClick={() => setShowUpgradeModal(false)}>Upgrade Plan</Link>
             </div>
           </div>
         </div>

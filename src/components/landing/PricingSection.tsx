@@ -1,10 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { Check, Zap, Building2 } from 'lucide-react';
 import { trackPublicCtaClick } from '@/lib/analytics';
 
 export default function PricingSection() {
+  const { data: session } = useSession();
+  const proHref = session ? '/api/stripe/checkout' : '/checkout';
+
   return (
     <section id="pricing" style={{ padding: '6rem var(--section-px)', background: '#a4dbc6' }}>
       <div style={{ maxWidth: '1150px', margin: '0 auto' }}>
@@ -114,7 +118,7 @@ export default function PricingSection() {
               <span style={{ color: '#94a3b8', fontWeight: 500 }}>/month</span>
             </div>
             <Link 
-              href="/login" 
+              href={proHref} 
               onClick={() => trackPublicCtaClick('Upgrade to Pro', 'pricing_section')}
               style={{ 
                 width: '100%', 

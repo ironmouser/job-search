@@ -124,3 +124,63 @@ export async function POST(request: Request) {
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      return NextResponse.redirect(new URL("/checkout", request.url));
+    }
+
+    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || "price_dummy";
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!user) {
+      return NextResponse.redirect(new URL("/checkout", request.url));
+    }
+
+    let stripeCustomerId = user.stripeCustomerId;
+
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: user.email || undefined,
+        name: user.name || undefined,
+        metadata: { userId: user.id },
+      });
+
+      stripeCustomerId = customer.id;
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { stripeCustomerId },
+      });
+    }
+
+    const stripeSession = await stripe.checkout.sessions.create({
+      success_url: `${process.env.NEXTAUTH_URL}/settings?success=true`,
+      cancel_url: `${process.env.NEXTAUTH_URL}/upgrade?canceled=true`,
+      payment_method_types: ["card"],
+      mode: "subscription",
+      allow_promotion_codes: true,
+      billing_address_collection: "auto",
+      customer_email: stripeCustomerId ? undefined : session.user.email,
+      customer: stripeCustomerId || undefined,
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { userId: user.id },
+    });
+
+    if (stripeSession.url) {
+      return NextResponse.redirect(stripeSession.url);
+    } else {
+      return NextResponse.redirect(new URL("/upgrade", request.url));
+    }
+  } catch (error) {
+    console.error("STRIPE_CHECKOUT_GET_ERROR", error);
+    return NextResponse.redirect(new URL("/upgrade?error=checkout_failed", request.url));
+  }
+}
+

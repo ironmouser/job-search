@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Check, Loader2, Sparkles, Zap, Building2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { PageHeader, PageHeaderHeading, PageHeaderDescription } from '@/components/ui/page-header';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-export default function PricingPage() {
+function PricingContent() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
 
   const sessionUser = session?.user as any;
@@ -20,7 +21,7 @@ export default function PricingPage() {
 
   const handleSubscribe = async () => {
     if (!session) {
-      router.push("/login");
+      router.push("/checkout");
       return;
     }
 
@@ -47,6 +48,14 @@ export default function PricingPage() {
       setIsLoading(false);
     }
   };
+
+  // Auto-trigger checkout when ?checkout=true or ?auto=true and session is ready
+  useEffect(() => {
+    const shouldAutoCheckout =
+      searchParams?.get("checkout") === "true" || searchParams?.get("auto") === "true";
+    if (!shouldAutoCheckout || !session) return;
+    window.location.href = "/api/stripe/checkout";
+  }, [searchParams, session]);
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: "4rem" }}>
@@ -195,5 +204,13 @@ export default function PricingPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}><Loader2 className="animate-spin" size={32} color="#3695e3" /></div>}>
+      <PricingContent />
+    </Suspense>
   );
 }

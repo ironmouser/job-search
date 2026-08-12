@@ -272,7 +272,7 @@ export default function Navigation() {
                   </Link>
                   {!isMinimized && isInTrial && (
                     <Link
-                      href="/upgrade"
+                      href="/api/stripe/checkout"
                       style={{
                         padding: '0.2rem 0.5rem',
                         fontSize: '0.6875rem',
@@ -288,14 +288,15 @@ export default function Navigation() {
                         transition: 'background 0.15s ease',
                         marginLeft: '0.375rem',
                       }}
+                      title="Click to Upgrade to Pro"
                       className="upgrade-btn"
                     >
-                      {trialDaysLeft}d left
+                      {trialDaysLeft}d left — Upgrade
                     </Link>
                   )}
                   {!isMinimized && !isPro && !isInTrial && (
                     <Link
-                      href="/upgrade"
+                      href="/api/stripe/checkout"
                       style={{
                         padding: '0.2rem 0.5rem',
                         fontSize: '0.6875rem',
@@ -311,6 +312,7 @@ export default function Navigation() {
                         transition: 'background 0.15s ease',
                         marginLeft: '0.375rem',
                       }}
+                      title="Click to Upgrade to Pro"
                       className="upgrade-btn"
                     >
                       Upgrade

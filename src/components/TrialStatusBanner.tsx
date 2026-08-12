@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { Sparkles, Zap, ArrowRight, Clock } from 'lucide-react';
 
 interface TrialStatusBannerProps {
@@ -106,10 +105,9 @@ export default function TrialStatusBanner({ trialEndsAt, planTier, compact = fal
 }
 
 function UpgradeButton() {
-  const router = useRouter();
   return (
     <button
-      onClick={() => router.push('/upgrade')}
+      onClick={() => { window.location.href = '/api/stripe/checkout'; }}
       className="btn-primary"
       style={{
         padding: '0.6rem 1.25rem',
