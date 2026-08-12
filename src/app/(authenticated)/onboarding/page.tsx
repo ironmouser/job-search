@@ -26,7 +26,7 @@ export default function OnboardingPage() {
     const [formData, setFormData] = useState({
         searchKeyword: 'Senior Product Manager',
         searchLocation: 'Remote',
-        remoteOnly: true,
+        remoteOnly: false,
         resumeMarkdown: '',
     });
     const [goal, setGoal] = useState('I am looking for high-growth tech opportunities.');
@@ -245,33 +245,18 @@ ${goal}
                                 />
                             </div>
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', width: '100%' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Enter a location preference</label>
-                                    <input 
-                                        type="text"
-                                        value={formData.searchLocation}
-                                        onChange={(e) => handleChange('searchLocation', e.target.value)}
-                                        placeholder='e.g. "Remote", "Austin, TX", "United Kingdom"'
-                                        style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
-                                    />
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                                        Examples: "Remote", a specific city ("Austin, TX"), a state/country ("United Kingdom"), or a region ("EMEA").
-                                    </span>
-                                </div>
-                                
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'flex-start', width: '100%' }}>
-                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Remote Only?</label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', padding: '0.85rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--border-glass)', width: '100%', boxSizing: 'border-box' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={formData.remoteOnly}
-                                            onChange={(e) => handleChange('remoteOnly', e.target.checked)}
-                                            style={{ cursor: 'pointer', width: '18px', height: '18px', flexShrink: 0 }}
-                                        />
-                                        <span style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Must be remote</span>
-                                    </label>
-                                </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Enter a location preference</label>
+                                <input 
+                                    type="text"
+                                    value={formData.searchLocation}
+                                    onChange={(e) => handleChange('searchLocation', e.target.value)}
+                                    placeholder='e.g. "Remote", "Austin, TX", "United Kingdom"'
+                                    style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
+                                />
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                                    Examples: "Remote", a specific city ("Austin, TX"), a state/country ("United Kingdom"), or a region ("EMEA").
+                                </span>
                             </div>
                         </div>
                     </div>
