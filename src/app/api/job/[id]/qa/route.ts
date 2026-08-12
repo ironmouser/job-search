@@ -90,7 +90,10 @@ export async function POST(
       return NextResponse.json({ error: `Limit reached (${limit}/${limit}). Please upgrade to Pro for more.` }, { status: 403 });
     }
 
-    const answer = await generateApplicationAnswer(
+    const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
+    const baseResumeText = userPrefs?.resumeMarkdown || '';
+
+    let answer = await generateApplicationAnswer(
       session.user.id,
       userJob.job.title,
       userJob.job.description || '',
@@ -101,13 +104,26 @@ export async function POST(
     );
 
     // Security Guard 3: Output Validation Check for severe hallucination
-    const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
-    const baseResumeText = userPrefs?.resumeMarkdown || '';
-    const outputValidation = validateGeneratedAsset(answer, baseResumeText, userJob.job.description || '', 'qa');
+    let outputValidation = validateGeneratedAsset(answer, baseResumeText, userJob.job.description || '', 'qa');
+
+    // Automatic single retry if quality check flagged severe hallucination/leakage
+    if (outputValidation.severeHallucination) {
+      console.warn('[Output Validation] Q&A answer generation flagged on attempt 1, retrying generation...');
+      answer = await generateApplicationAnswer(
+        session.user.id,
+        userJob.job.title,
+        userJob.job.description || '',
+        userJob.job.company,
+        question,
+        tone,
+        instruction
+      );
+      outputValidation = validateGeneratedAsset(answer, baseResumeText, userJob.job.description || '', 'qa');
+    }
 
     if (outputValidation.severeHallucination) {
-      console.warn('[Output Validation] Q&A answer generation rejected due to severe hallucination:', outputValidation.warnings);
-      return NextResponse.json({ error: 'Generated answer failed quality verification. Please refine your question.' }, { status: 422 });
+      console.warn('[Output Validation] Q&A answer generation rejected after retry:', outputValidation.warnings);
+      return NextResponse.json({ error: 'The AI system experienced a quality verification issue while generating your response. Please try clicking "Generate Response" again.' }, { status: 422 });
     }
 
     asset = await prisma.applicationAsset.update({
