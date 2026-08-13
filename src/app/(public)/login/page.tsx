@@ -92,20 +92,20 @@ function LoginForm() {
   }
 
   return (
-    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh", position: "relative", overflow: "hidden", padding: "2rem" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", marginTop: "-200px" }}>
-        <div style={{ zIndex: 10, textAlign: "center", marginBottom: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", position: "relative", overflow: "hidden", padding: "2rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: "420px" }}>
+        <div style={{ zIndex: 10, textAlign: "center", marginBottom: "1.75rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <img
-            src={getAssetUrl('/full-logo.png')}
-            alt="Job Agent HQ"
-            style={{ width: "50%", height: "auto", display: "block", marginBottom: "0.5rem" }}
+            src={getAssetUrl('/blade.gif')}
+            alt="Job Agent Robot"
+            style={{ height: "140px", width: "auto", display: "block", marginBottom: "1.25rem" }}
           />
-          <p className="page-subtitle" style={{ marginTop: "0.5rem" }}>
+          <p style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-secondary)", fontWeight: 400 }}>
             Sign in to your account or create a new one
           </p>
         </div>
 
-        <div className="glass-card" style={{ width: "100%", maxWidth: "420px", position: "relative", zIndex: 10 }}>
+        <div className="glass-card" style={{ width: "100%", position: "relative", zIndex: 10 }}>
           {errorMessage && (
             <div style={{ padding: "0.85rem 1rem", background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "8px", color: "#ef4444", fontSize: "0.85rem", marginBottom: "1.25rem", lineHeight: 1.4 }}>
               <div style={{ marginBottom: "0.5rem" }}>{errorMessage}</div>
