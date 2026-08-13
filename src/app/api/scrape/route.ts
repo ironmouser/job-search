@@ -16,6 +16,19 @@ export async function POST(request: Request) {
         }
         const userId = session.user.id;
 
+        // Log job sync execution run
+        try {
+          await prisma.syncLog.create({
+            data: {
+              userId,
+              syncType: `job_run_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              lastSyncedAt: new Date(),
+            },
+          });
+        } catch (e) {
+          console.warn('Failed to log job sync run:', e);
+        }
+
         const body = await request.json().catch(() => ({}));
         const settings: any = await getUserSettings(userId);
         

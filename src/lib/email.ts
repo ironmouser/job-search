@@ -202,6 +202,19 @@ ${uniqueUrls.join('\n')}
          });
       }
 
+      // Log email sync execution run instance
+      try {
+        await prisma.syncLog.create({
+          data: {
+            userId,
+            syncType: `email_run_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            lastSyncedAt: new Date(),
+          },
+        });
+      } catch (e) {
+        console.warn('Failed to log email sync run:', e);
+      }
+
       return newJobsSaved;
 
     } finally {
