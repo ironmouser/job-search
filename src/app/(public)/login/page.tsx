@@ -98,7 +98,7 @@ function LoginForm() {
           <img
             src={getAssetUrl('/full-logo.png')}
             alt="Job Agent HQ"
-            style={{ height: "200px", width: "auto", display: "block", marginBottom: "0.5rem" }}
+            style={{ width: "50%", height: "auto", display: "block", marginBottom: "0.5rem" }}
           />
           <p className="page-subtitle" style={{ marginTop: "0.5rem" }}>
             Sign in to your account or create a new one
