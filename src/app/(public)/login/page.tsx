@@ -98,10 +98,10 @@ function LoginForm() {
           <img
             src={getAssetUrl('/blade.gif')}
             alt="Job Agent Robot"
-            style={{ height: "140px", width: "auto", display: "block", marginBottom: "1.25rem" }}
+            style={{ height: "140px", width: "auto", display: "block", marginTop: "1.25rem" }}
           />
-          <p style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-secondary)", fontWeight: 400 }}>
-            Sign in to your account or create a new one
+          <p style={{ margin: 0, fontSize: "1.5rem", color: "#333", fontWeight: 600 }}>
+            One Click Login/Sign-up
           </p>
         </div>
 
