@@ -71,9 +71,10 @@ export interface FetchJobDescriptionResult {
 }
 
 async function fetchViaWorkerPlaywright(url: string): Promise<FetchJobDescriptionResult | null> {
-    const workerUrl = process.env.WORKER_URL || 'http://167.99.55.186:3001';
+    const workerUrl = process.env.WORKER_URL;
     const workerApiKey = process.env.WORKER_API_KEY;
-    if (!workerApiKey) return null;
+    // Both must be set — if WORKER_URL is missing, skip gracefully (worker not available)
+    if (!workerUrl || !workerApiKey) return null;
 
     try {
         console.info(`[JobFetcher] Routing fetch request to Worker Playwright stealth endpoint for: ${url}`);
