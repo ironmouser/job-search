@@ -1,6 +1,6 @@
 import { gotScraping } from 'got-scraping';
 import * as cheerio from 'cheerio';
-import { reformatJobDescriptionWithGemini } from './formatter';
+import { reformatJobDescriptionWithGemini, preCleanHtml } from './formatter';
 import { cleanJobUrl } from './urlUtils';
 
 /**
@@ -174,10 +174,12 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
                 const data = JSON.parse(apiRes.body.toString());
                 const rawDesc: string = data.descriptionHtml || data.description || '';
                 if (rawDesc.length > 100) {
-                    const textOnly = rawDesc.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+                    const cleanedDesc = preCleanHtml(rawDesc);
+                    if (isDescriptionAdequate(cleanedDesc)) {
+                        return cleanedDesc;
+                    }
                     const formatted = await reformatJobDescriptionWithGemini(rawDesc);
                     if (isDescriptionAdequate(formatted)) return formatted;
-                    if (isDescriptionAdequate(textOnly)) return textOnly;
                 }
             }
         } catch (e: any) {
@@ -220,7 +222,15 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
 
         const cleanDesc = jsonLdDesc.trim();
         if (cleanDesc.length > 100 && isDescriptionAdequate(cleanDesc)) {
-            return await reformatJobDescriptionWithGemini(cleanDesc);
+            // JSON-LD is structured data — clean HTML directly first to avoid unnecessary LLM calls
+            const preCleaned = preCleanHtml(cleanDesc);
+            if (isDescriptionAdequate(preCleaned)) {
+                return preCleaned;
+            }
+            const formatted = await reformatJobDescriptionWithGemini(cleanDesc);
+            if (isDescriptionAdequate(formatted)) {
+                return formatted;
+            }
         }
 
         $('script, style, noscript, nav, header, footer, iframe, svg').remove();

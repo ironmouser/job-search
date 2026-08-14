@@ -2,7 +2,7 @@ import { prisma } from './prisma';
 import { getUserSettings } from './settings';
 import { reformatJobDescriptionWithGemini } from './formatter';
 import { cleanJobUrl } from './urlUtils';
-import { callDeepSeek } from './deepseek';
+import { callAI } from './ai';
 import { isInternationalLocation, isRemoteLocation } from './locationUtils';
 import { cleanCompanyName } from './cleaners';
 
@@ -261,8 +261,8 @@ export async function normalizeAndSaveJobs(
             });
 
             try {
-                const triageResponse = await callDeepSeek({
-                    model: 'deepseek-v4-flash',
+                const triageResponse = await callAI({
+                    task: 'triage',
                     jsonMode: true,
                     maxTokens: 1000,
                     userId,

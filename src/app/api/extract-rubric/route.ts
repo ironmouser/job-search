@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { callDeepSeek } from '@/lib/deepseek';
+import { callAI } from '@/lib/ai';
 
 const ALL_CRITERIA_IDS = [
     'compensation',
@@ -71,8 +71,8 @@ Return ONLY a valid JSON object matching this exact schema:
   "goal": "Personalized 1-2 sentence overall job search goal"
 }`;
 
-        const rawResponse = await callDeepSeek({
-            model: 'deepseek-v4-flash',
+        const rawResponse = await callAI({
+            task: 'score',
             messages: [{ role: 'user', content: prompt }],
             jsonMode: true,
             temperature: 0.3,

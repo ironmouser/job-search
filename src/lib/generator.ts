@@ -4,6 +4,7 @@ import path from 'path';
 import { getUserSettings } from './settings';
 import { cleanCompanyName } from './cleaners';
 import { callDeepSeek } from './deepseek';
+import { callAI } from './ai';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkAiSafeguard, logAiCost, estimateTokens } from './ai-safeguard';
 import { COVER_LETTER_REFERENCE_EXAMPLES, NETWORKING_REFERENCE_EXAMPLES, QA_REFERENCE_EXAMPLES } from './ai-examples';
@@ -109,14 +110,16 @@ async function repairJsonWithAi(rawText: string, userId?: string): Promise<any> 
     console.log('Attempting AI JSON repair subflow for malformed response...');
     const repairSystem = `You are a strict JSON repair utility. Fix the provided text so that it is a valid JSON object matching the required schema. Output ONLY valid JSON without any markdown formatting or explanations. Key names MUST be: "tailored_resume", "cover_letter", "networking_message", "portfolio_recommendation".`;
     const repairUser = `Fix and output valid JSON for this text:\n\n${rawText.slice(0, 8000)}`;
-    const repairedText = await callAiService({
-        system: repairSystem,
-        userPrompt: repairUser,
+    const repairedText = await callAI({
+        task: 'repair',
+        messages: [
+            { role: 'system', content: repairSystem },
+            { role: 'user', content: repairUser }
+        ],
         maxTokens: 8192,
         jsonMode: true,
         userId: userId,
-        temperature: 0.1,
-        model: 'deepseek-v4-flash'
+        temperature: 0.1
     });
     return parseOrRepairJson(repairedText, 99);
 }
@@ -417,13 +420,15 @@ QUESTION TO ANSWER:
 ${question}
 `;
 
-    let responseText = await callAiService({
-        system: systemPrompt,
-        userPrompt: userPrompt,
+    let responseText = await callAI({
+        task: 'qa',
+        messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+        ],
         maxTokens: 512,
         userId: userId,
-        temperature: 1.0,
-        model: 'deepseek-v4-flash'
+        temperature: 1.0
     });
 
     responseText = responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');

@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import mammoth from 'mammoth';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import Anthropic from '@anthropic-ai/sdk';
-import { callDeepSeek } from '@/lib/deepseek';
+import { callAI } from '@/lib/ai';
 import { checkAiSafeguard, logAiCost, estimateTokens } from '@/lib/ai-safeguard';
 
 function normalizeCloudUrl(url: string, accessToken?: string): { fetchUrl: string; headers?: Record<string, string> } {
@@ -76,11 +76,11 @@ Do NOT use em-dashes ("—" or "--") or hyphens as punctuation. Do NOT add any c
 RAW RESUME TEXT:
 ${rawText}`;
 
-    // 1. Try DeepSeek
-    if (process.env.DEEPSEEK_API_KEY) {
+    // 1. Try callAI (GPT-5 nano with fallbacks)
+    if (process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY) {
         try {
-            const result = await callDeepSeek({
-                model: 'deepseek-v4-flash',
+            const result = await callAI({
+                task: 'format',
                 messages: [{ role: 'user', content: prompt }],
                 userId
             });
@@ -88,7 +88,7 @@ ${rawText}`;
                 return cleanMarkdownFences(result);
             }
         } catch (e: any) {
-            console.warn('DeepSeek resume formatting failed, trying Gemini fallback:', e.message);
+            console.warn('AI resume formatting failed, trying Gemini fallback:', e.message);
         }
     }
 

@@ -7,13 +7,13 @@ import * as cheerio from 'cheerio';
 import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
-import { callDeepSeek } from '@/lib/deepseek';
+import { callAI } from '@/lib/ai';
 import { cleanJobUrl, isTrustedJobUrl } from '@/lib/urlUtils';
 import { logSuspiciousActivity } from '@/lib/security';
 import { getEffectiveTier } from '@/lib/tier';
 
 async function extractJobMetadataWithGemini(rawText: string) {
-  if (!process.env.DEEPSEEK_API_KEY || !rawText || rawText.trim().length === 0) {
+  if ((!process.env.OPENAI_API_KEY && !process.env.DEEPSEEK_API_KEY) || !rawText || rawText.trim().length === 0) {
     return null;
   }
   try {
@@ -31,8 +31,8 @@ JSON Structure:
 Web Page Content:
 ${rawText.slice(0, 15000)}`;
 
-    const text = await callDeepSeek({
-      model: 'deepseek-v4-flash',
+    const text = await callAI({
+      task: 'extract',
       jsonMode: true,
       messages: [{ role: 'user', content: prompt }]
     });
