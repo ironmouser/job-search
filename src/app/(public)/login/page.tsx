@@ -70,7 +70,18 @@ function LoginForm() {
   const handleTestSignIn = async () => {
     setIsTestLoading(true);
     try {
-      await signIn("credentials", { callbackUrl: "/onboarding" });
+      try {
+        await fetch("/api/dev/reset-test-user", { method: "POST" });
+      } catch (e) {
+        console.warn("Reset test user fetch failed:", e);
+      }
+      try {
+        localStorage.removeItem("job_agent_onboarding_progress");
+        localStorage.removeItem("job_agent_tour_progress");
+        localStorage.removeItem("onboarding_banner_close_count");
+        localStorage.removeItem("onboarding_banner_never_show");
+      } catch (e) {}
+      await signIn("credentials", { reset: "true", callbackUrl: "/onboarding" });
     } catch (error) {
       console.error("Test sign in error:", error);
       setIsTestLoading(false);

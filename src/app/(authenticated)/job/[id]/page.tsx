@@ -31,7 +31,13 @@ import JobDetailsActionBar from '@/components/JobDetailsActionBar';
 import JobDetailTracker from '@/components/JobDetailTracker';
 import { getEffectiveTier } from '@/lib/tier';
 
-marked.setOptions({ gfm: true, breaks: true });
+const markedRenderer = new marked.Renderer();
+markedRenderer.link = ({ href, title, text }) => {
+  const titleAttr = title ? ` title="${title}"` : '';
+  return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+};
+
+marked.setOptions({ gfm: true, breaks: true, renderer: markedRenderer });
 
 function formatDescriptionMarkdown(desc?: string | null): string {
   if (!desc) return '';
@@ -39,7 +45,21 @@ function formatDescriptionMarkdown(desc?: string | null): string {
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
   }
-  return marked.parse(cleaned) as string;
+  let html = marked.parse(cleaned) as string;
+  // Ensure all links open in a new tab (including raw HTML inside description)
+  html = html.replace(/<a\b([^>]*)>/gi, (match, attrs) => {
+    let newAttrs = attrs;
+    if (/target\s*=/i.test(newAttrs)) {
+      newAttrs = newAttrs.replace(/target\s*=\s*["'][^"']*["']/gi, 'target="_blank"');
+    } else {
+      newAttrs = ` target="_blank"${newAttrs}`;
+    }
+    if (!/rel\s*=/i.test(newAttrs)) {
+      newAttrs = `${newAttrs} rel="noopener noreferrer"`;
+    }
+    return `<a${newAttrs}>`;
+  });
+  return html;
 }
 
 export default async function JobDetail({ params }: { params: Promise<{ id: string }> }) {

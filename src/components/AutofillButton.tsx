@@ -327,22 +327,22 @@ export default function AutofillButton({
               <button
                 onClick={() => {
                   setShowPromptGenerateModal(false);
-                  executeDirectApply();
+                  handleAutofill();
                 }}
                 className="btn-outline"
-                style={{ padding: '0.6rem 1.2rem' }}
+                style={{ padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
-                No, Take Me to Job Application
+                <Bot size={16} /> Yes, Generate Job Assets
               </button>
               <button
                 onClick={() => {
                   setShowPromptGenerateModal(false);
-                  handleAutofill();
+                  executeDirectApply();
                 }}
                 className="btn-primary"
-                style={{ padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                style={{ padding: '0.6rem 1.2rem' }}
               >
-                <Bot size={16} /> Yes, Generate Job Assets
+                Take Me to Job Application
               </button>
             </div>
           </div>

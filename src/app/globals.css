@@ -2113,6 +2113,18 @@ footer {
   font-weight: 600;
 }
 
+.job-description-content a {
+  color: var(--accent-primary, #0070f3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.job-description-content a:hover {
+  color: var(--accent-hover, #38bdf8);
+}
+
+
 /* ─── Spinner ────────────────────────────────────────────────────────── */
 
 @keyframes spin {

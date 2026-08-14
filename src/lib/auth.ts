@@ -31,19 +31,28 @@ export const authOptions: AuthOptions = {
       ? [
         CredentialsProvider({
           name: "Test Account",
-          credentials: {},
-          async authorize() {
+          credentials: {
+            reset: { label: "Reset", type: "text" }
+          },
+          async authorize(credentials) {
             try {
               let user = await prisma.user.findUnique({ where: { email: "test@example.com" } });
               if (!user) {
                 user = await prisma.user.create({
-                  data: { email: "test@example.com", name: "Test User" }
+                  data: { email: "test@example.com", name: "Test User", isOnboarded: false }
+                });
+              } else if (credentials?.reset === "true" || user.isOnboarded) {
+                // Reset onboarding status and preferences for testing onboarding flow
+                await prisma.userPreferences.deleteMany({ where: { userId: user.id } }).catch(() => {});
+                user = await prisma.user.update({
+                  where: { id: user.id },
+                  data: { isOnboarded: false, planTier: "FREE", trialEndsAt: null }
                 });
               }
               return user as any;
             } catch (e) {
               console.error("DB unavailable for Test Account, falling back to mock dev user:", e);
-              return { id: "test-user-dev-id", email: "test@example.com", name: "Test User", isOnboarded: true, planTier: "PRO", role: "USER" } as any;
+              return { id: "test-user-dev-id", email: "test@example.com", name: "Test User", isOnboarded: false, planTier: "PRO", role: "USER" } as any;
             }
           }
         })

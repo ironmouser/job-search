@@ -8,6 +8,8 @@ import { authOptions } from "@/lib/auth";
 import { getEffectiveTier } from '@/lib/tier';
 
 
+import { isUsLocation, isRemoteLocation, extractStateAbbr, isOutsideUsLocation } from '@/lib/locationUtils';
+
 export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
@@ -128,10 +130,44 @@ export async function POST(request: Request) {
                         }
                     };
 
-                    if (sources.indeed) tasks.push(runScraperTask('Indeed', () => scrapeIndeed(keyword, location), 25000));
-                    if (sources.linkedin) tasks.push(runScraperTask('LinkedIn', () => scrapeLinkedIn(keyword, location), 25000));
-                    if (sources.ziprecruiter) tasks.push(runScraperTask('ZipRecruiter', () => scrapeZipRecruiter(keyword, location), 25000));
-                    if (sources.dice && isPro) tasks.push(runScraperTask('Dice', () => scrapeDice(keyword, location), 25000));
+                    // Determine locations to query across location-aware job boards
+                    const hasState = extractStateAbbr(location) !== null;
+                    const isGenericRemote = isRemoteLocation(location) && !hasState;
+                    const isOutsideUs = isOutsideUsLocation(location);
+
+                    let locationList: string[];
+                    if (isGenericRemote) {
+                        locationList = ['Remote'];
+                    } else if (isOutsideUs) {
+                        locationList = [location];
+                    } else if (isUsLocation(location) || hasState) {
+                        // For US city/state searches (e.g. "Austin, TX"), query both the local target and broad US Remote
+                        const cleanLocal = location.replace(/remote/i, '').replace(/^[\s,]+|[\s,]+$/g, '').trim() || location;
+                        locationList = Array.from(new Set([cleanLocal, 'Remote']));
+                    } else {
+                        locationList = [location];
+                    }
+
+                    if (sources.indeed) {
+                        for (const loc of locationList) {
+                            tasks.push(runScraperTask(locationList.length > 1 ? `Indeed (${loc})` : 'Indeed', () => scrapeIndeed(keyword, loc), 25000));
+                        }
+                    }
+                    if (sources.linkedin) {
+                        for (const loc of locationList) {
+                            tasks.push(runScraperTask(locationList.length > 1 ? `LinkedIn (${loc})` : 'LinkedIn', () => scrapeLinkedIn(keyword, loc), 25000));
+                        }
+                    }
+                    if (sources.ziprecruiter) {
+                        for (const loc of locationList) {
+                            tasks.push(runScraperTask(locationList.length > 1 ? `ZipRecruiter (${loc})` : 'ZipRecruiter', () => scrapeZipRecruiter(keyword, loc), 25000));
+                        }
+                    }
+                    if (sources.dice && isPro) {
+                        for (const loc of locationList) {
+                            tasks.push(runScraperTask(locationList.length > 1 ? `Dice (${loc})` : 'Dice', () => scrapeDice(keyword, loc), 25000));
+                        }
+                    }
                     if (customUrls.length > 0) tasks.push(runScraperTask('Custom Career Pages', () => scrapeCustomPages(customUrls), 25000));
                     if (sources.weworkremotely || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.nodesk) {
                         tasks.push(runScraperTask('Remote Aggregators', () => scrapeRemoteAggregators(keyword, sources), 15000));

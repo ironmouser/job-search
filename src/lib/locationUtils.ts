@@ -126,3 +126,52 @@ export const isOutsideUsLocation = (loc: string): boolean => {
   return isInternationalLocation(loc);
 };
 
+// Returns true if a location explicitly represents globally open / worldwide remote
+export const isWorldwideRemote = (loc: string): boolean => {
+  if (!loc) return false;
+  const l = loc.toLowerCase().trim();
+  return GLOBAL_NON_US_TERMS.some(term => l === term || l.includes(term));
+};
+
+// Determines whether a job listing's location matches the candidate's location preference
+export const matchesLocationPreference = (jobLoc: string, userLoc: string): boolean => {
+  if (!userLoc || userLoc.trim() === '') return true;
+  if (!jobLoc) return isRemoteLocation(userLoc);
+
+  const userTrimmed = userLoc.trim();
+  const jobTrimmed = jobLoc.trim();
+
+  // If user wants generic Remote, any remote job matches
+  if (isRemoteLocation(userTrimmed) && !extractStateAbbr(userTrimmed)) {
+    return isRemoteLocation(jobTrimmed);
+  }
+
+  // If user has a US location (e.g. "Austin, TX" or state), return true for either:
+  // 1) Matching local/state job, OR
+  // 2) US-eligible Remote job
+  if (isUsLocation(userTrimmed)) {
+    const userState = extractStateAbbr(userTrimmed);
+    const jobState = extractStateAbbr(jobTrimmed);
+
+    if (userState && jobState && userState === jobState) return true;
+    if (jobTrimmed.toLowerCase().includes(userTrimmed.toLowerCase())) return true;
+
+    // US Remote matches US location preferences
+    if (isRemoteLocation(jobTrimmed) && !isInternationalLocation(jobTrimmed)) {
+      return true;
+    }
+    return false;
+  }
+
+  // If user is International (e.g. "London, UK"), return true for either:
+  // 1) Direct matching international location, OR
+  // 2) True worldwide / globally open remote roles
+  if (isOutsideUsLocation(userTrimmed)) {
+    if (jobTrimmed.toLowerCase().includes(userTrimmed.toLowerCase())) return true;
+    if (isWorldwideRemote(jobTrimmed)) return true;
+    return false;
+  }
+
+  return true;
+};
+
