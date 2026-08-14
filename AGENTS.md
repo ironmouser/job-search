@@ -21,6 +21,6 @@ When writing or rewriting content for resumes, cover letters, networking message
 - **Tone and Energy (CRITICAL)**: Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement while remaining professional. Use varied sentence structures to ensure a natural, human rhythm.
 
 # Infrastructure & Deployment Conventions
-- **Auto Apply Worker**: Hosted on a DigitalOcean droplet accessible via `ssh root@167.99.55.186`.
-- **Process Restarts Alert**: Always explicitly alert the user whenever changes modify files under `worker/` or backend services requiring a process restart, `git pull`, or server update on the DigitalOcean droplet.
+- **Production Server & Services**: The Next.js web app, database, and background auto-apply worker are all hosted as services on **Railway**.
+- **Deployment**: Pushes to `main` automatically trigger builds and deployments across Railway services.
 
