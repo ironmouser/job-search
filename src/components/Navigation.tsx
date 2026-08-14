@@ -18,6 +18,7 @@ export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isChecklistHidden, setIsChecklistHidden] = useState(false);
   const { openHelpPanel } = useHelp();
 
   useEffect(() => {
@@ -58,9 +59,6 @@ export default function Navigation() {
   const trialDaysLeft = isInTrial
     ? Math.ceil((new Date(trialEndsAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : 0;
-
-  const [isChecklistHidden, setIsChecklistHidden] = useState(false);
-
 
   return (
     <>
