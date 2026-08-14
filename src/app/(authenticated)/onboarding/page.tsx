@@ -2,11 +2,22 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bot, Search, FileText, Target, CheckCircle, ChevronRight, ChevronLeft, Loader2, UploadCloud, Flame, Star, Sparkles } from 'lucide-react';
+import { 
+    Bot, Search, FileText, Target, CheckCircle, CheckCircle2, ChevronRight, ChevronLeft, 
+    Loader2, UploadCloud, Star, Sparkles, DollarSign, Clock, TrendingUp, Cpu, Users, 
+    Compass, Edit3, Check, X, ArrowUpRight, Flame
+} from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import CloudResumePicker from '@/components/common/CloudResumePicker';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { trackOnboardingStep, trackOnboardingResumeSkip, trackOnboardingComplete } from '@/lib/analytics';
+
+interface CriteriaItem {
+    id: string;
+    label: string;
+    fullLabel: string;
+    desc: string;
+    icon: React.ElementType;
+}
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -15,11 +26,20 @@ export default function OnboardingPage() {
     const [loading, setLoading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [isParsing, setIsParsing] = useState(false);
+    const [isExtractingRubric, setIsExtractingRubric] = useState(false);
+    const [isAiSmartRubric, setIsAiSmartRubric] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isMounted, setIsMounted] = useState(false);
+
+    // Step 3 Priority Tiers
+    const [rubricPhase, setRubricPhase] = useState<1 | 2>(1);
+    const [mustHaves, setMustHaves] = useState<string[]>([]);
+    const [important, setImportant] = useState<string[]>([]);
+    const [niceToHaves, setNiceToHaves] = useState<string[]>([
+        'compensation', 'remoteFlexibility', 'growth', 'productFit', 
+        'techStack', 'culture', 'leadership', 'aiMaturity'
+    ]);
 
     useEffect(() => {
-        setIsMounted(true);
         trackOnboardingStep(1, "Target Search");
     }, []);
     
@@ -29,45 +49,95 @@ export default function OnboardingPage() {
         remoteOnly: false,
         resumeMarkdown: '',
     });
-    const [goal, setGoal] = useState('I am looking for high-growth tech opportunities.');
-    
-    type PriorityLevel = 'mustHave' | 'important' | 'niceToHave';
-    const [bucketState, setBucketState] = useState<Record<string, PriorityLevel>>({
-        compensation: 'important',
-        productFit: 'important',
-        remoteFlexibility: 'niceToHave',
-        aiMaturity: 'niceToHave',
-        leadership: 'niceToHave',
-        growth: 'niceToHave',
-        culture: 'niceToHave',
-        techStack: 'niceToHave'
-    });
+    const [goal, setGoal] = useState('I am looking for high-growth tech opportunities with strong engineering culture.');
 
-    const criteriaList = [
-        { id: 'compensation', label: 'Compensation & Benefits', desc: 'Salary, equity, health, retirement packages' },
-        { id: 'productFit', label: 'Company Fit', desc: 'Company/business stability, market demand, and role alignment' },
-        { id: 'remoteFlexibility', label: 'Remote Flexibility', desc: 'Work-from-home policy, flexible hours' },
-        { id: 'aiMaturity', label: 'AI Maturity & Tooling', desc: 'Use of AI tools, modern infrastructure' },
-        { id: 'leadership', label: 'Leadership & Vision', desc: 'Executive strength, mentorship quality' },
-        { id: 'growth', label: 'Career Growth', desc: 'Promotions, learning budgets, responsibilities' },
-        { id: 'culture', label: 'Work Culture', desc: 'Work-life balance, diversity, collaboration' },
-        { id: 'techStack', label: 'Tech Stack', desc: 'Modern frameworks, developer tooling' }
+    const criteriaList: CriteriaItem[] = [
+        { 
+            id: 'compensation', 
+            label: 'Compensation', 
+            fullLabel: 'Compensation & Benefits', 
+            desc: 'Salary, bonus, equity & retirement packages', 
+            icon: DollarSign 
+        },
+        { 
+            id: 'remoteFlexibility', 
+            label: 'Remote Flexibility', 
+            fullLabel: 'Remote Flexibility', 
+            desc: 'Work-from-home policy & flexible hours', 
+            icon: Clock 
+        },
+        { 
+            id: 'growth', 
+            label: 'Career Growth', 
+            fullLabel: 'Career Growth', 
+            desc: 'Promotions, learning budgets & leadership scope', 
+            icon: TrendingUp 
+        },
+        { 
+            id: 'productFit', 
+            label: 'Company Fit', 
+            fullLabel: 'Company Fit', 
+            desc: 'Company stability, market demand & domain alignment', 
+            icon: Star 
+        },
+        { 
+            id: 'techStack', 
+            label: 'Tech Stack', 
+            fullLabel: 'Tech Stack', 
+            desc: 'Modern frameworks, tooling & developer velocity', 
+            icon: Cpu 
+        },
+        { 
+            id: 'culture', 
+            label: 'Work Culture', 
+            fullLabel: 'Work Culture', 
+            desc: 'Work-life balance, diversity & team dynamics', 
+            icon: Users 
+        },
+        { 
+            id: 'leadership', 
+            label: 'Leadership & Vision', 
+            fullLabel: 'Leadership & Vision', 
+            desc: 'Executive strength & mentorship quality', 
+            icon: Compass 
+        },
+        { 
+            id: 'aiMaturity', 
+            label: 'AI Maturity', 
+            fullLabel: 'AI Maturity & Tooling', 
+            desc: 'Adoption of AI tools & modern infrastructure', 
+            icon: Sparkles 
+        }
     ];
 
+    const getCriteriaById = (id: string) => {
+        return criteriaList.find(c => c.id === id) || {
+            id,
+            label: id,
+            fullLabel: id,
+            desc: '',
+            icon: Star
+        };
+    };
+
     const getCalculatedWeights = () => {
-        const points: Record<PriorityLevel, number> = { mustHave: 5, important: 3, niceToHave: 1 };
+        const points: Record<string, number> = {};
         let totalPoints = 0;
-        const mappedPoints: Record<string, number> = {};
-        
-        Object.keys(bucketState).forEach(key => {
-            const p = points[bucketState[key] as PriorityLevel];
-            mappedPoints[key] = p;
+
+        criteriaList.forEach(c => {
+            let p = 1; // Nice-to-Have default = 1 pt
+            if (mustHaves.includes(c.id)) {
+                p = 5; // Must-Have = 5 pts (25% each when 2 selected)
+            } else if (important.includes(c.id)) {
+                p = 3; // High Priority = 3 pts (15% each when 2 selected)
+            }
+            points[c.id] = p;
             totalPoints += p;
         });
 
         const calculated: Record<string, number> = {};
-        Object.keys(mappedPoints).forEach(key => {
-            calculated[key] = Math.round((mappedPoints[key] / totalPoints) * 100);
+        criteriaList.forEach(c => {
+            calculated[c.id] = Math.round((points[c.id] / (totalPoints || 1)) * 100);
         });
         
         const sum = Object.values(calculated).reduce((a, b) => a + b, 0);
@@ -79,37 +149,130 @@ export default function OnboardingPage() {
         return calculated;
     };
 
-    const handleDragEnd = (result: DropResult) => {
-        if (!result.destination) return;
-        const newLevel = result.destination.droppableId as PriorityLevel;
-        const itemId = result.draggableId;
-        setBucketState(prev => ({
-            ...prev,
-            [itemId]: newLevel
-        }));
+    // Manual 2-Phase Selection Handlers
+    const handleToggleMustHave = (id: string) => {
+        if (mustHaves.includes(id)) {
+            setMustHaves(prev => prev.filter(item => item !== id));
+        } else {
+            let next: string[];
+            if (mustHaves.length >= 2) {
+                next = [mustHaves[0], id];
+            } else {
+                next = [...mustHaves, id];
+            }
+            setMustHaves(next);
+            if (important.includes(id)) {
+                setImportant(prev => prev.filter(item => item !== id));
+            }
+            if (next.length === 2) {
+                setTimeout(() => {
+                    setRubricPhase(2);
+                }, 200);
+            }
+        }
     };
 
+    const handleToggleImportant = (id: string) => {
+        if (important.includes(id)) {
+            setImportant(prev => prev.filter(item => item !== id));
+        } else {
+            if (important.length >= 2) {
+                setImportant([important[0], id]);
+            } else {
+                setImportant(prev => [...prev, id]);
+            }
+        }
+    };
+
+    // Smart Rubric Interactive Handlers
+    const handleRemoveNonNegotiable = (id: string) => {
+        setMustHaves(prev => prev.filter(item => item !== id));
+        setNiceToHaves(prev => prev.includes(id) ? prev : [...prev, id]);
+    };
+
+    const handleRemoveHighPriority = (id: string) => {
+        setImportant(prev => prev.filter(item => item !== id));
+        setNiceToHaves(prev => prev.includes(id) ? prev : [...prev, id]);
+    };
+
+    const handlePromoteToNonNegotiable = (id: string) => {
+        if (mustHaves.length >= 2) return;
+        setNiceToHaves(prev => prev.filter(item => item !== id));
+        setImportant(prev => prev.filter(item => item !== id));
+        setMustHaves(prev => [...prev, id]);
+    };
+
+    const handlePromoteToHighPriority = (id: string) => {
+        if (important.length >= 2) return;
+        setNiceToHaves(prev => prev.filter(item => item !== id));
+        setMustHaves(prev => prev.filter(item => item !== id));
+        setImportant(prev => [...prev, id]);
+    };
 
     const handleChange = (key: string, value: any) => {
         setFormData({ ...formData, [key]: value });
     };
 
-    const handleNext = () => {
-        setStep(s => {
-            const nextStep = Math.min(s + 1, 3);
-            if (nextStep === 2) {
-                trackOnboardingStep(2, "Base Resume");
-            } else if (nextStep === 3) {
-                trackOnboardingStep(3, "Scoring Rubric");
-                if (!formData.resumeMarkdown.trim()) {
-                    trackOnboardingResumeSkip();
+    const runAiRubricExtraction = async (resumeText: string) => {
+        setIsExtractingRubric(true);
+        try {
+            const res = await fetch('/api/extract-rubric', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    resumeMarkdown: resumeText,
+                    searchKeyword: formData.searchKeyword,
+                    searchLocation: formData.searchLocation
+                })
+            });
+            const data = await res.json();
+            if (data?.success && Array.isArray(data?.mustHaves) && Array.isArray(data?.important)) {
+                setMustHaves(data.mustHaves);
+                setImportant(data.important);
+                setNiceToHaves(data.niceToHaves || criteriaList.map(c => c.id).filter(id => !data.mustHaves.includes(id) && !data.important.includes(id)));
+                if (data.goal) {
+                    setGoal(data.goal);
                 }
+                setIsAiSmartRubric(true);
+            } else {
+                setIsAiSmartRubric(false);
             }
-            return nextStep;
-        });
+        } catch (err) {
+            console.warn('AI Rubric extraction failed, falling back to manual UX:', err);
+            setIsAiSmartRubric(false);
+        } finally {
+            setIsExtractingRubric(false);
+        }
+    };
+
+    const handleNext = async () => {
+        if (step === 2) {
+            const hasResume = Boolean(formData.resumeMarkdown.trim());
+            if (hasResume) {
+                await runAiRubricExtraction(formData.resumeMarkdown);
+            } else {
+                setIsAiSmartRubric(false);
+                trackOnboardingResumeSkip();
+            }
+            trackOnboardingStep(3, "Scoring Rubric");
+            setStep(3);
+        } else if (step === 1) {
+            trackOnboardingStep(2, "Base Resume");
+            setStep(2);
+        }
     };
     
-    const handlePrev = () => setStep(s => Math.max(s - 1, 1));
+    const handlePrev = () => {
+        if (step === 3) {
+            if (!isAiSmartRubric && rubricPhase === 2) {
+                setRubricPhase(1);
+            } else {
+                setStep(2);
+            }
+        } else {
+            setStep(s => Math.max(s - 1, 1));
+        }
+    };
 
     const handleFileParse = async (file: File) => {
         setIsParsing(true);
@@ -156,14 +319,14 @@ export default function OnboardingPage() {
 ${goal}
 
 # Evaluation Criteria Weights
-- Compensation: ${calculatedWeights.compensation}%
-- Company Fit: ${calculatedWeights.productFit}% (Company business viability and overall role alignment)
-- Remote Flexibility: ${calculatedWeights.remoteFlexibility}%
-- AI Maturity: ${calculatedWeights.aiMaturity}%
-- Leadership: ${calculatedWeights.leadership}%
-- Growth: ${calculatedWeights.growth}%
-- Culture: ${calculatedWeights.culture}%
-- Tech Stack: ${calculatedWeights.techStack}%`;
+- Compensation: ${calculatedWeights.compensation || 15}%
+- Company Fit: ${calculatedWeights.productFit || 15}% (Company business viability and overall role alignment)
+- Remote Flexibility: ${calculatedWeights.remoteFlexibility || 15}%
+- AI Maturity: ${calculatedWeights.aiMaturity || 10}%
+- Leadership: ${calculatedWeights.leadership || 10}%
+- Growth: ${calculatedWeights.growth || 15}%
+- Culture: ${calculatedWeights.culture || 10}%
+- Tech Stack: ${calculatedWeights.techStack || 10}%`;
 
             const res = await fetch('/api/onboarding', {
                 method: 'POST',
@@ -179,14 +342,13 @@ ${goal}
                     has_resume: Boolean(formData.resumeMarkdown.trim()),
                     search_keyword: formData.searchKeyword,
                     search_location: formData.searchLocation,
-                    remote_only: formData.remoteOnly
+                    remote_only: formData.remoteOnly,
+                    smart_rubric_used: isAiSmartRubric
                 });
-                // Update NextAuth session to trigger token update with new isOnboarded flag
                 await update({ isOnboarded: true });
                 try {
                     localStorage.setItem('job_agent_auto_sync_on_mount', 'true');
                 } catch (e) {}
-                // Hard navigate to dashboard with autoSync flag
                 window.location.href = '/dashboard?autoSync=true';
             } else {
                 alert('Failed to save settings. Please try again.');
@@ -198,12 +360,69 @@ ${goal}
         }
     };
 
+    const phase2AvailableItems = criteriaList.filter(c => !mustHaves.includes(c.id));
+
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'clamp(0.75rem, 3vw, 2rem)', background: 'var(--bg-main)', width: '100%', boxSizing: 'border-box' }}>
-            <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '800px', padding: 'clamp(1.25rem, 4vw, 2.5rem)', boxSizing: 'border-box' }}>
+        <div style={{ 
+            minHeight: '100vh', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: 'clamp(0.75rem, 3vw, 2rem)', 
+            background: 'var(--bg-main)', 
+            width: '100%', 
+            boxSizing: 'border-box' 
+        }}>
+            <style jsx global>{`
+                @keyframes pulseBadge {
+                    0%, 100% {
+                        opacity: 0.85;
+                        transform: scale(1);
+                    }
+                    50% {
+                        opacity: 1;
+                        transform: scale(1.03);
+                    }
+                }
+                @keyframes fadeSlideUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(8px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                .rubric-card {
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    cursor: pointer;
+                    user-select: none;
+                }
+                .rubric-card:hover {
+                    transform: translateY(-2px);
+                }
+                .smart-chip {
+                    transition: all 0.2s ease;
+                }
+                .smart-chip:hover {
+                    border-color: rgba(255, 255, 255, 0.3);
+                }
+                .animate-rubric-enter {
+                    animation: fadeSlideUp 0.25s ease-out forwards;
+                }
+            `}</style>
+
+            <div className="glass-card animate-fade-in" style={{ 
+                width: '100%', 
+                maxWidth: '740px', 
+                padding: 'clamp(1.25rem, 4vw, 2.25rem)', 
+                boxSizing: 'border-box' 
+            }}>
                 
                 {/* Progress Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'clamp(1.5rem, 4vw, 2.5rem)', position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'clamp(1.25rem, 3vw, 2rem)', position: 'relative' }}>
                     <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', background: 'var(--border-glass)', zIndex: 0 }} />
                     <div style={{ position: 'absolute', top: '50%', left: 0, width: `${(step - 1) * 50}%`, height: '2px', background: 'var(--accent-primary)', zIndex: 0, transition: 'width 0.3s ease' }} />
                     
@@ -224,7 +443,7 @@ ${goal}
                     ))}
                 </div>
 
-                {/* Step 1 */}
+                {/* Step 1: Target Search */}
                 {step === 1 && (
                     <div className="animate-fade-in" style={{ width: '100%' }}>
                         <h2 style={{ fontSize: 'clamp(1.35rem, 4vw, 1.85rem)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -262,14 +481,14 @@ ${goal}
                     </div>
                 )}
 
-                {/* Step 2 */}
+                {/* Step 2: Base Resume */}
                 {step === 2 && (
                     <div className="animate-fade-in" style={{ width: '100%' }}>
                         <h2 style={{ fontSize: 'clamp(1.35rem, 4vw, 1.85rem)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                             <FileText className="text-accent" size={24} style={{ flexShrink: 0 }} />
                             <span>Base Resume</span>
                         </h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.25rem', fontSize: '0.95rem' }}>Upload a PDF/Word doc or paste your resume. The AI will convert it to Markdown to use as a template.</p>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.25rem', fontSize: '0.95rem' }}>Upload a PDF/Word doc or paste your resume. The AI will automatically tailor your scoring priorities based on your background.</p>
                         
                         <div style={{
                             background: 'rgba(99, 102, 241, 0.1)',
@@ -283,9 +502,9 @@ ${goal}
                         }}>
                             <Sparkles className="text-accent" size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
                             <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
-                                <strong>Why upload now?</strong> Uploading your base resume enables deep AI skill matching and 1-click tailored application generation for all target jobs. 
+                                <strong>Instant AI Priority Matching:</strong> Uploading your resume allows the AI to automatically analyze your experience, level, and preferences to recommend your priority rubric!
                                 <span style={{ display: 'block', marginTop: '0.25rem', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                                    Don't have your file ready? You can skip this step for now and upload it right before you apply!
+                                    Don't have your resume ready? You can skip this step and configure your priorities manually.
                                 </span>
                             </div>
                         </div>
@@ -354,195 +573,758 @@ ${goal}
                     </div>
                 )}
 
-                {/* Step 3 */}
+                {/* Step 3: AI Scoring Rubric */}
                 {step === 3 && (
                     <div className="animate-fade-in" style={{ width: '100%' }}>
-                        <h2 style={{ fontSize: 'clamp(1.35rem, 4vw, 1.85rem)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                            <Target className="text-accent" size={24} style={{ flexShrink: 0 }} />
-                            <span>AI Scoring Rubric</span>
-                        </h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Define exactly how the AI should score and rank jobs. Be specific about your priorities.</p>
                         
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', width: '100%' }}>
-                            <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>1. What is your overall job search goal?</label>
-                            <textarea 
-                                value={goal}
-                                onChange={(e) => setGoal(e.target.value)}
-                                placeholder="Example: I am looking for high-growth tech opportunities with strong engineering culture..."
-                                style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', minHeight: '90px', resize: 'vertical', fontSize: '0.9rem' }}
-                            />
-                        </div>
-
-                        <div style={{ marginBottom: '1.5rem', width: '100%' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <label style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>2. Sort Your Priorities</label>
-                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Drag & drop or tap to re-weight</span>
+                        {/* Loading State during AI priority extrapolation */}
+                        {isExtractingRubric ? (
+                            <div style={{ 
+                                padding: '3.5rem 1.5rem', 
+                                textAlign: 'center', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                gap: '1.25rem' 
+                            }}>
+                                <div style={{
+                                    width: '56px',
+                                    height: '56px',
+                                    borderRadius: '50%',
+                                    background: 'rgba(99, 102, 241, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--accent-primary)'
+                                }}>
+                                    <Sparkles size={30} className="animate-spin" />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>
+                                        Analyzing Your Resume with AI...
+                                    </h3>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '420px', margin: '0 auto', lineHeight: 1.5 }}>
+                                        Matching your career level, work preferences, and background to recommend your top priorities.
+                                    </p>
+                                </div>
                             </div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.4 }}>Percentages dynamically update. Must-Haves carry 5x more weight than Nice-to-Haves.</p>
+                        ) : isAiSmartRubric ? (
+                            /* SMART RUBRIC VIEW (Resume Uploaded) */
+                            <div className="animate-rubric-enter" style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    <h2 style={{ fontSize: 'clamp(1.3rem, 3.5vw, 1.7rem)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Sparkles className="text-accent" size={22} />
+                                        <span>AI-Matched Priorities</span>
+                                    </h2>
+                                    <span style={{
+                                        background: 'rgba(16, 185, 129, 0.12)',
+                                        color: '#10b981',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        padding: '0.2rem 0.65rem',
+                                        borderRadius: '20px',
+                                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.3rem'
+                                    }}>
+                                        <CheckCircle2 size={13} /> Matched from Resume
+                                    </span>
+                                </div>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem', lineHeight: 1.4 }}>
+                                    Based on your background and career experience, the AI recommended these priorities. Use the <strong>X</strong> and promotion buttons to customize anytime.
+                                </p>
 
-                            {isMounted ? (
-                                <DragDropContext onDragEnd={handleDragEnd}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem', width: '100%' }}>
-                                        {([
-                                            { level: 'mustHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Flame size={16} /> Must-Haves</span>, desc: 'Dealbreakers', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
-                                            { level: 'important', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Star size={16} /> Important</span>, desc: 'Strong preferences', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
-                                            { level: 'niceToHave', title: <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Sparkles size={16} /> Nice-to-Haves</span>, desc: 'Bonus points', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' }
-                                        ] as const).map(bucket => (
-                                            <Droppable 
-                                                key={bucket.level} 
-                                                droppableId={bucket.level}
-                                                renderClone={(provided, snapshot, rubric) => {
-                                                    const c = criteriaList.find(item => item.id === rubric.draggableId);
-                                                    if (!c) return null;
-                                                    const calculatedWeights = getCalculatedWeights();
-                                                    const pct = calculatedWeights[c.id];
-                                                    return (
-                                                        <div
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            {...provided.dragHandleProps}
-                                                            style={{
-                                                                background: 'var(--card)',
-                                                                color: 'var(--text-primary)',
-                                                                padding: '0.75rem',
-                                                                borderRadius: '6px',
-                                                                border: '1px solid var(--accent-primary)',
-                                                                cursor: 'grabbing',
-                                                                boxShadow: '0 12px 24px -4px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--accent-primary)',
-                                                                width: '100%',
-                                                                boxSizing: 'border-box',
-                                                                userSelect: 'none',
-                                                                ...provided.draggableProps.style
-                                                            }}
-                                                        >
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{c.label}</span>
-                                                                <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)', fontSize: '0.85rem' }}>{pct}%</span>
-                                                            </div>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{c.desc}</div>
-                                                        </div>
-                                                    );
-                                                }}
-                                            >
-                                                {(provided, snapshot) => (
+                                {/* 1. Non-Negotiables Section */}
+                                <div style={{ 
+                                    background: 'rgba(16, 185, 129, 0.04)', 
+                                    border: '1px solid rgba(16, 185, 129, 0.25)', 
+                                    borderRadius: '12px', 
+                                    padding: '1rem', 
+                                    marginBottom: '1rem' 
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <Flame size={18} style={{ color: '#10b981' }} />
+                                            <span style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                                                Non-Negotiables
+                                            </span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                ({mustHaves.length} / 2)
+                                            </span>
+                                        </div>
+                                        <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                                            25% Weight Each
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', minHeight: '44px', alignItems: 'center' }}>
+                                        {mustHaves.length === 0 ? (
+                                            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                No non-negotiables selected. Add from Nice to Have below.
+                                            </span>
+                                        ) : (
+                                            mustHaves.map(id => {
+                                                const c = getCriteriaById(id);
+                                                const IconComp = c.icon;
+                                                return (
                                                     <div 
-                                                        ref={provided.innerRef}
-                                                        {...provided.droppableProps}
-                                                        style={{ 
-                                                            background: snapshot.isDraggingOver ? 'rgba(99, 102, 241, 0.12)' : bucket.bg, 
-                                                            border: `1px solid ${snapshot.isDraggingOver ? 'var(--accent-primary)' : bucket.border}`, 
-                                                            borderRadius: '8px', 
-                                                            padding: '0.85rem',
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            gap: '0.75rem',
-                                                            width: '100%',
-                                                            boxSizing: 'border-box',
-                                                            minHeight: '160px',
-                                                            transition: 'background 0.2s ease, border-color 0.2s ease'
+                                                        key={id}
+                                                        className="smart-chip"
+                                                        style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.5rem',
+                                                            background: 'rgba(16, 185, 129, 0.15)',
+                                                            border: '1px solid rgba(16, 185, 129, 0.4)',
+                                                            color: 'var(--text-primary)',
+                                                            padding: '0.45rem 0.95rem',
+                                                            borderRadius: '20px',
+                                                            fontSize: '0.88rem',
+                                                            fontWeight: 600
                                                         }}
                                                     >
-                                                        <div style={{ marginBottom: '0.25rem' }}>
-                                                            <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center' }}>{bucket.title}</h3>
-                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{bucket.desc}</span>
+                                                        <IconComp size={16} style={{ color: '#10b981' }} />
+                                                        <span>{c.label}</span>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleRemoveNonNegotiable(id)}
+                                                            title="Move to Nice to Have"
+                                                            style={{
+                                                                background: 'rgba(0, 0, 0, 0.2)',
+                                                                border: 'none',
+                                                                borderRadius: '50%',
+                                                                width: '18px',
+                                                                height: '18px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                cursor: 'pointer',
+                                                                color: 'var(--text-secondary)',
+                                                                marginLeft: '0.2rem'
+                                                            }}
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* 2. High Priorities Section */}
+                                <div style={{ 
+                                    background: 'rgba(245, 158, 11, 0.04)', 
+                                    border: '1px solid rgba(245, 158, 11, 0.25)', 
+                                    borderRadius: '12px', 
+                                    padding: '1rem', 
+                                    marginBottom: '1rem' 
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <Star size={18} style={{ color: '#f59e0b' }} />
+                                            <span style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                                                High Priorities
+                                            </span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                ({important.length} / 2)
+                                            </span>
+                                        </div>
+                                        <span style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                                            15% Weight Each
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', minHeight: '44px', alignItems: 'center' }}>
+                                        {important.length === 0 ? (
+                                            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                No high priorities selected. Add from Nice to Have below.
+                                            </span>
+                                        ) : (
+                                            important.map(id => {
+                                                const c = getCriteriaById(id);
+                                                const IconComp = c.icon;
+                                                return (
+                                                    <div 
+                                                        key={id}
+                                                        className="smart-chip"
+                                                        style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.5rem',
+                                                            background: 'rgba(245, 158, 11, 0.15)',
+                                                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                                                            color: 'var(--text-primary)',
+                                                            padding: '0.45rem 0.95rem',
+                                                            borderRadius: '20px',
+                                                            fontSize: '0.88rem',
+                                                            fontWeight: 600
+                                                        }}
+                                                    >
+                                                        <IconComp size={16} style={{ color: '#f59e0b' }} />
+                                                        <span>{c.label}</span>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleRemoveHighPriority(id)}
+                                                            title="Move to Nice to Have"
+                                                            style={{
+                                                                background: 'rgba(0, 0, 0, 0.2)',
+                                                                border: 'none',
+                                                                borderRadius: '50%',
+                                                                width: '18px',
+                                                                height: '18px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                cursor: 'pointer',
+                                                                color: 'var(--text-secondary)',
+                                                                marginLeft: '0.2rem'
+                                                            }}
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* 3. Nice to Have Section */}
+                                <div style={{ 
+                                    background: 'rgba(255, 255, 255, 0.02)', 
+                                    border: '1px solid var(--border-glass)', 
+                                    borderRadius: '12px', 
+                                    padding: '1rem', 
+                                    marginBottom: '1.25rem' 
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <Sparkles size={18} style={{ color: 'var(--text-secondary)' }} />
+                                            <span style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                                                Nice to Have
+                                            </span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                ({niceToHaves.length} items)
+                                            </span>
+                                        </div>
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                            5% Weight Each
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        {niceToHaves.map(id => {
+                                            const c = getCriteriaById(id);
+                                            const IconComp = c.icon;
+                                            const canPromoteMustHave = mustHaves.length < 2;
+                                            const canPromoteHighPriority = important.length < 2;
+                                            const showPromotionButtons = niceToHaves.length > 4 || canPromoteMustHave || canPromoteHighPriority;
+
+                                            return (
+                                                <div 
+                                                    key={id}
+                                                    className="smart-chip"
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.5rem',
+                                                        background: 'rgba(255, 255, 255, 0.04)',
+                                                        border: '1px solid var(--border-glass)',
+                                                        color: 'var(--text-secondary)',
+                                                        padding: showPromotionButtons ? '0.35rem 0.75rem' : '0.45rem 0.95rem',
+                                                        borderRadius: '20px',
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: 500
+                                                    }}
+                                                >
+                                                    <IconComp size={15} />
+                                                    <span>{c.label}</span>
+
+                                                    {/* Promotion Buttons when slots are open (> 4 in nice-to-have or vacancies) */}
+                                                    {showPromotionButtons && (
+                                                        <div style={{ display: 'flex', gap: '0.3rem', marginLeft: '0.25rem' }}>
+                                                            {canPromoteMustHave && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handlePromoteToNonNegotiable(id)}
+                                                                    style={{
+                                                                        background: 'rgba(16, 185, 129, 0.2)',
+                                                                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                                                                        color: '#10b981',
+                                                                        fontSize: '0.68rem',
+                                                                        fontWeight: 700,
+                                                                        padding: '0.15rem 0.5rem',
+                                                                        borderRadius: '12px',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.15rem'
+                                                                    }}
+                                                                    title="Promote to Non-Negotiable"
+                                                                >
+                                                                    + Non-Negotiable
+                                                                </button>
+                                                            )}
+                                                            {canPromoteHighPriority && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handlePromoteToHighPriority(id)}
+                                                                    style={{
+                                                                        background: 'rgba(245, 158, 11, 0.2)',
+                                                                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                                                                        color: '#f59e0b',
+                                                                        fontSize: '0.68rem',
+                                                                        fontWeight: 700,
+                                                                        padding: '0.15rem 0.5rem',
+                                                                        borderRadius: '12px',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.15rem'
+                                                                    }}
+                                                                    title="Promote to High Priority"
+                                                                >
+                                                                    + High Priority
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                        
-                                                        {criteriaList
-                                                            .filter(c => bucketState[c.id] === bucket.level)
-                                                            .map((c, index) => {
-                                                                const calculatedWeights = getCalculatedWeights();
-                                                                const pct = calculatedWeights[c.id];
-                                                                return (
-                                                                    <Draggable key={c.id} draggableId={c.id} index={index}>
-                                                                        {(draggableProvided, draggableSnapshot) => (
-                                                                            <div 
-                                                                                ref={draggableProvided.innerRef}
-                                                                                {...draggableProvided.draggableProps}
-                                                                                {...draggableProvided.dragHandleProps}
-                                                                                style={{ 
-                                                                                    background: 'var(--card)', 
-                                                                                    color: 'var(--text-primary)',
-                                                                                    padding: '0.75rem', 
-                                                                                    borderRadius: '6px', 
-                                                                                    border: `1px solid ${draggableSnapshot.isDragging ? 'var(--accent-primary)' : 'var(--border-glass)'}`,
-                                                                                    cursor: draggableSnapshot.isDragging ? 'grabbing' : 'grab',
-                                                                                    boxShadow: draggableSnapshot.isDragging 
-                                                                                        ? '0 12px 24px -4px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--accent-primary)' 
-                                                                                        : 'var(--shadow-sm)',
-                                                                                    width: '100%',
-                                                                                    boxSizing: 'border-box',
-                                                                                    userSelect: 'none',
-                                                                                    ...draggableProvided.draggableProps.style
-                                                                                }}
-                                                                            >
-                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                                                                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{c.label}</span>
-                                                                                    <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)', fontSize: '0.85rem' }}>{pct}%</span>
-                                                                                </div>
-                                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3, marginBottom: '0.5rem' }}>{c.desc}</div>
-                                                                                
-                                                                                {/* Quick Priority Selector for Mobile/Touch */}
-                                                                                <div 
-                                                                                    style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}
-                                                                                    onPointerDown={(e) => e.stopPropagation()}
-                                                                                    onTouchStart={(e) => e.stopPropagation()}
-                                                                                    onMouseDown={(e) => e.stopPropagation()}
-                                                                                    onKeyDown={(e) => e.stopPropagation()}
-                                                                                    onClick={(e) => e.stopPropagation()}
-                                                                                >
-                                                                                    {(['mustHave', 'important', 'niceToHave'] as PriorityLevel[]).map(lvl => (
-                                                                                        <button
-                                                                                            key={lvl}
-                                                                                            type="button"
-                                                                                            onClick={(e) => {
-                                                                                                e.stopPropagation();
-                                                                                                setBucketState(prev => ({ ...prev, [c.id]: lvl }));
-                                                                                            }}
-                                                                                            style={{
-                                                                                                padding: '0.2rem 0.45rem',
-                                                                                                fontSize: '0.7rem',
-                                                                                                borderRadius: '4px',
-                                                                                                border: '1px solid var(--border-glass)',
-                                                                                                background: bucketState[c.id] === lvl ? 'var(--accent-primary)' : 'var(--input)',
-                                                                                                color: bucketState[c.id] === lvl ? '#ffffff' : 'var(--text-secondary)',
-                                                                                                cursor: 'pointer',
-                                                                                                fontWeight: bucketState[c.id] === lvl ? 600 : 400,
-                                                                                                transition: 'all 0.15s ease'
-                                                                                            }}
-                                                                                        >
-                                                                                            {lvl === 'mustHave' ? 'Must' : lvl === 'important' ? 'Important' : 'Nice'}
-                                                                                        </button>
-                                                                                    ))}
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </Draggable>
-                                                                );
-                                                            })}
-                                                        {provided.placeholder}
-                                                        {criteriaList.filter(c => bucketState[c.id] === bucket.level).length === 0 && (
-                                                            <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-secondary)', fontSize: '0.8rem', border: '1px dashed var(--border-glass)', borderRadius: '6px' }}>
-                                                                Drop or select items here
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Tailored Overall Search Goal */}
+                                <div style={{ 
+                                    marginTop: '1.25rem', 
+                                    paddingTop: '1rem', 
+                                    borderTop: '1px solid var(--border-glass)',
+                                    width: '100%' 
+                                }}>
+                                    <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '0.4rem' }}>
+                                        Personalized Job Search Goal
+                                    </label>
+                                    <textarea 
+                                        value={goal}
+                                        onChange={(e) => setGoal(e.target.value)}
+                                        placeholder="Example: I am looking for high-growth tech opportunities with strong engineering culture..."
+                                        style={{ 
+                                            width: '100%', 
+                                            boxSizing: 'border-box', 
+                                            background: 'rgba(0,0,0,0.2)', 
+                                            border: '1px solid var(--border-glass)', 
+                                            color: 'var(--text-primary)', 
+                                            padding: '0.75rem 1rem', 
+                                            borderRadius: '8px', 
+                                            minHeight: '65px', 
+                                            resize: 'vertical', 
+                                            fontSize: '0.88rem' 
+                                        }}
+                                    />
+                                </div>
+
+                            </div>
+                        ) : (
+                            /* MANUAL 2-PHASE TAP VIEW (When No Resume Uploaded) */
+                            <div className="animate-rubric-enter" style={{ width: '100%' }}>
+                                
+                                {/* Pinned Mini-Summary Bar in Phase 2 */}
+                                {rubricPhase === 2 && (
+                                    <div 
+                                        onClick={() => setRubricPhase(1)}
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setRubricPhase(1); }}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '0.65rem 1rem',
+                                            borderRadius: '10px',
+                                            background: 'rgba(16, 185, 129, 0.08)',
+                                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                                            cursor: 'pointer',
+                                            marginBottom: '1.25rem',
+                                            transition: 'all 0.2s ease',
+                                            width: '100%',
+                                            boxSizing: 'border-box'
+                                        }}
+                                        title="Click to edit Non-Negotiables"
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                                            <span style={{ 
+                                                display: 'inline-flex', 
+                                                alignItems: 'center', 
+                                                gap: '0.35rem', 
+                                                color: '#10b981', 
+                                                fontWeight: 600, 
+                                                fontSize: '0.85rem' 
+                                            }}>
+                                                <CheckCircle2 size={16} /> Non-Negotiables:
+                                            </span>
+                                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                {mustHaves.map(id => {
+                                                    const item = criteriaList.find(c => c.id === id);
+                                                    return (
+                                                        <span key={id} style={{
+                                                            background: 'rgba(16, 185, 129, 0.15)',
+                                                            color: 'var(--text-primary)',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: 600,
+                                                            padding: '0.2rem 0.7rem',
+                                                            borderRadius: '20px',
+                                                            border: '1px solid rgba(16, 185, 129, 0.25)'
+                                                        }}>
+                                                            {item?.label || id}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            color: '#10b981',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.25rem',
+                                            flexShrink: 0
+                                        }}>
+                                            <Edit3 size={13} /> Edit
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Phase 1: Non-Negotiables */}
+                                {rubricPhase === 1 && (
+                                    <div>
+                                        <h2 style={{ fontSize: 'clamp(1.35rem, 4vw, 1.75rem)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                                            <Target className="text-accent" size={24} style={{ flexShrink: 0 }} />
+                                            <span>Select 2 Non-Negotiables</span>
+                                        </h2>
+                                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.25rem', fontSize: '0.92rem' }}>
+                                            What 2 things must a job have for you to even consider it?
+                                        </p>
+
+                                        <div style={{ 
+                                            display: 'grid', 
+                                            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+                                            gap: '0.85rem', 
+                                            width: '100%',
+                                            marginBottom: '1.25rem'
+                                        }}>
+                                            {criteriaList.map(c => {
+                                                const isSelected = mustHaves.includes(c.id);
+                                                const IconComp = c.icon;
+                                                return (
+                                                    <div 
+                                                        key={c.id}
+                                                        onClick={() => handleToggleMustHave(c.id)}
+                                                        className="rubric-card"
+                                                        style={{
+                                                            position: 'relative',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            textAlign: 'center',
+                                                            padding: '1.25rem 0.75rem',
+                                                            borderRadius: '12px',
+                                                            border: isSelected 
+                                                                ? '2px solid #10b981' 
+                                                                : '1px solid var(--border-glass)',
+                                                            background: isSelected 
+                                                                ? 'rgba(16, 185, 129, 0.08)' 
+                                                                : 'rgba(255, 255, 255, 0.03)',
+                                                            boxShadow: isSelected 
+                                                                ? '0 6px 20px rgba(16, 185, 129, 0.18)' 
+                                                                : 'none',
+                                                            minHeight: '115px',
+                                                            boxSizing: 'border-box'
+                                                        }}
+                                                    >
+                                                        {isSelected && (
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                top: '8px',
+                                                                right: '8px',
+                                                                width: '20px',
+                                                                height: '20px',
+                                                                borderRadius: '50%',
+                                                                background: '#10b981',
+                                                                color: '#ffffff',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.4)'
+                                                            }}>
+                                                                <Check size={13} strokeWidth={3} />
                                                             </div>
                                                         )}
+
+                                                        <div style={{
+                                                            width: '42px',
+                                                            height: '42px',
+                                                            borderRadius: '10px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            marginBottom: '0.6rem',
+                                                            background: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                                                            color: isSelected ? '#10b981' : 'var(--text-primary)',
+                                                            transition: 'all 0.2s ease'
+                                                        }}>
+                                                            <IconComp size={22} />
+                                                        </div>
+
+                                                        <span style={{ 
+                                                            fontWeight: 600, 
+                                                            fontSize: '0.88rem', 
+                                                            color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                            lineHeight: 1.2
+                                                        }}>
+                                                            {c.label}
+                                                        </span>
                                                     </div>
-                                                )}
-                                            </Droppable>
-                                        ))}
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'center', 
+                                            alignItems: 'center', 
+                                            gap: '0.35rem', 
+                                            color: 'var(--text-secondary)', 
+                                            fontSize: '0.9rem', 
+                                            fontWeight: 600,
+                                            marginBottom: '1rem'
+                                        }}>
+                                            <span style={{ color: mustHaves.length === 2 ? '#10b981' : 'var(--text-primary)', fontSize: '1rem' }}>
+                                                {mustHaves.length}
+                                            </span>
+                                            <span>/</span>
+                                            <span>2</span>
+                                        </div>
                                     </div>
-                                </DragDropContext>
-                            ) : null}
-                        </div>
+                                )}
+
+                                {/* Phase 2: High Priorities */}
+                                {rubricPhase === 2 && (
+                                    <div>
+                                        <h2 style={{ fontSize: 'clamp(1.35rem, 4vw, 1.75rem)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                                            <Star className="text-accent" size={24} style={{ flexShrink: 0 }} />
+                                            <span>Select 2 High Priorities</span>
+                                        </h2>
+                                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.25rem', fontSize: '0.92rem' }}>
+                                            Great! Now pick 2 things that are important to you, but not dealbreakers.
+                                        </p>
+
+                                        <div style={{ 
+                                            display: 'grid', 
+                                            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+                                            gap: '0.85rem', 
+                                            width: '100%',
+                                            marginBottom: '1.25rem'
+                                        }}>
+                                            {phase2AvailableItems.map(c => {
+                                                const isSelected = important.includes(c.id);
+                                                const isNiceToHave = important.length === 2 && !isSelected;
+                                                const IconComp = c.icon;
+                                                return (
+                                                    <div 
+                                                        key={c.id}
+                                                        onClick={() => handleToggleImportant(c.id)}
+                                                        className="rubric-card"
+                                                        style={{
+                                                            position: 'relative',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            textAlign: 'center',
+                                                            padding: '1.25rem 0.75rem',
+                                                            borderRadius: '12px',
+                                                            border: isSelected 
+                                                                ? '2px solid #10b981' 
+                                                                : isNiceToHave 
+                                                                    ? '1px dashed rgba(99, 102, 241, 0.4)' 
+                                                                    : '1px solid var(--border-glass)',
+                                                            background: isSelected 
+                                                                ? 'rgba(16, 185, 129, 0.08)' 
+                                                                : isNiceToHave 
+                                                                    ? 'rgba(99, 102, 241, 0.04)' 
+                                                                    : 'rgba(255, 255, 255, 0.03)',
+                                                            boxShadow: isSelected 
+                                                                ? '0 6px 20px rgba(16, 185, 129, 0.18)' 
+                                                                : 'none',
+                                                            minHeight: '115px',
+                                                            boxSizing: 'border-box'
+                                                        }}
+                                                    >
+                                                        {isSelected && (
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                top: '8px',
+                                                                right: '8px',
+                                                                width: '20px',
+                                                                height: '20px',
+                                                                borderRadius: '50%',
+                                                                background: '#10b981',
+                                                                color: '#ffffff',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.4)'
+                                                            }}>
+                                                                <Check size={13} strokeWidth={3} />
+                                                            </div>
+                                                        )}
+
+                                                        {isNiceToHave && (
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                top: '6px',
+                                                                right: '6px',
+                                                                background: 'rgba(99, 102, 241, 0.15)',
+                                                                color: '#818cf8',
+                                                                fontSize: '0.62rem',
+                                                                fontWeight: 700,
+                                                                padding: '0.15rem 0.4rem',
+                                                                borderRadius: '4px',
+                                                                border: '1px solid rgba(99, 102, 241, 0.3)',
+                                                                animation: 'pulseBadge 2.5s infinite ease-in-out'
+                                                            }}>
+                                                                Nice-to-Have
+                                                            </div>
+                                                        )}
+
+                                                        <div style={{
+                                                            width: '42px',
+                                                            height: '42px',
+                                                            borderRadius: '10px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            marginBottom: '0.6rem',
+                                                            background: isSelected 
+                                                                ? 'rgba(16, 185, 129, 0.15)' 
+                                                                : isNiceToHave 
+                                                                    ? 'rgba(99, 102, 241, 0.08)' 
+                                                                    : 'rgba(255, 255, 255, 0.06)',
+                                                            color: isSelected 
+                                                                ? '#10b981' 
+                                                                : isNiceToHave 
+                                                                    ? '#818cf8' 
+                                                                    : 'var(--text-primary)',
+                                                            transition: 'all 0.2s ease'
+                                                        }}>
+                                                            <IconComp size={22} />
+                                                        </div>
+
+                                                        <span style={{ 
+                                                            fontWeight: 600, 
+                                                            fontSize: '0.88rem', 
+                                                            color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                            lineHeight: 1.2
+                                                        }}>
+                                                            {c.label}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'center', 
+                                            alignItems: 'center', 
+                                            gap: '0.35rem', 
+                                            color: 'var(--text-secondary)', 
+                                            fontSize: '0.9rem', 
+                                            fontWeight: 600,
+                                            marginBottom: '0.5rem'
+                                        }}>
+                                            <span style={{ color: important.length === 2 ? '#10b981' : 'var(--text-primary)', fontSize: '1rem' }}>
+                                                {important.length}
+                                            </span>
+                                            <span>/</span>
+                                            <span>2</span>
+                                        </div>
+
+                                        <p style={{ 
+                                            textAlign: 'center', 
+                                            color: 'var(--text-secondary)', 
+                                            fontSize: '0.82rem', 
+                                            margin: '0.5rem 0 1rem 0',
+                                            lineHeight: 1.4
+                                        }}>
+                                            The rest will be set as Nice-to-Haves (you can change these anytime in Settings).
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Manual Mode Search Goal Textarea */}
+                                <div style={{ 
+                                    marginTop: '1.25rem', 
+                                    paddingTop: '1rem', 
+                                    borderTop: '1px solid var(--border-glass)',
+                                    width: '100%' 
+                                }}>
+                                    <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '0.4rem' }}>
+                                        Overall Job Search Goal
+                                    </label>
+                                    <textarea 
+                                        value={goal}
+                                        onChange={(e) => setGoal(e.target.value)}
+                                        placeholder="Example: I am looking for high-growth tech opportunities with strong engineering culture..."
+                                        style={{ 
+                                            width: '100%', 
+                                            boxSizing: 'border-box', 
+                                            background: 'rgba(0,0,0,0.2)', 
+                                            border: '1px solid var(--border-glass)', 
+                                            color: 'var(--text-primary)', 
+                                            padding: '0.75rem 1rem', 
+                                            borderRadius: '8px', 
+                                            minHeight: '65px', 
+                                            resize: 'vertical', 
+                                            fontSize: '0.88rem' 
+                                        }}
+                                    />
+                                </div>
+
+                            </div>
+                        )}
+
                     </div>
                 )}
 
                 {/* Footer Controls */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'clamp(1.5rem, 4vw, 2.5rem)', paddingTop: '1.25rem', borderTop: '1px solid var(--border-glass)', width: '100%' }}>
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginTop: 'clamp(1.25rem, 3vw, 2rem)', 
+                    paddingTop: '1.25rem', 
+                    borderTop: '1px solid var(--border-glass)', 
+                    width: '100%' 
+                }}>
                     <button 
                         onClick={handlePrev} 
-                        disabled={step === 1 || loading}
+                        disabled={step === 1 || loading || isExtractingRubric}
                         className="btn-outline" 
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: step === 1 ? 0 : 1, pointerEvents: step === 1 ? 'none' : 'auto', padding: '0.65rem 1.15rem' }}
+                        style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '0.5rem', 
+                            opacity: step === 1 ? 0 : 1, 
+                            pointerEvents: step === 1 ? 'none' : 'auto', 
+                            padding: '0.65rem 1.15rem' 
+                        }}
                     >
                         <ChevronLeft size={18} /> Back
                     </button>
@@ -552,6 +1334,7 @@ ${goal}
                             {step === 2 && (
                                 <button 
                                     onClick={handleNext} 
+                                    disabled={isExtractingRubric}
                                     className="btn-outline" 
                                     style={{ padding: '0.65rem 1.15rem', fontSize: '0.9rem' }}
                                 >
@@ -560,22 +1343,77 @@ ${goal}
                             )}
                             <button 
                                 onClick={handleNext} 
+                                disabled={isExtractingRubric || isParsing}
                                 className="btn-primary" 
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem' }}
                             >
-                                Next <ChevronRight size={18} />
+                                {isExtractingRubric ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" /> Matching Priorities...
+                                    </>
+                                ) : (
+                                    <>
+                                        Next <ChevronRight size={18} />
+                                    </>
+                                )}
                             </button>
                         </div>
                     ) : (
-                        <button 
-                            onClick={handleSubmit} 
-                            disabled={loading}
-                            className="btn-primary" 
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', padding: '0.65rem 1.25rem' }}
-                        >
-                            {loading ? <Loader2 size={18} className="animate-spin" /> : <Bot size={18} />}
-                            {loading ? 'Initializing Agent...' : 'Complete Setup'}
-                        </button>
+                        <div>
+                            {isAiSmartRubric ? (
+                                <button 
+                                    onClick={handleSubmit} 
+                                    disabled={loading || mustHaves.length !== 2 || important.length !== 2}
+                                    className="btn-primary" 
+                                    style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.5rem', 
+                                        background: '#10b981', 
+                                        padding: '0.65rem 1.25rem',
+                                        opacity: (mustHaves.length !== 2 || important.length !== 2) ? 0.6 : 1,
+                                        cursor: (loading || mustHaves.length !== 2 || important.length !== 2) ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    {loading ? <Loader2 size={18} className="animate-spin" /> : <Bot size={18} />}
+                                    {loading ? 'Initializing Agent...' : 'Looks good, Complete Setup'}
+                                </button>
+                            ) : rubricPhase === 1 ? (
+                                <button 
+                                    onClick={() => setRubricPhase(2)} 
+                                    disabled={mustHaves.length < 2 || loading}
+                                    className="btn-primary" 
+                                    style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.5rem', 
+                                        padding: '0.65rem 1.25rem',
+                                        opacity: mustHaves.length < 2 ? 0.5 : 1,
+                                        cursor: mustHaves.length < 2 ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    Next <ChevronRight size={18} />
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={handleSubmit} 
+                                    disabled={loading || important.length < 2}
+                                    className="btn-primary" 
+                                    style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '0.5rem', 
+                                        background: '#10b981', 
+                                        padding: '0.65rem 1.25rem',
+                                        opacity: important.length < 2 ? 0.6 : 1,
+                                        cursor: (loading || important.length < 2) ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    {loading ? <Loader2 size={18} className="animate-spin" /> : <Bot size={18} />}
+                                    {loading ? 'Initializing Agent...' : 'Complete Setup'}
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
 
