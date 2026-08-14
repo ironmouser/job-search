@@ -20,6 +20,7 @@ import {
 interface ProfileChecklistProps {
   isMinimized?: boolean;
   onItemClick?: () => void;
+  onHiddenChange?: (hidden: boolean) => void;
 }
 
 interface ChecklistItem {
@@ -84,7 +85,7 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
   },
 ];
 
-export default function ProfileChecklist({ isMinimized = false, onItemClick }: ProfileChecklistProps) {
+export default function ProfileChecklist({ isMinimized = false, onItemClick, onHiddenChange }: ProfileChecklistProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -93,6 +94,9 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick }: P
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
+  const completedWhileOnDashboardRef = React.useRef(false);
 
   // Fetch settings to evaluate completeness
   const fetchSettings = useCallback(async () => {
@@ -165,7 +169,69 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick }: P
 
   const totalCount = evaluatedItems.length;
   const percentage = Math.round((completedCount / totalCount) * 100);
-  const isAllComplete = completedCount === totalCount;
+  const isAllComplete = totalCount > 0 && completedCount === totalCount;
+
+  // Handle hiding once completed and user visits dashboard
+  const userId = (session?.user as any)?.id || session?.user?.email || 'default';
+  const completedKey = `profile_tasks_completed_${userId}`;
+  const hiddenKey = `profile_tasks_hidden_${userId}`;
+
+  useEffect(() => {
+    if (!isMounted || !session || loading) return;
+
+    if (!isAllComplete) {
+      // Profile is incomplete -> ensure it is shown
+      try {
+        localStorage.removeItem(completedKey);
+        localStorage.removeItem(hiddenKey);
+      } catch (e) {}
+      setIsHidden(false);
+      onHiddenChange?.(false);
+      return;
+    }
+
+    // When 100% complete:
+    let alreadyHidden = false;
+    let alreadyCompleted = false;
+    try {
+      alreadyHidden = localStorage.getItem(hiddenKey) === 'true';
+      alreadyCompleted = localStorage.getItem(completedKey) === 'true';
+    } catch (e) {}
+
+    if (alreadyHidden) {
+      setIsHidden(true);
+      onHiddenChange?.(true);
+      return;
+    }
+
+    if (!alreadyCompleted) {
+      try {
+        localStorage.setItem(completedKey, 'true');
+      } catch (e) {}
+
+      if (pathname === '/dashboard') {
+        completedWhileOnDashboardRef.current = true;
+      }
+    }
+
+    // Hide when user visits dashboard
+    if (pathname === '/dashboard') {
+      if (!completedWhileOnDashboardRef.current || alreadyCompleted) {
+        try {
+          localStorage.setItem(hiddenKey, 'true');
+        } catch (e) {}
+        setIsHidden(true);
+        onHiddenChange?.(true);
+        return;
+      }
+    } else {
+      // Navigated away from dashboard -> reset ref so next visit to dashboard hides it
+      completedWhileOnDashboardRef.current = false;
+    }
+
+    setIsHidden(false);
+    onHiddenChange?.(false);
+  }, [isMounted, session, loading, isAllComplete, pathname, completedKey, hiddenKey, onHiddenChange]);
 
   const handleNavigateToSection = (sectionId: string) => {
     if (onItemClick) {
@@ -184,7 +250,7 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick }: P
     }
   };
 
-  if (!isMounted || !session) return null;
+  if (!isMounted || !session || isHidden) return null;
 
   // Minimized Sidebar View
   if (isMinimized) {

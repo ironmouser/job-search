@@ -59,6 +59,8 @@ export default function Navigation() {
     ? Math.ceil((new Date(trialEndsAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : 0;
 
+  const [isChecklistHidden, setIsChecklistHidden] = useState(false);
+
 
   return (
     <>
@@ -243,13 +245,21 @@ export default function Navigation() {
           </li>
 
           {!isOrgAdminOnly && (
-            <li className="nav-item profile-checklist-nav-item" style={{ marginTop: 'auto', marginBottom: '0.5rem', width: '100%' }}>
-              <ProfileChecklist isMinimized={isMinimized} onItemClick={closeMenu} />
+            <li 
+              className="nav-item profile-checklist-nav-item" 
+              style={{ 
+                marginTop: 'auto', 
+                marginBottom: isChecklistHidden ? 0 : '0.5rem', 
+                width: '100%',
+                display: isChecklistHidden ? 'none' : 'block'
+              }}
+            >
+              <ProfileChecklist isMinimized={isMinimized} onItemClick={closeMenu} onHiddenChange={setIsChecklistHidden} />
             </li>
           )}
 
           {/* User section at bottom */}
-          <li className="nav-item" style={{ marginTop: isOrgAdminOnly ? 'auto' : 0, paddingTop: '0.75rem', borderTop: '1px solid var(--sidebar-border)' }}>
+          <li className="nav-item" style={{ marginTop: (isOrgAdminOnly || isChecklistHidden) ? 'auto' : 0, paddingTop: '0.75rem', borderTop: '1px solid var(--sidebar-border)' }}>
             {session ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }} className="user-profile-container">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minWidth: 0, overflow: 'hidden' }} className="user-profile-row">
