@@ -131,14 +131,25 @@ export default function ProfileForm({
     });
   };
 
-  const handleDockNav = (id: string) => {
+  const scrollToAndHighlightSection = (id: string) => {
     toggleSection(id, true);
     setTimeout(() => {
       const el = document.getElementById(id);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.classList.remove("section-target-highlight");
+        // Trigger reflow to restart animation if needed
+        void el.offsetWidth;
+        el.classList.add("section-target-highlight");
+        setTimeout(() => {
+          el.classList.remove("section-target-highlight");
+        }, 2500);
       }
-    }, 80);
+    }, 120);
+  };
+
+  const handleDockNav = (id: string) => {
+    scrollToAndHighlightSection(id);
   };
 
   const allExpanded = Object.values(openSections).every(Boolean);
@@ -177,14 +188,36 @@ export default function ProfileForm({
     setMounted(true);
   }, []);
 
-  // Smooth scroll to hash anchor on load (e.g., #target-profile or #base-resume)
+  // Listen for custom open-profile-section events and window hash changes
+  useEffect(() => {
+    const handleOpenSectionEvent = (e: any) => {
+      const sectionId = e.detail?.sectionId;
+      if (sectionId) {
+        scrollToAndHighlightSection(sectionId);
+      }
+    };
+
+    const handleHashChange = () => {
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const targetId = window.location.hash.replace('#', '');
+        scrollToAndHighlightSection(targetId);
+      }
+    };
+
+    window.addEventListener('open-profile-section', handleOpenSectionEvent);
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('open-profile-section', handleOpenSectionEvent);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  // Smooth scroll and auto-expand on initial load if hash is present
   useEffect(() => {
     if (!loadingSettings && typeof window !== 'undefined' && window.location.hash) {
       const targetId = window.location.hash.replace('#', '');
-      const el = document.getElementById(targetId);
-      if (el) {
-        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
-      }
+      scrollToAndHighlightSection(targetId);
     }
   }, [loadingSettings]);
 
@@ -238,6 +271,10 @@ export default function ProfileForm({
       const data = await res.json();
       setImage(data.url);
       update({ image: data.url });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('profile-updated'));
+      }
 
       setCropImageSrc(null);
       setSelectedFile(null);
@@ -350,6 +387,12 @@ export default function ProfileForm({
 
       alert("Profile, target profile, and base resume saved successfully!");
       update({ image, name });
+      
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settings-updated', { detail: { settings } }));
+        window.dispatchEvent(new CustomEvent('profile-updated'));
+      }
+
       router.refresh();
     } catch (e) {
       alert("Failed to update profile");

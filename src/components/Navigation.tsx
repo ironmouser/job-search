@@ -8,6 +8,7 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import { useHelp } from '@/contexts/HelpContext';
 import { getAssetUrl } from '@/lib/assets';
 import FeedbackModal from '@/components/FeedbackModal';
+import ProfileChecklist from '@/components/navigation/ProfileChecklist';
 
 import { UserAvatar } from '@/components/common/UserAvatar';
 
@@ -241,8 +242,14 @@ export default function Navigation() {
             </button>
           </li>
 
+          {!isOrgAdminOnly && (
+            <li className="nav-item profile-checklist-nav-item" style={{ marginTop: 'auto', marginBottom: '0.5rem', width: '100%' }}>
+              <ProfileChecklist isMinimized={isMinimized} onItemClick={closeMenu} />
+            </li>
+          )}
+
           {/* User section at bottom */}
-          <li className="nav-item" style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--sidebar-border)' }}>
+          <li className="nav-item" style={{ marginTop: isOrgAdminOnly ? 'auto' : 0, paddingTop: '0.75rem', borderTop: '1px solid var(--sidebar-border)' }}>
             {session ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }} className="user-profile-container">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minWidth: 0, overflow: 'hidden' }} className="user-profile-row">

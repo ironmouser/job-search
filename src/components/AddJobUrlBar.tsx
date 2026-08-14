@@ -197,7 +197,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
             <button
               type="submit"
               disabled={isLoading || !url.trim()}
-              className="add-job-url-btn btn-primary"
+              className="add-job-url-btn"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -205,10 +205,8 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
                 gap: '0.5rem',
                 padding: '0 1.25rem',
                 minHeight: '44px',
-                borderRadius: 'var(--radius, 6px)',
-                background: 'var(--primary)',
-                color: 'var(--primary-foreground)',
-                fontWeight: 500,
+                borderRadius: '8px',
+                fontWeight: 600,
                 fontSize: '0.875rem',
                 border: 'none',
                 cursor: isLoading || !url.trim() ? 'not-allowed' : 'pointer',
