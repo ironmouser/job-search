@@ -81,7 +81,7 @@ export function isAlreadyFormattedMarkdown(text: string): boolean {
 
 /**
  * Reformats raw scraped job description HTML/text into clean Markdown.
- * Pre-cleans HTML, detects existing Markdown, and utilizes GPT-5 nano / GPT-5.6 luna (with fallback).
+ * Pre-cleans HTML, detects existing Markdown, and utilizes GPT-5 nano / Gemini 3.1 Flash-Lite (with fallback).
  */
 export async function reformatJobDescriptionWithGemini(
     rawContent: string,
@@ -109,7 +109,7 @@ export async function reformatJobDescriptionWithGemini(
         return preCleaned;
     }
 
-    // 4. Send pre-cleaned text to light LLM (GPT-5 nano / Luna / DeepSeek)
+    // 4. Send pre-cleaned text to light LLM (GPT-5 nano / Gemini 3.1 Flash-Lite / DeepSeek)
     const prompt = `You are an expert technical document formatter. Your task is to convert scraped job description text into cleanly structured, readable Markdown without altering any meaning.
 
 CRITICAL INSTRUCTIONS:

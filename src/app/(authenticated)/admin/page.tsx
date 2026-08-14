@@ -922,7 +922,8 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                     {[
-                      { label: 'App hosting', value: '~$5–20/mo', note: 'usage-based (CPU/RAM/egress)' },
+                      { label: 'Next.js Web App', value: '~$5–15/mo', note: 'usage-based (CPU/RAM/egress)' },
+                      { label: 'Auto-Apply Worker', value: '~$5–15/mo', note: 'dedicated worker service' },
                       { label: 'PostgreSQL DB', value: '~$5–10/mo', note: 'included in Railway Postgres add-on' },
                     ].map(row => (
                       <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
@@ -932,26 +933,6 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                   <div style={{ marginTop: '0.6rem', fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.7 }}>Check railway.app/billing for live spend.</div>
-                </div>
-
-                {/* DigitalOcean — static reference */}
-                <div style={{ background: 'rgba(14,165,233,0.07)', border: '1px solid rgba(14,165,233,0.25)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '1rem' }}>🌊</span>
-                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>DigitalOcean</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#38bdf8', background: 'rgba(14,165,233,0.12)', padding: '1px 8px', borderRadius: '99px' }}>static ref</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    {[
-                      { label: 'Auto Apply Droplet', value: '$6/mo', note: 'Basic 1vCPU 1GB RAM' },
-                    ].map(row => (
-                      <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-                        <span style={{ fontWeight: 600, color: '#38bdf8' }}>{row.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: '0.6rem', fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.7 }}>Check cloud.digitalocean.com/billing for account-wide spend.</div>
                 </div>
 
               </div>

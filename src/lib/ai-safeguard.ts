@@ -65,28 +65,34 @@ export async function checkAiSafeguard(estimatedCostUsd: number, modelName: stri
 export async function logAiCost(model: string, inputTokens: number, outputTokens: number, userId?: string) {
     let costUsd = 0;
 
-    // Approximate Pricing (as of 2024/2025/2026)
-    if (model.includes('gemini-1.5-flash-8b') || model.includes('gemini-2.5-flash-lite') || model.includes('gemini-2.0-flash-lite') || model.includes('gemini-3.1-flash-lite') || model.includes('gemini-3.5-flash-lite')) {
+    // Current Generation Model Pricing (per 1M tokens)
+    if (model.includes('gemini-3.1-flash-lite')) {
+        costUsd = (inputTokens / 1_000_000) * 0.25 + (outputTokens / 1_000_000) * 1.50;
+    } else if (model.includes('gemini-3.7-flash')) {
+        costUsd = (inputTokens / 1_000_000) * 0.75 + (outputTokens / 1_000_000) * 3.75;
+    } else if (model.includes('gemini-3.5-flash') || model.includes('gemini-3-flash')) {
+        costUsd = (inputTokens / 1_000_000) * 1.50 + (outputTokens / 1_000_000) * 9.00;
+    } else if (model.includes('gemini-3.1-pro') || model.includes('gemini-1.5-pro') || model.includes('gemini-2.0-pro') || model.includes('gemini-2.5-pro')) {
+        costUsd = (inputTokens / 1_000_000) * 2.00 + (outputTokens / 1_000_000) * 12.00;
+    } else if (model.includes('gemini-1.5-flash-8b') || model.includes('gemini-2.0-flash-lite') || model.includes('gemini-2.5-flash-lite')) {
         costUsd = (inputTokens / 1_000_000) * 0.075 + (outputTokens / 1_000_000) * 0.30;
-    } else if (model.includes('gemini-1.5-flash') || model.includes('gemini-2.5-flash') || model.includes('gemini-2.0-flash') || model.includes('gemini-3.5-flash') || model.includes('gemini-3.7-flash') || model.includes('gemini-3-flash')) {
+    } else if (model.includes('gemini-1.5-flash') || model.includes('gemini-2.0-flash') || model.includes('gemini-2.5-flash')) {
         costUsd = (inputTokens / 1_000_000) * 0.075 + (outputTokens / 1_000_000) * 0.30;
-    } else if (model.includes('gemini-1.5-pro') || model.includes('gemini-2.0-pro') || model.includes('gemini-2.5-pro') || model.includes('gemini-3.1-pro')) {
-        costUsd = (inputTokens / 1_000_000) * 1.25 + (outputTokens / 1_000_000) * 5.00;
-    } else if (model.includes('claude-3-5-sonnet')) {
+    } else if (model.includes('claude-3-5-sonnet') || model.includes('claude-3-7-sonnet')) {
         costUsd = (inputTokens / 1_000_000) * 3.00 + (outputTokens / 1_000_000) * 15.00;
     } else if (model.includes('claude-haiku')) {
         costUsd = (inputTokens / 1_000_000) * 0.25 + (outputTokens / 1_000_000) * 1.25;
     } else if (model.includes('gpt-5-nano')) {
         costUsd = (inputTokens / 1_000_000) * 0.10 + (outputTokens / 1_000_000) * 0.40;
     } else if (model.includes('gpt-5.6-luna') || model.includes('gpt-5-luna')) {
-        costUsd = (inputTokens / 1_000_000) * 0.30 + (outputTokens / 1_000_000) * 1.20;
+        costUsd = (inputTokens / 1_000_000) * 1.00 + (outputTokens / 1_000_000) * 6.00;
     } else if (model.includes('deepseek-v4-flash') || model.includes('deepseek-chat') || model.includes('deepseek-v3')) {
-        costUsd = (inputTokens / 1_000_000) * 0.28 + (outputTokens / 1_000_000) * 0.56;
+        costUsd = (inputTokens / 1_000_000) * 0.22 + (outputTokens / 1_000_000) * 0.66;
     } else if (model.includes('deepseek-v4-pro') || model.includes('deepseek-reasoner')) {
         costUsd = (inputTokens / 1_000_000) * 0.55 + (outputTokens / 1_000_000) * 2.19;
     } else {
         // Fallback generic cost
-        costUsd = (inputTokens / 1_000_000) * 0.10 + (outputTokens / 1_000_000) * 0.50;
+        costUsd = (inputTokens / 1_000_000) * 0.25 + (outputTokens / 1_000_000) * 1.00;
     }
 
     if (costUsd > 0 && (prisma as any).aICostLog) {

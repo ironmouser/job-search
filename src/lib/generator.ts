@@ -135,45 +135,18 @@ async function callAiService(params: {
 }): Promise<string> {
     const temp = params.temperature ?? 1.5;
 
-    if (process.env.DEEPSEEK_API_KEY) {
-        return await callDeepSeek({
-            model: params.model || 'deepseek-v4-pro',
-            jsonMode: params.jsonMode,
-            temperature: temp,
-            maxTokens: params.maxTokens || 4096,
-            userId: params.userId,
-            messages: [
-                { role: 'system', content: params.system },
-                { role: 'user', content: params.userPrompt }
-            ]
-        });
-    }
-
-    if (process.env.ANTHROPIC_API_KEY) {
-        const anthropicModel = 'claude-haiku-4-5-20251001';
-        const promptText = params.system + params.userPrompt;
-        const estimatedTokens = estimateTokens(promptText);
-        const estimatedCost = (estimatedTokens / 1_000_000) * 0.25 + ((params.maxTokens || 2048) / 1_000_000) * 1.25;
-
-        await checkAiSafeguard(estimatedCost, anthropicModel, params.userId);
-
-        const response = await anthropic.messages.create({
-            model: anthropicModel,
-            max_tokens: params.maxTokens || 4096,
-            temperature: Math.min(temp, 1.0),
-            system: params.system,
-            messages: [{ role: 'user', content: params.userPrompt }]
-        });
-
-        const usage = response.usage;
-        if (usage) {
-            await logAiCost(anthropicModel, usage.input_tokens, usage.output_tokens, params.userId);
-        }
-
-        return (response as any).content?.[0]?.text || '';
-    }
-
-    throw new Error('Neither DEEPSEEK_API_KEY nor ANTHROPIC_API_KEY is configured.');
+    return await callAI({
+        task: 'generate',
+        model: params.model,
+        jsonMode: params.jsonMode,
+        temperature: temp,
+        maxTokens: params.maxTokens || 4096,
+        userId: params.userId,
+        messages: [
+            { role: 'system', content: params.system },
+            { role: 'user', content: params.userPrompt }
+        ]
+    });
 }
 
 export async function generateAssetsForJob(userId: string, jobId: string, jobTitle: string, jobDescription: string, company: string) {

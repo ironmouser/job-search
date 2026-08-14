@@ -24,6 +24,7 @@ function modelToProvider(model: string): string {
     if (model.includes('claude')) return 'Anthropic (Claude)';
     if (model.includes('gemini')) return 'Google (Gemini)';
     if (model.includes('deepseek')) return 'DeepSeek';
+    if (model.includes('gpt') || model.includes('openai') || model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4')) return 'OpenAI (GPT)';
     return 'Other';
 }
 

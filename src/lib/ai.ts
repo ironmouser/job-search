@@ -1,5 +1,6 @@
 import { callOpenAI, OpenAIMessage } from './openai';
 import { callDeepSeek, DeepSeekMessage } from './deepseek';
+import { callGemini, GeminiMessage } from './gemini';
 
 export type AiTaskType = 'triage' | 'format' | 'score' | 'extract' | 'generate' | 'qa' | 'repair';
 
@@ -16,17 +17,30 @@ export interface CallAIOptions {
 
 /**
  * Centralized AI router that dispatches tasks to the appropriate model provider
- * (OpenAI GPT-5 nano / GPT-5.6 luna vs. DeepSeek V4 Flash) with automatic fallbacks.
+ * (Gemini 3.1 Flash-Lite, DeepSeek V4 Flash, and OpenAI GPT-5 nano) with automatic fallbacks.
  */
 export async function callAI(options: CallAIOptions): Promise<string> {
     const { task = 'generate', model, fallbackModels = [], messages, jsonMode, temperature, maxTokens, userId } = options;
 
-    const hasOpenAI = !!process.env.OPENAI_API_KEY;
+    const hasGemini = !!process.env.GEMINI_API_KEY;
     const hasDeepSeek = !!process.env.DEEPSEEK_API_KEY;
+    const hasOpenAI = !!process.env.OPENAI_API_KEY;
 
     // Direct model override if specified
     if (model) {
-        if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4')) {
+        if (model.startsWith('gemini')) {
+            if (hasGemini) {
+                return await callGemini({
+                    model,
+                    fallbackModels,
+                    messages: messages as GeminiMessage[],
+                    jsonMode,
+                    temperature,
+                    maxTokens,
+                    userId
+                });
+            }
+        } else if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4')) {
             if (hasOpenAI) {
                 return await callOpenAI({
                     model,
@@ -58,12 +72,12 @@ export async function callAI(options: CallAIOptions): Promise<string> {
         case 'triage':
         case 'extract':
         case 'repair': {
-            // High-throughput light tasks: GPT-5 nano (fallback to GPT-5.6 luna, then DeepSeek V4 Flash)
+            // Light tasks: GPT-5 nano -> Gemini 3.1 Flash-Lite -> DeepSeek V4 Flash
             if (hasOpenAI) {
                 try {
                     return await callOpenAI({
                         model: 'gpt-5-nano',
-                        fallbackModels: ['gpt-5.6-luna', ...fallbackModels],
+                        fallbackModels: ['gemini-3.1-flash-lite', ...fallbackModels],
                         messages: messages as OpenAIMessage[],
                         jsonMode,
                         temperature,
@@ -71,20 +85,25 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                         userId
                     });
                 } catch (err: any) {
-                    console.warn(`[callAI:${task}] OpenAI failed, attempting DeepSeek fallback:`, err.message);
-                    if (hasDeepSeek) {
-                        return await callDeepSeek({
-                            model: 'deepseek-v4-flash',
-                            messages: messages as DeepSeekMessage[],
-                            jsonMode,
-                            temperature,
-                            maxTokens,
-                            userId
-                        });
-                    }
-                    throw err;
+                    console.warn(`[callAI:${task}] OpenAI failed, attempting Gemini/DeepSeek fallback:`, err.message);
                 }
-            } else if (hasDeepSeek) {
+            }
+            if (hasGemini) {
+                try {
+                    return await callGemini({
+                        model: 'gemini-3.1-flash-lite',
+                        fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                        messages: messages as GeminiMessage[],
+                        jsonMode,
+                        temperature,
+                        maxTokens,
+                        userId
+                    });
+                } catch (err: any) {
+                    console.warn(`[callAI:${task}] Gemini failed, attempting DeepSeek fallback:`, err.message);
+                }
+            }
+            if (hasDeepSeek) {
                 return await callDeepSeek({
                     model: 'deepseek-v4-flash',
                     messages: messages as DeepSeekMessage[],
@@ -97,14 +116,28 @@ export async function callAI(options: CallAIOptions): Promise<string> {
             break;
         }
 
-        case 'score':
-        case 'qa': {
-            // Scoring & Q&A analysis: GPT-5.6 luna (fallback to GPT-5 nano, then DeepSeek V4 Flash)
+        case 'score': {
+            // Match scoring: Gemini 3.1 Flash-Lite -> GPT-5 nano -> DeepSeek V4 Flash
+            if (hasGemini) {
+                try {
+                    return await callGemini({
+                        model: 'gemini-3.1-flash-lite',
+                        fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                        messages: messages as GeminiMessage[],
+                        jsonMode,
+                        temperature,
+                        maxTokens,
+                        userId
+                    });
+                } catch (err: any) {
+                    console.warn(`[callAI:score] Gemini failed, attempting OpenAI fallback:`, err.message);
+                }
+            }
             if (hasOpenAI) {
                 try {
                     return await callOpenAI({
-                        model: 'gpt-5.6-luna',
-                        fallbackModels: ['gpt-5-nano', ...fallbackModels],
+                        model: 'gpt-5-nano',
+                        fallbackModels,
                         messages: messages as OpenAIMessage[],
                         jsonMode,
                         temperature,
@@ -112,23 +145,43 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                         userId
                     });
                 } catch (err: any) {
-                    console.warn(`[callAI:${task}] OpenAI failed, attempting DeepSeek fallback:`, err.message);
-                    if (hasDeepSeek) {
-                        return await callDeepSeek({
-                            model: 'deepseek-v4-flash',
-                            messages: messages as DeepSeekMessage[],
-                            jsonMode,
-                            temperature,
-                            maxTokens,
-                            userId
-                        });
-                    }
-                    throw err;
+                    console.warn(`[callAI:score] OpenAI failed, attempting DeepSeek fallback:`, err.message);
                 }
-            } else if (hasDeepSeek) {
+            }
+            if (hasDeepSeek) {
                 return await callDeepSeek({
                     model: 'deepseek-v4-flash',
                     messages: messages as DeepSeekMessage[],
+                    jsonMode,
+                    temperature,
+                    maxTokens,
+                    userId
+                });
+            }
+            break;
+        }
+
+        case 'qa': {
+            // Screening Q&A: DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite (No 2nd fallback)
+            if (hasDeepSeek) {
+                try {
+                    return await callDeepSeek({
+                        model: 'deepseek-v4-flash',
+                        messages: messages as DeepSeekMessage[],
+                        jsonMode,
+                        temperature,
+                        maxTokens,
+                        userId
+                    });
+                } catch (err: any) {
+                    console.warn(`[callAI:qa] DeepSeek failed, attempting Gemini fallback:`, err.message);
+                }
+            }
+            if (hasGemini) {
+                return await callGemini({
+                    model: 'gemini-3.1-flash-lite',
+                    fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                    messages: messages as GeminiMessage[],
                     jsonMode,
                     temperature,
                     maxTokens,
@@ -140,21 +193,26 @@ export async function callAI(options: CallAIOptions): Promise<string> {
 
         case 'generate':
         default: {
-            // Asset generation: Retained on DeepSeek V4 Flash
+            // Asset Generation: DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite (No 2nd fallback)
             if (hasDeepSeek) {
-                return await callDeepSeek({
-                    model: 'deepseek-v4-flash',
-                    messages: messages as DeepSeekMessage[],
-                    jsonMode,
-                    temperature,
-                    maxTokens,
-                    userId
-                });
-            } else if (hasOpenAI) {
-                return await callOpenAI({
-                    model: 'gpt-5.6-luna',
-                    fallbackModels: ['gpt-5-nano', ...fallbackModels],
-                    messages: messages as OpenAIMessage[],
+                try {
+                    return await callDeepSeek({
+                        model: 'deepseek-v4-flash',
+                        messages: messages as DeepSeekMessage[],
+                        jsonMode,
+                        temperature,
+                        maxTokens,
+                        userId
+                    });
+                } catch (err: any) {
+                    console.warn(`[callAI:generate] DeepSeek failed, attempting Gemini fallback:`, err.message);
+                }
+            }
+            if (hasGemini) {
+                return await callGemini({
+                    model: 'gemini-3.1-flash-lite',
+                    fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                    messages: messages as GeminiMessage[],
                     jsonMode,
                     temperature,
                     maxTokens,
@@ -165,5 +223,5 @@ export async function callAI(options: CallAIOptions): Promise<string> {
         }
     }
 
-    throw new Error('No AI provider configured (missing both OPENAI_API_KEY and DEEPSEEK_API_KEY).');
+    throw new Error('No AI provider configured or all providers failed (check GEMINI_API_KEY, DEEPSEEK_API_KEY, OPENAI_API_KEY).');
 }

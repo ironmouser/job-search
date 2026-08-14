@@ -154,91 +154,36 @@ If the document is completely blank, empty, or contains no readable candidate/re
 
     const base64Data = buffer.toString('base64');
 
-    // 1. Try Gemini Multimodal (Flash Lite prioritized first for cost-efficiency)
+    // Multimodal extraction strictly via Gemini 3.1 Flash-Lite (No fallback)
     if (process.env.GEMINI_API_KEY) {
-        const geminiModels = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.7-flash'];
-        for (const model of geminiModels) {
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: prompt },
-                                { inlineData: { mimeType, data: base64Data } }
-                            ]
-                        }]
-                    })
-                });
-
-                const data = await res.json();
-                const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (content) {
-                    const cleaned = cleanMarkdownFences(content);
-                    if (cleaned.includes('ERROR_NO_RESUME_CONTENT')) {
-                        return null;
-                    }
-                    if (cleaned.length > 20) {
-                        await logAiCost(model, estimateTokens(prompt) + Math.ceil(buffer.length / 100), estimateTokens(cleaned), userId);
-                        return cleaned;
-                    }
-                }
-            } catch (err: any) {
-                console.warn(`Gemini multimodal ${model} failed:`, err.message);
-            }
-        }
-    }
-
-    // 2. Try Claude Multimodal
-    if (process.env.ANTHROPIC_API_KEY) {
         try {
-            const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-            const isPdf = mimeType === 'application/pdf';
-
-            const contentBlock: any = isPdf
-                ? {
-                    type: 'document',
-                    source: {
-                        type: 'base64',
-                        media_type: 'application/pdf',
-                        data: base64Data,
-                    }
-                }
-                : {
-                    type: 'image',
-                    source: {
-                        type: 'base64',
-                        media_type: mimeType as any,
-                        data: base64Data,
-                    }
-                };
-
-            const response = await anthropic.messages.create({
-                model: 'claude-haiku-4-5-20251001',
-                max_tokens: 4096,
-                messages: [{
-                    role: 'user',
-                    content: [
-                        contentBlock,
-                        { type: 'text', text: prompt }
-                    ]
-                }]
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType, data: base64Data } }
+                        ]
+                    }]
+                })
             });
 
-            const textContent = response.content[0]?.type === 'text' ? response.content[0].text : '';
-            if (textContent) {
-                const cleaned = cleanMarkdownFences(textContent);
+            const data = await res.json();
+            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (content) {
+                const cleaned = cleanMarkdownFences(content);
                 if (cleaned.includes('ERROR_NO_RESUME_CONTENT')) {
                     return null;
                 }
                 if (cleaned.length > 20) {
-                    await logAiCost('claude-haiku-4-5-20251001', response.usage?.input_tokens || estimateTokens(prompt), response.usage?.output_tokens || estimateTokens(cleaned), userId);
+                    await logAiCost('gemini-3.1-flash-lite', estimateTokens(prompt) + Math.ceil(buffer.length / 100), estimateTokens(cleaned), userId);
                     return cleaned;
                 }
             }
         } catch (err: any) {
-            console.warn('Claude multimodal extraction failed:', err.message);
+            console.warn('Gemini 3.1 Flash-Lite multimodal extraction failed:', err.message);
         }
     }
 
