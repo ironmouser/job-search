@@ -347,7 +347,7 @@ body:not(.light-theme) .dashboard-top-section .add-job-card,
 body.light-theme .dashboard-top-section .add-job-card {
   background-color: #415b80 !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 12px !important;
+  border-radius: 30px !important;
   margin-bottom: -50px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
@@ -497,7 +497,7 @@ body:not(.light-theme) .dashboard-top-section .top-stat-card.active {
 
 .add-job-card {
   margin-bottom: -50px !important;
-  border-radius: var(--radius-lg, 0.625rem);
+  border-radius: 30px !important;
   padding: 1rem 1.25rem;
   box-shadow: var(--shadow-sm);
   transition: all 0.15s ease-in-out;
