@@ -57,16 +57,26 @@ export async function bulkIngestRawJobsToGlobalDb(rawJobs: any[]) {
 export async function normalizeAndSaveJobs(
     rawJobs: any[],
     userId: string,
-    options: { isEmailSync?: boolean; skipAiTriage?: boolean; onProgress?: (count: number, message: string) => void } = {}
+    options: { 
+        isEmailSync?: boolean; 
+        skipAiTriage?: boolean; 
+        onProgress?: (count: number, message: string) => void;
+        searchKeyword?: string;
+        searchLocation?: string;
+        remoteOnly?: boolean;
+        noInternational?: boolean;
+        includeKeywords?: string;
+        excludeKeywords?: string;
+    } = {}
 ) {
     if (!rawJobs || rawJobs.length === 0) return [];
     const { onProgress, isEmailSync, skipAiTriage } = options;
     const settings: any = await getUserSettings(userId);
-    const remoteOnly = settings.remoteOnly || false;
-    const noInternational = settings.noInternational || false;
-    const includeKeywordsStr: string = (settings.includeKeywords || '').trim();
-    const excludeKeywordsStr: string = (settings.excludeKeywords || '').trim();
-    const searchKeyword: string = (settings.searchKeyword || '').trim();
+    const remoteOnly = options.remoteOnly !== undefined ? options.remoteOnly : (settings.remoteOnly || false);
+    const noInternational = options.noInternational !== undefined ? options.noInternational : (settings.noInternational || false);
+    const includeKeywordsStr: string = (options.includeKeywords !== undefined ? options.includeKeywords : (settings.includeKeywords || '')).trim();
+    const excludeKeywordsStr: string = (options.excludeKeywords !== undefined ? options.excludeKeywords : (settings.excludeKeywords || '')).trim();
+    const searchKeyword: string = (options.searchKeyword !== undefined ? options.searchKeyword : (settings.searchKeyword || '')).trim();
     const profileText: string = (settings.profile || settings.resumeMarkdown || '').slice(0, 800);
 
     const rawCount = rawJobs.length;

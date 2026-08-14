@@ -36,19 +36,36 @@ export const authOptions: AuthOptions = {
           },
           async authorize(credentials) {
             try {
-              let user = await prisma.user.findUnique({ where: { email: "test@example.com" } });
-              if (!user) {
-                user = await prisma.user.create({
-                  data: { email: "test@example.com", name: "Test User", isOnboarded: false }
-                });
-              } else if (credentials?.reset === "true" || user.isOnboarded) {
-                // Reset onboarding status and preferences for testing onboarding flow
-                await prisma.userPreferences.deleteMany({ where: { userId: user.id } }).catch(() => {});
-                user = await prisma.user.update({
-                  where: { id: user.id },
-                  data: { isOnboarded: false, planTier: "FREE", trialEndsAt: null }
+              const existingUser = await prisma.user.findUnique({ where: { email: "test@example.com" } });
+              if (existingUser) {
+                // Delete user and all associated data for a clean onboarding slate
+                await prisma.$transaction([
+                  prisma.userPreferences.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.userJob.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.opportunityScore.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.applicationAsset.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.jobFeedback.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.appFeedback.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.autoApplySession.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.interventionRequest.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.deviceVerification.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.accountCollisionLog.deleteMany({ where: { targetUserId: existingUser.id } }),
+                  prisma.account.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.session.deleteMany({ where: { userId: existingUser.id } }),
+                  prisma.user.delete({ where: { id: existingUser.id } }),
+                ]).catch((err) => {
+                  console.error("Error cleaning up existing test user:", err);
                 });
               }
+
+              const user = await prisma.user.create({
+                data: {
+                  email: "test@example.com",
+                  name: "Test User",
+                  isOnboarded: false,
+                  planTier: "FREE",
+                }
+              });
               return user as any;
             } catch (e) {
               console.error("DB unavailable for Test Account, falling back to mock dev user:", e);

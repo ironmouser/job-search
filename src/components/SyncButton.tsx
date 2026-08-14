@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { trackJobSyncStart, trackJobSyncSuccess, trackJobSyncError } from '@/lib/analytics';
 
@@ -8,11 +8,20 @@ interface SyncButtonProps {
   onSyncStateChange?: (isLoading: boolean, statusText: string, jobsFoundCount?: number, isRefining?: boolean) => void;
   onSyncComplete?: (newJobsCount: number) => void;
   compact?: boolean;
+  autoTrigger?: boolean;
 }
 
-export default function SyncButton({ onSyncStateChange, onSyncComplete, compact = false }: SyncButtonProps) {
+export default function SyncButton({ onSyncStateChange, onSyncComplete, compact = false, autoTrigger = false }: SyncButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState('Search for Jobs');
+  const hasAutoTriggered = useRef(false);
+
+  useEffect(() => {
+    if (autoTrigger && !hasAutoTriggered.current && !isLoading) {
+      hasAutoTriggered.current = true;
+      handleSync();
+    }
+  }, [autoTrigger]);
 
   const handleSync = async () => {
     setIsLoading(true);

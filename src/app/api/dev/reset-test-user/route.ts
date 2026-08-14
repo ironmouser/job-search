@@ -16,48 +16,44 @@ async function handleReset() {
 
     try {
         const email = 'test@example.com';
-        const user = await prisma.user.findUnique({
+        const existingUser = await prisma.user.findUnique({
             where: { email }
         });
 
-        if (user) {
-            // 1. Delete associated user preferences for a clean onboarding slate
-            await prisma.userPreferences.deleteMany({
-                where: { userId: user.id }
-            });
-
-            // 2. Set isOnboarded to false
-            await prisma.user.update({
-                where: { id: user.id },
-                data: {
-                    isOnboarded: false,
-                    planTier: 'FREE',
-                    trialEndsAt: null,
-                }
-            });
-
-            return NextResponse.json({
-                success: true,
-                message: `Test account (${email}) has been reset. isOnboarded set to false and preferences cleared.`,
-                user: { id: user.id, email: user.email, isOnboarded: false }
-            });
-        } else {
-            // Create the test user fresh with isOnboarded = false
-            const newUser = await prisma.user.create({
-                data: {
-                    email,
-                    name: 'Test User',
-                    isOnboarded: false,
-                    planTier: 'FREE',
-                }
-            });
-
-            return NextResponse.json({
-                success: true,
-                message: `Test account (${email}) created with isOnboarded = false.`,
-                user: { id: newUser.id, email: newUser.email, isOnboarded: false }
-            });
+        if (existingUser) {
+            // Delete all explicitly associated data (and let cascade delete any related records)
+            await prisma.$transaction([
+                prisma.userPreferences.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.userJob.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.opportunityScore.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.applicationAsset.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.jobFeedback.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.appFeedback.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.autoApplySession.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.interventionRequest.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.deviceVerification.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.accountCollisionLog.deleteMany({ where: { targetUserId: existingUser.id } }),
+                prisma.account.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.session.deleteMany({ where: { userId: existingUser.id } }),
+                prisma.user.delete({ where: { id: existingUser.id } }),
+            ]);
         }
+
+        // Create a completely clean test user record with isOnboarded = false
+        const newUser = await prisma.user.create({
+            data: {
+                email,
+                name: 'Test User',
+                isOnboarded: false,
+                planTier: 'FREE',
+            }
+        });
+
+        return NextResponse.json({
+            success: true,
+            message: `Test account (${email}) and all associated database records have been completely deleted and re-created with isOnboarded = false.`,
+            user: { id: newUser.id, email: newUser.email, isOnboarded: false }
+        });
     } catch (e: any) {
         console.error('Error resetting test user:', e);
         return NextResponse.json({ error: e.message }, { status: 500 });

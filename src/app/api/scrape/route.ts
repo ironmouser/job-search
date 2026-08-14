@@ -36,9 +36,11 @@ export async function POST(request: Request) {
         
         const keyword = body.keyword || settings.searchKeyword || 'Software Engineer';
         const location = body.location || settings.searchLocation || 'Remote';
+        const remoteOnlyOverride = typeof body.remoteOnly === 'boolean' ? body.remoteOnly : undefined;
+        const noInternationalOverride = typeof body.noInternational === 'boolean' ? body.noInternational : undefined;
         const sourceParam = body.source;
 
-        console.log(`Received omni-scrape request for ${keyword} in ${location} for user ${userId}`);
+        console.log(`Received omni-scrape request for "${keyword}" in "${location}" (remoteOnly: ${remoteOnlyOverride ?? settings.remoteOnly ?? false}) for user ${userId}`);
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const userRecord = await prisma.user.findUnique({
@@ -209,6 +211,10 @@ export async function POST(request: Request) {
                     });
 
                     const savedJobs = await normalizeAndSaveJobs(allRawJobs, userId, {
+                        searchKeyword: keyword,
+                        searchLocation: location,
+                        remoteOnly: remoteOnlyOverride,
+                        noInternational: noInternationalOverride,
                         onProgress: (count, message) => {
                             sendEvent({ type: 'normalization', foundCount: count, message });
                         }

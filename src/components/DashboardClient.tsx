@@ -131,6 +131,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
   const [syncMessage, setSyncMessage] = useState('');
   const [jobsFoundCount, setJobsFoundCount] = useState<number | null>(null);
   const [isRefiningJobs, setIsRefiningJobs] = useState(false);
+  const [shouldAutoSync, setShouldAutoSync] = useState(false);
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -206,17 +207,29 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
     if (searchParams.get('scanEmail') === 'true') {
       handleEmailSync();
     }
+    const isAutoSyncParam = searchParams.get('autoSync') === 'true';
+    const isAutoSyncStorage = typeof window !== 'undefined' && localStorage.getItem('job_agent_auto_sync_on_mount') === 'true';
+    if (isAutoSyncParam || isAutoSyncStorage) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('job_agent_auto_sync_on_mount');
+      }
+      if (!jobs || jobs.length === 0) {
+        setShouldAutoSync(true);
+      }
+    }
     if (
       searchParams.get('openFilter') ||
       searchParams.get('openAddJob') ||
       searchParams.get('openCleanup') ||
-      searchParams.get('scanEmail')
+      searchParams.get('scanEmail') ||
+      searchParams.get('autoSync')
     ) {
       const next = new URL(window.location.href);
       next.searchParams.delete('openFilter');
       next.searchParams.delete('openAddJob');
       next.searchParams.delete('openCleanup');
       next.searchParams.delete('scanEmail');
+      next.searchParams.delete('autoSync');
       window.history.replaceState({}, '', next.toString());
     }
   }, [searchParams]);
@@ -964,6 +977,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
             <div className="matches-search-btn-wrapper">
               <SyncButton
                 compact={true}
+                autoTrigger={shouldAutoSync}
                 onSyncStateChange={(loading, text, count, isRefining) => {
                   setIsSyncing(loading);
                   setSyncMessage(text);

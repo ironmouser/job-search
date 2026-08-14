@@ -29,6 +29,7 @@ export default function OnboardingPage() {
     const [isExtractingRubric, setIsExtractingRubric] = useState(false);
     const [isAiSmartRubric, setIsAiSmartRubric] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const backgroundScrapeAbortControllerRef = useRef<AbortController | null>(null);
 
     // Step 3 Priority Tiers
     const [rubricPhase, setRubricPhase] = useState<1 | 2>(1);
@@ -258,6 +259,39 @@ export default function OnboardingPage() {
             setStep(3);
         } else if (step === 1) {
             trackOnboardingStep(2, "Base Resume");
+
+            // Abort previous in-flight background scrape if user backtracked and changed search params
+            if (backgroundScrapeAbortControllerRef.current) {
+                backgroundScrapeAbortControllerRef.current.abort();
+            }
+            const controller = new AbortController();
+            backgroundScrapeAbortControllerRef.current = controller;
+
+            // Mark sync activity in localStorage for dashboard handoff
+            try {
+                localStorage.setItem('job_agent_onboarding_sync_started', String(Date.now()));
+                localStorage.setItem('job_agent_just_completed_job_sync', 'true');
+                localStorage.setItem('job_agent_has_completed_job_sync', 'true');
+            } catch (e) {}
+
+            // Speculative background omni-scrape + DB pool matching
+            fetch('/api/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    keyword: formData.searchKeyword,
+                    location: formData.searchLocation,
+                    remoteOnly: formData.remoteOnly,
+                }),
+                signal: controller.signal
+            }).then(() => {
+                console.log('[Onboarding] Speculative background job search finished');
+            }).catch((err) => {
+                if (err?.name !== 'AbortError') {
+                    console.warn('[Onboarding] Speculative background job search notice:', err);
+                }
+            });
+
             setStep(2);
         }
     };
