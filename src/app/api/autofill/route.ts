@@ -28,55 +28,10 @@ export async function POST(request: Request) {
         const ipAddress = forwardedFor ? forwardedFor.split(',')[0] : 'unknown';
 
         if (!isPro) {
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            
-            let appliesThisWeek = await prisma.userJob.count({
-                where: {
-                    userId,
-                    appliedAt: { gte: sevenDaysAgo }
-                }
-            });
-
-            if (ipAddress !== 'unknown') {
-                const otherUsersOnIp = await prisma.userJob.findMany({
-                    where: {
-                        ipAddress,
-                        appliedAt: { gte: sevenDaysAgo },
-                        userId: { not: userId }
-                    },
-                    select: { userId: true },
-                    distinct: ['userId']
-                });
-
-                if (otherUsersOnIp.length > 0) {
-                    const currentUserPrefs = await prisma.userPreferences.findUnique({
-                        where: { userId },
-                        select: { resumeMarkdown: true }
-                    });
-                    
-                    for (const { userId: otherUserId } of otherUsersOnIp) {
-                        const otherPrefs = await prisma.userPreferences.findUnique({
-                            where: { userId: otherUserId },
-                            select: { resumeMarkdown: true }
-                        });
-                        const similarity = calculateResumeSimilarity(currentUserPrefs?.resumeMarkdown, otherPrefs?.resumeMarkdown);
-                        if (similarity > 0.8) {
-                            const aliasApplies = await prisma.userJob.count({
-                                where: {
-                                    userId: otherUserId,
-                                    appliedAt: { gte: sevenDaysAgo }
-                                }
-                            });
-                            appliesThisWeek += aliasApplies;
-                        }
-                    }
-                }
-            }
-
-            if (appliesThisWeek >= 3) {
-                return NextResponse.json({ error: 'Upgrade for unlimited smart applies' }, { status: 403 });
-            }
+            return NextResponse.json({ 
+                error: 'Smart Apply requires a Pro account. Upgrade to Pro to unlock Smart Applies.', 
+                code: 'LIMIT_REACHED' 
+            }, { status: 403 });
         }
 
         if (!jobId) {

@@ -17,7 +17,7 @@ export default function AutofillButton({
   totalResumesGenerated,
   totalApplied,
   hasAssets = false,
-  generationsLeftThisWeek = 3,
+  generationsLeftThisWeek = 1,
 }: {
   jobId: string;
   jobUrl: string;
@@ -46,7 +46,7 @@ export default function AutofillButton({
 
   const isInTrial = trialEndsAt && new Date(trialEndsAt) > new Date();
   const isEffectivelyPro = isPro || isInTrial;
-  const isLocked = !isEffectivelyPro && appliesThisWeek >= 3;
+  const isLocked = !isEffectivelyPro;
 
   // Helper to open the job URL directly and mark as applied without asset generation
   const executeDirectApply = () => {

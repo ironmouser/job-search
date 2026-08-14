@@ -19,7 +19,7 @@ export async function POST(request: Request) {
         });
         const isPro = user ? getEffectiveTier(user) === 'PRO' : false;
 
-        // Free tier rate-limit: 3 asset generations per rolling 7-day window
+        // Free tier rate-limit: 1 asset generation per rolling 7-day window
         if (!isPro) {
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -29,8 +29,8 @@ export async function POST(request: Request) {
                     createdAt: { gte: sevenDaysAgo }
                 }
             });
-            if (generationsThisWeek >= 3) {
-                return NextResponse.json({ error: 'Free accounts are limited to 3 asset generations per week. Upgrade to Pro for unlimited generation.', code: 'LIMIT_REACHED' }, { status: 403 });
+            if (generationsThisWeek >= 1) {
+                return NextResponse.json({ error: 'Free accounts are limited to 1 tailored resume generation per week. Upgrade to Pro for unlimited generation.', code: 'LIMIT_REACHED' }, { status: 403 });
             }
         }
 

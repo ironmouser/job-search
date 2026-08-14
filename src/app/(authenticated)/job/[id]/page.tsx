@@ -185,7 +185,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   const scoreClass = !totalScore ? '' : totalScore >= 80 ? 'score-high' : 'score-med';
 
   let scoresExhausted = false;
-  let assetGenerationsLeft = 3;
+  let assetGenerationsLeft = 1;
   if (planTier !== 'PRO') {
     const scoresThisWeek = await prisma.opportunityScore.count({
       where: {
@@ -203,7 +203,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
         createdAt: { gte: sevenDaysAgo }
       }
     });
-    assetGenerationsLeft = Math.max(0, 3 - assetGenerationsThisWeek);
+    assetGenerationsLeft = Math.max(0, 1 - assetGenerationsThisWeek);
   }
 
   return (

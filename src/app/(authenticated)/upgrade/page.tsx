@@ -91,8 +91,7 @@ function PricingContent() {
             {[
               "Instant 7-day Pro trial unlock",
               "Multi-board job search",
-              "3 tailored resume generations / week (after trial)",
-              "3 smart applies / week (after trial)",
+              "1 tailored resume generation / week (after trial)",
               "All created work & saved jobs preserved forever"
             ].map((feature) => (
               <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--text-secondary)", fontSize: "0.95rem" }}>

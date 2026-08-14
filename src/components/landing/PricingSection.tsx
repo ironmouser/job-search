@@ -67,8 +67,7 @@ export default function PricingSection() {
                 'Instant 7-day Pro trial unlock (no card needed)',
                 'Multi-board job search & aggregation',
                 'Interactive Kanban application pipeline',
-                '3 tailored resume generations / week (after trial)',
-                '3 smart applies / week (after trial)',
+                '1 tailored resume generation / week (after trial)',
                 'Keep all created resumes, cover letters & saved jobs forever',
               ].map((item) => (
                 <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontSize: '0.9rem' }}>

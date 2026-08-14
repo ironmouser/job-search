@@ -95,7 +95,7 @@ export default function GenerateAssetsButton({
           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.35rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
             {generationsLeftThisWeek !== undefined
               ? `${generationsLeftThisWeek} generation${generationsLeftThisWeek === 1 ? '' : 's'} left this week`
-              : '3 generations left this week'}
+              : '1 generation left this week'}
           </span>
         )}
       </div>
