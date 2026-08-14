@@ -33,11 +33,13 @@ const POLL_INTERVAL = 4000;
 export function GlobalAutoApplyDock() {
   const router = useRouter();
   const pathname = usePathname();
+  const isOnboarding = pathname?.startsWith('/onboarding');
   const [activeSession, setActiveSession] = useState<ActiveSessionData | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [dismissedSessionId, setDismissedSessionId] = useState<string | null>(null);
 
   const fetchActive = useCallback(async () => {
+    if (isOnboarding) return;
     try {
       const res = await fetch('/api/auto-apply/active', { cache: 'no-store' });
       if (res.ok) {
@@ -59,15 +61,16 @@ export function GlobalAutoApplyDock() {
     } catch {
       // Ignore poll errors
     }
-  }, [dismissedSessionId]);
+  }, [dismissedSessionId, isOnboarding]);
 
   useEffect(() => {
+    if (isOnboarding) return;
     fetchActive();
     const interval = setInterval(fetchActive, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchActive]);
+  }, [fetchActive, isOnboarding]);
 
-  if (!activeSession) return null;
+  if (isOnboarding || !activeSession) return null;
 
   const isIntervention = activeSession.status === AutoApplyStatus.NEEDS_INTERVENTION;
   const isSimulated = activeSession.simulationMode;

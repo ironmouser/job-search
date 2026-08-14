@@ -1,20 +1,38 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { trackJobSyncStart, trackJobSyncSuccess, trackJobSyncError } from '@/lib/analytics';
+
+export interface SyncButtonHandle {
+  triggerSync: () => void;
+  isLoading: boolean;
+}
 
 interface SyncButtonProps {
   onSyncStateChange?: (isLoading: boolean, statusText: string, jobsFoundCount?: number, isRefining?: boolean) => void;
   onSyncComplete?: (newJobsCount: number) => void;
   compact?: boolean;
   autoTrigger?: boolean;
+  searchKeywordOverride?: string;
 }
 
-export default function SyncButton({ onSyncStateChange, onSyncComplete, compact = false, autoTrigger = false }: SyncButtonProps) {
+const SyncButton = forwardRef<SyncButtonHandle, SyncButtonProps>(function SyncButton(
+  { onSyncStateChange, onSyncComplete, compact = false, autoTrigger = false, searchKeywordOverride },
+  ref
+) {
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState('Search for Jobs');
   const hasAutoTriggered = useRef(false);
+
+  useImperativeHandle(ref, () => ({
+    triggerSync: () => {
+      if (!isLoading) {
+        handleSync();
+      }
+    },
+    isLoading
+  }));
 
   useEffect(() => {
     if (autoTrigger && !hasAutoTriggered.current && !isLoading) {
@@ -33,7 +51,9 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete, compact 
       const response = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify({
+          keyword: searchKeywordOverride && searchKeywordOverride.trim() ? searchKeywordOverride.trim() : undefined
+        })
       });
 
       if (!response.ok) {
@@ -163,5 +183,7 @@ export default function SyncButton({ onSyncStateChange, onSyncComplete, compact 
       <span>{statusText}</span>
     </button>
   );
-}
+});
+
+export default SyncButton;
 

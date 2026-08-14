@@ -10,11 +10,15 @@ import { getUserSettings } from '@/lib/settings';
 export const maxDuration = 60;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ]);
+  let timerId: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timerId = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timerId) clearTimeout(timerId);
+  });
 }
+
 
 async function ensureJobDescription(
     job: { id: string; title: string; description: string | null; url?: string | null; createdAt?: Date }

@@ -91,3 +91,66 @@ export function isTrustedJobUrl(rawUrl: string): boolean {
     return false; // Invalid URLs are inherently untrusted
   }
 }
+
+/**
+ * Validates that a given URL is safe for server-side fetching (prevents SSRF).
+ * Ensures http/https protocol and blocks localhost, private IPs, link-local metadata endpoints.
+ */
+export function isSafePublicUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl.trim());
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, ''); // strip IPv6 brackets
+
+    // Block localhost / internal hostnames
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal') ||
+      hostname.endsWith('.lan') ||
+      hostname === '0.0.0.0'
+    ) {
+      return false;
+    }
+
+    // IPv4 checks
+    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      const [_, o1, o2, o3, o4] = ipv4Match.map(Number);
+      if (o1 > 255 || o2 > 255 || o3 > 255 || o4 > 255) return false;
+
+      // 127.0.0.0/8 (Loopback)
+      if (o1 === 127) return false;
+      // 10.0.0.0/8 (Private)
+      if (o1 === 10) return false;
+      // 172.16.0.0/12 (Private)
+      if (o1 === 172 && o2 >= 16 && o2 <= 31) return false;
+      // 192.168.0.0/16 (Private)
+      if (o1 === 192 && o2 === 168) return false;
+      // 169.254.0.0/16 (Link-local / AWS / GCP / Azure / DO metadata)
+      if (o1 === 169 && o2 === 254) return false;
+      // 0.0.0.0/8 (Current network)
+      if (o1 === 0) return false;
+    }
+
+    // IPv6 loopback / unique local / link-local
+    if (
+      hostname === '::1' ||
+      hostname === '::' ||
+      hostname.startsWith('fe80:') ||
+      hostname.startsWith('fc00:') ||
+      hostname.startsWith('fd00:')
+    ) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+

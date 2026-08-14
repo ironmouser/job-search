@@ -23,14 +23,18 @@ const ACTIVE_STATUSES = [
  * Used by GlobalAutoApplyDock to show progress and intervention alerts globally.
  */
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const userId = session.user.id;
-
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+
+    if (!prisma?.autoApplySession) {
+      return NextResponse.json({ activeSession: null });
+    }
+
     const activeSession = await prisma.autoApplySession.findFirst({
       where: {
         userId,
@@ -72,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ activeSession: activeSession ?? null });
   } catch (error: any) {
-    console.error('[api/auto-apply/active] Error:', error);
-    return NextResponse.json({ error: 'Failed to fetch active session' }, { status: 500 });
+    console.warn('[api/auto-apply/active] Query failed (returning null activeSession):', error?.message || error);
+    return NextResponse.json({ activeSession: null });
   }
 }

@@ -8,7 +8,7 @@ import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { callAI } from '@/lib/ai';
-import { cleanJobUrl, isTrustedJobUrl } from '@/lib/urlUtils';
+import { cleanJobUrl, isTrustedJobUrl, isSafePublicUrl } from '@/lib/urlUtils';
 import { logSuspiciousActivity } from '@/lib/security';
 import { getEffectiveTier } from '@/lib/tier';
 
@@ -63,6 +63,10 @@ export async function POST(request: Request) {
 
     if (!rawUrl && !manualDescription) {
       return NextResponse.json({ error: 'Job URL or description is required' }, { status: 400 });
+    }
+
+    if (rawUrl && !isSafePublicUrl(rawUrl)) {
+      return NextResponse.json({ error: 'Invalid or prohibited URL. Only public http/https URLs are permitted.' }, { status: 400 });
     }
 
     const cleanUrl = rawUrl ? cleanJobUrl(rawUrl) : `manual-${Date.now()}@userjob`;
@@ -177,7 +181,7 @@ export async function POST(request: Request) {
         }
 
         // If metadata is incomplete, description is raw HTML, or it's an untrusted URL, attempt LLM extraction/verification
-        if ((!title || !company || description.includes('<') || !isTrusted) && process.env.GEMINI_API_KEY) {
+        if ((!title || !company || description.includes('<') || !isTrusted) && (process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY)) {
           const aiExtracted = await extractJobMetadataWithGemini(description || $('body').text());
           if (aiExtracted) {
             // For custom/untrusted URLs, strictly enforce AI verification

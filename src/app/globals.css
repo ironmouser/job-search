@@ -349,7 +349,7 @@ body.light-theme .dashboard-top-section .add-job-card {
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 30px !important;
   margin-bottom: -50px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 6px 12px #000000a1 !important;
 }
 
 .dashboard-top-section .add-job-card-text,
@@ -499,7 +499,7 @@ body:not(.light-theme) .dashboard-top-section .top-stat-card.active {
   margin-bottom: -50px !important;
   border-radius: 30px !important;
   padding: 1rem 1.25rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 6px 12px #000000a1 !important;
   transition: all 0.15s ease-in-out;
   overflow: hidden;
   /* Dark Mode Default */
@@ -1623,6 +1623,17 @@ details.glass-card > summary::marker { display: none; content: ''; }
     font-weight: 700 !important;
   }
 
+  /* Row 0.5: Matches Search Input Override */
+  .matches-search-input-wrapper {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .matches-search-input-wrapper input {
+    height: 40px !important;
+    font-size: 0.9rem !important;
+  }
+
   /* Row 1: Search for Jobs (Full width below Matches title) */
   .matches-search-btn-wrapper {
     width: 100% !important;
@@ -1758,6 +1769,7 @@ details.glass-card > summary::marker { display: none; content: ''; }
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  margin-top: 5.5rem;
 }
 
 .matches-header-left-group,
@@ -1765,6 +1777,22 @@ details.glass-card > summary::marker { display: none; content: ''; }
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.matches-search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.matches-search-input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.matches-search-input:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25) !important;
+  background: var(--bg-glass, rgba(0, 0, 0, 0.35)) !important;
 }
 
 .matches-search-btn-wrapper {

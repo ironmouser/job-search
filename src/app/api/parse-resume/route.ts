@@ -6,6 +6,7 @@ import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { callAI } from '@/lib/ai';
 import { checkAiSafeguard, logAiCost, estimateTokens } from '@/lib/ai-safeguard';
+import { isSafePublicUrl } from '@/lib/urlUtils';
 
 function normalizeCloudUrl(url: string, accessToken?: string): { fetchUrl: string; headers?: Record<string, string> } {
     let fetchUrl = url.trim();
@@ -265,6 +266,10 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: 'No file URL provided' }, { status: 400 });
             }
 
+            if (!isSafePublicUrl(fileUrl)) {
+                return NextResponse.json({ error: 'Invalid or prohibited file URL. Only public http/https links are supported.' }, { status: 400 });
+            }
+
             if (providedFileName) {
                 fileName = providedFileName;
             } else if (fileUrl.includes('.docx')) {
@@ -272,6 +277,9 @@ export async function POST(request: Request) {
             }
 
             const { fetchUrl, headers } = normalizeCloudUrl(fileUrl, accessToken);
+            if (!isSafePublicUrl(fetchUrl)) {
+                return NextResponse.json({ error: 'Invalid or prohibited target URL.' }, { status: 400 });
+            }
 
             const res = await fetch(fetchUrl, { headers, redirect: 'follow' });
             if (!res.ok) {

@@ -10,8 +10,14 @@ import got from 'got';
 import { prisma } from '../prisma';
 import { reformatJobDescriptionWithGemini } from '../formatter';
 import { cleanCompanyName } from '../cleaners';
+import { isSafePublicUrl } from '../urlUtils';
 
 async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
+    if (!isSafePublicUrl(url)) {
+        console.warn(`[fetchPage] Blocked potentially unsafe / internal URL: ${url}`);
+        return { $: null, usedFirecrawl: false };
+    }
+
     for (let attempt = 1; attempt <= retries; attempt++) {
         let needsFallback = false;
         try {

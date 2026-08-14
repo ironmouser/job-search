@@ -36,40 +36,50 @@ export const authOptions: AuthOptions = {
           },
           async authorize(credentials) {
             try {
-              const existingUser = await prisma.user.findUnique({ where: { email: "test@example.com" } });
-              if (existingUser) {
-                // Delete user and all associated data for a clean onboarding slate
-                await prisma.$transaction([
-                  prisma.userPreferences.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.userJob.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.opportunityScore.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.applicationAsset.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.jobFeedback.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.appFeedback.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.autoApplySession.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.interventionRequest.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.deviceVerification.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.accountCollisionLog.deleteMany({ where: { targetUserId: existingUser.id } }),
-                  prisma.account.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.session.deleteMany({ where: { userId: existingUser.id } }),
-                  prisma.user.delete({ where: { id: existingUser.id } }),
-                ]).catch((err) => {
-                  console.error("Error cleaning up existing test user:", err);
+              let user = await prisma.user.findUnique({ where: { email: "test@example.com" } });
+              if (user) {
+                // Reset user state for a fresh onboarding experience
+                await prisma.user.update({
+                  where: { id: user.id },
+                  data: { isOnboarded: false, planTier: "FREE" }
+                });
+                await Promise.allSettled([
+                  prisma.userPreferences.deleteMany({ where: { userId: user.id } }),
+                  prisma.userJob.deleteMany({ where: { userId: user.id } }),
+                  prisma.opportunityScore.deleteMany({ where: { userId: user.id } }),
+                  prisma.applicationAsset.deleteMany({ where: { userId: user.id } }),
+                  prisma.jobFeedback.deleteMany({ where: { userId: user.id } }),
+                  prisma.appFeedback.deleteMany({ where: { userId: user.id } }),
+                ]);
+              } else {
+                user = await prisma.user.create({
+                  data: {
+                    email: "test@example.com",
+                    name: "Test User",
+                    isOnboarded: false,
+                    planTier: "FREE",
+                  }
                 });
               }
-
-              const user = await prisma.user.create({
-                data: {
-                  email: "test@example.com",
-                  name: "Test User",
-                  isOnboarded: false,
-                  planTier: "FREE",
-                }
-              });
               return user as any;
             } catch (e) {
-              console.error("DB unavailable for Test Account, falling back to mock dev user:", e);
-              return { id: "test-user-dev-id", email: "test@example.com", name: "Test User", isOnboarded: false, planTier: "PRO", role: "USER" } as any;
+              console.error("Error with test user, attempting safe upsert fallback:", e);
+              try {
+                const user = await prisma.user.upsert({
+                  where: { email: "test@example.com" },
+                  update: { isOnboarded: false },
+                  create: {
+                    email: "test@example.com",
+                    name: "Test User",
+                    isOnboarded: false,
+                    planTier: "FREE",
+                  }
+                });
+                return user as any;
+              } catch (fallbackErr) {
+                console.error("DB unavailable for Test Account:", fallbackErr);
+                return { id: "test-user-dev-id", email: "test@example.com", name: "Test User", isOnboarded: false, planTier: "PRO", role: "USER" } as any;
+              }
             }
           }
         })
@@ -181,6 +191,29 @@ export const authOptions: AuthOptions = {
             }
           });
           if (!dbUser) {
+            // In dev mode, automatically self-heal test user sessions so they link to the database
+            if (process.env.NODE_ENV === "development" && (token.id === "test-user-dev-id" || token.email === "test@example.com")) {
+              try {
+                const testUser = await prisma.user.upsert({
+                  where: { email: "test@example.com" },
+                  update: {},
+                  create: {
+                    email: "test@example.com",
+                    name: "Test User",
+                    isOnboarded: false,
+                    planTier: "FREE",
+                  }
+                });
+                token.id = testUser.id;
+                token.isOnboarded = testUser.isOnboarded;
+                token.planTier = testUser.planTier;
+                token.role = testUser.role;
+                return token;
+              } catch (e) {
+                console.error("Failed to self-heal test user in jwt callback:", e);
+              }
+            }
+
             // User was deleted from DB; invalidate token
             token.id = "";
             return token;

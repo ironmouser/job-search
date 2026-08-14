@@ -34,8 +34,12 @@ export async function POST(request: Request) {
         const body = await request.json().catch(() => ({}));
         const settings: any = await getUserSettings(userId);
         
-        const keyword = body.keyword || settings.searchKeyword || 'Software Engineer';
-        const location = body.location || settings.searchLocation || 'Remote';
+        const keyword = (typeof body.keyword === 'string' && body.keyword.trim().length > 0) 
+            ? body.keyword.trim() 
+            : (settings.searchKeyword || 'Software Engineer');
+        const location = (typeof body.location === 'string' && body.location.trim().length > 0)
+            ? body.location.trim()
+            : (settings.searchLocation || 'Remote');
         const remoteOnlyOverride = typeof body.remoteOnly === 'boolean' ? body.remoteOnly : undefined;
         const noInternationalOverride = typeof body.noInternational === 'boolean' ? body.noInternational : undefined;
         const sourceParam = body.source;

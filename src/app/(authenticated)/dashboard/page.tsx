@@ -94,8 +94,9 @@ export default async function Dashboard() {
   const initialScoresExhausted = effectiveTier !== 'PRO';
 
   const searchLocation = userPrefs?.searchLocation || '';
+  const searchKeyword = userPrefs?.searchKeyword || '';
 
   return (
-    <DashboardClient jobs={jobs} userPlanTier={effectiveTier} trialEndsAt={effectiveTrialEndsAt} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} searchLocation={searchLocation} />
+    <DashboardClient jobs={jobs} userPlanTier={effectiveTier} trialEndsAt={effectiveTrialEndsAt} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} searchLocation={searchLocation} searchKeyword={searchKeyword} />
   );
 }

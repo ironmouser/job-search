@@ -385,10 +385,11 @@ ${goal}
                 } catch (e) {}
                 window.location.href = '/dashboard?autoSync=true';
             } else {
-                alert('Failed to save settings. Please try again.');
+                const errorData = await res.json().catch(() => ({}));
+                alert(`Failed to save settings: ${errorData.error || 'Please try again.'}`);
             }
-        } catch (e) {
-            alert('An error occurred. Please try again.');
+        } catch (e: any) {
+            alert(`An error occurred: ${e?.message || 'Please try again.'}`);
         } finally {
             setLoading(false);
         }

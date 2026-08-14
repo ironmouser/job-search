@@ -61,33 +61,38 @@ export async function callOpenAI(options: CallOpenAIOptions): Promise<string> {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 45000);
 
-                let res = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`,
-                    },
-                    body: JSON.stringify(bodyPayload),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
+                let res: Response;
+                try {
+                    res = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`,
+                        },
+                        body: JSON.stringify(bodyPayload),
+                        signal: controller.signal
+                    });
 
-                // If max_completion_tokens failed with unsupported parameter, retry with max_tokens
-                if (!res.ok && res.status === 400 && bodyPayload.max_completion_tokens) {
-                    const errData = await res.json().catch(() => ({}));
-                    const errMsg = errData.error?.message || '';
-                    if (errMsg.includes('max_completion_tokens') || errMsg.includes('Unsupported parameter')) {
-                        delete bodyPayload.max_completion_tokens;
-                        bodyPayload.max_tokens = options.maxTokens;
-                        res = await fetch('https://api.openai.com/v1/chat/completions', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${apiKey}`,
-                            },
-                            body: JSON.stringify(bodyPayload),
-                        });
+                    // If max_completion_tokens failed with unsupported parameter, retry with max_tokens
+                    if (!res.ok && res.status === 400 && bodyPayload.max_completion_tokens) {
+                        const errData = await res.json().catch(() => ({}));
+                        const errMsg = errData.error?.message || '';
+                        if (errMsg.includes('max_completion_tokens') || errMsg.includes('Unsupported parameter')) {
+                            delete bodyPayload.max_completion_tokens;
+                            bodyPayload.max_tokens = options.maxTokens;
+                            res = await fetch('https://api.openai.com/v1/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${apiKey}`,
+                                },
+                                body: JSON.stringify(bodyPayload),
+                                signal: controller.signal
+                            });
+                        }
                     }
+                } finally {
+                    clearTimeout(timeoutId);
                 }
 
                 if (!res.ok) {

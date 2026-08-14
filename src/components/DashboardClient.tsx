@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
-import SyncButton from '@/components/SyncButton';
+import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
@@ -43,7 +43,27 @@ const getConfidenceBadge = (score?: number) => {
     return null;
 };
 
-export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEndsAt = null, hasEmailCredentials = false, initialScoresExhausted = false, hasSeenNonUsPrompt = false, noInternational = false, searchLocation = '' }: { jobs: any[], userPlanTier?: string, trialEndsAt?: Date | string | null, hasEmailCredentials?: boolean, initialScoresExhausted?: boolean, hasSeenNonUsPrompt?: boolean, noInternational?: boolean, searchLocation?: string }) {
+export default function DashboardClient({ 
+  jobs, 
+  userPlanTier = 'FREE', 
+  trialEndsAt = null, 
+  hasEmailCredentials = false, 
+  initialScoresExhausted = false, 
+  hasSeenNonUsPrompt = false, 
+  noInternational = false, 
+  searchLocation = '',
+  searchKeyword = ''
+}: { 
+  jobs: any[], 
+  userPlanTier?: string, 
+  trialEndsAt?: Date | string | null, 
+  hasEmailCredentials?: boolean, 
+  initialScoresExhausted?: boolean, 
+  hasSeenNonUsPrompt?: boolean, 
+  noInternational?: boolean, 
+  searchLocation?: string,
+  searchKeyword?: string
+}) {
 
   const router = useRouter();
   const [jobList, setJobList] = useState<any[]>(jobs || []);
@@ -52,7 +72,17 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
   const [showNonUsModal, setShowNonUsModal] = useState(false);
   const [showIntlLocationModal, setShowIntlLocationModal] = useState(false);
   const [intlJobCount, setIntlJobCount] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
   const hasDismissedNonUsModal = useRef(false);
+
+  const [searchRole, setSearchRole] = useState(searchKeyword || '');
+  const syncButtonRef = useRef<SyncButtonHandle>(null);
+
+  useEffect(() => {
+    if (!isLoaded && searchKeyword && !searchRole) {
+      setSearchRole(searchKeyword);
+    }
+  }, [searchKeyword, isLoaded]);
 
   useEffect(() => {
     setJobList(jobs || []);
@@ -262,9 +292,15 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         if (stateFromStorage.startDate !== undefined) setStartDate(stateFromStorage.startDate);
         if (stateFromStorage.endDate !== undefined) setEndDate(stateFromStorage.endDate);
         if (stateFromStorage.keywordFilter !== undefined) setKeywordFilter(stateFromStorage.keywordFilter);
+        if (stateFromStorage.searchRole !== undefined) setSearchRole(stateFromStorage.searchRole);
       } catch (e) {
         console.error('Failed to parse dashboard state from local storage', e);
       }
+    }
+
+    const savedSearchRole = typeof window !== 'undefined' ? localStorage.getItem('dashboard_search_role') : null;
+    if (savedSearchRole !== null && stateFromStorage.searchRole === undefined) {
+      setSearchRole(savedSearchRole);
     }
 
     // Determine initial page number
@@ -358,8 +394,6 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
     }
   };
 
-  const [isLoaded, setIsLoaded] = useState(false);
-
   useEffect(() => {
     if (!isLoaded) return;
     localStorage.setItem('jobAgentDashboardState', JSON.stringify({
@@ -371,9 +405,11 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
       startDate,
       endDate,
       keywordFilter,
+      searchRole,
       itemsPerPage,
       currentPage
     }));
+    localStorage.setItem('dashboard_search_role', searchRole);
     localStorage.setItem('dashboard_page', currentPage.toString());
     localStorage.setItem('dashboard_items_per_page', itemsPerPage.toString());
     sessionStorage.setItem('dashboard_page', currentPage.toString());
@@ -385,7 +421,7 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
       params.set('limit', itemsPerPage.toString());
       window.history.replaceState(null, '', `?${params.toString()}`);
     }
-  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, itemsPerPage, currentPage, isLoaded]);
+  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, itemsPerPage, currentPage, isLoaded]);
 
 
   const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
@@ -967,16 +1003,101 @@ export default function DashboardClient({ jobs, userPlanTier = 'FREE', trialEnds
         </div>
 
         {/* Matches Section Header Bar */}
-        <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: '1.5rem' }}>
+        <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: '5.5rem' }}>
           <div className="matches-header-left-group">
             <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
               Matches ({filteredAndSortedJobs.length})
             </h3>
 
+            {/* Target Job Title / Role Search Override Field */}
+            <div 
+              className="matches-search-input-wrapper"
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                minWidth: '220px',
+                maxWidth: '320px',
+                width: '100%'
+              }}
+            >
+              <Search 
+                size={14} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '11px', 
+                  color: 'var(--text-secondary)', 
+                  pointerEvents: 'none',
+                  opacity: 0.8
+                }} 
+              />
+              <input
+                type="text"
+                value={searchRole}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearchRole(val);
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('dashboard_search_role', val);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    syncButtonRef.current?.triggerSync();
+                  }
+                }}
+                placeholder={searchKeyword || 'Job Title or Role...'}
+                title="Job title or role to search for. Overrides discovery setting for this search."
+                className="matches-search-input"
+                style={{
+                  width: '100%',
+                  padding: '0.4rem 2rem 0.4rem 2.1rem',
+                  fontSize: '0.85rem',
+                  borderRadius: '9999px',
+                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
+                  background: 'var(--bg-glass, rgba(0, 0, 0, 0.2))',
+                  color: 'var(--text-primary)',
+                  outline: 'none',
+                  height: '34px',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {searchRole ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchRole('');
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('dashboard_search_role', '');
+                    }
+                  }}
+                  title="Clear search role (falls back to saved discovery setting)"
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%'
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              ) : null}
+            </div>
+
             {/* Search for Jobs (SyncButton) */}
             <div className="matches-search-btn-wrapper">
               <SyncButton
+                ref={syncButtonRef}
                 compact={true}
+                searchKeywordOverride={searchRole.trim()}
                 autoTrigger={shouldAutoSync}
                 onSyncStateChange={(loading, text, count, isRefining) => {
                   setIsSyncing(loading);

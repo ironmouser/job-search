@@ -45,7 +45,7 @@ export default function Navigation() {
     localStorage.setItem('sidebarMinimized', JSON.stringify(!isMinimized));
   };
 
-  if (!session) {
+  if (!session || pathname?.startsWith('/onboarding')) {
     return null;
   }
 

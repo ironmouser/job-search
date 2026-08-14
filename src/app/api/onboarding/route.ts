@@ -21,14 +21,28 @@ export async function POST(request: Request) {
             : `# Candidate Profile\nTarget Role: ${data.searchKeyword || 'Professional'}\nLocation Preference: ${data.searchLocation || 'Remote'}\n\nSeeking opportunities as a ${data.searchKeyword || 'Professional'} with flexible remote or hybrid arrangements.`;
 
         const updateData: any = {
-            searchKeyword: data.searchKeyword,
-            searchLocation: data.searchLocation,
-            remoteOnly: data.remoteOnly,
-            profile: data.profile,
+            searchKeyword: data.searchKeyword || '',
+            searchLocation: data.searchLocation || '',
+            remoteOnly: Boolean(data.remoteOnly),
+            profile: data.profile || '',
             resumeMarkdown: resumeText,
             sources: sources
         };
 
+        // 1. Ensure User record exists in DB first
+        await prisma.user.upsert({
+            where: { id: session.user.id },
+            update: { isOnboarded: true },
+            create: {
+                id: session.user.id,
+                email: session.user.email || 'user@example.com',
+                name: session.user.name || 'User',
+                isOnboarded: true,
+                planTier: 'FREE',
+            }
+        });
+
+        // 2. Create or Update User Preferences
         await prisma.userPreferences.upsert({
             where: { userId: session.user.id },
             update: updateData,
@@ -36,7 +50,7 @@ export async function POST(request: Request) {
                 userId: session.user.id,
                 searchKeyword: data.searchKeyword || '',
                 searchLocation: data.searchLocation || '',
-                remoteOnly: data.remoteOnly || false,
+                remoteOnly: Boolean(data.remoteOnly),
                 theme: 'light',
                 resumeMarkdown: resumeText,
                 profile: data.profile || '',
@@ -44,15 +58,9 @@ export async function POST(request: Request) {
             }
         });
 
-        // 2. Mark User as onboarded
-        await prisma.user.update({
-            where: { id: session.user.id },
-            data: { isOnboarded: true }
-        });
-
         return NextResponse.json({ success: true });
     } catch (e: any) {
         console.error("Onboarding Error:", e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        return NextResponse.json({ error: e.message || 'Failed to complete onboarding' }, { status: 500 });
     }
 }

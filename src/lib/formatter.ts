@@ -15,11 +15,12 @@ try {
 export function preCleanHtml(htmlOrText: string): string {
     if (!htmlOrText || htmlOrText.trim().length === 0) return '';
 
-    // If it doesn't look like HTML, return trimmed plain text
-    if (!/<[a-z][\s\S]*>/i.test(htmlOrText)) {
+    // If it doesn't look like HTML, return trimmed plain text (safe linear check)
+    if (!/<[a-zA-Z][^>]*>/.test(htmlOrText)) {
         return htmlOrText
+            .replace(/\r\n/g, '\n')
             .replace(/[ \t\u00A0]+/g, ' ')
-            .replace(/(\r?\n\s*){3,}/g, '\n\n')
+            .replace(/\n{3,}/g, '\n\n')
             .trim();
     }
 
@@ -49,10 +50,12 @@ export function preCleanHtml(htmlOrText: string): string {
 
         let text = $.text();
 
-        // Clean up excess whitespace and blank lines
+        // Clean up excess whitespace and blank lines safely
         text = text
+            .replace(/\r\n/g, '\n')
             .replace(/[ \t\u00A0]+/g, ' ')
-            .replace(/\n\s*\n\s*\n+/g, '\n\n')
+            .replace(/\n[ \t]+/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
             .trim();
 
         return text;
@@ -120,14 +123,19 @@ CRITICAL INSTRUCTIONS:
 Here is the text to format:
 ${preCleaned}`;
 
+    let timerId: NodeJS.Timeout | null = null;
     try {
+        const timeoutPromise = new Promise<null>((resolve) => {
+            timerId = setTimeout(() => resolve(null), 8000);
+        });
+
         const formatted = await Promise.race([
             callAI({
                 task: 'format',
                 messages: [{ role: 'user', content: prompt }],
                 maxTokens: 4096
             }),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000))
+            timeoutPromise
         ]);
 
         if (formatted && formatted.trim().length > 0) {
@@ -139,6 +147,10 @@ ${preCleaned}`;
         }
     } catch (err: any) {
         console.warn('AI job description formatting failed, falling back to preCleaned html:', err.message);
+    } finally {
+        if (timerId) {
+            clearTimeout(timerId);
+        }
     }
 
     // Fallback: Return pre-cleaned text
@@ -169,7 +181,10 @@ export function fallbackHtmlCleanup(htmlOrText: string): string {
     }
 
     return formatted
+        .replace(/\r\n/g, '\n')
         .replace(/[ \t\u00A0]+/g, ' ')
-        .replace(/(\r?\n\s*){3,}/g, '\n\n')
+        .replace(/\n[ \t]+/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
         .trim();
 }
+

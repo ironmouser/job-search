@@ -25,6 +25,10 @@ export async function GET(
   const userId = session.user.id;
 
   try {
+    if (!prisma?.autoApplySession) {
+      return NextResponse.json({ session: null });
+    }
+
     const applySession = await prisma.autoApplySession.findFirst({
       where: { userId, jobId },
       orderBy: { createdAt: 'desc' },
@@ -66,7 +70,7 @@ export async function GET(
 
     return NextResponse.json({ session: applySession });
   } catch (error: any) {
-    console.error('[auto-apply/status] Error:', error);
-    return NextResponse.json({ error: 'Failed to retrieve session status' }, { status: 500 });
+    console.warn('[auto-apply/status] Query failed (returning null session):', error?.message || error);
+    return NextResponse.json({ session: null });
   }
 }
