@@ -74,7 +74,10 @@ export const FREE_ALLOWED_SOURCES = [
     'nodesk',
     'himalayas',
     'jobicy',
-    'jobspresso'
+    'jobspresso',
+    'snagajob',
+    'usajobs',
+    'builtin'
 ];
 
 export const PREMIUM_NON_INTL_SOURCES = [
@@ -111,7 +114,7 @@ export const DEFAULT_PRO_SOURCES: Record<string, boolean> = {
     linkedin: true,
     indeed: true,
     ziprecruiter: true,
-    dice: false,
+    dice: true,
     weworkremotely: true,
     remoteok: true,
     workingnomads: true,
@@ -128,6 +131,9 @@ export const DEFAULT_PRO_SOURCES: Record<string, boolean> = {
     himalayas: true,
     jobicy: true,
     jobspresso: true,
+    snagajob: true,
+    usajobs: true,
+    builtin: true,
     themuse: false,
     computrabajo: false,
     jobbank: false,
@@ -150,16 +156,10 @@ export async function handleUserUpgradeToPro(userId: string) {
 
     const currentSources = (prefs?.sources as Record<string, boolean>) || { ...DEFAULT_PRO_SOURCES };
 
-    // 3. Automatically enable non-international Pro sources except Dice (unless already customized)
+    // 3. Automatically enable non-international Pro sources
     const updatedSources = { ...currentSources };
     for (const src of PREMIUM_NON_INTL_SOURCES) {
-        if (src === 'dice') {
-            if (updatedSources[src] === undefined) {
-                updatedSources[src] = false;
-            }
-        } else {
-            updatedSources[src] = true;
-        }
+        updatedSources[src] = true;
     }
 
     // 4. Preserve/default international sources to false unless explicitly customized

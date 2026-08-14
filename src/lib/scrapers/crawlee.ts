@@ -1997,3 +1997,322 @@ export async function scrapeInternational(keyword: string, sources: any) {
 
     return jobs;
 }
+
+/**
+ * Scrape Snagajob listings (retail, hospitality, customer service, administration, warehouse, general non-tech).
+ */
+export async function scrapeSnagajob(keyword: string, location: string = 'Remote'): Promise<any[]> {
+    const isRemote = !location || location.toLowerCase().includes('remote');
+    const searchUrl = `https://www.snagajob.com/search?q=${encodeURIComponent(keyword)}&w=${encodeURIComponent(isRemote ? 'Remote' : location)}`;
+    const jobs: any[] = [];
+
+    try {
+        const res = await gotScraping({
+            url: searchUrl,
+            timeout: { request: 12000 },
+            headers: {
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'accept-language': 'en-US,en;q=0.9',
+            },
+            throwHttpErrors: false,
+        });
+
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+            const $ = cheerio.load(res.body.toString());
+
+            $('a[href*="/jobs/"]').each((_, el) => {
+                const href = $(el).attr('href');
+                if (!href) return;
+                const fullUrl = href.startsWith('http') ? href : `https://www.snagajob.com${href}`;
+                if (jobs.some(j => j.url === fullUrl || j.url.split('?')[0] === fullUrl.split('?')[0])) return;
+
+                const card = $(el).closest('article, .job-card, [class*="JobCard"], [data-testid*="job"], div');
+                const titleFromTag = card.find('[data-snagtag="job-title"]').text().trim();
+                const ariaLabel = $(el).attr('aria-label') || '';
+                const ariaMatch = ariaLabel.match(/Open this (.+) in a new tab/i);
+                const titleFromAria = ariaMatch ? ariaMatch[1].trim() : '';
+                const title = titleFromTag || titleFromAria || card.find('h2, h3').first().text().trim() || 'Job Opportunity';
+                
+                const company = card.find('[data-snagtag="company-name"], [class*="Company"], [class*="company"], [class*="employer"]').first().text().trim() || 'Hiring Company';
+                const loc = card.find('[data-snagtag="job-location"], [class*="Location"], [class*="location"]').first().text().trim() || (isRemote ? 'Remote' : location);
+
+                if (title && title.length > 2 && fullUrl.match(/\/jobs\/\d+/)) {
+                    jobs.push({
+                        title: title.replace(/open_in_new/g, '').trim(),
+                        company,
+                        location: loc,
+                        description: `Apply at: ${fullUrl}`,
+                        url: fullUrl,
+                        source: 'snagajob',
+                        scraperName: 'Snagajob (Native)',
+                    });
+                }
+            });
+        }
+
+        // Fetch detail descriptions for the top batch of jobs using JSON-LD
+        const jobsToFetch = jobs.slice(0, 10);
+        await Promise.allSettled(jobsToFetch.map(async (job) => {
+            try {
+                const dRes = await gotScraping({
+                    url: job.url,
+                    timeout: { request: 8000 },
+                    headers: {
+                        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                    },
+                    throwHttpErrors: false,
+                });
+                if (dRes.statusCode >= 200 && dRes.statusCode < 300) {
+                    const $d = cheerio.load(dRes.body.toString());
+                    $d('script[type="application/ld+json"]').each((_, el) => {
+                        try {
+                            const parsed = JSON.parse($d(el).html() || '{}');
+                            const items = Array.isArray(parsed) ? parsed : (parsed['@graph'] || [parsed]);
+                            for (const it of items) {
+                                if (it['@type'] === 'JobPosting') {
+                                    if (it.title) job.title = it.title.replace(/ - Now Hiring/i, '').trim();
+                                    if (it.hiringOrganization?.name) job.company = it.hiringOrganization.name;
+                                    if (it.jobLocation?.address?.addressLocality) {
+                                        const city = it.jobLocation.address.addressLocality;
+                                        const region = it.jobLocation.address.addressRegion || '';
+                                        job.location = region ? `${city}, ${region}` : city;
+                                    }
+                                    if (it.description) {
+                                        const cleanDesc = cheerio.load(it.description).text().replace(/\s+/g, ' ').trim();
+                                        job.description = `${cleanDesc}\n\nApply at: ${job.url}`;
+                                    }
+                                    if (it.baseSalary?.value?.value) {
+                                        job.salary = `$${it.baseSalary.value.value} ${it.baseSalary.value.unitText || ''}`.trim();
+                                    }
+                                    if (it.datePosted) {
+                                        job.postedAt = it.datePosted;
+                                    }
+                                }
+                            }
+                        } catch {}
+                    });
+                }
+            } catch {}
+        }));
+
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Snagajob (Native)',
+                targetUrl: searchUrl,
+                status: 'SUCCESS',
+                resultsCount: jobs.length,
+                usedFirecrawl: false
+            }
+        }).catch(console.error);
+
+        return jobs;
+    } catch (e: any) {
+        console.error(`Snagajob scrape error: ${e.message}`);
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'Snagajob (Native)',
+                targetUrl: searchUrl,
+                status: 'FAILURE',
+                resultsCount: 0,
+                errorDetails: e.message,
+                usedFirecrawl: false
+            }
+        }).catch(console.error);
+        return jobs;
+    }
+}
+
+/**
+ * Scrape BuiltIn listings (tech, startup, remote hubs).
+ */
+export async function scrapeBuiltIn(keyword: string, location: string = 'Remote'): Promise<any[]> {
+    const isRemote = !location || location.toLowerCase().includes('remote');
+    const searchUrl = `https://builtin.com/jobs?search=${encodeURIComponent(keyword)}${isRemote ? '&location=Remote' : `&location=${encodeURIComponent(location)}`}`;
+    const jobs: any[] = [];
+
+    try {
+        const res = await gotScraping({
+            url: searchUrl,
+            timeout: { request: 12000 },
+            headers: {
+                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'accept-language': 'en-US,en;q=0.9',
+            },
+            throwHttpErrors: false,
+        });
+
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+            const $ = cheerio.load(res.body.toString());
+
+            $('a[href*="/job/"]').each((_, el) => {
+                const href = $(el).attr('href');
+                if (!href || !href.match(/\/job\/[^/]+\/\d+/)) return;
+                const fullUrl = href.startsWith('http') ? href : `https://builtin.com${href}`;
+                if (jobs.some(j => j.url === fullUrl)) return;
+
+                const card = $(el).closest('[data-id="job-card"], .job-item, [id*="job-card"], article, div');
+                const title = $(el).text().trim() || card.find('h2, h3, [data-id="job-title"]').first().text().trim();
+                const company = card.find('[data-id="company-title"], .company-title, [class*="company"]').first().text().trim() || 'Built In Partner';
+                const loc = card.find('[data-id="job-location"], .job-location, [class*="location"]').first().text().trim() || (isRemote ? 'Remote' : location);
+
+                if (title && title.length > 2) {
+                    jobs.push({
+                        title,
+                        company,
+                        location: loc,
+                        description: `Apply at: ${fullUrl}`,
+                        url: fullUrl,
+                        source: 'builtin',
+                        scraperName: 'BuiltIn (Native)',
+                    });
+                }
+            });
+        }
+
+        // Fetch detail descriptions from BuiltIn JSON-LD
+        const jobsToFetch = jobs.slice(0, 10);
+        await Promise.allSettled(jobsToFetch.map(async (job) => {
+            try {
+                const dRes = await gotScraping({
+                    url: job.url,
+                    timeout: { request: 8000 },
+                    headers: {
+                        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                    },
+                    throwHttpErrors: false,
+                });
+                if (dRes.statusCode >= 200 && dRes.statusCode < 300) {
+                    const $d = cheerio.load(dRes.body.toString());
+                    $d('script[type="application/ld+json"]').each((_, el) => {
+                        try {
+                            const parsed = JSON.parse($d(el).html() || '{}');
+                            const items = Array.isArray(parsed) ? parsed : (parsed['@graph'] || [parsed]);
+                            for (const it of items) {
+                                if (it['@type'] === 'JobPosting') {
+                                    if (it.title) job.title = it.title;
+                                    if (it.hiringOrganization?.name) job.company = it.hiringOrganization.name;
+                                    if (it.jobLocation?.address?.addressLocality) {
+                                        job.location = it.jobLocation.address.addressLocality;
+                                    }
+                                    if (it.description) {
+                                        const cleanDesc = cheerio.load(it.description).text().replace(/\s+/g, ' ').trim();
+                                        job.description = `${cleanDesc}\n\nApply at: ${job.url}`;
+                                    }
+                                    if (it.datePosted) {
+                                        job.postedAt = it.datePosted;
+                                    }
+                                }
+                            }
+                        } catch {}
+                    });
+                }
+            } catch {}
+        }));
+
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'BuiltIn (Native)',
+                targetUrl: searchUrl,
+                status: 'SUCCESS',
+                resultsCount: jobs.length,
+                usedFirecrawl: false
+            }
+        }).catch(console.error);
+
+        return jobs;
+    } catch (e: any) {
+        console.error(`BuiltIn scrape error: ${e.message}`);
+        await prisma.scraperLog.create({
+            data: {
+                scraperName: 'BuiltIn (Native)',
+                targetUrl: searchUrl,
+                status: 'FAILURE',
+                resultsCount: 0,
+                errorDetails: e.message,
+                usedFirecrawl: false
+            }
+        }).catch(console.error);
+        return jobs;
+    }
+}
+
+/**
+ * Scrape USAJobs (federal, healthcare, administration, management, accounting, operations).
+ * Uses official API if USAJOBS_API_KEY is configured.
+ */
+export async function scrapeUSAJobs(keyword: string, location: string = 'Remote'): Promise<any[]> {
+    const isRemote = !location || location.toLowerCase().includes('remote');
+    const jobs: any[] = [];
+    const apiKey = process.env.USAJOBS_API_KEY;
+    const userAgentEmail = process.env.USAJOBS_USER_AGENT_EMAIL || process.env.USAJOBS_EMAIL || 'contact@jobagent.internal';
+    const searchTarget = `https://data.usajobs.gov/api/search?Keyword=${encodeURIComponent(keyword)}&LocationName=${encodeURIComponent(isRemote ? 'Remote' : location)}`;
+
+    if (apiKey) {
+        try {
+            const res = await gotScraping({
+                url: `${searchTarget}&ResultsPerPage=25`,
+                timeout: { request: 12000 },
+                headers: {
+                    'User-Agent': userAgentEmail,
+                    'Authorization-Key': apiKey,
+                    'Accept': 'application/json',
+                },
+                throwHttpErrors: false,
+            });
+
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+                const data = JSON.parse(res.body.toString());
+                const items = data.SearchResult?.SearchResultItems || [];
+                for (const it of items) {
+                    const desc = it.MatchedObjectDescriptor;
+                    if (!desc) continue;
+                    const salaryMin = desc.PositionRemuneration?.[0]?.MinimumRange;
+                    const salaryMax = desc.PositionRemuneration?.[0]?.MaximumRange;
+                    const salaryInterval = desc.PositionRemuneration?.[0]?.RateIntervalCode || 'Per Year';
+                    const duties = (desc.UserArea?.Details?.MajorDuties || []).join('\n\n');
+                    const qualSummary = desc.QualificationSummary || '';
+                    const fullDesc = [duties, qualSummary].filter(Boolean).join('\n\n') || desc.UserArea?.Details?.JobSummary || '';
+
+                    jobs.push({
+                        title: desc.PositionTitle || 'Federal Opportunity',
+                        company: desc.OrganizationName || desc.DepartmentName || 'U.S. Federal Government',
+                        location: desc.PositionLocationDisplay || (isRemote ? 'Remote' : location),
+                        salary: salaryMin && salaryMax ? `$${salaryMin} - $${salaryMax} ${salaryInterval}` : undefined,
+                        description: fullDesc ? `${fullDesc}\n\nApply at: ${desc.PositionURI}` : `Apply at: ${desc.PositionURI}`,
+                        url: desc.PositionURI || `https://www.usajobs.gov/job/${it.MatchedObjectId}`,
+                        postedAt: desc.PublicationStartDate,
+                        source: 'usajobs',
+                        scraperName: 'USAJobs (Official API)',
+                    });
+                }
+            }
+
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'USAJobs (Official API)',
+                    targetUrl: searchTarget,
+                    status: 'SUCCESS',
+                    resultsCount: jobs.length,
+                    usedFirecrawl: false
+                }
+            }).catch(console.error);
+        } catch (e: any) {
+            console.error(`USAJobs API error: ${e.message}`);
+            await prisma.scraperLog.create({
+                data: {
+                    scraperName: 'USAJobs (Official API)',
+                    targetUrl: searchTarget,
+                    status: 'FAILURE',
+                    resultsCount: 0,
+                    errorDetails: e.message,
+                    usedFirecrawl: false
+                }
+            }).catch(console.error);
+        }
+    }
+
+    return jobs;
+}
+

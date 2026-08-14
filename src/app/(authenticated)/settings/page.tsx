@@ -549,11 +549,11 @@ export default function SettingsPage() {
                                 [
                                     {
                                         title: 'Global Aggregators',
-                                        sources: ['indeed', 'linkedin', 'ziprecruiter', 'dice']
+                                        sources: ['indeed', 'linkedin', 'ziprecruiter', 'dice', 'snagajob', 'usajobs']
                                     },
                                     {
                                         title: 'US / Remote Tech',
-                                        sources: ['weworkremotely', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'ycombinator', 'nodesk', 'otta']
+                                        sources: ['weworkremotely', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'ycombinator', 'nodesk', 'otta', 'himalayas', 'jobicy', 'jobspresso', 'builtin']
                                     },
                                     {
                                         title: 'ATS Integrations',
@@ -579,7 +579,7 @@ export default function SettingsPage() {
                                                     <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
                                                         <input 
                                                             type="checkbox" 
-                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : (source !== 'dice' && !INTERNATIONAL_SOURCES.includes(source)))}
+                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : !INTERNATIONAL_SOURCES.includes(source))}
                                                             disabled={isDisabled}
                                                             onChange={(e) => {
                                                                 const newSources = { ...settings.sources, [source]: e.target.checked };
@@ -597,6 +597,9 @@ export default function SettingsPage() {
                                               source === 'nodesk' ? 'noDesk' :
                                               source === 'otta' ? 'Otta' :
                                               source === 'dice' ? 'Dice' :
+                                              source === 'snagajob' ? 'Snagajob' :
+                                              source === 'usajobs' ? 'USAJobs (Gov)' :
+                                              source === 'builtin' ? 'Built In' :
                                               source === 'breezy' ? 'Breezy' : source}
                                                             {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
                                                         </span>
@@ -611,14 +614,14 @@ export default function SettingsPage() {
                                     {
                                         title: 'Global Job Boards',
                                         items: [
-                                            { label: 'Free', sources: ['linkedin'] },
+                                            { label: 'Free', sources: ['linkedin', 'snagajob', 'usajobs'] },
                                             { label: 'Premium', sources: ['indeed', 'ziprecruiter', 'dice'], isPro: true }
                                         ]
                                     },
                                     {
                                         title: 'Remote & Tech Jobs',
                                         items: [
-                                            { label: 'Free', sources: ['remotive', 'remotepoc', 'nodesk'] },
+                                            { label: 'Free', sources: ['remotive', 'remotepoc', 'nodesk', 'himalayas', 'jobicy', 'jobspresso', 'builtin'] },
                                             { label: 'Premium', sources: ['weworkremotely', 'remoteok', 'workingnomads', 'ycombinator', 'otta'], isPro: true }
                                         ]
                                     },
@@ -651,7 +654,7 @@ export default function SettingsPage() {
                                                 const isChecked = !isDisabled && (
                                                     item.sources.length === 0 
                                                         ? false 
-                                                        : item.sources.every(source => (settings.sources?.[source] !== undefined ? settings.sources[source] : (source !== 'dice' && !INTERNATIONAL_SOURCES.includes(source))))
+                                                        : item.sources.every(source => (settings.sources?.[source] !== undefined ? settings.sources[source] : !INTERNATIONAL_SOURCES.includes(source)))
                                                 );
 
                                                 return (

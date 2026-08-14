@@ -13,7 +13,7 @@ export async function POST(request: Request) {
         const data = await request.json();
         
         // Ensure sources format
-        const sources = data.sources || { indeed: true, glassdoor: true, ziprecruiter: true, dice: false, weworkremotely: true, remoteok: true, workingnomads: true, remotive: true, remotepoc: true, arbeitnow: false, ycombinator: true, linkedin: true, greenhouse: true, lever: true, ashby: true, nodesk: true, workable: true, smartrecruiters: true, breezy: true, otta: true, themuse: false, computrabajo: false, jobbank: false };
+        const sources = data.sources || { indeed: true, glassdoor: true, ziprecruiter: true, dice: true, weworkremotely: true, remoteok: true, workingnomads: true, remotive: true, remotepoc: true, arbeitnow: false, ycombinator: true, linkedin: true, greenhouse: true, lever: true, ashby: true, nodesk: true, workable: true, smartrecruiters: true, breezy: true, otta: true, himalayas: true, jobicy: true, jobspresso: true, snagajob: true, usajobs: true, builtin: true, themuse: false, computrabajo: false, jobbank: false };
 
         // 1. Create or Update User Preferences
         const resumeText = (typeof data.resumeMarkdown === 'string' && data.resumeMarkdown.trim().length > 0)

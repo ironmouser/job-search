@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/jobs';
-import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeHimalayas, scrapeJobicy, scrapeJobspresso, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational, scrapeDice } from '@/lib/scrapers/crawlee';
+import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeHimalayas, scrapeJobicy, scrapeJobspresso, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational, scrapeDice, scrapeSnagajob, scrapeBuiltIn, scrapeUSAJobs } from '@/lib/scrapers/crawlee';
 import { getUserSettings, DEFAULT_PRO_SOURCES } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
@@ -186,6 +186,21 @@ export async function POST(request: Request) {
                     }
                     if (sources.jobspresso) {
                         tasks.push(runScraperTask('Jobspresso', () => scrapeJobspresso(keyword), 10000));
+                    }
+                    if (sources.snagajob) {
+                        for (const loc of locationList) {
+                            tasks.push(runScraperTask(locationList.length > 1 ? `Snagajob (${loc})` : 'Snagajob', () => scrapeSnagajob(keyword, loc), 25000));
+                        }
+                    }
+                    if (sources.builtin) {
+                        for (const loc of locationList) {
+                            tasks.push(runScraperTask(locationList.length > 1 ? `Built In (${loc})` : 'Built In', () => scrapeBuiltIn(keyword, loc), 25000));
+                        }
+                    }
+                    if (sources.usajobs) {
+                        for (const loc of locationList) {
+                            tasks.push(runScraperTask(locationList.length > 1 ? `USAJobs (${loc})` : 'USAJobs', () => scrapeUSAJobs(keyword, loc), 20000));
+                        }
                     }
                     if (sources.remotepoc && (isPro || !globalSettings?.remotepocIsPro)) {
                         tasks.push(runScraperTask('RemotePOC', () => scrapeRemotePOC(keyword), 12000));

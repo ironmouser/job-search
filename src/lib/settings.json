@@ -10,7 +10,7 @@
     "linkedin": true,
     "glassdoor": false,
     "ziprecruiter": true,
-    "dice": false,
+    "dice": true,
     "monster": false,
     "wellfound": false,
     "greenhouse": true,
@@ -36,6 +36,9 @@
     "remotepoc": true,
     "jobicy": true,
     "jobspresso": true,
+    "snagajob": true,
+    "usajobs": true,
+    "builtin": true,
     "kforce": true
   },
   "customCareerPages": [

@@ -53,6 +53,10 @@ interface GlobalSettings {
   computrabajoIsPro: boolean;
   jobbankIsPro: boolean;
 
+  snagajobIsPro?: boolean;
+  usajobsIsPro?: boolean;
+  builtinIsPro?: boolean;
+
   emailsSyncIsPro: boolean;
   aiOpportunityScoringIsPro: boolean;
   aiAssetGenerationIsPro: boolean;
@@ -164,6 +168,10 @@ export default function AdminDashboard() {
     themuseIsPro: true,
     computrabajoIsPro: true,
     jobbankIsPro: true,
+
+    snagajobIsPro: false,
+    usajobsIsPro: false,
+    builtinIsPro: false,
 
     emailsSyncIsPro: true,
     aiOpportunityScoringIsPro: true,
@@ -280,6 +288,10 @@ export default function AdminDashboard() {
               themuseIsPro: data.themuseIsPro ?? true,
               computrabajoIsPro: data.computrabajoIsPro ?? true,
               jobbankIsPro: data.jobbankIsPro ?? true,
+
+              snagajobIsPro: data.snagajobIsPro ?? false,
+              usajobsIsPro: data.usajobsIsPro ?? false,
+              builtinIsPro: data.builtinIsPro ?? false,
 
               emailsSyncIsPro: data.emailsSyncIsPro ?? true,
               aiOpportunityScoringIsPro: data.aiOpportunityScoringIsPro ?? true,
@@ -1116,6 +1128,20 @@ export default function AdminDashboard() {
                       </div>
                       <ToggleSwitch checked={settings.diceIsPro} onChange={() => setSettings({ ...settings, diceIsPro: !settings.diceIsPro })} />
                     </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Snagajob</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Snagajob non-tech & hourly job search</div>
+                      </div>
+                      <ToggleSwitch checked={settings.snagajobIsPro ?? false} onChange={() => setSettings({ ...settings, snagajobIsPro: !settings.snagajobIsPro })} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>USAJobs</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>USAJobs federal & government job search</div>
+                      </div>
+                      <ToggleSwitch checked={settings.usajobsIsPro ?? false} onChange={() => setSettings({ ...settings, usajobsIsPro: !settings.usajobsIsPro })} />
+                    </div>
                   </div>
                 </div>
 
@@ -1125,6 +1151,13 @@ export default function AdminDashboard() {
                     US / Remote Tech
                   </h5>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Built In</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>BuiltIn tech & startup job search</div>
+                      </div>
+                      <ToggleSwitch checked={settings.builtinIsPro ?? false} onChange={() => setSettings({ ...settings, builtinIsPro: !settings.builtinIsPro })} />
+                    </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                       <div>
                         <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>WeWorkRemotely</div>
