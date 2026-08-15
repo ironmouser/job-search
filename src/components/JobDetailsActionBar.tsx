@@ -86,6 +86,7 @@ export default function JobDetailsActionBar({
       );
       setHasActiveFilters(active);
 
+      const params = new URLSearchParams();
       const roleKeyword = stateObj.searchRole || (typeof window !== 'undefined' ? localStorage.getItem('dashboard_search_role') : null);
       if (roleKeyword) params.set('searchRole', roleKeyword);
       if (stateObj.activeFilter) params.set('activeFilter', stateObj.activeFilter);
