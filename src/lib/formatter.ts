@@ -126,7 +126,7 @@ ${preCleaned}`;
     let timerId: NodeJS.Timeout | null = null;
     try {
         const timeoutPromise = new Promise<null>((resolve) => {
-            timerId = setTimeout(() => resolve(null), 8000);
+            timerId = setTimeout(() => resolve(null), 25000);
         });
 
         const formatted = await Promise.race([

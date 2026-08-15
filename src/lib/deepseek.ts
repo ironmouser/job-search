@@ -33,9 +33,10 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
     await checkAiSafeguard(estimatedCost, preferredModel, options.userId);
 
     let lastError: Error | null = null;
+    const maxAttempts = 3; // 1 initial try + 2 retries
 
     for (const modelName of modelsToTry) {
-        for (let attempt = 0; attempt < 2; attempt++) {
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
             try {
                 const bodyPayload: any = {
                     model: modelName,
@@ -49,7 +50,7 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                 }
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const timeoutId = setTimeout(() => controller.abort(), 22000); // 22s balanced timeout
 
                 const res = await fetch('https://api.deepseek.com/chat/completions', {
                     method: 'POST',
@@ -65,11 +66,28 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                 if (!res.ok) {
                     const errData = await res.json().catch(() => ({}));
                     const errMsg = errData.error?.message || `HTTP ${res.status} ${res.statusText}`;
-                    if ((res.status === 429 || res.status >= 500) && attempt === 0) {
-                        console.warn(`[DeepSeek ${res.status}] Retrying ${modelName} in 1s: ${errMsg}`);
-                        await new Promise(r => setTimeout(r, 1000));
+
+                    // Transient rate limit or server error: calculate exponential backoff with jitter
+                    if ((res.status === 429 || res.status >= 500) && attempt < maxAttempts - 1) {
+                        const retryAfterHeader = res.headers.get('retry-after');
+                        const retryAfterSeconds = retryAfterHeader ? parseFloat(retryAfterHeader) : null;
+
+                        // If provider explicitly demands waiting > 4s, trigger fallback immediately rather than stall
+                        if (retryAfterSeconds && retryAfterSeconds > 4) {
+                            console.warn(`[DeepSeek ${res.status}] Retry-After is ${retryAfterSeconds}s, triggering immediate Gemini fallback.`);
+                            lastError = new Error(`DeepSeek rate limited (${modelName}): ${errMsg}`);
+                            break;
+                        }
+
+                        const baseDelay = retryAfterSeconds ? retryAfterSeconds * 1000 : (attempt === 0 ? 1500 : 3000);
+                        const jitter = Math.floor(Math.random() * 500);
+                        const delayMs = baseDelay + jitter;
+
+                        console.warn(`[DeepSeek ${res.status}] Retrying ${modelName} in ${delayMs}ms (attempt ${attempt + 1}/${maxAttempts}): ${errMsg}`);
+                        await new Promise(r => setTimeout(r, delayMs));
                         continue;
                     }
+
                     console.warn(`[DeepSeek ${res.status}] Model ${modelName} failed, trying fallback: ${errMsg}`);
                     lastError = new Error(`DeepSeek API error (${modelName}): ${errMsg}`);
                     break; // Fall back to Gemini via callAI
@@ -93,7 +111,13 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                 return content;
             } catch (err: any) {
                 lastError = err;
-                console.warn(`Attempt ${attempt + 1} for ${modelName} failed:`, err.message);
+                if (attempt < maxAttempts - 1) {
+                    const delayMs = (attempt === 0 ? 1500 : 3000) + Math.floor(Math.random() * 500);
+                    console.warn(`Attempt ${attempt + 1} for ${modelName} failed, retrying in ${delayMs}ms:`, err.message);
+                    await new Promise(r => setTimeout(r, delayMs));
+                } else {
+                    console.warn(`Attempt ${attempt + 1} for ${modelName} failed:`, err.message);
+                }
             }
         }
     }
