@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { getS3AssetUrl } from '@/lib/s3';
 
-const GIF_SEQUENCE = ['thumbs.gif', 'lasso.gif', 'head.gif', 'fly.gif'];
+const ANIMATION_SEQUENCE = ['thumbs.webm', 'lasso.webm', 'head.webm', 'fly.webm'];
 
 /**
  * Returns a random index from 0 to total-1 that is guaranteed not equal to currentIndex.
@@ -35,41 +34,10 @@ export default function SyncOverlay({
 }) {
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const [imgSources, setImgSources] = useState<Record<string, string>>({});
-  const [isPreloaded, setIsPreloaded] = useState(false);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   useEffect(() => {
     setMounted(true);
-
-    // Pre-initialize S3 image URLs & aggressively preload all GIFs into browser cache
-    const initialSources: Record<string, string> = {};
-    let loadedCount = 0;
-    const totalCount = GIF_SEQUENCE.length;
-
-    const checkAllLoaded = () => {
-      loadedCount++;
-      if (loadedCount >= totalCount) {
-        setIsPreloaded(true);
-      }
-    };
-
-    GIF_SEQUENCE.forEach(filename => {
-      const url = getS3AssetUrl(filename);
-      initialSources[filename] = url;
-      
-      // Eager browser memory preloading
-      if (typeof window !== 'undefined') {
-        const img = new Image();
-        img.onload = checkAllLoaded;
-        img.onerror = () => {
-          // Fallback to local public path if S3 fails
-          initialSources[filename] = `/${filename}`;
-          checkAllLoaded();
-        };
-        img.src = url;
-      }
-    });
-    setImgSources(initialSources);
   }, []);
 
   useEffect(() => {
@@ -77,28 +45,21 @@ export default function SyncOverlay({
       document.body.style.overflow = 'hidden';
 
       // Pick an initial random animation index when sync starts
-      const initialRandom = Math.floor(Math.random() * GIF_SEQUENCE.length);
+      const initialRandom = Math.floor(Math.random() * ANIMATION_SEQUENCE.length);
       setActiveAnimIndex(initialRandom);
-
-      // Re-trigger preloading when overlay becomes active to ensure instant playback
-      GIF_SEQUENCE.forEach(filename => {
-        const src = imgSources[filename] || getS3AssetUrl(filename);
-        const img = new Image();
-        img.src = src;
-      });
 
       return () => {
         document.body.style.overflow = '';
       };
     }
-  }, [isSyncing, imgSources]);
+  }, [isSyncing]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isSyncing) {
-      // Switch to a random non-consecutive GIF every 10 seconds (10,000 ms)
+      // Switch to a random non-consecutive animation every 10 seconds (10,000 ms)
       interval = setInterval(() => {
-        setActiveAnimIndex(prev => getNextRandomIndex(prev, GIF_SEQUENCE.length));
+        setActiveAnimIndex(prev => getNextRandomIndex(prev, ANIMATION_SEQUENCE.length));
       }, 10000);
     } else {
       setActiveAnimIndex(0);
@@ -108,15 +69,16 @@ export default function SyncOverlay({
     };
   }, [isSyncing]);
 
-  const handleImageError = (filename: string) => {
-    // If S3 URL fails to load, fallback to public folder
-    setImgSources(prev => {
-      if (prev[filename] !== `/${filename}`) {
-        return { ...prev, [filename]: `/${filename}` };
+  // Ensure the active video plays continuously
+  useEffect(() => {
+    if (isSyncing) {
+      const activeVideo = videoRefs.current[activeAnimIndex];
+      if (activeVideo) {
+        activeVideo.currentTime = 0;
+        activeVideo.play().catch(() => {});
       }
-      return prev;
-    });
-  };
+    }
+  }, [activeAnimIndex, isSyncing]);
 
   if (!isSyncing || !mounted) return null;
 
@@ -239,10 +201,9 @@ export default function SyncOverlay({
           </div>
         </div>
         
-        {/* GIF Container displaying 10-second looping sequence flush against bottom edge */}
+        {/* WebM Video Container displaying 10-second looping sequence flush against bottom edge */}
         <div className="tenor-gif-container" style={{ position: 'relative', width: '100%', height: '270px', overflow: 'hidden' }}>
-          {GIF_SEQUENCE.map((filename, index) => {
-            const src = imgSources[filename] || getS3AssetUrl(filename);
+          {ANIMATION_SEQUENCE.map((filename, index) => {
             const isActive = activeAnimIndex === index;
 
             return (
@@ -264,15 +225,18 @@ export default function SyncOverlay({
                   overflow: 'hidden',
                 }}
               >
-                <img
-                  src={src}
-                  alt={`Syncing animation ${index + 1}`}
-                  loading="eager"
-                  onError={() => handleImageError(filename)}
+                <video
+                  ref={el => { videoRefs.current[index] = el; }}
+                  src={`/${filename}`}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
+                    width: '70%',
+                    height: '70%',
+                    objectFit: 'contain',
                     display: 'block',
                   }}
                 />
