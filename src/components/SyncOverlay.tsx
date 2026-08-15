@@ -38,6 +38,17 @@ export default function SyncOverlay({
 
   useEffect(() => {
     setMounted(true);
+
+    // Eagerly preload WebM files into browser cache on mount
+    if (typeof window !== 'undefined') {
+      ANIMATION_SEQUENCE.forEach(filename => {
+        // Pre-fetch video byte stream into browser cache
+        fetch(`/${filename}`, { cache: 'force-cache' }).catch(() => {});
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.src = `/${filename}`;
+      });
+    }
   }, []);
 
   useEffect(() => {
