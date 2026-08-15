@@ -44,9 +44,21 @@ function formatDescriptionMarkdown(desc?: string | null): string {
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
   }
+  // Strip out "Apply at: <url>" lines and variations
+  cleaned = cleaned
+    .replace(/(?:^|\n|\r)\s*(?:apply\s+at|apply\s+here|application\s+link):\s*(?:https?:\/\/\S+|\[[^\]]*\]\([^)]*\)|<[^>]*>|\S+)?(?:\n|\r|$)/gi, '\n')
+    .replace(/\b(?:apply\s+at|apply\s+here|application\s+link):\s*(?:https?:\/\/\S+|\[[^\]]*\]\([^)]*\)|\S+)/gi, '')
+    .trim();
+
   let html = marked.parse(cleaned) as string;
   // Remove any raw or parsed anchor tags so links inside the job description are not clickable
   html = html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1').replace(/<\/?a\b[^>]*>/gi, '');
+  // Clean up any remaining "Apply at:" HTML blocks or empty paragraphs
+  html = html
+    .replace(/<p\b[^>]*>\s*(?:apply\s+at|apply\s+here|application\s+link):?\s*(?:https?:\/\/\S+|[\s\S]*?)?<\/p>/gi, '')
+    .replace(/\b(?:apply\s+at|apply\s+here|application\s+link):\s*https?:\/\/\S+/gi, '')
+    .replace(/<p\b[^>]*>\s*<\/p>/gi, '')
+    .trim();
   return html;
 }
 
