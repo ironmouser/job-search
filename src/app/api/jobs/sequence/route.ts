@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { extractStateAbbr, isUsLocation, isRemoteLocation, US_STATE_ABBRS } from '@/lib/locationUtils';
 import { isDescriptionAdequate } from '@/lib/jobFetcher';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
+import { computeRoleMatchScore } from '@/lib/roleMatcher';
+import { getUserSettings } from '@/lib/settings';
 
 export const revalidate = 0;
 
@@ -31,6 +33,7 @@ export async function GET(request: Request) {
   const startDate = searchParams.get('startDate') || '';
   const endDate = searchParams.get('endDate') || '';
   const keywordFilter = searchParams.get('keywordFilter') || '';
+  const searchRoleParam = searchParams.get('searchRole') || searchParams.get('searchKeyword');
   const locationFilterParam = searchParams.get('locationFilter');
   let locationFilter: string[] = [];
   if (locationFilterParam) {
@@ -42,6 +45,9 @@ export async function GET(request: Request) {
   }
 
   try {
+    const userPrefs = await getUserSettings(userId);
+    const targetRole = (searchRoleParam || userPrefs?.searchKeyword || '').trim();
+
     const userJobs = await prisma.userJob.findMany({
       where: {
         userId,
@@ -144,21 +150,28 @@ export async function GET(request: Request) {
       if (sortOption === 'score') {
         const scoreA = a.opportunity_scores?.[0]?.totalScore || 0;
         const scoreB = b.opportunity_scores?.[0]?.totalScore || 0;
-        return scoreB - scoreA;
-      }
-      if (sortOption === 'salary') {
-        return extractMaxSalary(b.salary_range || null) - extractMaxSalary(a.salary_range || null);
-      }
-      if (sortOption === 'remote') {
+        if (scoreB !== scoreA) return scoreB - scoreA;
+      } else if (sortOption === 'salary') {
+        const salA = extractMaxSalary(a.salary_range || null);
+        const salB = extractMaxSalary(b.salary_range || null);
+        if (salB !== salA) return salB - salA;
+      } else if (sortOption === 'remote') {
         const isRemoteA = isRemoteLocation(a.location || '') ? 1 : 0;
         const isRemoteB = isRemoteLocation(b.location || '') ? 1 : 0;
-        return isRemoteB - isRemoteA;
-      }
-      if (sortOption === 'auto_apply') {
+        if (isRemoteB !== isRemoteA) return isRemoteB - isRemoteA;
+      } else if (sortOption === 'auto_apply') {
         const confA = a.automation_confidence || 0;
         const confB = b.automation_confidence || 0;
         if (confB !== confA) return confB - confA;
       }
+
+      // Role alignment: default primary order for 'newest' and secondary tie-breaker across all sorts
+      if (targetRole) {
+        const matchA = computeRoleMatchScore(a.title, targetRole, a.description);
+        const matchB = computeRoleMatchScore(b.title, targetRole, b.description);
+        if (matchB !== matchA) return matchB - matchA;
+      }
+
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 

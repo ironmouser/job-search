@@ -14,6 +14,7 @@ import DashboardFilterModal from '@/components/DashboardFilterModal';
 import AddJobModal from '@/components/AddJobModal';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
 import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInternationalLocation, isOutsideUsLocation } from '@/lib/locationUtils';
+import { computeRoleMatchScore } from '@/lib/roleMatcher';
 import InternationalLocationModal from '@/components/InternationalLocationModal';
 import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -726,26 +727,36 @@ export default function DashboardClient({
     }
 
     // 3. Apply Sorting
+    const roleTarget = (searchRole || searchKeyword || '').trim();
+
     result.sort((a, b) => {
       if (sortOption === 'score') {
         const scoreA = a.opportunity_scores?.[0]?.total_score || 0;
         const scoreB = b.opportunity_scores?.[0]?.total_score || 0;
-        return scoreB - scoreA;
-      }
-      if (sortOption === 'salary') {
-        return extractMaxSalary(b.salary_range) - extractMaxSalary(a.salary_range);
-      }
-      if (sortOption === 'remote') {
+        if (scoreB !== scoreA) return scoreB - scoreA;
+      } else if (sortOption === 'salary') {
+        const salA = extractMaxSalary(a.salary_range);
+        const salB = extractMaxSalary(b.salary_range);
+        if (salB !== salA) return salB - salA;
+      } else if (sortOption === 'remote') {
         const isRemoteA = isRemoteLocation(a.location || '') ? 1 : 0;
         const isRemoteB = isRemoteLocation(b.location || '') ? 1 : 0;
-        return isRemoteB - isRemoteA;
+        if (isRemoteB !== isRemoteA) return isRemoteB - isRemoteA;
       }
-      // default 'newest' (relying on initial order from server or created_at)
+
+      // Role alignment: default primary order for 'newest' and secondary tie-breaker across all sorts
+      if (roleTarget) {
+        const matchA = computeRoleMatchScore(a.title, roleTarget, a.description);
+        const matchB = computeRoleMatchScore(b.title, roleTarget, b.description);
+        if (matchB !== matchA) return matchB - matchA;
+      }
+
+      // Recency tie-breaker
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
     return result;
-  }, [jobList, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter]);
+  }, [jobList, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter, searchRole, searchKeyword]);
 
   const isInitialMount = useRef(true);
 
@@ -755,7 +766,7 @@ export default function DashboardClient({
       return;
     }
     changePage(1);
-  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter]);
+  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / itemsPerPage));
   

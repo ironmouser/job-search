@@ -52,6 +52,8 @@ export default function JobDetailsFilterModal({
     setLoadingCount(true);
     try {
       const params = new URLSearchParams();
+      const savedSearchRole = typeof window !== 'undefined' ? localStorage.getItem('dashboard_search_role') : null;
+      if (savedSearchRole) params.set('searchRole', savedSearchRole);
       if (activeFilter) params.set('activeFilter', activeFilter);
       if (sortOption) params.set('sortOption', sortOption);
       if (sourceFilter) params.set('sourceFilter', sourceFilter);
