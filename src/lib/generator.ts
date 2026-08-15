@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { getUserSettings } from './settings';
 import { cleanCompanyName } from './cleaners';
-import { callDeepSeek } from './deepseek';
 import { callAI } from './ai';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkAiSafeguard, logAiCost, estimateTokens } from './ai-safeguard';

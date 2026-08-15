@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getCoverLetterPrompts } from '@/lib/generator';
-import { streamDeepSeek } from '@/lib/deepseek';
+import { callAI } from '@/lib/ai';
 import { validateCustomInstructionSemantics, validateGeneratedAsset } from '@/lib/asset-validator';
 import { getEffectiveTier } from '@/lib/tier';
 
@@ -69,7 +69,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
         const { systemPrompt, userPrompt } = await getCoverLetterPrompts(session.user.id, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, tone);
 
-        const stream = streamDeepSeek({
+        // Call AI using Primary: deepseek-v4-flash -> 1st Fallback: gemini-3.1-flash-lite
+        const rawCoverLetter = await callAI({
+            task: 'generate',
             model: 'deepseek-v4-flash',
             messages: [
                 { role: 'system', content: systemPrompt },
@@ -80,56 +82,37 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             userId: session.user.id
         });
 
-        const encoder = new TextEncoder();
-        const readableStream = new ReadableStream({
-            async start(controller) {
-                let fullText = '';
-                try {
-                    for await (const chunk of stream) {
-                        fullText += chunk;
-                        controller.enqueue(encoder.encode(chunk));
-                    }
-                    
-                    const newCoverLetter = fullText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
-                    
-                    // Output Validation Layer: Check for hallucinations / corrupted output
-                    const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
-                    const baseResumeText = userPrefs?.resumeMarkdown || '';
-                    const outputValidation = validateGeneratedAsset(newCoverLetter, baseResumeText, userJob.job.description || '', 'coverLetter');
+        const newCoverLetter = rawCoverLetter.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
 
-                    if (!outputValidation.severeHallucination) {
-                        const updatedAsset = await prisma.applicationAsset.update({
-                            where: { id: asset.id },
-                            data: {
-                                coverLetterMarkdown: newCoverLetter,
-                                previousCoverLetterMarkdown: asset.coverLetterMarkdown || null,
-                                coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
-                            }
-                        });
+        // Output Validation Layer: Check for hallucinations / corrupted output
+        const baseResumeText = userPrefs?.resumeMarkdown || '';
+        const outputValidation = validateGeneratedAsset(newCoverLetter, baseResumeText, userJob.job.description || '', 'coverLetter');
 
-                        if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
-                            await prisma.userJob.update({
-                                where: { userId_jobId: { userId: session.user.id, jobId } },
-                                data: { status: 'asset_generated' }
-                            }).catch(err => console.warn('Failed to update userJob status:', err));
-                        }
-                    } else {
-                        console.warn('[Output Validation] Cover letter generation rejected due to severe hallucination:', outputValidation.warnings);
-                    }
-                } catch (error) {
-                    console.error('Stream error:', error);
-                    controller.error(error);
-                } finally {
-                    controller.close();
+        if (!outputValidation.severeHallucination) {
+            const updatedAsset = await prisma.applicationAsset.update({
+                where: { id: asset.id },
+                data: {
+                    coverLetterMarkdown: newCoverLetter,
+                    previousCoverLetterMarkdown: asset.coverLetterMarkdown || null,
+                    coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
                 }
-            }
-        });
+            });
 
-        return new Response(readableStream, {
+            if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
+                await prisma.userJob.update({
+                    where: { userId_jobId: { userId: session.user.id, jobId } },
+                    data: { status: 'asset_generated' }
+                }).catch(err => console.warn('Failed to update userJob status:', err));
+            }
+        } else {
+            console.warn('[Output Validation] Cover letter generation rejected due to severe hallucination:', outputValidation.warnings);
+        }
+
+        return new Response(newCoverLetter, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
     } catch (e: any) {
-        console.error(e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        console.error('Cover letter generation error:', e);
+        return NextResponse.json({ error: e.message || 'Failed to generate cover letter' }, { status: 500 });
     }
 }

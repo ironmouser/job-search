@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getNetworkingMessagePrompts } from '@/lib/generator';
-import { streamDeepSeek } from '@/lib/deepseek';
+import { callAI } from '@/lib/ai';
 import { validateCustomInstructionSemantics, validateGeneratedAsset } from '@/lib/asset-validator';
 import { getEffectiveTier } from '@/lib/tier';
 
@@ -54,7 +54,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
         const { systemPrompt, userPrompt } = await getNetworkingMessagePrompts(session.user.id, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, tone);
 
-        const stream = streamDeepSeek({
+        // Call AI using Primary: deepseek-v4-flash -> 1st Fallback: gemini-3.1-flash-lite
+        const rawNetworkingMessage = await callAI({
+            task: 'generate',
             model: 'deepseek-v4-flash',
             messages: [
                 { role: 'system', content: systemPrompt },
@@ -65,49 +67,31 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             userId: session.user.id
         });
 
-        const encoder = new TextEncoder();
-        const readableStream = new ReadableStream({
-            async start(controller) {
-                let fullText = '';
-                try {
-                    for await (const chunk of stream) {
-                        fullText += chunk;
-                        controller.enqueue(encoder.encode(chunk));
-                    }
-                    
-                    const newNetworkingMessage = fullText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
+        const newNetworkingMessage = rawNetworkingMessage.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
 
-                    // Output Validation Layer: Check for hallucinations / corrupted output
-                    const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
-                    const baseResumeText = userPrefs?.resumeMarkdown || '';
-                    const outputValidation = validateGeneratedAsset(newNetworkingMessage, baseResumeText, userJob.job.description || '', 'networking');
+        // Output Validation Layer: Check for hallucinations / corrupted output
+        const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
+        const baseResumeText = userPrefs?.resumeMarkdown || '';
+        const outputValidation = validateGeneratedAsset(newNetworkingMessage, baseResumeText, userJob.job.description || '', 'networking');
 
-                    if (!outputValidation.severeHallucination) {
-                        await prisma.applicationAsset.update({
-                            where: { id: asset.id },
-                            data: {
-                                networkingMessage: newNetworkingMessage,
-                                previousNetworkingMessage: asset.networkingMessage || null,
-                                networkingMessageRegensUsed: asset.networkingMessageRegensUsed + 1
-                            }
-                        });
-                    } else {
-                        console.warn('[Output Validation] Networking message generation rejected due to severe hallucination:', outputValidation.warnings);
-                    }
-                } catch (error) {
-                    console.error('Stream error:', error);
-                    controller.error(error);
-                } finally {
-                    controller.close();
+        if (!outputValidation.severeHallucination) {
+            await prisma.applicationAsset.update({
+                where: { id: asset.id },
+                data: {
+                    networkingMessage: newNetworkingMessage,
+                    previousNetworkingMessage: asset.networkingMessage || null,
+                    networkingMessageRegensUsed: asset.networkingMessageRegensUsed + 1
                 }
-            }
-        });
+            });
+        } else {
+            console.warn('[Output Validation] Networking message generation rejected due to severe hallucination:', outputValidation.warnings);
+        }
 
-        return new Response(readableStream, {
+        return new Response(newNetworkingMessage, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
     } catch (e: any) {
-        console.error(e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        console.error('Networking message generation error:', e);
+        return NextResponse.json({ error: e.message || 'Failed to generate networking message' }, { status: 500 });
     }
 }

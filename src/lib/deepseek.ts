@@ -25,8 +25,6 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
 
     const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4-flash';
     const modelsToTry = [preferredModel];
-    if (!modelsToTry.includes('deepseek-v4-flash')) modelsToTry.push('deepseek-v4-flash');
-    if (!modelsToTry.includes('deepseek-v4-pro')) modelsToTry.push('deepseek-v4-pro');
 
     const promptText = options.messages.map(m => m.content).join('\n');
     const inputTokens = estimateTokens(promptText);
@@ -37,7 +35,7 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
     let lastError: Error | null = null;
 
     for (const modelName of modelsToTry) {
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt < 2; attempt++) {
             try {
                 const bodyPayload: any = {
                     model: modelName,
@@ -51,7 +49,7 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                 }
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 45000);
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
 
                 const res = await fetch('https://api.deepseek.com/chat/completions', {
                     method: 'POST',
@@ -67,15 +65,14 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                 if (!res.ok) {
                     const errData = await res.json().catch(() => ({}));
                     const errMsg = errData.error?.message || `HTTP ${res.status} ${res.statusText}`;
-                    if (res.status === 429 || res.status >= 500) {
-                        const delayMs = (attempt + 1) * 2000;
-                        console.warn(`[DeepSeek ${res.status}] Retrying ${modelName} in ${delayMs}ms: ${errMsg}`);
-                        await new Promise(r => setTimeout(r, delayMs));
+                    if ((res.status === 429 || res.status >= 500) && attempt === 0) {
+                        console.warn(`[DeepSeek ${res.status}] Retrying ${modelName} in 1s: ${errMsg}`);
+                        await new Promise(r => setTimeout(r, 1000));
                         continue;
                     }
                     console.warn(`[DeepSeek ${res.status}] Model ${modelName} failed, trying fallback: ${errMsg}`);
                     lastError = new Error(`DeepSeek API error (${modelName}): ${errMsg}`);
-                    break; // Try next model in modelsToTry
+                    break; // Fall back to Gemini via callAI
                 }
 
                 const data = await res.json();

@@ -20,7 +20,7 @@ const cleanContent = (text: string) => {
     }
     return cleaned
         .replace(/^(?:#+\s*)?cover\s*letter\s*(?:\r?\n)+/i, '')
-        .replace(/(?:\r?\n)+(?:sincerely|best regards|regards|thank you|thanks),?[\s\S]*$/i, '')
+        .replace(/(?:\r?\n)+(?:sincerely|best regards|warm regards|warmly|regards|respectfully),?\s*(?:\r?\n+[\s\S]*)?$/i, '')
         .trim();
 };
 

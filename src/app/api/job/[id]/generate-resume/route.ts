@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getResumePrompts } from '@/lib/generator';
-import { streamDeepSeek } from '@/lib/deepseek';
+import { callAI } from '@/lib/ai';
 import { validateCustomInstructionSemantics, validateGeneratedAsset } from '@/lib/asset-validator';
 import { getEffectiveTier } from '@/lib/tier';
 
@@ -68,7 +68,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
         const { systemPrompt, userPrompt } = await getResumePrompts(session.user.id, jobId, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, customizationAmount);
 
-        const stream = streamDeepSeek({
+        // Call AI using Primary: deepseek-v4-flash -> 1st Fallback: gemini-3.1-flash-lite
+        const rawResume = await callAI({
+            task: 'generate',
             model: 'deepseek-v4-flash',
             messages: [
                 { role: 'system', content: systemPrompt },
@@ -79,56 +81,37 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             userId: session.user.id
         });
 
-        const encoder = new TextEncoder();
-        const readableStream = new ReadableStream({
-            async start(controller) {
-                let fullText = '';
-                try {
-                    for await (const chunk of stream) {
-                        fullText += chunk;
-                        controller.enqueue(encoder.encode(chunk));
-                    }
-                    
-                    const newTailoredResume = fullText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
+        const newTailoredResume = rawResume.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
 
-                    // Output Validation Layer: Check for hallucinations / corrupted output
-                    const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
-                    const baseResumeText = userPrefs?.resumeMarkdown || '';
-                    const outputValidation = validateGeneratedAsset(newTailoredResume, baseResumeText, userJob.job.description || '', 'resume');
+        // Output Validation Layer: Check for hallucinations / corrupted output
+        const baseResumeText = userPrefs?.resumeMarkdown || '';
+        const outputValidation = validateGeneratedAsset(newTailoredResume, baseResumeText, userJob.job.description || '', 'resume');
 
-                    if (!outputValidation.severeHallucination) {
-                        const updatedAsset = await prisma.applicationAsset.update({
-                            where: { id: asset.id },
-                            data: {
-                                tailoredResumeMarkdown: newTailoredResume,
-                                previousTailoredResumeMarkdown: asset.tailoredResumeMarkdown || null,
-                                resumeRegensUsed: asset.resumeRegensUsed + 1
-                            }
-                        });
-
-                        if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
-                            await prisma.userJob.update({
-                                where: { userId_jobId: { userId: session.user.id, jobId } },
-                                data: { status: 'asset_generated' }
-                            }).catch(err => console.warn('Failed to update userJob status:', err));
-                        }
-                    } else {
-                        console.warn('[Output Validation] Resume generation rejected due to severe hallucination:', outputValidation.warnings);
-                    }
-                } catch (error) {
-                    console.error('Stream error:', error);
-                    controller.error(error);
-                } finally {
-                    controller.close();
+        if (!outputValidation.severeHallucination) {
+            const updatedAsset = await prisma.applicationAsset.update({
+                where: { id: asset.id },
+                data: {
+                    tailoredResumeMarkdown: newTailoredResume,
+                    previousTailoredResumeMarkdown: asset.tailoredResumeMarkdown || null,
+                    resumeRegensUsed: asset.resumeRegensUsed + 1
                 }
-            }
-        });
+            });
 
-        return new Response(readableStream, {
+            if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
+                await prisma.userJob.update({
+                    where: { userId_jobId: { userId: session.user.id, jobId } },
+                    data: { status: 'asset_generated' }
+                }).catch(err => console.warn('Failed to update userJob status:', err));
+            }
+        } else {
+            console.warn('[Output Validation] Resume generation rejected due to severe hallucination:', outputValidation.warnings);
+        }
+
+        return new Response(newTailoredResume, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
     } catch (e: any) {
-        console.error(e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        console.error('Resume generation error:', e);
+        return NextResponse.json({ error: e.message || 'Failed to generate resume' }, { status: 500 });
     }
 }
