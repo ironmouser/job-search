@@ -45,7 +45,7 @@ export default function OnboardingPage() {
     }, []);
     
     const [formData, setFormData] = useState({
-        searchKeyword: 'Senior Product Manager',
+        searchKeyword: 'Account Manager',
         searchLocation: 'Remote',
         remoteOnly: false,
         resumeMarkdown: '',
