@@ -32,9 +32,8 @@ import JobDetailTracker from '@/components/JobDetailTracker';
 import { getEffectiveTier } from '@/lib/tier';
 
 const markedRenderer = new marked.Renderer();
-markedRenderer.link = ({ href, title, text }) => {
-  const titleAttr = title ? ` title="${title}"` : '';
-  return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+markedRenderer.link = ({ text }: { text: string }) => {
+  return text;
 };
 
 marked.setOptions({ gfm: true, breaks: true, renderer: markedRenderer });
@@ -46,19 +45,8 @@ function formatDescriptionMarkdown(desc?: string | null): string {
     cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
   }
   let html = marked.parse(cleaned) as string;
-  // Ensure all links open in a new tab (including raw HTML inside description)
-  html = html.replace(/<a\b([^>]*)>/gi, (match, attrs) => {
-    let newAttrs = attrs;
-    if (/target\s*=/i.test(newAttrs)) {
-      newAttrs = newAttrs.replace(/target\s*=\s*["'][^"']*["']/gi, 'target="_blank"');
-    } else {
-      newAttrs = ` target="_blank"${newAttrs}`;
-    }
-    if (!/rel\s*=/i.test(newAttrs)) {
-      newAttrs = `${newAttrs} rel="noopener noreferrer"`;
-    }
-    return `<a${newAttrs}>`;
-  });
+  // Remove any raw or parsed anchor tags so links inside the job description are not clickable
+  html = html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1').replace(/<\/?a\b[^>]*>/gi, '');
   return html;
 }
 
