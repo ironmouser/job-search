@@ -12,12 +12,45 @@ try {
  * and converting structural elements to text before sending to an LLM or fallback formatter.
  * Reduces token payload by 50-70%.
  */
-export function preCleanHtml(htmlOrText: string): string {
+/**
+ * Decodes HTML entities (&lt;, &gt;, &amp;, &quot;, &#39;, &nbsp;, etc.)
+ */
+export function decodeHtmlEntities(str: string): string {
+    if (!str || str.trim().length === 0) return '';
+    let decoded = str;
+    // Perform 2 passes in case of double-encoded entities like &amp;lt;
+    for (let i = 0; i < 2; i++) {
+        if (!/&[a-zA-Z0-9#]+;/.test(decoded)) break;
+        decoded = decoded
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;|&#039;|&apos;/g, "'")
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&#(\d+);/g, (_, dec) => {
+                try { return String.fromCharCode(parseInt(dec, 10)); } catch { return _; }
+            })
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+                try { return String.fromCharCode(parseInt(hex, 16)); } catch { return _; }
+            });
+    }
+    return decoded;
+}
+
+/**
+ * Converts raw HTML or entity-encoded HTML to clean, readable Markdown without invoking an LLM.
+ * Preserves bold, italics, headings, lists, and line breaks while stripping unwanted markup.
+ */
+export function convertHtmlToMarkdown(htmlOrText: string): string {
     if (!htmlOrText || htmlOrText.trim().length === 0) return '';
 
-    // If it doesn't look like HTML, return trimmed plain text (safe linear check)
-    if (!/<[a-zA-Z][^>]*>/.test(htmlOrText)) {
-        return htmlOrText
+    // Step 1: Decode entities (handles &lt;strong&gt;, &amp;nbsp;, etc.)
+    const decoded = decodeHtmlEntities(htmlOrText.trim());
+
+    // Step 2: Check if content actually has HTML tags
+    if (!/<[a-zA-Z][^>]*>|<\/[a-zA-Z]+>|<br\s*\/?>/i.test(decoded)) {
+        return decoded
             .replace(/\r\n/g, '\n')
             .replace(/[ \t\u00A0]+/g, ' ')
             .replace(/\n{3,}/g, '\n\n')
@@ -25,7 +58,7 @@ export function preCleanHtml(htmlOrText: string): string {
     }
 
     try {
-        const $ = cheerio.load(htmlOrText);
+        const $ = cheerio.load(decoded);
 
         // Strip non-content / boilerplate tags
         $(
@@ -35,34 +68,81 @@ export function preCleanHtml(htmlOrText: string): string {
             '[class*="share"], [class*="social"], [class*="advert"], [id*="cookie"], [id*="gdpr"]'
         ).remove();
 
-        // Convert structural elements before stripping tags
+        // Convert line breaks and hr
+        $('br').replaceWith('\n');
+        $('hr').replaceWith('\n\n---\n\n');
+
+        // Convert inline styling: bold and italics
+        $('strong, b').each((_, el) => {
+            const inner = $(el).text().trim();
+            if (inner) {
+                $(el).replaceWith(` **${inner}** `);
+            } else {
+                $(el).remove();
+            }
+        });
+
+        $('em, i').each((_, el) => {
+            const inner = $(el).text().trim();
+            if (inner) {
+                $(el).replaceWith(` *${inner}* `);
+            } else {
+                $(el).remove();
+            }
+        });
+
+        // Convert headers
         $('h1, h2, h3, h4, h5, h6').each((_, el) => {
-            const level = el.tagName ? '#'.repeat(Math.min(parseInt(el.tagName[1]) || 2, 4)) : '##';
-            $(el).prepend(`\n\n${level} `).append('\n');
+            const tagName = (el as any).tagName?.toLowerCase() || 'h2';
+            const level = tagName.startsWith('h') ? '#'.repeat(Math.min(parseInt(tagName[1]) || 2, 4)) : '##';
+            const headerText = $(el).text().trim();
+            if (headerText) {
+                $(el).replaceWith(`\n\n${level} ${headerText}\n\n`);
+            } else {
+                $(el).remove();
+            }
         });
+
+        // Convert lists
         $('li').each((_, el) => {
-            $(el).prepend('\n- ');
+            const itemText = $(el).text().trim();
+            if (itemText) {
+                $(el).replaceWith(`\n- ${itemText}`);
+            } else {
+                $(el).remove();
+            }
         });
-        $('p, div, blockquote').each((_, el) => {
+
+        // Convert blocks
+        $('p, div, blockquote, section, article').each((_, el) => {
             $(el).append('\n\n');
         });
-        $('br').replaceWith('\n');
 
         let text = $.text();
 
-        // Clean up excess whitespace and blank lines safely
+        // Clean up formatting artifacts
         text = text
             .replace(/\r\n/g, '\n')
             .replace(/[ \t\u00A0]+/g, ' ')
+            .replace(/ +\n/g, '\n')
             .replace(/\n[ \t]+/g, '\n')
             .replace(/\n{3,}/g, '\n\n')
+            .replace(/\*\*\s+\*\*/g, '')
             .trim();
 
         return text;
     } catch {
-        // Fallback regex cleanup if Cheerio parsing fails
-        return fallbackHtmlCleanup(htmlOrText);
+        return fallbackHtmlCleanup(decoded);
     }
+}
+
+/**
+ * Pre-cleans raw HTML by stripping boilerplate (navs, footers, cookie banners, scripts, styles)
+ * and converting structural elements to text before sending to an LLM or fallback formatter.
+ * Reduces token payload by 50-70%.
+ */
+export function preCleanHtml(htmlOrText: string): string {
+    return convertHtmlToMarkdown(htmlOrText);
 }
 
 /**

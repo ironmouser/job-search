@@ -31,6 +31,8 @@ import JobDetailsActionBar from '@/components/JobDetailsActionBar';
 import JobDetailTracker from '@/components/JobDetailTracker';
 import { getEffectiveTier } from '@/lib/tier';
 
+import { convertHtmlToMarkdown } from '@/lib/formatter';
+
 const markedRenderer = new marked.Renderer();
 markedRenderer.link = ({ text }: { text: string }) => {
   return text;
@@ -44,6 +46,10 @@ function formatDescriptionMarkdown(desc?: string | null): string {
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
   }
+
+  // Non-LLM feature: detect if description contains HTML or encoded entities and convert to clean Markdown
+  cleaned = convertHtmlToMarkdown(cleaned);
+
   // Strip out "Apply at: <url>" lines and variations
   cleaned = cleaned
     .replace(/(?:^|\n|\r)\s*(?:apply\s+at|apply\s+here|application\s+link):\s*(?:https?:\/\/\S+|\[[^\]]*\]\([^)]*\)|<[^>]*>|\S+)?(?:\n|\r|$)/gi, '\n')
