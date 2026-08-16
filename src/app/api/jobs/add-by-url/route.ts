@@ -135,7 +135,7 @@ export async function POST(request: Request) {
       // Proxy fallback via Scrape.do if direct fetch failed
       if (!fetchSuccess && process.env.SCRAPEDO_API_KEY) {
         try {
-          const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(cleanUrl)}`;
+          const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(cleanUrl)}`;
           const sdRes = await gotScraping({
             url: scrapeDoUrl,
             timeout: { request: 30000 },

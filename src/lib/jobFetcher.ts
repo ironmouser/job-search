@@ -45,8 +45,7 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
       lower.includes("remain on this page, you'll be signed in") ||
       lower.includes("sign in to view") ||
       lower.includes("login to view") ||
-      lower.includes("account.ycombinator.com/authenticate") ||
-      lower.includes("workatastartup.com/application")
+      lower.includes("account.ycombinator.com/authenticate")
     ) {
       return false;
     }
@@ -118,9 +117,7 @@ export async function fetchJobDescriptionDetailed(rawUrl: string): Promise<Fetch
     // Known anti-bot / protected sites: route directly to DigitalOcean Droplet Worker Playwright stealth scraper
     const isProtectedTarget = (
         url.includes('ziprecruiter.com') ||
-        url.includes('glassdoor.com') ||
-        url.includes('workatastartup.com') ||
-        url.includes('ycombinator.com')
+        url.includes('glassdoor.com')
     );
 
     if (isProtectedTarget) {
@@ -140,9 +137,7 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
     // Known anti-bot / protected sites: route directly to DigitalOcean Droplet Worker Playwright stealth scraper
     const isProtectedTarget = (
         url.includes('ziprecruiter.com') ||
-        url.includes('glassdoor.com') ||
-        url.includes('workatastartup.com') ||
-        url.includes('ycombinator.com')
+        url.includes('glassdoor.com')
     );
 
     if (isProtectedTarget) {
@@ -271,7 +266,8 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
     if (process.env.SCRAPEDO_API_KEY) {
         console.info(`Falling back to Scrape.do for ${url}`);
         try {
-            const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(url)}`;
+            // Tier 1: Try residential super proxy without headless browser (10 credits)
+            const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
             const sdRes = await gotScraping({
                 url: scrapeDoUrl,
                 timeout: { request: 30000 },

@@ -146,15 +146,46 @@ export async function GET(request: Request) {
     }
 
     // Sorting
+    const getAiScore = (j: any): number | null => {
+      const s = j.opportunity_scores?.[0]?.totalScore;
+      if (typeof s === 'number' && !isNaN(s)) return s;
+      return null;
+    };
+
     result.sort((a, b) => {
-      if (sortOption === 'score') {
-        const scoreA = a.opportunity_scores?.[0]?.totalScore || 0;
-        const scoreB = b.opportunity_scores?.[0]?.totalScore || 0;
-        if (scoreB !== scoreA) return scoreB - scoreA;
-      } else if (sortOption === 'salary') {
+      if (sortOption === 'score_desc' || sortOption === 'score') {
+        const scoreA = getAiScore(a);
+        const scoreB = getAiScore(b);
+        if (scoreA !== null && scoreB !== null) {
+          if (scoreB !== scoreA) return scoreB - scoreA;
+        } else if (scoreA !== null) {
+          return -1;
+        } else if (scoreB !== null) {
+          return 1;
+        }
+      } else if (sortOption === 'score_asc') {
+        const scoreA = getAiScore(a);
+        const scoreB = getAiScore(b);
+        if (scoreA !== null && scoreB !== null) {
+          if (scoreA !== scoreB) return scoreA - scoreB;
+        } else if (scoreA !== null) {
+          return -1;
+        } else if (scoreB !== null) {
+          return 1;
+        }
+      } else if (sortOption === 'company') {
+        const compA = (a.company || '').toLowerCase();
+        const compB = (b.company || '').toLowerCase();
+        const compDiff = compA.localeCompare(compB);
+        if (compDiff !== 0) return compDiff;
+      } else if (sortOption === 'salary_desc' || sortOption === 'salary') {
         const salA = extractMaxSalary(a.salary_range || null);
         const salB = extractMaxSalary(b.salary_range || null);
         if (salB !== salA) return salB - salA;
+      } else if (sortOption === 'salary_asc') {
+        const salA = extractMaxSalary(a.salary_range || null);
+        const salB = extractMaxSalary(b.salary_range || null);
+        if (salA !== salB) return salA - salB;
       } else if (sortOption === 'remote') {
         const isRemoteA = isRemoteLocation(a.location || '') ? 1 : 0;
         const isRemoteB = isRemoteLocation(b.location || '') ? 1 : 0;
@@ -165,7 +196,7 @@ export async function GET(request: Request) {
         if (confB !== confA) return confB - confA;
       }
 
-      // Role alignment: default primary order for 'newest' and secondary tie-breaker across all sorts
+      // Role alignment secondary tie-breaker
       if (targetRole) {
         const matchA = computeRoleMatchScore(a.title, targetRole, a.description);
         const matchB = computeRoleMatchScore(b.title, targetRole, b.description);

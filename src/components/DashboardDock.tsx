@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Mail, SlidersHorizontal, PlusCircle, Trash2, Loader2, Sparkles, ArrowUpDown, X } from 'lucide-react';
 import SyncButton from '@/components/SyncButton';
 
-export type SortOptionType = 'newest' | 'score' | 'salary' | 'remote';
+export type SortOptionType = 'newest' | 'score' | 'score_desc' | 'score_asc' | 'company' | 'salary' | 'salary_desc' | 'salary_asc' | 'remote';
 
 interface DashboardDockProps {
   onEmailSync?: () => void;

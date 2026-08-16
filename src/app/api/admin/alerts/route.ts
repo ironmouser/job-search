@@ -97,11 +97,37 @@ export async function GET() {
             byProvider: bucketsToProviders(monthRows as any),
         };
 
-        // ── 4. Scrape.do — live credit balance ───────────────────────────────
-        let scrapeDoCredits: { remaining: number | null; total: number | null; plan: string | null; error?: string } = {
+        // ── 4. Scrape.do — live credit balance & period ─────────────────────
+        const renewalDay = parseInt(process.env.SCRAPEDO_RENEWAL_DAY || '22', 10);
+        const now = new Date();
+        let periodStartDate: Date;
+        let periodEndDate: Date;
+
+        if (now.getDate() < renewalDay) {
+            periodStartDate = new Date(now.getFullYear(), now.getMonth() - 1, renewalDay);
+            periodEndDate   = new Date(now.getFullYear(), now.getMonth(), renewalDay);
+        } else {
+            periodStartDate = new Date(now.getFullYear(), now.getMonth(), renewalDay);
+            periodEndDate   = new Date(now.getFullYear(), now.getMonth() + 1, renewalDay);
+        }
+
+        const daysRemaining = Math.max(0, Math.ceil((periodEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+        let scrapeDoCredits: {
+            remaining: number | null;
+            total: number | null;
+            plan: string | null;
+            periodStart: string;
+            periodEnd: string;
+            daysRemaining: number;
+            error?: string;
+        } = {
             remaining: null,
             total: null,
             plan: null,
+            periodStart: periodStartDate.toISOString(),
+            periodEnd: periodEndDate.toISOString(),
+            daysRemaining,
         };
 
         const scrapeDoToken = process.env.SCRAPEDO_API_KEY;
@@ -112,11 +138,12 @@ export async function GET() {
                 });
                 if (sdRes.ok) {
                     const sdData = await sdRes.json();
-                    // Scrape.do /info returns: { remainingMonthlyRequests, monthlyRequests, plan, ... }
+                    // Scrape.do /info returns: { IsActive, ConcurrentRequest, MaxMonthlyRequest, RemainingMonthlyRequest, ... }
                     scrapeDoCredits = {
-                        remaining: sdData.remainingMonthlyRequests ?? sdData.remaining ?? null,
-                        total:     sdData.monthlyRequests          ?? sdData.total     ?? null,
-                        plan:      sdData.plan                                          ?? null,
+                        ...scrapeDoCredits,
+                        remaining: sdData.RemainingMonthlyRequest ?? sdData.remainingMonthlyRequests ?? sdData.remaining ?? null,
+                        total:     sdData.MaxMonthlyRequest       ?? sdData.monthlyRequests          ?? sdData.total     ?? null,
+                        plan:      sdData.plan ?? (sdData.IsActive ? 'Active' : 'Inactive'),
                     };
                 } else {
                     scrapeDoCredits.error = `HTTP ${sdRes.status}`;

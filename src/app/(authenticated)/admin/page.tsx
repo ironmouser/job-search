@@ -44,7 +44,6 @@ interface GlobalSettings {
   weworkremotelyIsPro: boolean;
   remoteokIsPro: boolean;
   workingnomadsIsPro: boolean;
-  ycombinatorIsPro: boolean;
   ottaIsPro: boolean;
   himalayasIsPro: boolean;
 
@@ -132,7 +131,15 @@ export default function AdminDashboard() {
   const [dailyCost, setDailyCost] = useState<number>(0);
   const [aiCostToday, setAiCostToday] = useState<{ total: number; byProvider: { provider: string; cost: number; calls: number }[] } | null>(null);
   const [aiCostMonth, setAiCostMonth] = useState<{ total: number; byProvider: { provider: string; cost: number; calls: number }[] } | null>(null);
-  const [scrapeDoCredits, setScrapeDoCredits] = useState<{ remaining: number | null; total: number | null; plan: string | null; error?: string } | null>(null);
+  const [scrapeDoCredits, setScrapeDoCredits] = useState<{
+    remaining: number | null;
+    total: number | null;
+    plan: string | null;
+    periodStart?: string | null;
+    periodEnd?: string | null;
+    daysRemaining?: number | null;
+    error?: string;
+  } | null>(null);
   const [s3Stats, setS3Stats] = useState<{ objectCount: number | null; totalSizeBytes: number | null; estimatedMonthlyCostUsd: number | null; error?: string } | null>(null);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
 
@@ -160,7 +167,6 @@ export default function AdminDashboard() {
     weworkremotelyIsPro: true,
     remoteokIsPro: true,
     workingnomadsIsPro: true,
-    ycombinatorIsPro: true,
     ottaIsPro: true,
     himalayasIsPro: true,
 
@@ -280,7 +286,6 @@ export default function AdminDashboard() {
               weworkremotelyIsPro: data.weworkremotelyIsPro ?? true,
               remoteokIsPro: data.remoteokIsPro ?? true,
               workingnomadsIsPro: data.workingnomadsIsPro ?? true,
-              ycombinatorIsPro: data.ycombinatorIsPro ?? true,
               ottaIsPro: data.ottaIsPro ?? true,
               himalayasIsPro: data.himalayasIsPro ?? true,
 
@@ -866,6 +871,22 @@ export default function AdminDashboard() {
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                             {Math.round(((scrapeDoCredits.total - scrapeDoCredits.remaining) / scrapeDoCredits.total) * 100)}% of {scrapeDoCredits.total.toLocaleString()} monthly credits used
                           </div>
+                          {scrapeDoCredits?.periodStart && scrapeDoCredits?.periodEnd && (
+                            <div style={{ marginTop: '0.65rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(16,185,129,0.2)', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Period</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                                  {formatDate(scrapeDoCredits.periodStart)} to {formatDate(scrapeDoCredits.periodEnd)}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Resets In</span>
+                                <span style={{ color: '#34d399', fontWeight: 600 }}>
+                                  {scrapeDoCredits.daysRemaining != null ? `${scrapeDoCredits.daysRemaining} day${scrapeDoCredits.daysRemaining === 1 ? '' : 's'}` : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </>
                       )}
                     </>
@@ -1173,13 +1194,6 @@ export default function AdminDashboard() {
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>RemotePOC jobs board</div>
                       </div>
                       <ToggleSwitch checked={settings.remotepocIsPro} onChange={() => setSettings({ ...settings, remotepocIsPro: !settings.remotepocIsPro })} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Y Combinator</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Work at a Startup scraping</div>
-                      </div>
-                      <ToggleSwitch checked={settings.ycombinatorIsPro} onChange={() => setSettings({ ...settings, ycombinatorIsPro: !settings.ycombinatorIsPro })} />
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
                       <div>

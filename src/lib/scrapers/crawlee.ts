@@ -64,7 +64,7 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
             if (process.env.SCRAPEDO_API_KEY) {
                 console.info(`Falling back to Scrape.do for ${url}`);
                 try {
-                    const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(url)}`;
+                    const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
                     const sdRes = await gotScraping({
                         url: scrapeDoUrl,
                         timeout: { request: 12000 },
@@ -378,7 +378,6 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     if (sources.remotive) urls.push({ url: `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(keyword)}`, source: 'remotive' });
     if (sources.arbeitnow) urls.push({ url: `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(keyword)}`, source: 'arbeitnow' });
     if (sources.nodesk) urls.push({ url: `https://nodesk.co/remote-jobs/`, source: 'nodesk' });
-    if (sources.ycombinator) urls.push({ url: `https://www.workatastartup.com/companies?query=${encodeURIComponent(keyword)}`, source: 'ycombinator' });
     // Note: Otta omitted from this batch due to requiring GraphQL reverse-engineering.
 
     if (urls.length === 0) return [];
@@ -578,44 +577,6 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     }
                 } catch (e: any) {
                     console.warn(`Error parsing himalayas API: ${e.message}`);
-                    errorMsg = e.message;
-                }
-                return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
-            }
-
-            if (source === 'ycombinator') {
-                try {
-                    let res = await gotScraping({ url, throwHttpErrors: false });
-                    if ((res.statusCode < 200 || res.statusCode >= 300) && process.env.SCRAPEDO_API_KEY) {
-                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
-                        res = await gotScraping({ url: scrapeDoUrl, throwHttpErrors: false });
-                    }
-                    if (res.statusCode >= 200 && res.statusCode < 300) {
-                        const html = res.body as string;
-                        const $ = cheerio.load(html);
-                        const dataPage = $('div[data-page]').attr('data-page');
-                        if (dataPage) {
-                            const data = JSON.parse(dataPage);
-                            const ycJobs = data.props.jobs || [];
-                            for (const job of ycJobs) {
-                                pageJobs.push({
-                                    title: job.title,
-                                    company: job.companyName,
-                                    location: job.location || 'Remote',
-                                    description: `Role Type: ${job.roleType || 'N/A'}\nSalary: ${job.salary || 'N/A'}\n\nApply at: ${job.applyUrl}`,
-                                    salary_range: job.salary || null,
-                                    url: job.applyUrl,
-                                    source: 'YCombinator'
-                                });
-                            }
-                        } else {
-                            errorMsg = "Could not find YC data prop.";
-                        }
-                    } else {
-                        errorMsg = `HTTP Error: ${res.statusCode}`;
-                    }
-                } catch (e: any) {
-                    console.warn(`Error parsing YC: ${e.message}`);
                     errorMsg = e.message;
                 }
                 return { source, jobs: pageJobs, usedFirecrawl: false, firecrawlSites: [], error: errorMsg, url, isCached: false };
@@ -1287,11 +1248,11 @@ export async function scrapeGlassdoor(keyword: string, location: string = 'Remot
         let html = '';
         let usedUrl = targetUrl;
 
-        // Use Scrape.do with render=true for JS-rendered Apollo data
+        // Use Scrape.do with super=true for Apollo data extraction
         if (process.env.SCRAPEDO_API_KEY) {
             const urls = [targetUrl, fallbackUrl];
             for (const tryUrl of urls) {
-                const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(tryUrl)}`;
+                const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(tryUrl)}`;
                 try {
                     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
                     if (res.ok) {
@@ -1444,7 +1405,7 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
         let html = '';
 
         if (process.env.SCRAPEDO_API_KEY) {
-            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(searchUrl)}`;
+            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(searchUrl)}`;
             try {
                 const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
                 if (res.ok) {
@@ -1614,7 +1575,7 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                     // Only use scrape.do if the direct fetch was blocked or returned nothing
                     if (!detailHtml && process.env.SCRAPEDO_API_KEY) {
                         try {
-                            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(job.url)}`;
+                            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(job.url)}`;
                             const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
                             if (res.ok) {
                                 const text = await res.text();

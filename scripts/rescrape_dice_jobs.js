@@ -52,7 +52,7 @@ async function rescrapeDiceJobs() {
 
         if (!detailHtml && process.env.SCRAPEDO_API_KEY) {
             try {
-                const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(job.url)}`;
+                const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(job.url)}`;
                 const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
                 if (res.ok) {
                     const text = await res.text();

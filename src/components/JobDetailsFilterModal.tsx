@@ -11,6 +11,8 @@ interface JobDetailsFilterModalProps {
   onJumpToFirst?: (firstJobId: string) => void;
 }
 
+import { SortOptionType } from '@/components/DashboardDock';
+
 export default function JobDetailsFilterModal({
   isOpen,
   onClose,
@@ -18,7 +20,7 @@ export default function JobDetailsFilterModal({
   onJumpToFirst
 }: JobDetailsFilterModalProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
-  const [sortOption, setSortOption] = useState<'newest' | 'score' | 'salary' | 'remote'>('newest');
+  const [sortOption, setSortOption] = useState<SortOptionType>('newest');
   const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
   const [keywordFilter, setKeywordFilter] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
@@ -344,8 +346,10 @@ export default function JobDetailsFilterModal({
                   }}
                 >
                   <option value="newest">Newest First</option>
-                  <option value="score">Opportunity Score</option>
-                  <option value="salary">Salary (High to Low)</option>
+                  <option value="score_desc">Match Score (High-Low)</option>
+                  <option value="score_asc">Match Score (Low-High)</option>
+                  <option value="company">Company (A-Z)</option>
+                  <option value="salary_desc">Salary (High-Low)</option>
                   <option value="remote">Remote Jobs First</option>
                 </select>
               </div>

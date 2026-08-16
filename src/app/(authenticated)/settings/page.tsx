@@ -553,7 +553,7 @@ export default function SettingsPage() {
                                     },
                                     {
                                         title: 'US / Remote Tech',
-                                        sources: ['weworkremotely', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'ycombinator', 'nodesk', 'otta', 'himalayas', 'jobicy', 'jobspresso', 'builtin']
+                                        sources: ['weworkremotely', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'nodesk', 'otta', 'himalayas', 'jobicy', 'jobspresso', 'builtin']
                                     },
                                     {
                                         title: 'ATS Integrations',
@@ -592,7 +592,6 @@ export default function SettingsPage() {
                                               source === 'remotepoc' ? 'RemotePOC' : 
                                               source === 'themuse' ? 'The Muse (Global)' :
                                               source === 'computrabajo' ? 'Computrabajo (LATAM)' :
-                                              source === 'ycombinator' ? 'Y Combinator' :
                                               source === 'arbeitnow' ? 'Arbeitnow (DE)' :
                                               source === 'nodesk' ? 'noDesk' :
                                               source === 'otta' ? 'Otta' :
@@ -622,7 +621,7 @@ export default function SettingsPage() {
                                         title: 'Remote & Tech Jobs',
                                         items: [
                                             { label: 'Free', sources: ['remotive', 'remotepoc', 'nodesk', 'himalayas', 'jobicy', 'jobspresso', 'builtin'] },
-                                            { label: 'Premium', sources: ['weworkremotely', 'remoteok', 'workingnomads', 'ycombinator', 'otta'], isPro: true }
+                                            { label: 'Premium', sources: ['weworkremotely', 'remoteok', 'workingnomads', 'otta'], isPro: true }
                                         ]
                                     },
                                     {

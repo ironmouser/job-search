@@ -56,7 +56,7 @@ async function fetchWithFallback(url: string): Promise<string | null> {
 
     if (process.env.SCRAPEDO_API_KEY) {
         try {
-            const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&render=true&url=${encodeURIComponent(url)}`;
+            const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
             const sdRes = await fetch(scrapeDoUrl);
             if (sdRes.ok) {
                 const sdBody = await sdRes.text();

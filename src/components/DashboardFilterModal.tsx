@@ -345,8 +345,10 @@ export default function DashboardFilterModal({
                   }}
                 >
                   <option value="newest">Newest First</option>
-                  <option value="score">Opportunity Score</option>
-                  <option value="salary">Salary (High to Low)</option>
+                  <option value="score_desc">Match Score (High-Low)</option>
+                  <option value="score_asc">Match Score (Low-High)</option>
+                  <option value="company">Company (A-Z)</option>
+                  <option value="salary_desc">Salary (High-Low)</option>
                   <option value="remote">Remote Jobs First</option>
                 </select>
               </div>
