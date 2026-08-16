@@ -38,6 +38,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             return NextResponse.json({ error: semanticCheck.reason }, { status: 400 });
         }
 
+        const { getUserSettings, hasUserUploadedResume } = await import('@/lib/settings');
+        const userPrefs = await getUserSettings(session.user.id);
+        if (!hasUserUploadedResume(userPrefs?.resumeMarkdown)) {
+            return NextResponse.json({ error: 'Base resume is required to generate tailored assets.', errorCode: 'MISSING_BASE_RESUME' }, { status: 400 });
+        }
+
         const userJob = await prisma.userJob.findUnique({
             where: { userId_jobId: { userId: session.user.id, jobId } },
             include: { job: { include: { applicationAssets: { where: { userId: session.user.id } } } } }
@@ -70,7 +76,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         const newNetworkingMessage = rawNetworkingMessage.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-').trim();
 
         // Output Validation Layer: Check for hallucinations / corrupted output
-        const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
         const baseResumeText = userPrefs?.resumeMarkdown || '';
         const outputValidation = validateGeneratedAsset(newNetworkingMessage, baseResumeText, userJob.job.description || '', 'networking');
 

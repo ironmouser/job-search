@@ -90,7 +90,11 @@ export async function POST(
       return NextResponse.json({ error: `Limit reached (${limit}/${limit}). Please upgrade to Pro for more.` }, { status: 403 });
     }
 
-    const userPrefs = await prisma.userPreferences.findUnique({ where: { userId: session.user.id } });
+    const { getUserSettings, hasUserUploadedResume } = await import('@/lib/settings');
+    const userPrefs = await getUserSettings(session.user.id);
+    if (!hasUserUploadedResume(userPrefs?.resumeMarkdown)) {
+      return NextResponse.json({ error: 'Base resume is required to answer application questions.', errorCode: 'MISSING_BASE_RESUME' }, { status: 400 });
+    }
     const baseResumeText = userPrefs?.resumeMarkdown || '';
 
     let answer = await generateApplicationAnswer(

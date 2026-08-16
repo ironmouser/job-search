@@ -6,6 +6,7 @@ import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
 import DownloadTextButton from './DownloadTextButton';
 import { trackAssetAction } from '@/lib/analytics';
+import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 
 export default function NetworkingAssetCard({
     jobId,
@@ -28,6 +29,8 @@ export default function NetworkingAssetCard({
     const [regensUsed, setRegensUsed] = useState(initialRegensUsed);
     const [tone, setTone] = useState(initialTone || 'Confident and strategic');
     const [isLoading, setIsLoading] = useState(false);
+    const [showJitModal, setShowJitModal] = useState(false);
+    const [pendingInstruction, setPendingInstruction] = useState<string>('different');
     const [isSavingPref, setIsSavingPref] = useState(false);
     const [savedPref, setSavedPref] = useState(false);
     const [error, setError] = useState('');
@@ -70,6 +73,12 @@ export default function NetworkingAssetCard({
             
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
+                if (data.errorCode === 'MISSING_BASE_RESUME') {
+                    setPendingInstruction(instruction);
+                    setShowJitModal(true);
+                    setIsLoading(false);
+                    return;
+                }
                 throw new Error(data.error || 'Failed to regenerate');
             }
             
@@ -415,6 +424,17 @@ export default function NetworkingAssetCard({
                     </div>
                 )}
             </div>
+
+            <JitResumeUploadModal
+                isOpen={showJitModal}
+                onClose={() => setShowJitModal(false)}
+                onSuccess={() => {
+                    setShowJitModal(false);
+                    handleRegenerate(pendingInstruction);
+                }}
+                title="Upload Base Resume"
+                description="To generate tailored networking messages for this job, please upload your base resume."
+            />
         </details>
     );
 }

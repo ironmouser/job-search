@@ -1,24 +1,48 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Copy, Loader2, MessageSquare, Send, ThumbsUp, RefreshCw, Minimize2, Maximize2, ChevronDown, RotateCcw, Pencil, X } from 'lucide-react';
 import DownloadTextButton from './DownloadTextButton';
 import UpgradePrompt from './UpgradePrompt';
 
 
 import { safeCopyToClipboard } from '@/lib/clipboard';
+import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 
-export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, initialQaUsed = 0, totalResumesGenerated, totalApplied }: { jobId: string; planTier?: string; trialEndsAt?: Date | string | null; initialQaUsed?: number; totalResumesGenerated?: number; totalApplied?: number; }) {
+export default function ApplicationQA({
+  jobId,
+  planTier = 'FREE',
+  trialEndsAt,
+  initialQaUsed = 0,
+  totalResumesGenerated,
+  totalApplied,
+  hasResume
+}: {
+  jobId: string;
+  planTier?: string;
+  trialEndsAt?: Date | string | null;
+  initialQaUsed?: number;
+  totalResumesGenerated?: number;
+  totalApplied?: number;
+  hasResume?: boolean;
+}) {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [previousAnswer, setPreviousAnswer] = useState('');
   const [tone, setTone] = useState('Confident and strategic');
   const [isLoading, setIsLoading] = useState(false);
+  const [showJitModal, setShowJitModal] = useState(false);
+  const [localHasResume, setLocalHasResume] = useState<boolean | undefined>(hasResume);
+  const [pendingInstruction, setPendingInstruction] = useState<string | undefined>(undefined);
   const [isSavingPref, setIsSavingPref] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [savedPref, setSavedPref] = useState(false);
   const [qaUsed, setQaUsed] = useState(initialQaUsed);
+
+  useEffect(() => {
+    setLocalHasResume(hasResume);
+  }, [hasResume]);
 
   const isInTrial = trialEndsAt && new Date(trialEndsAt) > new Date();
   const isPro = planTier === 'PRO' || isInTrial;
@@ -36,6 +60,12 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, i
   const handleGenerate = async (instruction?: string) => {
     if (!question.trim() || regensLeft <= 0) return;
     
+    if (localHasResume === false) {
+      setPendingInstruction(instruction);
+      setShowJitModal(true);
+      return;
+    }
+
     setShowCustomPrompt(false);
     setCustomPrompt('');
     
@@ -57,6 +87,12 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, i
       const data = await res.json();
       
       if (!res.ok) {
+        if (data.errorCode === 'MISSING_BASE_RESUME') {
+          setPendingInstruction(instruction);
+          setShowJitModal(true);
+          setIsLoading(false);
+          return;
+        }
         throw new Error(data.error || 'Failed to generate answer');
       }
       
@@ -392,6 +428,20 @@ export default function ApplicationQA({ jobId, planTier = 'FREE', trialEndsAt, i
           </div>
         )}
       </div>
+
+      <JitResumeUploadModal
+        isOpen={showJitModal}
+        onClose={() => setShowJitModal(false)}
+        onSuccess={() => {
+          setLocalHasResume(true);
+          setShowJitModal(false);
+          setTimeout(() => {
+            handleGenerate(pendingInstruction);
+          }, 100);
+        }}
+        title="Upload Resume to Answer Questions"
+        description="To generate strategic, tailored answers based on your experience, please upload your base resume."
+      />
     </details>
   );
 }

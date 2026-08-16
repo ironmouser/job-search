@@ -5,6 +5,7 @@ import { Bot, Copy, Lock, Sparkles, AlertCircle, X, ExternalLink } from 'lucide-
 import { scrollToTop } from './BackToTopButton';
 import UpgradePrompt from './UpgradePrompt';
 import { safeCopyToClipboard } from '@/lib/clipboard';
+import JitResumeUploadModal from './common/JitResumeUploadModal';
 
 export default function AutofillButton({
   jobId,
@@ -38,6 +39,7 @@ export default function AutofillButton({
 
   const [showNoGenerationsModal, setShowNoGenerationsModal] = useState(false);
   const [showPromptGenerateModal, setShowPromptGenerateModal] = useState(false);
+  const [isJitResumeOpen, setIsJitResumeOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -90,6 +92,11 @@ export default function AutofillButton({
         const data = await res.json().catch(() => ({}));
         if (data.code === 'LIMIT_REACHED') {
           setShowUpgradePrompt(true);
+          setIsLaunching(false);
+          return;
+        }
+        if (data.errorCode === 'MISSING_BASE_RESUME') {
+          setIsJitResumeOpen(true);
           setIsLaunching(false);
           return;
         }
@@ -349,6 +356,20 @@ export default function AutofillButton({
         </div>,
         document.body
       )}
+
+      {/* JIT Resume Upload Modal */}
+      <JitResumeUploadModal
+        isOpen={isJitResumeOpen}
+        onClose={() => setIsJitResumeOpen(false)}
+        onSuccess={() => {
+          setIsJitResumeOpen(false);
+          setTimeout(() => {
+            handleAutofill();
+          }, 100);
+        }}
+        title="Upload Resume to Generate Assets"
+        description="To generate tailored resumes and cover letters before applying, please upload your base resume."
+      />
     </div>
   );
 }

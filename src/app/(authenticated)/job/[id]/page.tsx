@@ -398,7 +398,12 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
                 <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Application Q&A</h2>
               </div>
-              <ApplicationQA jobId={job.id} planTier={planTier} initialQaUsed={assets?.qaGenerationsUsed || 0} />
+              <ApplicationQA
+                jobId={job.id}
+                planTier={planTier}
+                initialQaUsed={assets?.qaGenerationsUsed || 0}
+                hasResume={hasBaseResume}
+              />
             </section>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', marginBottom: '2rem' }}>

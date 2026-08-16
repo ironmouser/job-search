@@ -24,6 +24,7 @@ import FeedbackButtons from './FeedbackButtons';
 import { useJobNav } from './JobDetailsNavWrapper';
 import JobDetailsFilterModal from './JobDetailsFilterModal';
 import { trackDockAction } from '@/lib/analytics';
+import JitResumeUploadModal from './common/JitResumeUploadModal';
 
 interface JobDetailsActionBarProps {
   currentJobId: string;
@@ -52,6 +53,7 @@ export default function JobDetailsActionBar({
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [showApplyPopover, setShowApplyPopover] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isJitResumeOpen, setIsJitResumeOpen] = useState(false);
   const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
   const [mobileApplyOpen, setMobileApplyOpen] = useState(false);
   const prefetchedJobs = useRef<Set<string>>(new Set());
@@ -228,6 +230,11 @@ export default function JobDetailsActionBar({
         if (res.ok) {
           setLocalHasAssets(true);
           router.refresh();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          if (data.errorCode === 'MISSING_BASE_RESUME') {
+            setIsJitResumeOpen(true);
+          }
         }
       } catch (e) {
         console.error('Failed to generate assets:', e);
@@ -235,6 +242,13 @@ export default function JobDetailsActionBar({
         setIsGenerating(false);
       }
     }
+  };
+
+  const handleResumeUploadSuccess = () => {
+    setIsJitResumeOpen(false);
+    setTimeout(() => {
+      handleStep2Generate();
+    }, 100);
   };
 
   const handleStep3AutoApply = () => {
@@ -607,6 +621,14 @@ export default function JobDetailsActionBar({
             router.push(`/job/${firstJobId}`);
           }
         }}
+      />
+
+      <JitResumeUploadModal
+        isOpen={isJitResumeOpen}
+        onClose={() => setIsJitResumeOpen(false)}
+        onSuccess={handleResumeUploadSuccess}
+        title="Upload Resume to Generate Assets"
+        description="To generate tailored resumes and cover letters for this job, please upload your base resume."
       />
     </>
   );
