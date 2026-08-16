@@ -1036,66 +1036,7 @@ export default function DashboardClient({
               }}
               onDismiss={() => setShowUpgradeModal(false)}
             />
-          )}
-
-          {!hasResumeState && (
-            <div 
-              className="glass-card animate-fade-in" 
-              style={{ 
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)',
-                border: '1px solid rgba(99, 102, 241, 0.35)',
-                borderRadius: '12px',
-                padding: '1.15rem 1.35rem',
-                marginBottom: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '1rem'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: '280px' }}>
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '10px',
-                  background: 'rgba(99, 102, 241, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--accent-primary)',
-                  flexShrink: 0
-                }}>
-                  <Sparkles size={22} />
-                </div>
-                <div>
-                  <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Unlock AI Opportunity Fit Scoring & Auto-Apply
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                    Upload your resume to evaluate match breakdown across all opportunities and enable 1-click tailored application generation.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsJitResumeOpen(true)}
-                className="btn-primary"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.65rem 1.15rem',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                <FileText size={16} /> Upload Resume
-              </button>
-            </div>
-          )}
-
-          <OnboardingWidget />
+          )}          <OnboardingWidget />
 
           <div className="responsive-grid stat-cards-grid" style={{ marginBottom: '1.25rem' }} data-tour="dashboard-stats">
             <div 
@@ -1151,8 +1092,67 @@ export default function DashboardClient({
           <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
         </div>
 
+        {/* Resume Activation Banner (Above Matches Section) */}
+        {!hasResumeState && (
+          <div 
+            className="glass-card animate-fade-in" 
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%)',
+              border: '1px solid rgba(99, 102, 241, 0.25)',
+              borderRadius: '12px',
+              padding: '1.1rem 1.35rem',
+              marginTop: '5.5rem',
+              marginBottom: '1.35rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1rem'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: '280px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                background: 'rgba(99, 102, 241, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-primary, #6366f1)',
+                flexShrink: 0
+              }}>
+                <Sparkles size={22} />
+              </div>
+              <div>
+                <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '0.96rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Unlock AI Opportunity Fit Scoring & Auto-Apply
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                  Upload your resume to evaluate match breakdown across all opportunities and enable 1-click tailored application generation.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsJitResumeOpen(true)}
+              className="btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.65rem 1.25rem',
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <FileText size={16} /> Upload Resume
+            </button>
+          </div>
+        )}
+
         {/* Matches Section Header Bar */}
-        <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: '5.5rem' }}>
+        <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: hasResumeState ? '5.5rem' : '0rem' }}>
           <div className="matches-header-left-group">
             <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
               Matches ({filteredAndSortedJobs.length})
