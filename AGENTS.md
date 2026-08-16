@@ -13,6 +13,7 @@ When writing or rewriting content for resumes, cover letters, networking message
 - **Role-Play**: Role-play as an experienced professional.
 - **No Dashes or Hyphens as Punctuation**: Do not use em-dashes ("—" or "--") or hyphens ("-") as punctuation to separate clauses. Use commas, periods, or natural phrasing instead.
 - **No AI Filler Words**: Avoid generic, robotic AI filler words like "thrilled," "passionate," "dynamic," "testament to," or "delve."
+- **Avoid Overly Ambitious Adverbs & AI Formulas**: Avoid formulaic phrases like "directly aligns with". Use natural, grounded phrasing instead (e.g. "aligns with my background in...", "connects with my work in...", "fits my experience in...").
 - **Cover Letter Structure**: Split cover letters into exactly three short paragraphs:
   - Paragraph 1: Why I am applying and my highest-level qualification.
   - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.

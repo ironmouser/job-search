@@ -1,15 +1,15 @@
 export const COVER_LETTER_REFERENCE_EXAMPLES = `
 HUMAN WRITING REFERENCE EXAMPLES (Study these real, human-written cover letters for tone, structure, concrete metrics, and conversational enthusiasm. Adopt this exact human rhythm and confidence without ever using forbidden AI filler words, em-dashes, or hyphenated buzzwords):
 
---- EXAMPLE 0 (Senior Product Manager - Direct Role Application & Direct Alignment Phrasing) ---
-I am applying to the Sr. Product Manager position at Ontra. Ontra’s AI-powered approach to legal workflow automation directly aligns with my background in product development, where I have spent the last six years shipping complex SaaS tools.
+--- EXAMPLE 0 (Senior Product Manager - Direct Role Application & Natural Alignment Phrasing) ---
+I am applying to the Sr. Product Manager position at Ontra. Ontra’s AI-powered approach to legal workflow automation aligns with my background in product development, where I have spent the last six years shipping complex SaaS tools.
 
 In my recent role at Acme Corp, I led the redesign of our core data platform, driving a 35% reduction in customer onboarding time while partnering closely with legal and compliance teams. My background in product management closely mirrors Ontra's commitment to streamlining high-stakes workflows for enterprise clients.
 
 I'd love the opportunity to discuss how my background in zero-to-one AI product launches, customer discovery, and rapid experimentation can help Ontra continue to push the boundaries of legal tech. I'm available to connect at your earliest convenience.
 
 --- EXAMPLE 1 (IT Project Manager - Citing Conversational Context & Clear Financial Metrics) ---
-I am applying to the IT Project Manager position at Systems. Systems' focus on enterprise digital integration directly aligns with my 3 years of experience leading midsize engineering teams through complex software launches.
+I am applying to the IT Project Manager position at Systems. Systems' focus on enterprise digital integration connects with my 3 years of experience leading midsize engineering teams through complex software launches.
 
 During my time working as a Junior IT Project Manager at Connect, I helped oversee a range of critical projects from conception to delivery. During my time there, I achieved the following:
 - Executing several highly profitable projects with budgets over $200,000
@@ -20,7 +20,7 @@ During my time working as a Junior IT Project Manager at Connect, I helped overs
 I'd love the opportunity to discuss how my project management experience can support Systems' digital roadmap. I am available to connect at your earliest convenience.
 
 --- EXAMPLE 2 (Social Media Associate - High Upbeat Energy, Voice & Quantifiable Gains) ---
-I am applying to the Social Media Associate position at ImageMap Entertainment. ImageMap’s creative digital presence directly aligns with my background in social strategy, graphic design, and community growth.
+I am applying to the Social Media Associate position at ImageMap Entertainment. ImageMap’s creative digital presence fits my background in social strategy, graphic design, and community growth.
 
 In two years as an online brand manager, I have accomplished the following:
 - Boosted engagement on Instagram, Twitter, and Snapchat by 240% in 13 months
@@ -29,8 +29,8 @@ In two years as an online brand manager, I have accomplished the following:
 
 I'd love the opportunity to discuss how my track record in viral content creation can elevate ImageMap's online audience. I am available to connect at your earliest convenience.
 
---- EXAMPLE 3 (Digital Marketing Manager - Confident Strategic Growth & Direct Alignment) ---
-I am applying to the Digital Marketing Manager position at Limitless. Limitless's data-driven marketing approach directly aligns with my five years of experience developing search, paid, and mobile acquisition campaigns.
+--- EXAMPLE 3 (Digital Marketing Manager - Confident Strategic Growth & Grounded Alignment) ---
+I am applying to the Digital Marketing Manager position at Limitless. Limitless's data-driven marketing approach aligns with my five years of experience developing search, paid, and mobile acquisition campaigns.
 
 In my previous role at MetroPlus, I achieved a 32% increase in website traffic through a combination of SEO optimization, targeted social media advertising, and email marketing campaigns. Additionally, I oversaw the launch of a new mobile app that resulted in a 48% increase in downloads within the first six months.
 
@@ -47,7 +47,7 @@ In my previous role at Bennett Solutions, I developed targeted marketing campaig
 I'd love the opportunity to discuss how these growth initiatives can support InnoTech's expansion plans. I am available to connect at your earliest convenience.
 
 --- EXAMPLE 5 (Registered Nurse - Direct, Empathetic & Impact-Oriented Medical Application) ---
-I am applying to the Registered Nurse position at Mercy General. Mercy General's dedication to compassionate patient support directly aligns with my 12 years of clinical experience managing high-volume acute care.
+I am applying to the Registered Nurse position at Mercy General. Mercy General's dedication to compassionate patient support aligns with my 12 years of clinical experience managing high-volume acute care.
 
 In my present role, I evaluate the conditions of 24+ patients daily, developing personalized care plans while constantly interfacing with interdisciplinary teams. I am responsive in emergency medical situations and have been recognized by the state for clinical excellence and patient support.
 

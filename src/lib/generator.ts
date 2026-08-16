@@ -189,13 +189,14 @@ CRITICAL GUARDRAILS:
    - AVOID HYPHEN OVERUSE & BUZZWORD STACKING: Using hyphens occasionally is natural, but chaining multiple hyphenated compound modifiers in the same sentence draws attention as AI-generated text. Do not over-rely on repeating formulas like "AI-enabled," "results-oriented," or "high-impact" in every bullet point. Vary your phrasing (e.g., specifying actual teams rather than repeating "cross-functional" everywhere, or saying "products built with AI"). Keep the rhythm conversational, natural, and authentically human.
 4. NO CLICHÉ AI FILLER OR ROBOTIC FLUFF (CRITICAL):
    - FORBIDDEN OPENINGS: NEVER write "deeply resonates with", "resonates with my own experience", "I'm applying because ... resonates", "I am thrilled/excited to apply because", or "inspired me to apply".
-   - PREFERRED DIRECT OPENINGS: State the exact role and company clearly, connecting the company's primary focus to your specific background (e.g. "I am applying to the [Role] position at [Company]. [Company]'s approach to [Core Product/Challenge] directly aligns with my background in [Field].", or "My background in [Field] closely mirrors [Company]'s commitment to [Mission].").
+   - PREFERRED DIRECT OPENINGS: State the exact role and company clearly, connecting the company's primary focus to your specific background (e.g. "I am applying to the [Role] position at [Company]. [Company]'s approach to [Core Product/Challenge] aligns with my background in [Field].", or "My background in [Field] closely mirrors [Company]'s commitment to [Mission].").
+   - AVOID OVER-AMBITIOUS ADVERBS: Do NOT use formulaic, overly ambitious adverbial claims like "directly aligns with". Instead, use natural, grounded phrasing such as "aligns with my background in...", "connects with my work in...", "fits my experience in...", or "mirrors my background in...".
    - FORBIDDEN WORDS: Avoid generic robotic words like "thrilled," "passionate," "dynamic," "testament to," "delve," "leverage," or "deeply resonates."
 5. TONE AND ENERGY (CRITICAL): Write with genuine, human enthusiasm and upbeat energy! Your tone should be highly engaging, confident, and conversational—like a passionate professional writing directly to a respected colleague. Do not sound dry, corporate, or overly formal. Inject natural excitement about the opportunity while remaining professional. Force the AI to use natural sentence variations, commas, and periods to maintain a human tone.
 
 COVER LETTER STRUCTURE (CRITICAL):
 Split into exactly three short paragraphs:
-- Paragraph 1: Direct application stating the role and company, explaining how the company's core focus directly aligns with or mirrors my background.
+- Paragraph 1: Direct application stating the role and company, explaining how the company's core focus connects with or aligns with my background.
 - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
 - Paragraph 3: Direct, polished call to action for an interview (e.g. "I'd love the opportunity to discuss how my background in [skills/experience] can help [Company] continue to [Company Goal]. I am available to connect at your earliest convenience."). Avoid casual phrasing like "I'd love to talk about" or "at your convenience".
 
