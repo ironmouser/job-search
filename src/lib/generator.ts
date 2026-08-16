@@ -197,7 +197,7 @@ CRITICAL GUARDRAILS:
 COVER LETTER STRUCTURE (CRITICAL):
 Split into exactly three short paragraphs:
 - Paragraph 1: Direct application stating the role and company, explaining how the company's core focus connects with or aligns with my background.
-- Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
+- Paragraph 2: Narrative business and user impact. Do NOT just list resume items or say what you did (e.g. "At Company A I did X, and at Company B I did Y"). Instead, make the focus WHY what you did was important and HOW it benefited the company and/or users (e.g. solving core operational bottlenecks, eliminating friction, driving customer retention, or unblocking growth), connecting those proven outcomes directly to the challenges in the job description.
 - Paragraph 3: Direct, polished call to action for an interview (e.g. "I'd love the opportunity to discuss how my background in [skills/experience] can help [Company] continue to [Company Goal]. I am available to connect at your earliest convenience."). Avoid casual phrasing like "I'd love to talk about" or "at your convenience".
 
 Return the result as a JSON object with EXACTLY these keys:
@@ -489,7 +489,7 @@ CRITICAL GUARDRAILS:
 1. NO HALLUCINATIONS.
 2. COVER LETTER STRUCTURE: Split into exactly three short paragraphs:
    - Paragraph 1: Why I am applying and my highest-level qualification.
-   - Paragraph 2: Connect 2 specific metrics/projects/experience from my resume to the exact pain points mentioned in the job description.
+   - Paragraph 2: Narrative business and user impact. Do NOT just list resume items or say what you did (e.g. "At Company A I did X, and at Company B I did Y"). Instead, make the focus WHY what you did was important and HOW it benefited the company and/or users (e.g. solving core operational bottlenecks, eliminating friction, driving customer retention, or unblocking growth), connecting those proven outcomes directly to the challenges in the job description.
    - Paragraph 3: A direct call to action for an interview.
 3. BALANCED HYPHEN USE & NO BUZZWORD STACKING (CRITICAL):
    - NO DASHES AS PUNCTUATION: Do NOT use em-dashes ("—" or "--") or hyphens ("-") as punctuation between clauses. Use commas, periods, or natural sentence transitions instead.
