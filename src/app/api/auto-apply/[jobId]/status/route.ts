@@ -48,6 +48,9 @@ export async function GET(
         startedAt: true,
         completedAt: true,
         createdAt: true,
+        confirmationScreenshotUrl: true,
+        confirmationNumber: true,
+        submittedAnswersSummary: true,
         interventions: {
           where: { resolvedAt: null },
           select: {

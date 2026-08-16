@@ -36,6 +36,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
   }
 
-  const result = detectATSFromUrl(body.jobUrl);
+  let result = detectATSFromUrl(body.jobUrl);
+
+  // If initial URL is unknown or an aggregator (LinkedIn/Indeed), attempt lightweight HTTP redirect resolution
+  const isAggregator = body.jobUrl.includes('linkedin.com') || body.jobUrl.includes('indeed.com') || body.jobUrl.includes('ziprecruiter.com') || body.jobUrl.includes('glassdoor.com');
+  if (result.confidence < 50 || isAggregator) {
+    try {
+      const res = await fetch(body.jobUrl, { method: 'HEAD', redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
+      if (res.url && res.url !== body.jobUrl) {
+        const resolvedResult = detectATSFromUrl(res.url);
+        if (resolvedResult.confidence > result.confidence) {
+          return NextResponse.json({ ...resolvedResult, resolvedUrl: res.url });
+        }
+      }
+    } catch {
+      // Ignore fetch redirect errors and fallback to original URL detection
+    }
+  }
+
   return NextResponse.json(result);
 }

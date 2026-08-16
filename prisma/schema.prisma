@@ -396,6 +396,8 @@ model UserPreferences {
   isOver18            String? @map("is_over_18")
   willingToRelocate   String? @map("willing_to_relocate")
   defaultAccountPassword String? @map("default_account_password")
+  autoApplyMode          String? @default("autopilot") @map("auto_apply_mode")
+  maxConcurrentAutoApplies Int?   @default(3) @map("max_concurrent_auto_applies")
 
   // PDF Styling Customization
   resumePdfTemplate         String? @default("classic") @map("resume_pdf_template")
@@ -482,6 +484,11 @@ model AutoApplySession {
   currentStep          String?   @map("current_step")
   stepsCompleted       Int       @default(0) @map("steps_completed")
   stepsTotal           Int?      @map("steps_total")
+
+  // Submission Proof & Receipt
+  confirmationScreenshotUrl String?   @map("confirmation_screenshot_url")
+  confirmationNumber        String?   @map("confirmation_number")
+  submittedAnswersSummary   Json?     @map("submitted_answers_summary")
 
   // Which worker instance is handling this
   workerId             String?   @map("worker_id")

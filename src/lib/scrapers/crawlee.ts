@@ -8,7 +8,7 @@ import * as cheerio from 'cheerio';
 import { gotScraping } from 'got-scraping';
 import got from 'got';
 import { prisma } from '../prisma';
-import { reformatJobDescriptionWithGemini } from '../formatter';
+import { reformatJobDescriptionWithGemini, convertHtmlToMarkdown } from '../formatter';
 import { cleanCompanyName } from '../cleaners';
 import { isSafePublicUrl } from '../urlUtils';
 
@@ -150,7 +150,7 @@ export async function scrapeCustomPages(urls: string[]) {
                                         title: j.title || 'Unknown Role',
                                         company: companyName,
                                         location: j.location?.name || 'Unknown Location',
-                                        description: j.content ? (cheerio.load(j.content).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${j.absolute_url}`) : `Apply at: ${j.absolute_url}`,
+                                        description: j.content ? (convertHtmlToMarkdown(j.content) + `\n\nApply at: ${j.absolute_url}`) : `Apply at: ${j.absolute_url}`,
                                         url: j.absolute_url,
                                         source: 'Greenhouse'
                                     });
@@ -457,7 +457,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                         title: job.title,
                                         company: job.company_name,
                                         location: job.candidate_required_location || 'Remote',
-                                        description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
+                                        description: job.description ? (convertHtmlToMarkdown(job.description) + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
                                         url: job.url,
                                         source: 'Remotive'
                                     });
@@ -512,7 +512,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                 title: job.title || 'Unknown Role',
                                 company: job.company_name || 'WorkingNomads',
                                 location: job.location || 'Remote',
-                                description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${fullUrl}`) : `Apply at: ${fullUrl}`,
+                                description: job.description ? (convertHtmlToMarkdown(job.description) + `\n\nApply at: ${fullUrl}`) : `Apply at: ${fullUrl}`,
                                 url: fullUrl,
                                 source: 'WorkingNomads'
                             });
@@ -538,7 +538,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                     title: job.title,
                                     company: job.company_name,
                                     location: job.location || 'Remote',
-                                    description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
+                                    description: job.description ? (convertHtmlToMarkdown(job.description) + `\n\nApply at: ${job.url}`) : `Apply at: ${job.url}`,
                                     url: job.url,
                                     source: 'Arbeitnow (DE)'
                                 });
@@ -566,7 +566,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                     title: job.title,
                                     company: job.companyName,
                                     location: 'Remote', // Himalayas is primarily remote
-                                    description: job.description ? (cheerio.load(job.description).text().replace(/\s+/g, ' ').trim() + `\n\nApply at: ${job.applicationLink || job.guid}`) : `Apply at: ${job.applicationLink || job.guid}`,
+                                    description: job.description ? (convertHtmlToMarkdown(job.description) + `\n\nApply at: ${job.applicationLink || job.guid}`) : `Apply at: ${job.applicationLink || job.guid}`,
                                     url: job.applicationLink || job.guid,
                                     source: 'Himalayas'
                                 });
@@ -772,7 +772,7 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                                             title: item.title,
                                             company: item.hiringOrganization?.name || 'Wellfound',
                                             location: item.jobLocation?.address?.addressLocality || 'Remote',
-                                            description: item.description ? cheerio.load(item.description).text().trim() : `Apply at: ${item.url}`,
+                                            description: item.description ? convertHtmlToMarkdown(item.description) : `Apply at: ${item.url}`,
                                             url: item.url || url,
                                             source: 'Wellfound'
                                         });
@@ -979,7 +979,7 @@ export async function scrapeJobicy(keyword: string) {
                         location: j.jobGeo || 'Remote',
                         url: j.url,
                         salary: (j.annualSalaryMin && j.annualSalaryMax) ? `$${j.annualSalaryMin} - $${j.annualSalaryMax}` : null,
-                        description: j.jobDescription ? cheerio.load(j.jobDescription).text().trim() : `Apply at: ${j.url}`,
+                        description: j.jobDescription ? convertHtmlToMarkdown(j.jobDescription) : `Apply at: ${j.url}`,
                         source: 'jobicy'
                     });
                 }
@@ -1037,7 +1037,7 @@ export async function scrapeJobspresso(keyword: string) {
                     company,
                     location: 'Remote',
                     url: link,
-                    description: descHtml ? cheerio.load(descHtml).text().trim() : `Apply at: ${link}`,
+                    description: descHtml ? convertHtmlToMarkdown(descHtml) : `Apply at: ${link}`,
                     source: 'jobspresso'
                 });
             });
@@ -1469,7 +1469,7 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                                     company: cleanCompanyName(company) || 'Unknown Company',
                                     location: loc,
                                     url: jobUrl,
-                                    description: inlineDesc ? cheerio.load(inlineDesc).text().trim() : '',
+                                    description: inlineDesc ? convertHtmlToMarkdown(inlineDesc) : '',
                                     source: 'dice'
                                 });
                             }
@@ -1605,7 +1605,7 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                                 jobData?.descriptionHtml ||
                                 '';
                             if (rawDesc && rawDesc.trim().length > 80) {
-                                job.description = cheerio.load(rawDesc).text().trim();
+                                job.description = convertHtmlToMarkdown(rawDesc);
                                 return;
                             }
                         } catch { /* fall through */ }
@@ -1618,7 +1618,7 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                             const arr = Array.isArray(data) ? data : [data];
                             for (const item of arr) {
                                 if (item['@type'] === 'JobPosting' && item.description) {
-                                    const desc = cheerio.load(item.description).text().trim();
+                                    const desc = convertHtmlToMarkdown(item.description);
                                     if (desc.length > 80) { job.description = desc; return; }
                                 }
                             }
@@ -1631,7 +1631,7 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                         '[data-cy="jobDescription"], .job-description, #jobDescription, [class*="description"], [class*="job-detail__description"]'
                     ).first();
                     if (descEl.length) {
-                        const desc = descEl.text().trim();
+                        const desc = convertHtmlToMarkdown(descEl.html() || '');
                         if (desc.length > 80) { job.description = desc; return; }
                     }
                 } catch (err: any) {
@@ -2040,7 +2040,7 @@ export async function scrapeSnagajob(keyword: string, location: string = 'Remote
                                         job.location = region ? `${city}, ${region}` : city;
                                     }
                                     if (it.description) {
-                                        const cleanDesc = cheerio.load(it.description).text().replace(/\s+/g, ' ').trim();
+                                        const cleanDesc = convertHtmlToMarkdown(it.description);
                                         job.description = `${cleanDesc}\n\nApply at: ${job.url}`;
                                     }
                                     if (it.baseSalary?.value?.value) {
@@ -2158,7 +2158,7 @@ export async function scrapeBuiltIn(keyword: string, location: string = 'Remote'
                                         job.location = it.jobLocation.address.addressLocality;
                                     }
                                     if (it.description) {
-                                        const cleanDesc = cheerio.load(it.description).text().replace(/\s+/g, ' ').trim();
+                                        const cleanDesc = convertHtmlToMarkdown(it.description);
                                         job.description = `${cleanDesc}\n\nApply at: ${job.url}`;
                                     }
                                     if (it.datePosted) {

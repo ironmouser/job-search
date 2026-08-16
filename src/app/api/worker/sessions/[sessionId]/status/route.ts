@@ -45,6 +45,9 @@ export async function PATCH(
     if (body.failureDetails !== undefined) updateData.failureDetails = body.failureDetails;
     if (body.browserMetadata !== undefined) updateData.browserMetadata = body.browserMetadata;
     if (body.workerId !== undefined) updateData.workerId = body.workerId;
+    if (body.confirmationScreenshotUrl !== undefined) updateData.confirmationScreenshotUrl = body.confirmationScreenshotUrl;
+    if (body.confirmationNumber !== undefined) updateData.confirmationNumber = body.confirmationNumber;
+    if (body.submittedAnswersSummary !== undefined) updateData.submittedAnswersSummary = body.submittedAnswersSummary;
 
     // Set terminal timestamps
     const terminalStatuses: AutoApplyStatus[] = [

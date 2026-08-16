@@ -13,11 +13,13 @@ interface AutoApplyButtonProps {
 const ACTIVE_STATUSES = new Set([
   AutoApplyStatus.QUEUED,
   AutoApplyStatus.PROCESSING,
+  AutoApplyStatus.GENERATING_ASSETS,
   AutoApplyStatus.NAVIGATING_TO_ATS,
   AutoApplyStatus.DETECTING_ATS,
   AutoApplyStatus.PREPARING,
   AutoApplyStatus.APPLYING,
   AutoApplyStatus.VALIDATING,
+  AutoApplyStatus.NEEDS_REVIEW,
   AutoApplyStatus.NEEDS_INTERVENTION,
 ]);
 
@@ -30,7 +32,7 @@ export function AutoApplyButton({
   const [starting, setStarting] = useState(false);
 
   const isActive = currentStatus && ACTIVE_STATUSES.has(currentStatus as AutoApplyStatus);
-  const isDisabled = !hasAssets || !!isActive;
+  const isDisabled = !!isActive;
 
   async function handleStart() {
     setStarting(true);
@@ -38,7 +40,6 @@ export function AutoApplyButton({
       const res = await fetch(`/api/auto-apply/${jobId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Always run live mode (simulationMode is being phased out)
         body: JSON.stringify({ simulationMode: false }),
       });
       const data = await res.json();
@@ -75,15 +76,15 @@ export function AutoApplyButton({
       disabled={isDisabled || starting}
       onClick={handleStart}
       id={`auto-apply-btn-${jobId}`}
-      title={!hasAssets ? 'Generate resume and cover letter first' : 'Start Auto Apply'}
+      title={!hasAssets ? '1-Click Auto Apply (Tailors resume & submits)' : '1-Click Auto Apply'}
       style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
     >
       {starting ? (
-        'Starting…'
+        !hasAssets ? 'Auto-tailoring & Starting…' : 'Starting…'
       ) : (
         <>
-          <Bot size={16} /> Auto Apply
-          {!hasAssets && <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginLeft: '0.25rem' }}>(generate assets first)</span>}
+          <Bot size={16} /> 1-Click Auto Apply
+          {!hasAssets && <span style={{ fontSize: '0.73rem', fontWeight: 500, color: 'rgba(255,255,255,0.7)', marginLeft: '0.2rem' }}>(auto-tailors resume)</span>}
         </>
       )}
     </button>

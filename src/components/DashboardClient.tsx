@@ -2,7 +2,8 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot } from 'lucide-react';
+import { AutoApplyQueueDrawer, BatchQueueItem } from '@/components/AutoApplyQueueDrawer';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
@@ -164,6 +165,21 @@ export default function DashboardClient({
   const [isRefiningJobs, setIsRefiningJobs] = useState(false);
   const [shouldAutoSync, setShouldAutoSync] = useState(false);
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
+  const [batchQueueItems, setBatchQueueItems] = useState<BatchQueueItem[]>([]);
+  const [showQueueDrawer, setShowQueueDrawer] = useState(false);
+
+  const handleStartBatchApply = () => {
+    if (checkedJobs.size === 0) return;
+    const selected = jobList.filter((j) => checkedJobs.has(j.id));
+    const items: BatchQueueItem[] = selected.map((j) => ({
+      jobId: j.id,
+      title: j.title,
+      company: cleanCompanyName(j.company),
+      status: 'queued',
+    }));
+    setBatchQueueItems(items);
+    setShowQueueDrawer(true);
+  };
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -1934,6 +1950,72 @@ export default function DashboardClient({
         onClose={() => setIsAddJobModalOpen(false)}
         userPlanTier={userPlanTier === 'PRO' || (trialEndsAt && new Date(trialEndsAt) > new Date()) ? 'PRO' : 'FREE'}
         onJobAdded={(newJob) => setJobList((prev) => [newJob, ...prev])}
+      />
+
+      {/* Bulk Action Bar when jobs are checked */}
+      {checkedJobs.size > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '5.5rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9970,
+            background: 'var(--bg-secondary, #0f172a)',
+            border: '1px solid var(--accent-primary, #2563eb)',
+            borderRadius: '9999px',
+            padding: '0.6rem 1.25rem',
+            boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.85rem',
+            color: 'var(--text-primary, #f8fafc)',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+          }}
+        >
+          <span>{checkedJobs.size} Selected</span>
+
+          <button
+            onClick={handleStartBatchApply}
+            className="btn-primary"
+            style={{
+              padding: '0.4rem 0.9rem',
+              fontSize: '0.8rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              borderRadius: '9999px',
+            }}
+          >
+            <Bot size={16} /> 1-Click Auto Apply ({checkedJobs.size})
+          </button>
+
+          <button
+            onClick={() => setIsCleanupModalOpen(true)}
+            className="btn-outline"
+            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', borderRadius: '9999px' }}
+          >
+            Archive / Delete
+          </button>
+
+          <button
+            onClick={() => setCheckedJobs(new Set())}
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem' }}
+          >
+            Deselect All
+          </button>
+        </div>
+      )}
+
+      {/* Multi-Job Auto Apply Queue Drawer */}
+      <AutoApplyQueueDrawer
+        isOpen={showQueueDrawer}
+        onClose={() => setShowQueueDrawer(false)}
+        items={batchQueueItems}
+        onItemStatusChange={(jobId, status) => {
+          setJobList(prev => prev.map(j => j.id === jobId ? { ...j, status } : j));
+        }}
       />
 
       {/* Cleanup Modal */}

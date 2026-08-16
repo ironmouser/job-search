@@ -114,34 +114,6 @@ export function ApplyStepAccordion({
     };
   }, [isExpanded]);
 
-  // Automatically start asset generation when opening accordion if user hasn't generated assets yet
-  useEffect(() => {
-    if (isExpanded && !localHasAssets && !isGeneratingAssets && !hasStartedGenerating) {
-      setHasStartedGenerating(true);
-      setIsGeneratingAssets(true);
-
-      fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId }),
-      })
-        .then((res) => {
-          if (res.ok) {
-            setLocalHasAssets(true);
-            router.refresh();
-          } else {
-            console.error('Failed to auto-generate assets');
-          }
-        })
-        .catch((err) => {
-          console.error('Error auto-generating assets:', err);
-        })
-        .finally(() => {
-          setIsGeneratingAssets(false);
-        });
-    }
-  }, [isExpanded, localHasAssets, isGeneratingAssets, hasStartedGenerating, jobId, router]);
-
   // Check confidence whenever activeUrl changes
   useEffect(() => {
     if (!activeUrl || !isExpanded || isGeneratingAssets) return;
@@ -270,33 +242,7 @@ export function ApplyStepAccordion({
       {isExpanded && (
         <div className="step-card-content-padding" style={{ borderTop: '1px solid var(--border-glass)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
-          {isGeneratingAssets ? (
-            /* ONLY show generating message container while assets are generating */
-            <div style={{
-              background: 'rgba(59, 130, 246, 0.1)',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              borderRadius: '12px',
-              padding: '1.75rem 2rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1.25rem',
-              color: 'var(--text-primary)'
-            }}>
-              <Loader2 
-                size={28} 
-                className="animate-spin" 
-                color="var(--accent-primary)" 
-                style={{ flexShrink: 0, animation: 'spin 1s linear infinite' }} 
-              />
-              <div>
-                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text-primary)' }}>
-                  Oops, looks like you didn't generate a resume and cover letter for this job (Step 2). Don't worry, I'll do that now. Be sure to review them before Auto applying.
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* Regular Accordion Content (shown ONLY after asset generation completes or if assets already exist) */
-            <>
+          {/* Custom URL Input Section */}
               {/* Custom URL Input Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -354,124 +300,65 @@ export function ApplyStepAccordion({
                 )}
               </div>
 
-              {/* Low Confidence Helper OR Low Confidence Error Warning OR AutoApplyPanel */}
-              {isCheckingConfidence ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
-                  <p>Analyzing job application format...</p>
-                </div>
-              ) : showLowConfidenceWarning ? (
-                !hasAttemptedCustomUrl ? (
-                  /* Guided Link Helper Box (Initial Low Confidence State) */
-                  <div
-                    id="auto-apply-low-confidence-warning"
-                    style={{
-                      background: 'rgba(59, 130, 246, 0.08)',
-                      border: '1px solid rgba(59, 130, 246, 0.25)',
-                      borderRadius: '10px',
-                      padding: '1.5rem 1.75rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '1rem',
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
-                      <HelpCircle color="#3b82f6" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <div>
-                        <h4 style={{ margin: '0 0 0.4rem 0', color: '#3b82f6', fontSize: '1rem', fontWeight: 600 }}>
-                          Direct Application Link Needed
-                        </h4>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.55 }}>
-                          This job URL appears to be a job board listing (e.g. LinkedIn or Indeed). To start Auto Apply, click <strong>"Get application URL"</strong> below to open the job page in a new tab, copy the direct application page link from the company website, and paste it into the field above.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(59, 130, 246, 0.15)' }}>
-                      <a
-                        href={activeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-outline"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.5rem 1rem',
-                          borderRadius: '6px',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          color: '#3b82f6',
-                          borderColor: 'rgba(59, 130, 246, 0.4)',
-                          textDecoration: 'none',
-                          background: 'rgba(59, 130, 246, 0.05)',
-                        }}
-                      >
-                        <ExternalLink size={14} /> Get application URL
-                      </a>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.7 }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Current Score:</span>
-                        <AutoApplyConfidenceBadge confidence={confidenceData.confidence} />
-                      </div>
-                    </div>
+              {/* Confidence Score Header */}
+              {confidenceData && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', padding: '0.5rem 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Automation Confidence:</span>
+                    <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
                   </div>
-                ) : (
-                  /* Red Alert Box (shown only after user submits a custom URL that still fails confidence check) */
-                  <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <AlertCircle color="#ef4444" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
-                    <div>
-                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#ef4444' }}>Direct Link Required</h4>
-                      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                        The updated URL provided still doesn't look like a supported direct application page. 
-                        <strong>Please open the job page, navigate to the company's direct application form, and paste that URL above.</strong>
-                      </p>
-                      <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <a
-                          href={activeUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-outline"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            padding: '0.4rem 0.75rem',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            color: '#ef4444',
-                            borderColor: 'rgba(239, 68, 68, 0.4)',
-                            textDecoration: 'none',
-                          }}
-                        >
-                          <ExternalLink size={14} /> Get application URL
-                        </a>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.8 }}>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Detected Score:</span>
-                          <AutoApplyConfidenceBadge confidence={confidenceData.confidence} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              ) : (
-                <div>
-                  {confidenceData && (
-                    <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Automation Confidence:</span>
-                      <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
-                    </div>
+                  {showLowConfidenceWarning && (
+                    <a
+                      href={activeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-outline"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: 'var(--accent-primary)',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <ExternalLink size={14} /> Open Original Job Post
+                    </a>
                   )}
-                  <AutoApplyPanel
-                    jobId={jobId}
-                    jobUrl={activeUrl}
-                    hasAssets={localHasAssets}
-                  />
                 </div>
               )}
-            </>
-          )}
+
+              {/* Low Confidence Non-Blocking Tip */}
+              {showLowConfidenceWarning && !hasAttemptedCustomUrl && (
+                <div
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    borderRadius: '8px',
+                    padding: '0.9rem 1.1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    fontSize: '0.83rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <HelpCircle color="#3b82f6" size={18} style={{ flexShrink: 0 }} />
+                  <span>
+                    This job link is from an aggregator (e.g. LinkedIn or Indeed). 1-Click Auto Apply will attempt to resolve the direct application link automatically. If desired, you can also paste a direct Greenhouse or Lever link above.
+                  </span>
+                </div>
+              )}
+
+              {/* Main Auto Apply Panel */}
+              <AutoApplyPanel
+                jobId={jobId}
+                jobUrl={activeUrl}
+                hasAssets={localHasAssets}
+              />
         </div>
       )}
     </div>

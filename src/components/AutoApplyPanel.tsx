@@ -33,6 +33,9 @@ interface SessionData {
   failureDetails?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
+  confirmationScreenshotUrl?: string | null;
+  confirmationNumber?: string | null;
+  submittedAnswersSummary?: Record<string, unknown> | null;
   interventions?: Array<{
     id: string;
     reason: string;
@@ -46,10 +49,13 @@ interface SessionData {
 const ACTIVE_STATUSES = new Set([
   AutoApplyStatus.QUEUED,
   AutoApplyStatus.PROCESSING,
+  AutoApplyStatus.GENERATING_ASSETS,
+  AutoApplyStatus.NAVIGATING_TO_ATS,
   AutoApplyStatus.DETECTING_ATS,
   AutoApplyStatus.PREPARING,
   AutoApplyStatus.APPLYING,
   AutoApplyStatus.VALIDATING,
+  AutoApplyStatus.NEEDS_REVIEW,
   AutoApplyStatus.NEEDS_INTERVENTION,
 ]);
 
@@ -191,6 +197,100 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets }: AutoApplyPanelProps
           </span>
         )}
       </div>
+
+      {/* Visual 5-Stage Step Stepper when active */}
+      {isActive && (
+        <div style={{ margin: '0.85rem 0', background: 'var(--bg-primary)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.78rem' }}>
+            {[
+              { num: 1, label: 'ATS Detection' },
+              { num: 2, label: 'Asset Tailoring' },
+              { num: 3, label: 'Form Mapping' },
+              { num: 4, label: 'Screening Q&A' },
+              { num: 5, label: 'Submission' }
+            ].map((st) => {
+              const currentStepNum = session?.stepsCompleted ? Math.min(Math.max(session.stepsCompleted, 1), 5) : 1;
+              const isDone = st.num < currentStepNum;
+              const isCurrent = st.num === currentStepNum;
+              return (
+                <div key={st.num} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', opacity: isDone || isCurrent ? 1 : 0.4 }}>
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    background: isDone ? '#10b981' : isCurrent ? '#0070f3' : 'var(--bg-secondary)',
+                    color: isDone || isCurrent ? '#fff' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '0.7rem'
+                  }}>
+                    {isDone ? <CheckCircle2 size={13} /> : st.num}
+                  </div>
+                  <span style={{ fontWeight: isCurrent ? 700 : 500, color: isCurrent ? '#0070f3' : isDone ? '#10b981' : 'var(--text-secondary)' }}>
+                    {st.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Submission Receipt Card when applied */}
+      {session?.status === AutoApplyStatus.APPLIED && (
+        <div
+          id="auto-apply-success-receipt"
+          style={{
+            background: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            borderRadius: '10px',
+            padding: '1.1rem 1.25rem',
+            margin: '0.75rem 0',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700, color: '#10b981', fontSize: '0.95rem' }}>
+              <CheckCircle2 size={19} /> Application Submitted Successfully
+            </span>
+            {session.completedAt && (
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Clock size={12} /> {new Date(session.completedAt).toLocaleString()}
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <CheckCircle2 size={14} color="#10b981" /> Tailored Resume Attached
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <CheckCircle2 size={14} color="#10b981" /> Cover Letter Submitted
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <CheckCircle2 size={14} color="#10b981" /> Work Auth & Profile Mapped
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <CheckCircle2 size={14} color="#10b981" /> EEOC Demographics Complete
+            </span>
+          </div>
+
+          {(session as any).confirmationScreenshotUrl && (
+            <div style={{ marginTop: '0.25rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>Submission Confirmation Proof:</span>
+              <img
+                src={(session as any).confirmationScreenshotUrl}
+                alt="Submission confirmation screenshot proof"
+                style={{ borderRadius: '6px', border: '1px solid var(--border-glass)', maxHeight: '180px', width: '100%', objectFit: 'contain', background: '#000' }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Failure Banner with Human Explanation */}
       {session?.status === AutoApplyStatus.FAILED && (

@@ -38,6 +38,127 @@ export function decodeHtmlEntities(str: string): string {
     return decoded;
 }
 
+const COMMON_JOB_HEADERS = [
+    'Key Responsibilities',
+    'Core Responsibilities',
+    'Primary Responsibilities',
+    'Responsibilities',
+    'Key Accountabilities',
+    'Accountabilities',
+    'Required Skills',
+    'Required Qualifications',
+    'Basic Qualifications',
+    'Preferred Qualifications',
+    'Minimum Qualifications',
+    'Skills & Experience',
+    'Skills and Experience',
+    'Qualifications',
+    'Role Summary',
+    'Position Summary',
+    'About the Role',
+    'About The Role',
+    'About the Team',
+    'About the Job',
+    'About Us',
+    'About You',
+    'Who You Are',
+    'What You\'ll Do',
+    'What You Will Do',
+    'What You Bring',
+    'What You Will Bring',
+    'What We Offer',
+    'What We Look For',
+    'What We\'re Looking For',
+    'Perks & Benefits',
+    'Benefits',
+    'Compensation',
+    'Nice to Have',
+    'Nice to Haves',
+    'Bonus Points',
+    'Job Requirements',
+    'Requirements',
+    'Duties',
+    'Job Summary',
+    'Position Overview',
+    'Overview',
+    'Job Description',
+    'Equal Opportunity Employer',
+    'How to Apply'
+];
+
+/**
+ * Restructures unformatted / smushed plain-text job postings into clean Markdown.
+ */
+export function formatUnstructuredPlainText(text: string): string {
+    if (!text || typeof text !== 'string') return '';
+    let formatted = text.trim();
+
+    // If text already contains markdown headings or bullets and multiple paragraphs, preserve it
+    const hasHeadings = /^#{1,4}\s+/m.test(formatted);
+    const hasBullets = /^\s*[\*\-•]\s+/m.test(formatted);
+    const hasParagraphs = (formatted.match(/\n\s*\n/g) || []).length >= 2;
+    if ((hasHeadings || hasBullets) && hasParagraphs) {
+        return formatted
+            .replace(/\r\n/g, '\n')
+            .replace(/[ \t\u00A0]+/g, ' ')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
+
+    // 1. Separate smushed section headers (e.g. "Product.Key ResponsibilitiesHelp define")
+    const headerAlternation = COMMON_JOB_HEADERS
+        .slice()
+        .sort((a, b) => b.length - a.length)
+        .map(h => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('|');
+
+    formatted = formatted.replace(
+        new RegExp(`(?:^|\\n+|(?<=[a-z0-9.,;:!?\\)\\]]))\\s*(${headerAlternation})(?::|(?=[A-Z0-9])|\\s+|$)`, 'g'),
+        '\n\n### $1\n\n'
+    );
+
+    // 2. Separate smushed sentence boundaries where a period is immediately followed by an uppercase letter
+    formatted = formatted.replace(/([a-z0-9\)])\.([A-Z])/g, '$1.\n\n$2');
+
+    // 3. Format Key-Value list items like "Product Vision & Roadmap: Design...", "Voice of the Customer: Be..."
+    formatted = formatted.replace(/(?:^|\n\n|\n|\.\s+)([A-Z][A-Za-z0-9\s&/\\-]{2,40}):\s+([A-Z])/g, '\n\n- **$1:** $2');
+
+    // 4. In sections under list headers (Responsibilities, Skills, etc.), format paragraphs into bullet items
+    const actionVerbs = [
+        'Help', 'Lead', 'Design', 'Manage', 'Collaborate', 'Develop', 'Own', 'Ensure', 'Drive',
+        'Build', 'Execute', 'Proven', 'Strong', 'Previous', 'Bachelor', 'Master', 'Experience',
+        'Demonstrated', 'Ability', 'Work', 'Oversee', 'Create', 'Deliver', 'Identify', 'Achieve',
+        'Maintain', 'Support', 'Translate', 'Define', 'Implement', 'Partner', 'Track', 'Guide',
+        'Excellent', 'Exceptional', 'Proficient', 'Deep', 'Solid', 'Minimum', 'Understanding'
+    ];
+
+    const blocks = formatted.split(/\n\n+/);
+    let inListSection = false;
+    const processedBlocks = blocks.map(block => {
+        const trimmed = block.trim();
+        if (trimmed.startsWith('###')) {
+            const lower = trimmed.toLowerCase();
+            inListSection = lower.includes('responsibilit') || lower.includes('accountabilit') || lower.includes('skill') || lower.includes('qualification') || lower.includes('requirement') || lower.includes('duties') || lower.includes('what you') || lower.includes('benefit');
+            return trimmed;
+        }
+        if (inListSection && !trimmed.startsWith('- ') && !trimmed.startsWith('###')) {
+            const startsWithVerb = actionVerbs.some(v => trimmed.startsWith(v));
+            if (startsWithVerb) {
+                return `- ${trimmed}`;
+            }
+        }
+        return trimmed;
+    });
+
+    formatted = processedBlocks.join('\n\n')
+        .replace(/\r\n/g, '\n')
+        .replace(/[ \t\u00A0]+/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+    return formatted;
+}
+
 /**
  * Converts raw HTML or entity-encoded HTML to clean, readable Markdown without invoking an LLM.
  * Preserves bold, italics, headings, lists, and line breaks while stripping unwanted markup.
@@ -50,11 +171,7 @@ export function convertHtmlToMarkdown(htmlOrText: string): string {
 
     // Step 2: Check if content actually has HTML tags
     if (!/<[a-zA-Z][^>]*>|<\/[a-zA-Z]+>|<br\s*\/?>/i.test(decoded)) {
-        return decoded
-            .replace(/\r\n/g, '\n')
-            .replace(/[ \t\u00A0]+/g, ' ')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
+        return formatUnstructuredPlainText(decoded);
     }
 
     try {

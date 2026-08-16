@@ -9,10 +9,13 @@ export const dynamic = 'force-dynamic';
 const ACTIVE_STATUSES = [
   AutoApplyStatus.QUEUED,
   AutoApplyStatus.PROCESSING,
+  AutoApplyStatus.GENERATING_ASSETS,
+  AutoApplyStatus.NAVIGATING_TO_ATS,
   AutoApplyStatus.DETECTING_ATS,
   AutoApplyStatus.PREPARING,
   AutoApplyStatus.APPLYING,
   AutoApplyStatus.VALIDATING,
+  AutoApplyStatus.NEEDS_REVIEW,
   AutoApplyStatus.NEEDS_INTERVENTION,
 ];
 
@@ -67,6 +70,8 @@ export async function GET(request: NextRequest) {
             id: true,
             reason: true,
             description: true,
+            screenshotUrl: true,
+            pageUrl: true,
           },
           take: 1,
           orderBy: { createdAt: 'desc' },

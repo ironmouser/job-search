@@ -43,24 +43,36 @@ export async function POST(
     // 1. Verify the job exists and is associated with this user
     const userJob = await prisma.userJob.findUnique({
       where: { userId_jobId: { userId, jobId } },
-      include: { job: { select: { id: true, url: true, title: true, company: true } } },
+      include: { job: { select: { id: true, url: true, title: true, company: true, description: true } } },
     });
 
     if (!userJob) {
       return NextResponse.json({ error: 'Job not found for this user' }, { status: 404 });
     }
 
-    // 2. Check for assets
-    const assets = await prisma.applicationAsset.findUnique({
+    // 2. Check for assets; if missing, auto-generate assets for seamless 1-click apply
+    let assets = await prisma.applicationAsset.findUnique({
       where: { userId_jobId: { userId, jobId } },
       select: { tailoredResumeMarkdown: true, coverLetterMarkdown: true },
     });
 
     if (!assets?.tailoredResumeMarkdown || !assets?.coverLetterMarkdown) {
-      return NextResponse.json(
-        { error: 'Generate resume and cover letter before using Auto Apply' },
-        { status: 422 }
-      );
+      try {
+        const { generateAssetsForJob } = await import('@/lib/generator');
+        await generateAssetsForJob(
+          userId,
+          jobId,
+          userJob.job.title,
+          userJob.job.description || '',
+          userJob.job.company
+        );
+      } catch (assetErr: any) {
+        console.error('[auto-apply/start] Auto asset generation failed:', assetErr);
+        return NextResponse.json(
+          { error: 'Failed to auto-generate assets for application: ' + (assetErr.message || assetErr) },
+          { status: 500 }
+        );
+      }
     }
 
     // 3. Check for existing active session

@@ -11,11 +11,13 @@ export enum AutoApplyStatus {
   IDLE = 'idle',
   QUEUED = 'queued',
   PROCESSING = 'processing',
+  GENERATING_ASSETS = 'generating_assets',
   NAVIGATING_TO_ATS = 'navigating_to_ats',
   DETECTING_ATS = 'detecting_ats',
   PREPARING = 'preparing',
   APPLYING = 'applying',
   VALIDATING = 'validating',
+  NEEDS_REVIEW = 'needs_review',
   NEEDS_INTERVENTION = 'needs_intervention',
   APPLIED = 'applied',
   FAILED = 'failed',
@@ -45,6 +47,7 @@ export enum InterventionReason {
   ATTACHMENT_MISSING = 'attachment_missing',
   LOGIN_REQUIRED = 'login_required',
   ASSESSMENT_REQUIRED = 'assessment_required',
+  REVIEW_GATE = 'review_gate',
 }
 
 export enum LogLevel {
