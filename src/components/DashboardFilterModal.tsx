@@ -41,7 +41,7 @@ export default function DashboardFilterModal({
   setLocationFilter,
   uniqueLocations,
   totalMatches,
-  sortOption = 'newest',
+  sortOption = 'role_match',
   setSortOption,
   activeFilter = 'all',
   setActiveFilter
@@ -68,7 +68,7 @@ export default function DashboardFilterModal({
     setStartDate('');
     setEndDate('');
     setLocationFilter([]);
-    if (setSortOption) setSortOption('newest');
+    if (setSortOption) setSortOption('role_match');
     if (setActiveFilter) setActiveFilter('all');
   };
 
@@ -344,6 +344,7 @@ export default function DashboardFilterModal({
                     cursor: 'pointer'
                   }}
                 >
+                  <option value="role_match">Role Match</option>
                   <option value="newest">Newest First</option>
                   <option value="score_desc">Match Score (High-Low)</option>
                   <option value="score_asc">Match Score (Low-High)</option>

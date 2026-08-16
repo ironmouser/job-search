@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   const activeFilter = searchParams.get('activeFilter') || 'all';
-  const sortOption = searchParams.get('sortOption') || 'newest';
+  const sortOption = searchParams.get('sortOption') || 'role_match';
   const sourceFilter = searchParams.get('sourceFilter') || 'both';
   const startDate = searchParams.get('startDate') || '';
   const endDate = searchParams.get('endDate') || '';
@@ -153,6 +153,27 @@ export async function GET(request: Request) {
     };
 
     result.sort((a, b) => {
+      if (sortOption === 'role_match') {
+        if (targetRole) {
+          const matchA = computeRoleMatchScore(a.title, targetRole, a.description);
+          const matchB = computeRoleMatchScore(b.title, targetRole, b.description);
+          if (matchB !== matchA) return matchB - matchA;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+
+      if (sortOption === 'newest') {
+        const timeA = new Date(a.created_at).getTime();
+        const timeB = new Date(b.created_at).getTime();
+        if (timeB !== timeA) return timeB - timeA;
+        if (targetRole) {
+          const matchA = computeRoleMatchScore(a.title, targetRole, a.description);
+          const matchB = computeRoleMatchScore(b.title, targetRole, b.description);
+          if (matchB !== matchA) return matchB - matchA;
+        }
+        return 0;
+      }
+
       if (sortOption === 'score_desc' || sortOption === 'score') {
         const scoreA = getAiScore(a);
         const scoreB = getAiScore(b);

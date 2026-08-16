@@ -20,7 +20,7 @@ export default function JobDetailsFilterModal({
   onJumpToFirst
 }: JobDetailsFilterModalProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
-  const [sortOption, setSortOption] = useState<SortOptionType>('newest');
+  const [sortOption, setSortOption] = useState<SortOptionType>('role_match');
   const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
   const [keywordFilter, setKeywordFilter] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
@@ -100,17 +100,11 @@ export default function JobDetailsFilterModal({
       stateObj.currentPage = 1; // Reset to page 1 for dashboard sync
       localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
     } catch (e) {
-      console.error('Failed to save dashboard state:', e);
+      console.error('Failed to save dashboard state in filter modal:', e);
     }
   };
 
   const handleApply = () => {
-    handleSaveState();
-    onApply();
-    onClose();
-  };
-
-  const handleApplyAndJump = () => {
     handleSaveState();
     onApply();
     onClose();
@@ -121,7 +115,7 @@ export default function JobDetailsFilterModal({
 
   const handleReset = () => {
     setActiveFilter('all');
-    setSortOption('newest');
+    setSortOption('role_match');
     setSourceFilter('both');
     setKeywordFilter('');
     setStartDate('');
@@ -345,6 +339,7 @@ export default function JobDetailsFilterModal({
                     cursor: 'pointer'
                   }}
                 >
+                  <option value="role_match">Role Match</option>
                   <option value="newest">Newest First</option>
                   <option value="score_desc">Match Score (High-Low)</option>
                   <option value="score_asc">Match Score (Low-High)</option>

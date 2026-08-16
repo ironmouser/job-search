@@ -147,7 +147,7 @@ export default function DashboardClient({
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
-  const [sortOption, setSortOption] = useState<SortOptionType>('newest');
+  const [sortOption, setSortOption] = useState<SortOptionType>('role_match');
   const [locationFilter, setLocationFilter] = useState<string[]>([]);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const locationDropdownRef = useRef<HTMLDivElement>(null);
@@ -194,7 +194,7 @@ export default function DashboardClient({
     startDate ||
     endDate ||
     locationFilter.length > 0 ||
-    sortOption !== 'newest'
+    sortOption !== 'role_match'
   );
 
   const searchParams = useSearchParams();
@@ -752,6 +752,27 @@ export default function DashboardClient({
     };
 
     result.sort((a, b) => {
+      if (sortOption === 'role_match') {
+        if (roleTarget) {
+          const matchA = computeRoleMatchScore(a.title, roleTarget, a.description);
+          const matchB = computeRoleMatchScore(b.title, roleTarget, b.description);
+          if (matchB !== matchA) return matchB - matchA;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+
+      if (sortOption === 'newest') {
+        const timeA = new Date(a.created_at).getTime();
+        const timeB = new Date(b.created_at).getTime();
+        if (timeB !== timeA) return timeB - timeA;
+        if (roleTarget) {
+          const matchA = computeRoleMatchScore(a.title, roleTarget, a.description);
+          const matchB = computeRoleMatchScore(b.title, roleTarget, b.description);
+          if (matchB !== matchA) return matchB - matchA;
+        }
+        return 0;
+      }
+
       if (sortOption === 'score_desc' || sortOption === 'score') {
         const scoreA = getAiScore(a);
         const scoreB = getAiScore(b);
@@ -1247,6 +1268,7 @@ export default function DashboardClient({
                     width: '100%'
                   }}
                 >
+                  <option value="role_match" style={{ background: '#ffffff', color: '#0f172a' }}>Role Match</option>
                   <option value="newest" style={{ background: '#ffffff', color: '#0f172a' }}>Newest First</option>
                   <option value="score_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (High-Low)</option>
                   <option value="score_asc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (Low-High)</option>

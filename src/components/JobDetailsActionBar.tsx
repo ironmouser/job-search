@@ -79,7 +79,7 @@ export default function JobDetailsActionBar({
       const active = Boolean(
         stateObj.keywordFilter ||
         (stateObj.activeFilter && stateObj.activeFilter !== 'all') ||
-        (stateObj.sortOption && stateObj.sortOption !== 'newest') ||
+        (stateObj.sortOption && stateObj.sortOption !== 'role_match') ||
         (stateObj.sourceFilter && stateObj.sourceFilter !== 'both') ||
         stateObj.startDate ||
         stateObj.endDate
