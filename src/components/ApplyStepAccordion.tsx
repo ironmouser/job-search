@@ -16,6 +16,7 @@ interface ApplyStepAccordionProps {
   isPro: boolean;
   appliesThisWeek: number;
   hasAssets: boolean;
+  hasResume?: boolean;
   generationsLeftThisWeek?: number;
 }
 
@@ -28,6 +29,7 @@ export function ApplyStepAccordion({
   isPro,
   appliesThisWeek,
   hasAssets,
+  hasResume,
   generationsLeftThisWeek,
 }: ApplyStepAccordionProps) {
   const router = useRouter();
@@ -394,6 +396,7 @@ export function ApplyStepAccordion({
             jobId={jobId}
             jobUrl={activeUrl}
             hasAssets={localHasAssets}
+            hasResume={hasResume}
           />
         </div>
       )}

@@ -234,7 +234,7 @@ export function GlobalAutoApplyDock() {
 
         {/* Progress or Description */}
         {isIntervention && pendingIntervention ? (
-          <div style={{ fontSize: '0.78rem', color: '#92400e', background: 'rgba(245, 158, 11, 0.12)', padding: '0.5rem 0.65rem', borderRadius: '0.4rem', borderLeft: '3px solid #f59e0b', lineHeight: 1.4 }}>
+          <div style={{ fontSize: '0.78rem', color: '#92400e', background: 'rgba(245, 158, 11, 0.12)', padding: '0.5rem 0.65rem', borderRadius: '0.4rem', lineHeight: 1.4 }}>
             {pendingIntervention.description.length > 90 
               ? pendingIntervention.description.slice(0, 87) + '…'
               : pendingIntervention.description}

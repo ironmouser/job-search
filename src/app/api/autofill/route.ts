@@ -54,6 +54,15 @@ export async function POST(request: Request) {
 
         let assets = job.applicationAssets?.[0];
         if (!assets) {
+            const { getUserSettings, hasUserUploadedResume } = await import('@/lib/settings');
+            const userPrefs = await getUserSettings(userId);
+            if (!hasUserUploadedResume(userPrefs?.resumeMarkdown)) {
+                return NextResponse.json({ 
+                    error: 'Base resume is required to generate tailored assets.', 
+                    errorCode: 'MISSING_BASE_RESUME' 
+                }, { status: 400 });
+            }
+
             console.log(`Assets missing for job ${jobId} and user ${userId}. Generating on the fly...`);
             const { generateAssetsForJob } = require('@/lib/generator');
             assets = await generateAssetsForJob(userId, job.id, job.title, job.description || '', job.company);

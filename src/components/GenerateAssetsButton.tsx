@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, Loader2 } from 'lucide-react';
 import SyncOverlay from './SyncOverlay';
 import { scrollToTop } from './BackToTopButton';
 import UpgradePrompt from './UpgradePrompt';
+import JitResumeUploadModal from './common/JitResumeUploadModal';
 
 interface GenerateAssetsButtonProps {
   jobId: string;
   scrollToTopOnClick?: boolean;
   userPlanTier?: string;
+  hasResume?: boolean;
   generationsLeftThisWeek?: number;
   trialEndsAt?: Date | string | null;
   // Stats for contextual upgrade prompt
@@ -22,6 +24,7 @@ export default function GenerateAssetsButton({
   jobId,
   scrollToTopOnClick = false,
   userPlanTier = 'FREE',
+  hasResume,
   generationsLeftThisWeek,
   trialEndsAt,
   totalResumesGenerated,
@@ -29,9 +32,15 @@ export default function GenerateAssetsButton({
 }: GenerateAssetsButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [isJitResumeOpen, setIsJitResumeOpen] = useState(false);
+  const [localHasResume, setLocalHasResume] = useState<boolean | undefined>(hasResume);
   const router = useRouter();
 
-  const handleGenerate = async () => {
+  useEffect(() => {
+    setLocalHasResume(hasResume);
+  }, [hasResume]);
+
+  const executeGenerate = async () => {
     if (isGenerating) return;
 
     if (userPlanTier !== 'PRO' && !trialEndsAt && generationsLeftThisWeek !== undefined && generationsLeftThisWeek <= 0) {
@@ -56,6 +65,9 @@ export default function GenerateAssetsButton({
         const data = await res.json();
         if (data.code === 'LIMIT_REACHED') {
           setShowUpgradePrompt(true);
+        } else if (data.errorCode === 'MISSING_BASE_RESUME') {
+          setLocalHasResume(false);
+          setIsJitResumeOpen(true);
         } else {
           alert(data.error || 'Failed to generate assets.');
         }
@@ -68,13 +80,29 @@ export default function GenerateAssetsButton({
     }
   };
 
+  const handleGenerateClick = () => {
+    if (localHasResume === false) {
+      setIsJitResumeOpen(true);
+      return;
+    }
+    executeGenerate();
+  };
+
+  const handleResumeUploadSuccess = () => {
+    setLocalHasResume(true);
+    setIsJitResumeOpen(false);
+    setTimeout(() => {
+      executeGenerate();
+    }, 100);
+  };
+
   const isPro = userPlanTier === 'PRO' || (trialEndsAt && new Date(trialEndsAt) > new Date());
 
   return (
     <>
       <div className="full-width-mobile" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
         <button
-          onClick={handleGenerate}
+          onClick={handleGenerateClick}
           disabled={isGenerating}
           className="btn-outline full-width-mobile"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', whiteSpace: 'nowrap', minHeight: '44px', width: '100%' }}
@@ -108,6 +136,14 @@ export default function GenerateAssetsButton({
           onDismiss={() => setShowUpgradePrompt(false)}
         />
       )}
+
+      <JitResumeUploadModal
+        isOpen={isJitResumeOpen}
+        onClose={() => setIsJitResumeOpen(false)}
+        onSuccess={handleResumeUploadSuccess}
+        title="Upload Resume to Generate Assets"
+        description="To generate tailored resumes and cover letters for this job, please upload your base resume."
+      />
 
       <SyncOverlay
         isSyncing={isGenerating}

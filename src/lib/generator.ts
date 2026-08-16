@@ -1,7 +1,6 @@
 import { prisma } from './prisma';
 import fs from 'fs';
-import path from 'path';
-import { getUserSettings } from './settings';
+import { getUserSettings, hasUserUploadedResume } from './settings';
 import { cleanCompanyName } from './cleaners';
 import { callAI } from './ai';
 import Anthropic from '@anthropic-ai/sdk';
@@ -156,14 +155,8 @@ export async function generateAssetsForJob(userId: string, jobId: string, jobTit
 
     // Read the base resume
     let baseResume = settings.resumeMarkdown || '';
-    if (!baseResume) {
-        const resumePath = path.join(process.cwd(), 'src/lib/base_resume.md');
-        try {
-            baseResume = fs.readFileSync(resumePath, 'utf8');
-        } catch (e) {
-            console.error("Failed to read base resume file.", e);
-            throw new Error("Base resume not found at src/lib/base_resume.md");
-        }
+    if (!hasUserUploadedResume(baseResume)) {
+        throw new Error("Base resume is required to generate tailored assets.");
     }
 
     const systemPrompt = `You are a resume and career content editing engine. Role-play as an experienced professional.
@@ -310,14 +303,8 @@ export async function generateApplicationAnswer(
     const qaExamples: { question: string, answer: string }[] = (settings as any).qaExamples || [];
 
     let baseResume = settings.resumeMarkdown || '';
-    if (!baseResume) {
-        const resumePath = path.join(process.cwd(), 'src/lib/base_resume.md');
-        try {
-            baseResume = fs.readFileSync(resumePath, 'utf8');
-        } catch (e) {
-            console.error("Failed to read base resume file.", e);
-            throw new Error("Base resume not found at src/lib/base_resume.md");
-        }
+    if (!hasUserUploadedResume(baseResume)) {
+        throw new Error("Base resume is required to answer application questions.");
     }
 
     let examplesText = '';
@@ -414,8 +401,8 @@ export async function getResumePrompts(userId: string, jobId: string, jobTitle: 
     const driftPercentage = customizationAmount !== undefined ? customizationAmount : (settings.resumeCustomizationMaxPercentage || 25);
     
     let baseResume = settings.resumeMarkdown || '';
-    if (!baseResume) {
-        try { baseResume = fs.readFileSync(path.join(process.cwd(), 'src/lib/base_resume.md'), 'utf8'); } catch (e) {}
+    if (!hasUserUploadedResume(baseResume)) {
+        throw new Error("Base resume is required to tailor resume.");
     }
 
     let instructionText = '';
@@ -469,8 +456,8 @@ export async function getCoverLetterPrompts(userId: string, jobTitle: string, jo
     const finalTone = tone || 'Confident and strategic';
     
     let baseResume = settings.resumeMarkdown || '';
-    if (!baseResume) {
-        try { baseResume = fs.readFileSync(path.join(process.cwd(), 'src/lib/base_resume.md'), 'utf8'); } catch (e) {}
+    if (!hasUserUploadedResume(baseResume)) {
+        throw new Error("Base resume is required to generate cover letter.");
     }
 
     let instructionText = '';
@@ -527,8 +514,8 @@ export async function getNetworkingMessagePrompts(userId: string, jobTitle: stri
     const finalTone = tone || 'Confident and strategic';
     
     let baseResume = settings.resumeMarkdown || '';
-    if (!baseResume) {
-        try { baseResume = fs.readFileSync(path.join(process.cwd(), 'src/lib/base_resume.md'), 'utf8'); } catch (e) {}
+    if (!hasUserUploadedResume(baseResume)) {
+        throw new Error("Base resume is required to generate networking message.");
     }
 
     let instructionText = '';

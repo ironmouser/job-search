@@ -3,6 +3,12 @@ import { UserPreferences } from '@prisma/client';
 
 let columnsChecked = false;
 
+export function hasUserUploadedResume(resumeMarkdown?: string | null): boolean {
+    if (!resumeMarkdown) return false;
+    const trimmed = resumeMarkdown.trim();
+    return trimmed.length > 30 && !trimmed.startsWith('# Candidate Profile');
+}
+
 export async function ensureKeywordColumnsExist() {
     return;
 }

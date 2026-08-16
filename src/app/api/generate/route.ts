@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveTier } from '@/lib/tier';
+import { getUserSettings, hasUserUploadedResume } from '@/lib/settings';
 
 
 export async function POST(request: Request) {
@@ -11,6 +12,14 @@ export async function POST(request: Request) {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userPrefs = await getUserSettings(session.user.id);
+        if (!hasUserUploadedResume(userPrefs?.resumeMarkdown)) {
+            return NextResponse.json({ 
+                error: 'Base resume is required to generate tailored assets.', 
+                errorCode: 'MISSING_BASE_RESUME' 
+            }, { status: 400 });
         }
 
         const user = await prisma.user.findUnique({

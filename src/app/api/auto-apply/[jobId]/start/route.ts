@@ -57,6 +57,18 @@ export async function POST(
     });
 
     if (!assets?.tailoredResumeMarkdown || !assets?.coverLetterMarkdown) {
+      const { getUserSettings, hasUserUploadedResume } = await import('@/lib/settings');
+      const userSettings = await getUserSettings(userId);
+      if (!hasUserUploadedResume(userSettings?.resumeMarkdown)) {
+        return NextResponse.json(
+          {
+            error: 'Base resume is required to use Auto Apply. Please upload your resume first.',
+            errorCode: 'MISSING_BASE_RESUME',
+          },
+          { status: 400 }
+        );
+      }
+
       try {
         const { generateAssetsForJob } = await import('@/lib/generator');
         await generateAssetsForJob(

@@ -16,19 +16,8 @@ export async function GET() {
             where: { userId: session.user.id }
         });
 
-        let content = prefs?.resumeMarkdown || '';
-        let profile = prefs?.profile || '';
-        
-        if (!content) {
-            // Fallback to reading disk file if user has no resumeMarkdown stored
-            const BASE_RESUME_PATH = path.join(process.cwd(), 'src', 'lib', 'base_resume.md');
-            try {
-                content = await fs.readFile(BASE_RESUME_PATH, 'utf-8');
-            } catch (e) {
-                // If the file doesn't exist, just use empty string
-                content = '';
-            }
-        }
+        const content = prefs?.resumeMarkdown || '';
+        const profile = prefs?.profile || '';
         
         return NextResponse.json({ content, profile });
     } catch (e: any) {

@@ -367,7 +367,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                       Generate a highly personalized cover letter, networking message, and resume extract tailored specifically to this role using your profile and the job description.
                     </p>
                   </div>
-                  <GenerateAssetsButton jobId={job.id} userPlanTier={planTier} generationsLeftThisWeek={assetGenerationsLeft} />
+                  <GenerateAssetsButton jobId={job.id} userPlanTier={planTier} generationsLeftThisWeek={assetGenerationsLeft} hasResume={hasBaseResume} />
                 </div>
               )}
             </section>
@@ -387,6 +387,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 isPro={planTier === 'PRO'}
                 appliesThisWeek={appliesThisWeek}
                 hasAssets={!!(assets?.tailoredResumeMarkdown && assets?.coverLetterMarkdown)}
+                hasResume={hasBaseResume}
                 generationsLeftThisWeek={assetGenerationsLeft}
               />
             </section>
