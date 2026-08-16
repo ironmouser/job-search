@@ -46,7 +46,7 @@ export default function OnboardingPage() {
     
     const [formData, setFormData] = useState({
         searchKeyword: '',
-        searchLocation: 'Remote',
+        searchLocation: '',
         remoteOnly: false,
         resumeMarkdown: '',
     });
@@ -505,7 +505,7 @@ ${goal}
                                         handleChange('searchKeyword', e.target.value);
                                         if (titleError && e.target.value.trim()) setTitleError(false);
                                     }}
-                                    placeholder="e.g. Senior Software Engineer, Product Manager"
+                                    placeholder="Account Manager"
                                     style={{ 
                                         width: '100%', 
                                         boxSizing: 'border-box', 
@@ -531,7 +531,7 @@ ${goal}
                                     type="text"
                                     value={formData.searchLocation}
                                     onChange={(e) => handleChange('searchLocation', e.target.value)}
-                                    placeholder='e.g. "Remote", "Austin, TX", "United Kingdom"'
+                                    placeholder="Remote"
                                     style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
                                 />
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
