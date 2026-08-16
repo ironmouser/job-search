@@ -11,6 +11,13 @@ export async function POST(request: Request) {
         }
         
         const data = await request.json();
+
+        // Validate required job title / keyword
+        if (!data.searchKeyword || typeof data.searchKeyword !== 'string' || !data.searchKeyword.trim()) {
+            return NextResponse.json({ error: 'Target job title is required.' }, { status: 400 });
+        }
+
+        const searchKeyword = data.searchKeyword.trim();
         
         // Ensure sources format
         const sources = data.sources || { indeed: true, glassdoor: true, ziprecruiter: true, dice: true, weworkremotely: true, remoteok: true, workingnomads: true, remotive: true, remotepoc: true, arbeitnow: false, ycombinator: true, linkedin: true, greenhouse: true, lever: true, ashby: true, nodesk: true, workable: true, smartrecruiters: true, breezy: true, otta: true, himalayas: true, jobicy: true, jobspresso: true, snagajob: true, usajobs: true, builtin: true, themuse: false, computrabajo: false, jobbank: false };
@@ -18,10 +25,10 @@ export async function POST(request: Request) {
         // 1. Create or Update User Preferences
         const resumeText = (typeof data.resumeMarkdown === 'string' && data.resumeMarkdown.trim().length > 0)
             ? data.resumeMarkdown
-            : `# Candidate Profile\nTarget Role: ${data.searchKeyword || 'Professional'}\nLocation Preference: ${data.searchLocation || 'Remote'}\n\nSeeking opportunities as a ${data.searchKeyword || 'Professional'} with flexible remote or hybrid arrangements.`;
+            : `# Candidate Profile\nTarget Role: ${searchKeyword}\nLocation Preference: ${data.searchLocation || 'Remote'}\n\nSeeking opportunities as a ${searchKeyword} with flexible remote or hybrid arrangements.`;
 
         const updateData: any = {
-            searchKeyword: data.searchKeyword || '',
+            searchKeyword: searchKeyword,
             searchLocation: data.searchLocation || '',
             remoteOnly: Boolean(data.remoteOnly),
             profile: data.profile || '',

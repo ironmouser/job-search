@@ -45,11 +45,12 @@ export default function OnboardingPage() {
     }, []);
     
     const [formData, setFormData] = useState({
-        searchKeyword: 'Account Manager',
+        searchKeyword: '',
         searchLocation: 'Remote',
         remoteOnly: false,
         resumeMarkdown: '',
     });
+    const [titleError, setTitleError] = useState(false);
     const [goal, setGoal] = useState('I am looking for high-growth tech opportunities with strong engineering culture.');
 
     const criteriaList: CriteriaItem[] = [
@@ -258,6 +259,11 @@ export default function OnboardingPage() {
             trackOnboardingStep(3, "Scoring Rubric");
             setStep(3);
         } else if (step === 1) {
+            if (!formData.searchKeyword.trim()) {
+                setTitleError(true);
+                return;
+            }
+            setTitleError(false);
             trackOnboardingStep(2, "Base Resume");
 
             // Abort previous in-flight background scrape if user backtracked and changed search params
@@ -489,14 +495,34 @@ ${goal}
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Target Job Title / Keyword</label>
+                                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    Target Job Title / Keyword <span style={{ color: '#ef4444', fontWeight: 'bold' }}>*</span>
+                                </label>
                                 <input 
                                     type="text"
                                     value={formData.searchKeyword}
-                                    onChange={(e) => handleChange('searchKeyword', e.target.value)}
-                                    placeholder="e.g. Senior Software Engineer"
-                                    style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
+                                    onChange={(e) => {
+                                        handleChange('searchKeyword', e.target.value);
+                                        if (titleError && e.target.value.trim()) setTitleError(false);
+                                    }}
+                                    placeholder="e.g. Senior Software Engineer, Product Manager"
+                                    style={{ 
+                                        width: '100%', 
+                                        boxSizing: 'border-box', 
+                                        background: 'rgba(0,0,0,0.2)', 
+                                        border: `1px solid ${titleError ? '#ef4444' : 'var(--border-glass)'}`, 
+                                        color: 'var(--text-primary)', 
+                                        padding: '0.85rem 1rem', 
+                                        borderRadius: '8px', 
+                                        fontSize: '1rem',
+                                        outline: titleError ? '1px solid #ef4444' : 'none'
+                                    }}
                                 />
+                                {titleError && (
+                                    <span style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '-0.2rem' }}>
+                                        Please enter a target job title to continue.
+                                    </span>
+                                )}
                             </div>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
@@ -1378,9 +1404,16 @@ ${goal}
                             )}
                             <button 
                                 onClick={handleNext} 
-                                disabled={isExtractingRubric || isParsing}
+                                disabled={isExtractingRubric || isParsing || (step === 1 && !formData.searchKeyword.trim())}
                                 className="btn-primary" 
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1.25rem' }}
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.5rem', 
+                                    padding: '0.65rem 1.25rem',
+                                    opacity: (step === 1 && !formData.searchKeyword.trim()) ? 0.6 : 1,
+                                    cursor: (step === 1 && !formData.searchKeyword.trim()) ? 'not-allowed' : 'pointer'
+                                }}
                             >
                                 {isExtractingRubric ? (
                                     <>
