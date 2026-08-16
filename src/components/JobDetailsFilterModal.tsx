@@ -108,6 +108,12 @@ export default function JobDetailsFilterModal({
     handleSaveState();
     onApply();
     onClose();
+  };
+
+  const handleApplyAndJump = () => {
+    handleSaveState();
+    onApply();
+    onClose();
     if (firstMatchingJobId && onJumpToFirst) {
       onJumpToFirst(firstMatchingJobId);
     }
