@@ -38,6 +38,7 @@ export function GlobalAutoApplyDock() {
   const [activeSession, setActiveSession] = useState<ActiveSessionData | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [dismissedSessionId, setDismissedSessionId] = useState<string | null>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const fetchActive = useCallback(async () => {
     if (isOnboarding) return;
@@ -73,20 +74,17 @@ export function GlobalAutoApplyDock() {
 
   if (isOnboarding || !activeSession) return null;
 
+  const isCurrentJobPage = pathname === `/job/${activeSession.jobId}` || pathname === `/job/${activeSession.jobId}/`;
+  if (isCurrentJobPage) return null;
+
   const isIntervention = activeSession.status === AutoApplyStatus.NEEDS_INTERVENTION || activeSession.status === AutoApplyStatus.NEEDS_REVIEW;
   const isSimulated = activeSession.simulationMode;
   const jobTitle = activeSession.job?.title || 'Job Application';
   const companyName = activeSession.job?.company || '';
   const pendingIntervention = activeSession.interventions?.[0];
 
-  const [showDrawer, setShowDrawer] = useState(false);
-
   const handleNavigateToJob = () => {
     if (!activeSession) return;
-    if (isIntervention && pendingIntervention) {
-      setShowDrawer(true);
-      return;
-    }
     const sessionId = activeSession.id;
     const targetJobId = activeSession.jobId;
 

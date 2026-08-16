@@ -39,12 +39,37 @@ export async function POST(
 
   try {
     // Verify ownership
-    const intervention = await prisma.interventionRequest.findUnique({
+    let intervention = await prisma.interventionRequest.findUnique({
       where: { id: interventionId },
       select: { userId: true, resolvedAt: true, sessionId: true },
     });
 
-    if (!intervention || intervention.userId !== userId) {
+    if (!intervention) {
+      // Check if ID is a sessionId directly
+      const sessionRec = await prisma.autoApplySession.findFirst({
+        where: { id: interventionId, userId },
+      });
+      if (sessionRec) {
+        if (body.resolution === 'completed') {
+          await prisma.autoApplySession.update({
+            where: { id: sessionRec.id },
+            data: {
+              status: 'applying',
+              currentStep: 'resuming',
+            },
+          });
+        } else {
+          await prisma.autoApplySession.update({
+            where: { id: sessionRec.id },
+            data: {
+              status: 'cancelled',
+              completedAt: new Date(),
+              failureReason: body.resolution === 'skipped' ? 'switched_to_manual_apply' : 'user_cancelled_at_intervention',
+            },
+          });
+        }
+        return NextResponse.json({ success: true });
+      }
       return NextResponse.json({ error: 'Intervention not found' }, { status: 404 });
     }
 

@@ -13,6 +13,7 @@ import { InterventionManager, InterventionCancelledError, InterventionTimeoutErr
 import { pluginRegistry } from './registry';
 import { InterventionError } from './plugins/base-plugin';
 import { AggregatorHandler } from './plugins/aggregator-handler';
+import { uploadBrowserScreenshot } from './s3';
 
 /**
  * WorkflowEngine — finite state machine for Auto Apply automation.
@@ -194,6 +195,26 @@ export class WorkflowEngine {
         async () => plugin.finalize(browser, context, logger)
       );
 
+      let confirmationScreenshotUrl: string | undefined;
+      const isSuccessfulStatus =
+        result.status === AutoApplyStatus.APPLIED ||
+        (result.status as any) === 'applied' ||
+        result.status === AutoApplyStatus.SIMULATED ||
+        (result.status as any) === 'simulated';
+
+      if (isSuccessfulStatus) {
+        try {
+          const s3Key = `screenshots/confirmations/${session.sessionId}.png`;
+          const uploadedUrl = await uploadBrowserScreenshot(browser, s3Key);
+          if (uploadedUrl) {
+            confirmationScreenshotUrl = uploadedUrl;
+            await logger.info('confirmation_screenshot_uploaded', 'Confirmation screenshot captured & uploaded to S3', { url: uploadedUrl });
+          }
+        } catch {
+          await logger.warn('confirmation_screenshot_failed', 'Could not upload confirmation screenshot to S3');
+        }
+      }
+
       await logger.info('workflow_completed', `Workflow complete — status: ${result.status}`);
       await logger.flush();
 
@@ -201,6 +222,7 @@ export class WorkflowEngine {
         currentStep: 'completed',
         stepsCompleted: 6,
         automationConfidence: result.automationConfidence,
+        confirmationScreenshotUrl,
       });
 
       return result;

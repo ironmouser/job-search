@@ -121,6 +121,10 @@ export class BrowserSession {
     return filePath;
   }
 
+  async screenshotBuffer(): Promise<Buffer> {
+    return this.page.screenshot({ fullPage: false });
+  }
+
   // ─── File helpers ─────────────────────────────────────────────────────────
 
   /**

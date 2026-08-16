@@ -8,6 +8,7 @@ interface AutoApplyButtonProps {
   hasAssets: boolean;
   currentStatus?: AutoApplyStatus | string | null;
   onSessionStarted?: (sessionId: string) => void;
+  onStartingChange?: (starting: boolean) => void;
 }
 
 const ACTIVE_STATUSES = new Set([
@@ -21,6 +22,16 @@ const ACTIVE_STATUSES = new Set([
   AutoApplyStatus.VALIDATING,
   AutoApplyStatus.NEEDS_REVIEW,
   AutoApplyStatus.NEEDS_INTERVENTION,
+  'queued',
+  'processing',
+  'generating_assets',
+  'navigating_to_ats',
+  'detecting_ats',
+  'preparing',
+  'applying',
+  'validating',
+  'needs_review',
+  'needs_intervention',
 ]);
 
 export function AutoApplyButton({
@@ -28,6 +39,7 @@ export function AutoApplyButton({
   hasAssets,
   currentStatus,
   onSessionStarted,
+  onStartingChange,
 }: AutoApplyButtonProps) {
   const [starting, setStarting] = useState(false);
 
@@ -36,6 +48,7 @@ export function AutoApplyButton({
 
   async function handleStart() {
     setStarting(true);
+    onStartingChange?.(true);
     try {
       const res = await fetch(`/api/auto-apply/${jobId}/start`, {
         method: 'POST',
@@ -50,6 +63,7 @@ export function AutoApplyButton({
       }
     } finally {
       setStarting(false);
+      onStartingChange?.(false);
     }
   }
 
@@ -77,14 +91,29 @@ export function AutoApplyButton({
       onClick={handleStart}
       id={`auto-apply-btn-${jobId}`}
       title={!hasAssets ? '1-Click Auto Apply (Tailors resume & submits)' : '1-Click Auto Apply'}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.55rem',
+        padding: '0.7rem 1.35rem',
+        borderRadius: '8px',
+        backgroundColor: '#a84a0c',
+        color: '#ffffff',
+        fontWeight: 600,
+        fontSize: '0.9rem',
+        border: 'none',
+        cursor: isDisabled || starting ? 'not-allowed' : 'pointer',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+        transition: 'background-color 0.2s',
+      }}
     >
       {starting ? (
-        !hasAssets ? 'Auto-tailoring & Starting…' : 'Starting…'
+        <>
+          <Bot size={18} /> {!hasAssets ? 'Auto-tailoring & Starting…' : 'Starting…'}
+        </>
       ) : (
         <>
-          <Bot size={16} /> 1-Click Auto Apply
-          {!hasAssets && <span style={{ fontSize: '0.73rem', fontWeight: 500, color: 'rgba(255,255,255,0.7)', marginLeft: '0.2rem' }}>(auto-tailors resume)</span>}
+          <Bot size={18} /> 1-Click Auto Apply
         </>
       )}
     </button>

@@ -205,7 +205,7 @@ export function InterventionPanel({
                 <Zap size={16} className="text-accent" /> What will happen next
               </strong>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                The job application will launch in a new tab so you can complete the final submission directly. The automated runner will step aside and mark this task as completed.
+                The job application will launch in a new tab so you can complete the application directly. The automated runner will step aside and mark this task as completed.
               </span>
             </div>
           </div>

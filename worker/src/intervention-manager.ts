@@ -2,6 +2,7 @@ import { InterventionReason, CreateInterventionPayload } from './types';
 import { RailwayAPIClient } from './api-client';
 import { BrowserSession } from './browser-session';
 import { ExecutionLogger } from './execution-logger';
+import { uploadBrowserScreenshot } from './s3';
 
 /** Thrown by the intervention manager when the user cancels instead of resolving */
 export class InterventionCancelledError extends Error {
@@ -51,21 +52,24 @@ export class InterventionManager {
       pageUrl,
     });
 
-    // Take a screenshot
-    let screenshotPath: string | undefined;
+    // Take a screenshot and upload to S3
+    let screenshotUrl: string | undefined;
     try {
-      screenshotPath = await browser.screenshot(`intervention_${Date.now()}.png`);
-      await this.logger.debug('screenshot_captured', 'Screenshot captured for intervention');
+      const s3Key = `screenshots/interventions/${this.sessionId}_${Date.now()}.png`;
+      const uploadedUrl = await uploadBrowserScreenshot(browser, s3Key);
+      if (uploadedUrl) {
+        screenshotUrl = uploadedUrl;
+        await this.logger.debug('screenshot_uploaded', 'Screenshot uploaded to S3 for intervention', { url: uploadedUrl });
+      }
     } catch {
-      await this.logger.warn('screenshot_failed', 'Could not capture screenshot for intervention');
+      await this.logger.warn('screenshot_failed', 'Could not upload screenshot for intervention');
     }
 
     const payload: CreateInterventionPayload = {
       reason,
       description,
       pageUrl,
-      // Future: upload screenshot to S3 and set screenshotUrl
-      // For now, screenshotPath is a local path on the worker
+      screenshotUrl,
     };
 
     // Create the intervention request on Railway

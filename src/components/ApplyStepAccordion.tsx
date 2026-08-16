@@ -72,12 +72,36 @@ export function ApplyStepAccordion({
     window.addEventListener('hashchange', checkAndExpand);
     window.addEventListener('popstate', checkAndExpand);
 
+    // Also auto-expand if this job currently has an active auto-apply session running
+    fetch(`/api/auto-apply/${jobId}/status`, { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.session) {
+          const activeStatuses = [
+            'queued',
+            'processing',
+            'generating_assets',
+            'navigating_to_ats',
+            'detecting_ats',
+            'preparing',
+            'applying',
+            'validating',
+            'needs_review',
+            'needs_intervention',
+          ];
+          if (activeStatuses.includes(data.session.status)) {
+            setIsExpanded(true);
+          }
+        }
+      })
+      .catch(() => {});
+
     return () => {
       window.removeEventListener('auto-apply-expand-trigger', handleExpandTrigger);
       window.removeEventListener('hashchange', checkAndExpand);
       window.removeEventListener('popstate', checkAndExpand);
     };
-  }, []);
+  }, [jobId]);
 
   // Smooth scroll directly to the intervention / issue element once expanded
   useEffect(() => {
@@ -240,125 +264,137 @@ export function ApplyStepAccordion({
 
       {/* Accordion Content */}
       {isExpanded && (
-        <div className="step-card-content-padding" style={{ borderTop: '1px solid var(--border-glass)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          {/* Custom URL Input Section */}
-              {/* Custom URL Input Section */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <LinkIcon size={14} /> Direct Job Application URL
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input
-                    type="url"
-                    value={customUrl}
-                    onChange={(e) => setCustomUrl(e.target.value)}
-                    placeholder={showLowConfidenceWarning && !hasAttemptedCustomUrl ? 'https://boards.greenhouse.io/company/jobs/12345' : activeUrl}
-                    style={{
-                      flex: 1,
-                      padding: '0.6rem 1rem',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border-glass)',
-                      background: 'var(--bg-primary)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.9rem',
-                    }}
-                  />
-                  <button
-                    className="btn-outline"
-                    onClick={handleSaveCustomUrl}
-                    disabled={!customUrl.trim() || isSavingUrl}
-                    style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                  >
-                    {isSavingUrl ? <Loader2 size={14} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} /> : null}
-                    Update URL
-                  </button>
-                </div>
-
-                {/* Supported ATS Domain Chips */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Supported platforms:</span>
-                  {['Greenhouse', 'Lever', 'Workday', 'Ashby', 'SmartRecruiters', 'BambooHR'].map((ats) => (
-                    <span
-                      key={ats}
-                      style={{
-                        fontSize: '0.7rem',
-                        padding: '1px 6px',
-                        borderRadius: '4px',
-                        background: 'var(--bg-primary)',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-secondary)',
-                      }}
-                    >
-                      {ats}
-                    </span>
-                  ))}
-                </div>
-
-                {applicationUrl && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Using custom application URL.</span>
-                )}
-              </div>
-
-              {/* Confidence Score Header */}
+        <div
+          className="step-card-content-padding"
+          style={{
+            borderTop: '1px solid var(--border-glass)',
+            background: 'var(--bg-secondary)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.5rem',
+          }}
+        >
+          {/* Direct URL Input Sub-Card */}
+          <div
+            style={{
+              border: '1px solid var(--border-glass, #e2e8f0)',
+              borderRadius: '12px',
+              padding: '1.25rem 1.35rem 1.15rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.85rem',
+              background: 'var(--bg-primary, #ffffff)',
+            }}
+          >
+            {/* Header: Label + Confidence Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <label
+                style={{
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: 'var(--text-secondary, #475569)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                }}
+              >
+                <LinkIcon size={15} /> Direct Job Application URL
+              </label>
               {confidenceData && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', padding: '0.5rem 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Automation Confidence:</span>
-                    <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
-                  </div>
-                  {showLowConfidenceWarning && (
-                    <a
-                      href={activeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-outline"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        padding: '0.35rem 0.75rem',
-                        borderRadius: '6px',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: 'var(--accent-primary)',
-                        textDecoration: 'none',
-                      }}
-                    >
-                      <ExternalLink size={14} /> Open Original Job Post
-                    </a>
-                  )}
-                </div>
+                <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
               )}
+            </div>
 
-              {/* Low Confidence Non-Blocking Tip */}
-              {showLowConfidenceWarning && !hasAttemptedCustomUrl && (
-                <div
-                  style={{
-                    background: 'rgba(59, 130, 246, 0.08)',
-                    border: '1px solid rgba(59, 130, 246, 0.25)',
-                    borderRadius: '8px',
-                    padding: '0.9rem 1.1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    fontSize: '0.83rem',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  <HelpCircle color="#3b82f6" size={18} style={{ flexShrink: 0 }} />
-                  <span>
-                    This job link is from an aggregator (e.g. LinkedIn or Indeed). 1-Click Auto Apply will attempt to resolve the direct application link automatically. If desired, you can also paste a direct Greenhouse or Lever link above.
-                  </span>
-                </div>
-              )}
-
-              {/* Main Auto Apply Panel */}
-              <AutoApplyPanel
-                jobId={jobId}
-                jobUrl={activeUrl}
-                hasAssets={localHasAssets}
+            {/* Input Row + Update URL Button */}
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <input
+                type="url"
+                value={customUrl || (hasAttemptedCustomUrl ? activeUrl : '')}
+                onChange={(e) => setCustomUrl(e.target.value)}
+                placeholder={activeUrl || 'https://company.com/careers/job/12345'}
+                style={{
+                  flex: 1,
+                  padding: '0.65rem 0.95rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-glass, #e2e8f0)',
+                  background: 'var(--bg-secondary, #f8fafc)',
+                  color: 'var(--text-primary, #334155)',
+                  fontSize: '0.88rem',
+                  outline: 'none',
+                }}
               />
+              <button
+                onClick={handleSaveCustomUrl}
+                disabled={!customUrl.trim() || isSavingUrl}
+                style={{
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontSize: '0.85rem',
+                  padding: '0.65rem 1.15rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-glass, #e2e8f0)',
+                  background: 'var(--bg-primary, #ffffff)',
+                  color: 'var(--text-secondary, #475569)',
+                  fontWeight: 500,
+                  cursor: !customUrl.trim() || isSavingUrl ? 'not-allowed' : 'pointer',
+                  opacity: !customUrl.trim() ? 0.7 : 1,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {isSavingUrl ? <Loader2 size={13} className="animate-spin" /> : null}
+                Update URL
+              </button>
+            </div>
+
+            {/* Info Message Row */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.45rem',
+                fontSize: '0.84rem',
+                color: 'var(--text-secondary, #475569)',
+                lineHeight: 1.45,
+              }}
+            >
+              <HelpCircle size={15} style={{ color: '#3b82f6', flexShrink: 0, marginTop: '2px' }} />
+              <span>
+                Aggregator link detected. 1-Click apply will attempt auto-resolve the direct application form, or you can paste a direct URL, from the original job post, above.
+              </span>
+            </div>
+
+            {/* Open Original Job Post Link - Floated/Aligned Right */}
+            {activeUrl && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.15rem' }}>
+                <a
+                  href={activeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.85rem',
+                    color: '#2563eb',
+                    textDecoration: 'none',
+                    fontWeight: 500,
+                  }}
+                  title="Open original job listing in a new tab"
+                >
+                  <ExternalLink size={14} /> Open Original Job Post
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Main Auto Apply Panel with Stepper, Receipt, and Inline Interventions (No top border) */}
+          <AutoApplyPanel
+            jobId={jobId}
+            jobUrl={activeUrl}
+            hasAssets={localHasAssets}
+          />
         </div>
       )}
     </div>
