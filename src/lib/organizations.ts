@@ -263,6 +263,53 @@ export async function cancelInvitation(orgId: string, invitationId: string, acto
 }
 
 /**
+ * Resends an existing invitation.
+ * If status is PENDING, refreshes the expiration date and sends an email.
+ * If status is EXPIRED or CANCELLED, checks seat availability, resets to PENDING, refreshes token/expiry, and sends an email.
+ */
+export async function resendInvitation(orgId: string, invitationId: string, actorId: string) {
+  const org = await prisma.organization.findUnique({ where: { id: orgId } });
+  if (!org) throw new Error("Organization not found");
+
+  const invitation = await prisma.organizationInvitation.findFirst({
+    where: { id: invitationId, organizationId: orgId },
+  });
+
+  if (!invitation) throw new Error("Invitation not found");
+  if (invitation.status === "ACCEPTED") throw new Error("Invitation has already been accepted");
+
+  // If expired or cancelled, it needs an available seat to be re-activated
+  if (invitation.status === "EXPIRED" || invitation.status === "CANCELLED") {
+    const remaining = await getRemainingSeats(org);
+    if (remaining <= 0) {
+      throw new Error("NO_SEATS_AVAILABLE");
+    }
+  }
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7); // 7-day fresh expiry
+  const newToken = crypto.randomUUID();
+
+  const updated = await prisma.organizationInvitation.update({
+    where: { id: invitation.id },
+    data: {
+      status: "PENDING",
+      expiresAt,
+      token: newToken,
+      invitedBy: actorId,
+    },
+  });
+
+  const inviteUrl = `${process.env.NEXTAUTH_URL}/api/org/invite/accept/${updated.token}`;
+  await sendOrganizationInvitation(updated.email, org.name, inviteUrl, expiresAt);
+
+  await logActivity(orgId, actorId, "INVITE_RESENT", updated.id);
+
+  return updated;
+}
+
+
+/**
  * Returns all invitations for an organization.
  */
 export async function getOrganizationInvitations(orgId: string) {

@@ -4,6 +4,7 @@ import {
   getOrganizationInvitations,
   inviteUser,
   cancelInvitation,
+  resendInvitation,
 } from "@/lib/organizations";
 
 type RouteParams = { params: Promise<{ orgId: string }> };
@@ -103,6 +104,33 @@ export async function POST(request: Request, { params }: RouteParams) {
 }
 
 /**
+ * PATCH /api/org/[orgId]/invitations
+ * Resends an invitation.
+ * Body: { invitationId: string }
+ */
+export async function PATCH(request: Request, { params }: RouteParams) {
+  const { orgId } = await params;
+  const { user, error } = await requireOrgAdmin(orgId);
+  if (error) return error;
+
+  try {
+    const { invitationId } = await request.json();
+    if (!invitationId) return NextResponse.json({ error: "invitationId is required" }, { status: 400 });
+
+    const updated = await resendInvitation(orgId, invitationId, user!.id);
+    return NextResponse.json({ success: true, invitation: updated });
+  } catch (e: any) {
+    if (e.message === "NO_SEATS_AVAILABLE") {
+      return NextResponse.json(
+        { error: "No available seats remaining. Purchase more seats to resend this invitation." },
+        { status: 402 }
+      );
+    }
+    return NextResponse.json({ error: e.message }, { status: 400 });
+  }
+}
+
+/**
  * DELETE /api/org/[orgId]/invitations
  * Cancels a pending invitation.
  * Body: { invitationId: string }
@@ -122,3 +150,4 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: e.message }, { status: 400 });
   }
 }
+
