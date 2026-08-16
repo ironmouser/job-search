@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { Globe, ArrowRight, X } from 'lucide-react';
 
 interface InternationalLocationModalProps {
@@ -22,153 +21,115 @@ export default function InternationalLocationModal({
     window.location.href = '/settings#active-scrapers';
   };
 
-  const modal = (
+  return (
     <div
+      className="glass-card animate-fade-in"
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
+        background: 'var(--card)',
+        color: 'var(--card-foreground)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        padding: '1rem 1.25rem',
+        marginBottom: '1.25rem',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+        position: 'relative',
+        width: '100%',
+        boxSizing: 'border-box',
       }}
     >
-      <div
-        className="glass-card animate-scale-up"
-        style={{
-          background: 'var(--card)',
-          color: 'var(--card-foreground)',
-          border: '1px solid var(--border-glass, var(--border))',
-          borderRadius: '16px',
-          padding: '32px',
-          maxWidth: '500px',
-          width: '90%',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          textAlign: 'center',
-        }}
-      >
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--muted-foreground)',
-            cursor: 'pointer',
-            padding: '4px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          aria-label="Close modal"
-        >
-          <X size={20} />
-        </button>
-
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 300px' }}>
         <div
           style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
+            width: '36px',
+            height: '36px',
+            borderRadius: '8px',
             background: 'rgba(37, 99, 235, 0.12)',
             color: '#2563eb',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '20px',
+            flexShrink: 0,
           }}
         >
-          <Globe size={30} />
+          <Globe size={20} />
         </div>
+        <div>
+          <div style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--foreground)' }}>
+            Location Outside the United States
+          </div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginTop: '2px' }}>
+            Location is set to{' '}
+            {locationPreference ? (
+              <strong style={{ color: 'var(--foreground)' }}>"{locationPreference}"</strong>
+            ) : (
+              'an international region'
+            )}
+            . Enable international sources in Settings to maximize job matches.
+          </div>
+        </div>
+      </div>
 
-        <h2
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+        <button
+          onClick={handleGoToSettings}
           style={{
-            margin: '0 0 12px',
-            fontSize: '1.35rem',
-            fontWeight: 700,
-            color: 'var(--foreground)',
-          }}
-        >
-          Location Outside the United States
-        </h2>
-
-        <p
-          style={{
-            margin: '0 0 24px',
-            fontSize: '0.95rem',
-            color: 'var(--muted-foreground)',
-            lineHeight: 1.6,
-          }}
-        >
-          We noticed your location preference is set to{' '}
-          {locationPreference ? (
-            <strong style={{ color: 'var(--foreground)' }}>"{locationPreference}"</strong>
-          ) : (
-            'a location outside of the United States'
-          )}
-          . To search for international jobs, you should enable international scraper sources on the Settings page.
-        </p>
-
-        <div
-          style={{
+            padding: '6px 14px',
+            borderRadius: '6px',
+            border: 'none',
+            background: 'var(--accent-primary)',
+            color: '#ffffff',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            cursor: 'pointer',
             display: 'flex',
-            gap: '12px',
-            width: '100%',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'opacity 0.15s ease',
+          }}
+        >
+          <span>Enable in Settings</span>
+          <ArrowRight size={14} />
+        </button>
+        <button
+          onClick={onClose}
+          style={{
+            padding: '6px 12px',
+            borderRadius: '6px',
+            border: '1px solid var(--border)',
+            background: 'transparent',
+            color: 'var(--muted-foreground)',
+            fontWeight: 500,
+            fontSize: '0.85rem',
+            cursor: 'pointer',
+          }}
+        >
+          Got it
+        </button>
+        <button
+          onClick={onClose}
+          title="Dismiss notice"
+          aria-label="Dismiss notice"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--muted-foreground)',
+            cursor: 'pointer',
+            padding: '4px',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: '12px 18px',
-              borderRadius: '10px',
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'var(--foreground)',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-            }}
-          >
-            Got it
-          </button>
-
-          <button
-            onClick={handleGoToSettings}
-            style={{
-              flex: 1.4,
-              padding: '12px 18px',
-              borderRadius: '10px',
-              border: 'none',
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              boxShadow: '0 4px 16px rgba(37, 99, 235, 0.35)',
-            }}
-          >
-            <span>Enable International Sources</span>
-            <ArrowRight size={16} />
-          </button>
-        </div>
+          <X size={16} />
+        </button>
       </div>
     </div>
   );
-
-  if (typeof document === 'undefined') return null;
-  return createPortal(modal, document.body);
 }
+

@@ -22,9 +22,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 import SyncOverlay from './SyncOverlay';
-import { useHelp } from '@/contexts/HelpContext';
-import DiscoveryNudgeOverlay from '@/components/DiscoveryNudgeOverlay';
-import OnboardingWidget from '@/components/common/OnboardingWidget';
 import NonUsJobsFocusModal from '@/components/NonUsJobsFocusModal';
 import TrialStatusBanner from '@/components/TrialStatusBanner';
 import UpgradePrompt from '@/components/UpgradePrompt';
@@ -127,31 +124,7 @@ export default function DashboardClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs]);
 
-  const { getOnboardingProgress } = useHelp();
-  const [showDiscoveryNudge, setShowDiscoveryNudge] = useState(false);
 
-  const checkAndTriggerDiscoveryNudge = () => {
-    try {
-      const hasCompletedSync = localStorage.getItem('job_agent_has_completed_job_sync') === 'true' || localStorage.getItem('job_agent_just_completed_job_sync') === 'true';
-      const hasSeenNudge = localStorage.getItem('job_agent_discovery_nudge_seen') === 'true';
-      const onboardingIncomplete = getOnboardingProgress().percentage < 100;
-
-      if (hasCompletedSync && onboardingIncomplete && !hasSeenNudge) {
-        setShowDiscoveryNudge(true);
-      }
-    } catch (e) {}
-  };
-
-  useEffect(() => {
-    checkAndTriggerDiscoveryNudge();
-  }, [getOnboardingProgress]);
-
-  const handleCloseDiscoveryNudge = () => {
-    setShowDiscoveryNudge(false);
-    try {
-      localStorage.setItem('job_agent_discovery_nudge_seen', 'true');
-    } catch (e) {}
-  };
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -1036,7 +1009,35 @@ export default function DashboardClient({
               }}
               onDismiss={() => setShowUpgradeModal(false)}
             />
-          )}          <OnboardingWidget />
+          )}
+
+          {showNonUsModal && (
+            <NonUsJobsFocusModal
+              intlJobCount={intlJobCount}
+              onKeepAll={() => {
+                hasDismissedNonUsModal.current = true;
+                setShowNonUsModal(false);
+              }}
+              onUsOnly={(deletedIds) => {
+                hasDismissedNonUsModal.current = true;
+                setJobList((prev: any[]) => prev.filter((j: any) => !deletedIds.includes(j.id)));
+                setShowNonUsModal(false);
+              }}
+            />
+          )}
+
+          <InternationalLocationModal
+            isOpen={showIntlLocationModal}
+            locationPreference={searchLocation}
+            onClose={() => {
+              try {
+                if (searchLocation) {
+                  localStorage.setItem('intl_sources_notice_dismissed_loc', searchLocation);
+                }
+              } catch (e) {}
+              setShowIntlLocationModal(false);
+            }}
+          />
 
           <div className="responsive-grid stat-cards-grid" style={{ marginBottom: '1.25rem' }} data-tour="dashboard-stats">
             <div 
@@ -1259,11 +1260,7 @@ export default function DashboardClient({
                     setIsRefiningJobs(false);
                   }
                 }}
-                onSyncComplete={() => {
-                  setTimeout(() => {
-                    checkAndTriggerDiscoveryNudge();
-                  }, 600);
-                }}
+                onSyncComplete={() => {}}
               />
             </div>
           </div>
@@ -1768,11 +1765,7 @@ export default function DashboardClient({
                         setIsRefiningJobs(false);
                       }
                     }}
-                    onSyncComplete={() => {
-                      setTimeout(() => {
-                        checkAndTriggerDiscoveryNudge();
-                      }, 600);
-                    }}
+                    onSyncComplete={() => {}}
                   />
                 </div>
               )}
@@ -1954,38 +1947,7 @@ export default function DashboardClient({
         </div>
       )}
 
-      <DiscoveryNudgeOverlay
-        isOpen={showDiscoveryNudge}
-        onClose={handleCloseDiscoveryNudge}
-      />
 
-      {showNonUsModal && (
-        <NonUsJobsFocusModal
-          intlJobCount={intlJobCount}
-          onKeepAll={() => {
-            hasDismissedNonUsModal.current = true;
-            setShowNonUsModal(false);
-          }}
-          onUsOnly={(deletedIds) => {
-            hasDismissedNonUsModal.current = true;
-            setJobList((prev: any[]) => prev.filter((j: any) => !deletedIds.includes(j.id)));
-            setShowNonUsModal(false);
-          }}
-        />
-      )}
-
-      <InternationalLocationModal
-        isOpen={showIntlLocationModal}
-        locationPreference={searchLocation}
-        onClose={() => {
-          try {
-            if (searchLocation) {
-              localStorage.setItem('intl_sources_notice_dismissed_loc', searchLocation);
-            }
-          } catch (e) {}
-          setShowIntlLocationModal(false);
-        }}
-      />
 
       {/* Floating Dashboard Dock */}
       <DashboardDock
@@ -2003,11 +1965,7 @@ export default function DashboardClient({
             setIsRefiningJobs(false);
           }
         }}
-        onSyncComplete={() => {
-          setTimeout(() => {
-            checkAndTriggerDiscoveryNudge();
-          }, 600);
-        }}
+        onSyncComplete={() => {}}
         onOpenFilterModal={() => setIsFilterModalOpen(true)}
         hasActiveFilters={hasActiveFilters}
         onOpenAddJobModal={() => setIsAddJobModalOpen(true)}

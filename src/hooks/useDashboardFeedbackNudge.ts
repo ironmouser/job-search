@@ -40,7 +40,7 @@ export function useDashboardFeedbackNudge(currentJobs: any[]) {
           }
         }
       }
-    }, 3000); // 3s delay — let user settle into the dashboard
+    }, 20000); // 20s delay — let user explore and settle into the dashboard first
 
     return () => clearTimeout(timer);
   }, [isLoaded, shouldShowNudge3, unratedCount, currentJobs, recordNudgeShown, nudgeJobId, nudgeRecorded]);

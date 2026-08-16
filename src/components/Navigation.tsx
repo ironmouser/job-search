@@ -9,6 +9,7 @@ import { useHelp } from '@/contexts/HelpContext';
 import { getAssetUrl } from '@/lib/assets';
 import FeedbackModal from '@/components/FeedbackModal';
 import ProfileChecklist from '@/components/navigation/ProfileChecklist';
+import OnboardingSidebarChecklist, { ONBOARDING_DISMISSED_KEY } from '@/components/navigation/OnboardingSidebarChecklist';
 
 import { UserAvatar } from '@/components/common/UserAvatar';
 
@@ -19,7 +20,15 @@ export default function Navigation() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isChecklistHidden, setIsChecklistHidden] = useState(false);
-  const { openHelpPanel } = useHelp();
+  const [isOnboardingDismissed, setIsOnboardingDismissed] = useState(false);
+  const { openHelpPanel, getOnboardingProgress, isOnboardingProgressLoaded } = useHelp();
+
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem(ONBOARDING_DISMISSED_KEY) === 'true';
+      setIsOnboardingDismissed(dismissed);
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarMinimized');
@@ -242,22 +251,44 @@ export default function Navigation() {
             </button>
           </li>
 
-          {!isOrgAdminOnly && (
-            <li 
-              className="nav-item profile-checklist-nav-item" 
-              style={{ 
-                marginTop: 'auto', 
-                marginBottom: isChecklistHidden ? 0 : '0.5rem', 
-                width: '100%',
-                display: isChecklistHidden ? 'none' : 'block'
-              }}
-            >
-              <ProfileChecklist isMinimized={isMinimized} onItemClick={closeMenu} onHiddenChange={setIsChecklistHidden} />
-            </li>
-          )}
+          {!isOrgAdminOnly && (() => {
+            const onboardingProgress = getOnboardingProgress();
+            const showOnboardingChecklist = !isOnboardingDismissed && isOnboardingProgressLoaded && onboardingProgress.percentage < 100;
+            const hideChecklistContainer = isChecklistHidden && !showOnboardingChecklist;
+
+            return (
+              <li 
+                className="nav-item profile-checklist-nav-item" 
+                style={{ 
+                  marginTop: 'auto', 
+                  marginBottom: hideChecklistContainer ? 0 : '0.5rem', 
+                  width: '100%',
+                  display: hideChecklistContainer ? 'none' : 'block'
+                }}
+              >
+                {showOnboardingChecklist ? (
+                  <OnboardingSidebarChecklist
+                    isMinimized={isMinimized}
+                    onItemClick={closeMenu}
+                    onDismiss={() => setIsOnboardingDismissed(true)}
+                  />
+                ) : (
+                  <ProfileChecklist
+                    isMinimized={isMinimized}
+                    onItemClick={closeMenu}
+                    onHiddenChange={setIsChecklistHidden}
+                  />
+                )}
+              </li>
+            );
+          })()}
 
           {/* User section at bottom */}
-          <li className="nav-item" style={{ marginTop: (isOrgAdminOnly || isChecklistHidden) ? 'auto' : 0, paddingTop: '0.75rem', borderTop: '1px solid var(--sidebar-border)' }}>
+          <li className="nav-item" style={{ 
+            marginTop: (isOrgAdminOnly || (isChecklistHidden && (isOnboardingDismissed || getOnboardingProgress().percentage === 100))) ? 'auto' : 0, 
+            paddingTop: '0.75rem', 
+            borderTop: '1px solid var(--sidebar-border)' 
+          }}>
             {session ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }} className="user-profile-container">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minWidth: 0, overflow: 'hidden' }} className="user-profile-row">
