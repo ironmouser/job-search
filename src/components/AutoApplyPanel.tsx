@@ -18,6 +18,7 @@ interface AutoApplyPanelProps {
   jobUrl: string;
   hasAssets: boolean;
   hasResume?: boolean;
+  onStatusChange?: (session: SessionData | null, isActive: boolean) => void;
 }
 
 interface SessionData {
@@ -80,7 +81,7 @@ const STEP_DEFINITIONS = [
   { num: 5, label: 'SUBMISSION' },
 ];
 
-export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume }: AutoApplyPanelProps) {
+export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusChange }: AutoApplyPanelProps) {
   const router = useRouter();
   const { data: authSession } = useSession();
   const userRole = (authSession?.user as any)?.role;
@@ -92,6 +93,10 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume }: AutoAppl
   const [bgConfidence, setBgConfidence] = useState<{ platform: string; confidence: number } | null>(null);
 
   const isActive = isStarting || (session ? ACTIVE_STATUSES.has(session.status as AutoApplyStatus) : false);
+
+  useEffect(() => {
+    onStatusChange?.(session, isActive);
+  }, [session, isActive, onStatusChange]);
 
   const fetchStatus = useCallback(async () => {
     try {

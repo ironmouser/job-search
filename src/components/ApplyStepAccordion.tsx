@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle, X } from 'lucide-react';
 import AutofillButton from './AutofillButton';
 import { AutoApplyPanel } from './AutoApplyPanel';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
@@ -45,6 +45,33 @@ export function ApplyStepAccordion({
 
   const [confidenceData, setConfidenceData] = useState<{ platform: string; confidence: number } | null>(null);
   const [isCheckingConfidence, setIsCheckingConfidence] = useState(false);
+  const [activeSession, setActiveSession] = useState<{ status: string } | null>(null);
+  const [isSessionActive, setIsSessionActive] = useState(false);
+  const [isHelpDismissed, setIsHelpDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('auto_apply_dismiss_aggregator_help');
+        if (saved === 'true') {
+          setIsHelpDismissed(true);
+        }
+      }
+    } catch {
+      // Ignore localStorage read errors
+    }
+  }, []);
+
+  const handleDismissHelp = () => {
+    setIsHelpDismissed(true);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auto_apply_dismiss_aggregator_help', 'true');
+      }
+    } catch {
+      // Ignore localStorage write errors
+    }
+  };
 
   useEffect(() => {
     setLocalHasAssets(hasAssets);
@@ -211,6 +238,24 @@ export function ApplyStepAccordion({
   // Determine if we should show the low confidence warning
   const showLowConfidenceWarning = confidenceData && confidenceData.confidence < 40;
 
+  const isInterventionOrRunning =
+    isSessionActive ||
+    (activeSession &&
+      [
+        'queued',
+        'processing',
+        'generating_assets',
+        'navigating_to_ats',
+        'detecting_ats',
+        'preparing',
+        'applying',
+        'validating',
+        'needs_review',
+        'needs_intervention',
+        'applied',
+        'simulated',
+      ].includes(activeSession.status));
+
   return (
     <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: '0', overflow: 'hidden' }}>
       {/* Top Main Section: Manual Apply */}
@@ -349,27 +394,23 @@ export function ApplyStepAccordion({
                 Update URL
               </button>
             </div>
+          </div>
 
-            {/* Info Message Row */}
+          {/* Finding & paste the direct application form (compact dismissed state) */}
+          {!isInterventionOrRunning && isHelpDismissed && (
             <div
               style={{
                 display: 'flex',
-                alignItems: 'flex-start',
-                gap: '0.45rem',
-                fontSize: '0.84rem',
-                color: 'var(--text-secondary, #475569)',
-                lineHeight: 1.45,
+                alignItems: 'center',
+                gap: '0.65rem',
+                flexWrap: 'wrap',
+                padding: '0.1rem 0.2rem',
               }}
             >
-              <HelpCircle size={15} style={{ color: '#3b82f6', flexShrink: 0, marginTop: '2px' }} />
-              <span>
-                Aggregator link detected. 1-Click apply will attempt auto-resolve the direct application form, or you can paste a direct URL, from the original job post, above.
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.92rem' }}>
+                Finding &amp; paste the direct application form
               </span>
-            </div>
-
-            {/* Open Original Job Post Link - Floated/Aligned Right */}
-            {activeUrl && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.15rem' }}>
+              {activeUrl ? (
                 <a
                   href={activeUrl}
                   target="_blank"
@@ -378,18 +419,93 @@ export function ApplyStepAccordion({
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.35rem',
-                    fontSize: '0.85rem',
                     color: '#2563eb',
                     textDecoration: 'none',
-                    fontWeight: 500,
+                    fontWeight: 600,
+                    fontSize: '0.88rem',
                   }}
                   title="Open original job listing in a new tab"
                 >
-                  <ExternalLink size={14} /> Open Original Job Post
+                  <ExternalLink size={15} style={{ flexShrink: 0 }} />
+                  <span>Open Original Job Post</span>
                 </a>
+              ) : null}
+            </div>
+          )}
+
+          {/* Finding the Direct Application Form Info Card (full state with close X) */}
+          {!isInterventionOrRunning && !isHelpDismissed && (
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.85rem',
+                background: 'rgba(59, 130, 246, 0.05)',
+                border: '1px solid rgba(59, 130, 246, 0.22)',
+                borderRadius: '12px',
+                padding: '1.1rem 1.25rem',
+                alignItems: 'flex-start',
+                position: 'relative',
+              }}
+            >
+              <Sparkles size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.86rem', flex: 1, paddingRight: '1.5rem' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                  Finding the direct application form
+                </span>
+                <div style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  <span>
+                    When you click Auto Apply, the AI will follow this job listing to locate the company&apos;s direct application form. You can also paste the direct application URL, from the job post, above.
+                  </span>
+                  {activeUrl ? (
+                    <a
+                      href={activeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        marginLeft: '0.45rem',
+                        color: '#1d4ed8',
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        verticalAlign: 'baseline',
+                      }}
+                      title="Open original job listing in a new tab"
+                    >
+                      <ExternalLink size={14} style={{ display: 'inline', verticalAlign: '-2px', flexShrink: 0 }} />
+                      <span>Open Original Job Post</span>
+                    </a>
+                  ) : null}
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Upper-right Close X button */}
+              <button
+                onClick={handleDismissHelp}
+                aria-label="Dismiss help message"
+                title="Dismiss help message"
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary, #64748b)',
+                  padding: '4px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
 
           {/* Main Auto Apply Panel with Stepper, Receipt, and Inline Interventions (No top border) */}
           <AutoApplyPanel
@@ -397,6 +513,10 @@ export function ApplyStepAccordion({
             jobUrl={activeUrl}
             hasAssets={localHasAssets}
             hasResume={hasResume}
+            onStatusChange={(sess, active) => {
+              setActiveSession(sess);
+              setIsSessionActive(active);
+            }}
           />
         </div>
       )}
