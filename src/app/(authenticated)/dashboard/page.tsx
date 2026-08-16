@@ -95,8 +95,24 @@ export default async function Dashboard() {
 
   const searchLocation = userPrefs?.searchLocation || '';
   const searchKeyword = userPrefs?.searchKeyword || '';
+  const hasBaseResume = Boolean(
+    userPrefs?.resumeMarkdown && 
+    userPrefs.resumeMarkdown.trim().length > 30 && 
+    !userPrefs.resumeMarkdown.startsWith('# Candidate Profile')
+  );
 
   return (
-    <DashboardClient jobs={jobs} userPlanTier={effectiveTier} trialEndsAt={effectiveTrialEndsAt} hasEmailCredentials={hasEmailCredentials} initialScoresExhausted={initialScoresExhausted} hasSeenNonUsPrompt={hasSeenNonUsPrompt} noInternational={noInternational} searchLocation={searchLocation} searchKeyword={searchKeyword} />
+    <DashboardClient 
+      jobs={jobs} 
+      userPlanTier={effectiveTier} 
+      trialEndsAt={effectiveTrialEndsAt} 
+      hasEmailCredentials={hasEmailCredentials} 
+      initialScoresExhausted={initialScoresExhausted} 
+      hasSeenNonUsPrompt={hasSeenNonUsPrompt} 
+      noInternational={noInternational} 
+      searchLocation={searchLocation} 
+      searchKeyword={searchKeyword}
+      hasBaseResume={hasBaseResume}
+    />
   );
 }

@@ -37,6 +37,7 @@ import { useSession } from "next-auth/react";
 import Cropper from "react-easy-crop";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { trackProfileView, trackProfileResumeUpdate, trackProfileSave } from "@/lib/analytics";
+import RubricBuilder from "@/components/profile/RubricBuilder";
 
 interface ProfileFormProps {
   initialName: string;
@@ -1167,24 +1168,9 @@ export default function ProfileForm({
 
         {openSections['target-profile'] && (
           <div className="accordion-body">
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 1rem 0' }}>
-              This text is used by AI automation to score, rank, and evaluate match quality for job opportunities. Update it to reflect your ideal target roles and criteria.
-            </p>
-            <textarea
+            <RubricBuilder
               value={settings.profile || ''}
-              onChange={(e) => handleSettingsChange('profile', e.target.value)}
-              placeholder="Enter target job titles, key skills, industry preferences, and scoring rubric..."
-              style={{
-                width: '100%',
-                minHeight: '180px',
-                background: 'rgba(0,0,0,0.2)',
-                border: '1px solid var(--border-glass)',
-                borderRadius: '8px',
-                color: 'var(--text-primary)',
-                padding: '1rem',
-                fontSize: '0.9rem',
-                resize: 'vertical'
-              }}
+              onChange={(val) => handleSettingsChange('profile', val)}
             />
           </div>
         )}

@@ -24,14 +24,31 @@ export async function POST(request: Request) {
 
         // 1. Create or Update User Preferences
         const resumeText = (typeof data.resumeMarkdown === 'string' && data.resumeMarkdown.trim().length > 0)
-            ? data.resumeMarkdown
-            : `# Candidate Profile\nTarget Role: ${searchKeyword}\nLocation Preference: ${data.searchLocation || 'Remote'}\n\nSeeking opportunities as a ${searchKeyword} with flexible remote or hybrid arrangements.`;
+            ? data.resumeMarkdown.trim()
+            : '';
+
+        const defaultProfile = `# Job Search Goal
+Seeking high-growth tech opportunities as a ${searchKeyword}.
+
+# Evaluation Criteria Weights
+- Compensation: 20%
+- Company Fit: 20%
+- Remote Flexibility: 15%
+- AI Maturity: 10%
+- Leadership: 10%
+- Growth: 10%
+- Culture: 10%
+- Tech Stack: 5%`;
+
+        const finalProfile = (typeof data.profile === 'string' && data.profile.trim().length > 0)
+            ? data.profile.trim()
+            : defaultProfile;
 
         const updateData: any = {
             searchKeyword: searchKeyword,
             searchLocation: data.searchLocation || '',
             remoteOnly: Boolean(data.remoteOnly),
-            profile: data.profile || '',
+            profile: finalProfile,
             resumeMarkdown: resumeText,
             sources: sources
         };

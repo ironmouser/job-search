@@ -2,7 +2,7 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText } from 'lucide-react';
 import { AutoApplyQueueDrawer, BatchQueueItem } from '@/components/AutoApplyQueueDrawer';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
@@ -29,6 +29,7 @@ import NonUsJobsFocusModal from '@/components/NonUsJobsFocusModal';
 import TrialStatusBanner from '@/components/TrialStatusBanner';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { AntiAbuseBanner } from '@/components/AntiAbuseBanner';
+import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 
 
 const safeFormatDate = (dateVal: any) => {
@@ -54,7 +55,8 @@ export default function DashboardClient({
   hasSeenNonUsPrompt = false, 
   noInternational = false, 
   searchLocation = '',
-  searchKeyword = ''
+  searchKeyword = '',
+  hasBaseResume = false
 }: { 
   jobs: any[], 
   userPlanTier?: string, 
@@ -64,18 +66,25 @@ export default function DashboardClient({
   hasSeenNonUsPrompt?: boolean, 
   noInternational?: boolean, 
   searchLocation?: string,
-  searchKeyword?: string
+  searchKeyword?: string,
+  hasBaseResume?: boolean
 }) {
 
   const router = useRouter();
   const [jobList, setJobList] = useState<any[]>(jobs || []);
   const [scoresExhausted, setScoresExhausted] = useState(initialScoresExhausted);
   const [isScoringBackground, setIsScoringBackground] = useState(false);
+  const [hasResumeState, setHasResumeState] = useState(hasBaseResume);
+  const [isJitResumeOpen, setIsJitResumeOpen] = useState(false);
   const [showNonUsModal, setShowNonUsModal] = useState(false);
   const [showIntlLocationModal, setShowIntlLocationModal] = useState(false);
   const [intlJobCount, setIntlJobCount] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const hasDismissedNonUsModal = useRef(false);
+
+  useEffect(() => {
+    setHasResumeState(hasBaseResume);
+  }, [hasBaseResume]);
 
   const [searchRole, setSearchRole] = useState(searchKeyword || '');
   const syncButtonRef = useRef<SyncButtonHandle>(null);
@@ -886,6 +895,10 @@ export default function DashboardClient({
   }, [isLoaded, currentJobs, viewMode]);
 
   useEffect(() => {
+    if (!hasResumeState) {
+      setIsScoringBackground(false);
+      return;
+    }
     if (userPlanTier !== 'PRO' && scoresExhausted) return;
 
     const isUnscored = (j: any) => (!j.opportunity_scores || j.opportunity_scores.length === 0);
@@ -993,7 +1006,7 @@ export default function DashboardClient({
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [currentJobs, router, userPlanTier, scoresExhausted]);
+  }, [currentJobs, router, userPlanTier, scoresExhausted, hasResumeState]);
 
   return (
     <>
@@ -1023,6 +1036,63 @@ export default function DashboardClient({
               }}
               onDismiss={() => setShowUpgradeModal(false)}
             />
+          )}
+
+          {!hasResumeState && (
+            <div 
+              className="glass-card animate-fade-in" 
+              style={{ 
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)',
+                border: '1px solid rgba(99, 102, 241, 0.35)',
+                borderRadius: '12px',
+                padding: '1.15rem 1.35rem',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '1rem'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: '280px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '10px',
+                  background: 'rgba(99, 102, 241, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--accent-primary)',
+                  flexShrink: 0
+                }}>
+                  <Sparkles size={22} />
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Unlock AI Opportunity Fit Scoring & Auto-Apply
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                    Upload your resume to evaluate match breakdown across all opportunities and enable 1-click tailored application generation.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsJitResumeOpen(true)}
+                className="btn-primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.65rem 1.15rem',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <FileText size={16} /> Upload Resume
+              </button>
+            </div>
           )}
 
           <OnboardingWidget />
@@ -2050,6 +2120,19 @@ export default function DashboardClient({
           setCheckedJobs(new Set());
           router.refresh();
         }}
+      />
+
+      {/* JIT Resume Upload Modal for Dashboard */}
+      <JitResumeUploadModal
+        isOpen={isJitResumeOpen}
+        onClose={() => setIsJitResumeOpen(false)}
+        onSuccess={() => {
+          setHasResumeState(true);
+          setIsJitResumeOpen(false);
+          router.refresh();
+        }}
+        title="Upload Base Resume"
+        description="Add your base master resume to activate personalized AI opportunity scoring, candidate match breakdown, and 1-click tailored application assets."
       />
     </>
   );

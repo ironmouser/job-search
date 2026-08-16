@@ -30,6 +30,7 @@ import JobDetailsNavWrapper from '@/components/JobDetailsNavWrapper';
 import JobDetailsActionBar from '@/components/JobDetailsActionBar';
 import JobDetailTracker from '@/components/JobDetailTracker';
 import { getEffectiveTier } from '@/lib/tier';
+import { getUserSettings } from '@/lib/settings';
 
 import { convertHtmlToMarkdown } from '@/lib/formatter';
 
@@ -189,6 +190,13 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
   const feedback = job.jobFeedbacks?.[0];
   const totalScore = scores?.totalScore;
   const scoreClass = !totalScore ? '' : totalScore >= 80 ? 'score-high' : 'score-med';
+
+  const userPrefs = await getUserSettings(userId);
+  const hasBaseResume = Boolean(
+    userPrefs?.resumeMarkdown && 
+    userPrefs.resumeMarkdown.trim().length > 30 && 
+    !userPrefs.resumeMarkdown.startsWith('# Candidate Profile')
+  );
 
   let scoresExhausted = false;
   let assetGenerationsLeft = 1;
@@ -453,7 +461,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                  </a>
                </div>
             ) : (
-               <OpportunityScoreRefresh jobId={job.id} />
+               <OpportunityScoreRefresh jobId={job.id} hasBaseResume={hasBaseResume} />
             )}
           </div>
           
