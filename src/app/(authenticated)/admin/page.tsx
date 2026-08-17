@@ -114,7 +114,6 @@ export default function AdminDashboard() {
   const [mounted, setMounted] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserRecord | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
-  const [restoringJobTitles, setRestoringJobTitles] = useState(false);
 
   // User Directory Filters & Sorting State
   const [subscriptionFilter, setSubscriptionFilter] = useState<'ALL' | 'FREE' | 'PRO' | 'BUSINESS'>('ALL');
@@ -383,34 +382,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleRestoreJobTitles = async () => {
-    setRestoringJobTitles(true);
-    try {
-      const res = await fetch('/api/admin/restore-job-titles', {
-        method: 'POST',
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert(data.message || 'Successfully restored job titles!');
-        // Refresh users
-        if (activeTab === 'users') {
-          const uRes = await fetch('/api/admin/users');
-          if (uRes.ok) {
-            const uData = await uRes.json();
-            setUsers(uData);
-          }
-        }
-      } else {
-        alert(data.error || 'Failed to restore job titles.');
-      }
-    } catch (e: any) {
-      console.error(e);
-      alert('Error restoring job titles: ' + (e?.message || 'Network error'));
-    } finally {
-      setRestoringJobTitles(false);
-    }
-  };
-
   const handleSort = (field: 'name' | 'role' | 'planTier' | 'createdAt' | 'lastLoginAt' | 'jobsAppliedCount' | 'jobsFoundCount' | 'jobsSavedCount') => {
     if (sortField === field) {
       setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
@@ -656,29 +627,6 @@ export default function AdminDashboard() {
                   <option value="90">Last Login: Past 90 Days</option>
                 </select>
               </div>
-
-              {/* Restore Job Titles Action Button */}
-              <button
-                type="button"
-                onClick={handleRestoreJobTitles}
-                disabled={restoringJobTitles}
-                className="btn-outline"
-                title="Scan database and restore missing job titles from user profiles or resumes"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                  padding: "0.45rem 0.85rem",
-                  fontSize: "0.85rem",
-                  borderRadius: "8px",
-                  cursor: restoringJobTitles ? "not-allowed" : "pointer",
-                  color: "var(--accent-primary)",
-                  borderColor: "var(--accent-primary)"
-                }}
-              >
-                {restoringJobTitles ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                <span>{restoringJobTitles ? "Restoring..." : "Restore Job Titles"}</span>
-              </button>
             </div>
           </div>
 
