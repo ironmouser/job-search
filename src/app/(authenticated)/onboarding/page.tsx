@@ -18,10 +18,12 @@ export default function OnboardingPage() {
     const [isDragging, setIsDragging] = useState(false);
     const [isParsing, setIsParsing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const keywordInputRef = useRef<HTMLInputElement>(null);
     const backgroundScrapeAbortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         trackOnboardingStep(1, "Target Search");
+        keywordInputRef.current?.focus();
     }, []);
     
     const [formData, setFormData] = useState({
@@ -40,6 +42,7 @@ export default function OnboardingPage() {
         if (step === 1) {
             if (!formData.searchKeyword.trim()) {
                 setTitleError(true);
+                keywordInputRef.current?.focus();
                 return;
             }
             setTitleError(false);
@@ -64,7 +67,7 @@ export default function OnboardingPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    keyword: formData.searchKeyword,
+                    keyword: formData.searchKeyword.trim(),
                     location: formData.searchLocation,
                     remoteOnly: formData.remoteOnly,
                 }),
@@ -123,6 +126,13 @@ export default function OnboardingPage() {
     };
 
     const handleSubmit = async (skipResume: boolean = false) => {
+        if (!formData.searchKeyword.trim()) {
+            setStep(1);
+            setTitleError(true);
+            keywordInputRef.current?.focus();
+            return;
+        }
+
         setLoading(true);
         try {
             const hasResume = !skipResume && Boolean(formData.resumeMarkdown.trim());
@@ -150,6 +160,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
+                    searchKeyword: formData.searchKeyword.trim(),
                     resumeMarkdown: resumeToSend,
                     profile: defaultProfile
                 })
@@ -158,7 +169,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
             if (res.ok) {
                 trackOnboardingComplete({
                     has_resume: hasResume,
-                    search_keyword: formData.searchKeyword,
+                    search_keyword: formData.searchKeyword.trim(),
                     search_location: formData.searchLocation,
                     remote_only: formData.remoteOnly,
                 });
@@ -236,11 +247,19 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                     Target Job Title / Keyword <span style={{ color: '#ef4444', fontWeight: 'bold' }}>*</span>
                                 </label>
                                 <input 
+                                    ref={keywordInputRef}
                                     type="text"
+                                    required
                                     value={formData.searchKeyword}
                                     onChange={(e) => {
                                         handleChange('searchKeyword', e.target.value);
                                         if (titleError && e.target.value.trim()) setTitleError(false);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleNext();
+                                        }
                                     }}
                                     placeholder="e.g. Account Manager, Full Stack Engineer"
                                     style={{ 
@@ -268,6 +287,12 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                     type="text"
                                     value={formData.searchLocation}
                                     onChange={(e) => handleChange('searchLocation', e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleNext();
+                                        }
+                                    }}
                                     placeholder="Remote, Austin TX, etc."
                                     style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
                                 />
@@ -418,16 +443,14 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                     <div>
                         {step === 1 ? (
                             <button 
+                                type="button"
                                 onClick={handleNext} 
-                                disabled={!formData.searchKeyword.trim()}
                                 className="btn-primary" 
                                 style={{ 
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     gap: '0.5rem', 
-                                    padding: '0.65rem 1.25rem',
-                                    opacity: !formData.searchKeyword.trim() ? 0.6 : 1,
-                                    cursor: !formData.searchKeyword.trim() ? 'not-allowed' : 'pointer'
+                                    padding: '0.65rem 1.25rem'
                                 }}
                             >
                                 Next <ChevronRight size={18} />
