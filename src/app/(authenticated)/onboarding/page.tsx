@@ -24,6 +24,21 @@ export default function OnboardingPage() {
     useEffect(() => {
         trackOnboardingStep(1, "Target Search");
         keywordInputRef.current?.focus();
+
+        // Load existing draft preferences if user is returning
+        fetch('/api/onboarding')
+            .then(res => res.json())
+            .then(data => {
+                if (data.preferences) {
+                    setFormData(prev => ({
+                        searchKeyword: prev.searchKeyword || data.preferences.searchKeyword || '',
+                        searchLocation: prev.searchLocation || data.preferences.searchLocation || '',
+                        remoteOnly: prev.remoteOnly || Boolean(data.preferences.remoteOnly),
+                        resumeMarkdown: prev.resumeMarkdown || data.preferences.resumeMarkdown || '',
+                    }));
+                }
+            })
+            .catch(() => {});
     }, []);
     
     const [formData, setFormData] = useState({
@@ -47,6 +62,20 @@ export default function OnboardingPage() {
             }
             setTitleError(false);
             trackOnboardingStep(2, "Base Resume");
+
+            // Immediately persist Step 1 search parameters as draft to DB so job title is never lost
+            fetch('/api/onboarding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    searchKeyword: formData.searchKeyword.trim(),
+                    searchLocation: formData.searchLocation,
+                    remoteOnly: formData.remoteOnly,
+                    isDraft: true,
+                })
+            }).catch((err) => {
+                console.warn('[Onboarding] Draft auto-save notice:', err);
+            });
 
             // Abort previous in-flight background scrape if user backtracked and changed search params
             if (backgroundScrapeAbortControllerRef.current) {

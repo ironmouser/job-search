@@ -45,6 +45,35 @@ export async function POST(request: Request) {
         const noInternationalOverride = typeof body.noInternational === 'boolean' ? body.noInternational : undefined;
         const sourceParam = body.source;
 
+        // Ensure search keyword is auto-persisted to userPreferences if missing
+        if (typeof body.keyword === 'string' && body.keyword.trim().length > 0) {
+            try {
+                const userPref = await prisma.userPreferences.findUnique({ where: { userId } });
+                if (!userPref) {
+                    await prisma.userPreferences.create({
+                        data: {
+                            userId,
+                            searchKeyword: keyword,
+                            searchLocation: location,
+                            remoteOnly: remoteOnlyOverride ?? false,
+                            theme: 'light',
+                            profile: `# Job Search Goal\nSeeking high-growth tech opportunities as a ${keyword}.`
+                        }
+                    });
+                } else if (!userPref.searchKeyword || !userPref.searchKeyword.trim()) {
+                    await prisma.userPreferences.update({
+                        where: { userId },
+                        data: {
+                            searchKeyword: keyword,
+                            searchLocation: userPref.searchLocation || location,
+                        }
+                    });
+                }
+            } catch (prefErr) {
+                console.warn('[Scrape] Auto-save keyword to userPreferences notice:', prefErr);
+            }
+        }
+
         console.log(`Received omni-scrape request for "${keyword}" in "${location}" (remoteOnly: ${remoteOnlyOverride ?? settings.remoteOnly ?? false}) for user ${userId}`);
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });

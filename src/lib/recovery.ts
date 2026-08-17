@@ -85,25 +85,62 @@ export function extractJobTitleFromProfileOrResume(profile?: string | null, resu
         }
     }
 
-    // 2. High-confidence: Candidate Headline right beneath the Name header in Resume
+    // 2. High-confidence: Candidate Headline right beneath Name header in Resume
     if (resumeMarkdown && typeof resumeMarkdown === 'string' && resumeMarkdown.trim()) {
         const lines = resumeMarkdown.trim().split('\n').map(l => l.trim()).filter(Boolean);
 
-        for (let i = 0; i < Math.min(lines.length, 4); i++) {
+        const SECTION_HEADER_KEYWORDS = [
+            'summary', 'experience', 'education', 'skills', 'strengths',
+            'competencies', 'certifications', 'licenses', 'projects',
+            'profile', 'objective', 'history', 'background', 'contact'
+        ];
+
+        for (let i = 0; i < Math.min(lines.length, 6); i++) {
             const line = lines[i];
-            if (line.startsWith('# ') && i + 1 < lines.length) {
-                const nextLine = lines[i + 1].replace(/[*_#]/g, '').trim();
-                // Ensure the headline is not contact details
-                if (
-                    nextLine &&
-                    !nextLine.includes('@') &&
-                    !nextLine.includes('http') &&
-                    !nextLine.includes('linkedin.com') &&
-                    !/\d{3}[-.]?\d{3}/.test(nextLine) &&
-                    !nextLine.toLowerCase().startsWith('phone') &&
-                    !nextLine.toLowerCase().startsWith('email')
-                ) {
-                    const cleaned = cleanExtractedTitle(nextLine);
+            if (/^#{1,2}\s+[A-Za-z]/.test(line)) {
+                for (let j = i + 1; j <= Math.min(lines.length - 1, i + 4); j++) {
+                    const rawLine = lines[j];
+                    // Skip if this line is another markdown header (e.g. ### PROFESSIONAL SUMMARY)
+                    if (rawLine.startsWith('#')) {
+                        continue;
+                    }
+                    const candidateLine = rawLine.replace(/[*_#`]/g, '').trim();
+                    const lower = candidateLine.toLowerCase();
+
+                    const isSectionHeader = SECTION_HEADER_KEYWORDS.some(k => 
+                        lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes('professional summary') || lower.includes('work experience')
+                    );
+
+                    if (
+                        candidateLine &&
+                        !isSectionHeader &&
+                        !candidateLine.includes('@') &&
+                        !candidateLine.includes('http') &&
+                        !candidateLine.includes('linkedin.com') &&
+                        !/\d{3}[-.]?\d{3}/.test(candidateLine) &&
+                        !lower.startsWith('phone') &&
+                        !lower.startsWith('email') &&
+                        !lower.includes('clearance') &&
+                        !lower.includes('united states') &&
+                        !lower.includes('driver')
+                    ) {
+                        const cleaned = cleanExtractedTitle(candidateLine);
+                        if (cleaned) return cleaned;
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback: First job title under Professional Experience section
+        const expIndex = lines.findIndex(l => /^(?:#{1,3}\s+)?(?:PROFESSIONAL EXPERIENCE|EXPERIENCE|WORK HISTORY)/i.test(l));
+        if (expIndex !== -1) {
+            for (let i = expIndex + 1; i <= Math.min(lines.length - 1, expIndex + 8); i++) {
+                const line = lines[i];
+                // Match lines formatted as **Title | Company ...** or **Title**, Company
+                const boldMatch = line.match(/^\*\*([^*]+?)\*\*/);
+                if (boldMatch) {
+                    const candidateRole = boldMatch[1].trim();
+                    const cleaned = cleanExtractedTitle(candidateRole);
                     if (cleaned) return cleaned;
                 }
             }
