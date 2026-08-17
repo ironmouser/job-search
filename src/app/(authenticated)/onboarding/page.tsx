@@ -293,11 +293,11 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                             handleNext();
                                         }
                                     }}
-                                    placeholder="Remote, Austin TX, etc."
+                                    placeholder="Remote, Austin TX, London, etc."
                                     style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
                                 />
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                                    Examples: "Remote", a specific city ("Austin, TX"), or region.
+                                    Leave blank to search Remote / Anywhere, or specify a city, state, or region.
                                 </span>
                             </div>
                         </div>

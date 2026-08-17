@@ -452,7 +452,7 @@ export default function SettingsPage() {
                                         placeholder='e.g. "Remote", "Austin, TX"'
                                         style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
                                     />
-                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>City, state, country, region, or "Remote"</span>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Leave blank to search Remote / Anywhere, or specify a city, state, or region</span>
                                 </div>
                             </div>
                         </div>
