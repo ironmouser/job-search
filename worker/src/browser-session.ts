@@ -21,7 +21,15 @@ export class BrowserSession {
   private tempDir: string | null = null;
 
   get page(): Page {
-    if (!this._page) throw new Error('BrowserSession not started — call launch() first');
+    if (!this._page || this._page.isClosed()) {
+      const remaining = this.context?.pages().filter((p) => !p.isClosed()) ?? [];
+      if (remaining.length > 0) {
+        this._page = remaining[remaining.length - 1];
+      }
+    }
+    if (!this._page || this._page.isClosed()) {
+      throw new Error('BrowserSession not started or all pages closed — call launch() first');
+    }
     return this._page;
   }
 
