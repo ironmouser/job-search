@@ -402,7 +402,14 @@ export class WorkdayPlugin extends ATSPlugin {
     const radioGroups = await page.locator('[data-automation-id="radioGroup"], fieldset').all();
 
     for (const group of radioGroups) {
-      const label = (await group.locator('label, legend').first().textContent().catch(() => '')) || '';
+      const labelEl = group.locator('label, legend, [data-automation-id="formLabel"]').first();
+      let label = '';
+      if (await labelEl.count() > 0) {
+        label = (await labelEl.textContent({ timeout: 1500 }).catch(() => '')) || '';
+      }
+      if (!label) {
+        label = (await group.textContent({ timeout: 1000 }).catch(() => '')) || '';
+      }
       const lowerLabel = label.toLowerCase();
       if (!label.trim()) continue;
 

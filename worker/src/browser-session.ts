@@ -49,6 +49,17 @@ export class BrowserSession {
       acceptDownloads: true,
     });
 
+    // Auto-track and switch to any new tab or popup opened during automation
+    this.context.on('page', (newPage) => {
+      this._page = newPage;
+      newPage.on('close', () => {
+        const remaining = this.context?.pages() ?? [];
+        if (remaining.length > 0) {
+          this._page = remaining[remaining.length - 1];
+        }
+      });
+    });
+
     this._page = await this.context.newPage();
 
     // Create a temp directory for file uploads in this session

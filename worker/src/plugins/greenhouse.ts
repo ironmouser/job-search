@@ -420,8 +420,14 @@ export class GreenhousePlugin extends ATSPlugin {
       .all();
 
     for (const container of questionContainers) {
-      const labelEl = container.locator('label, legend').first();
-      const label = (await labelEl.textContent().catch(() => ''))?.toLowerCase().trim() ?? '';
+      const labelEl = container.locator('label, legend, .field-label').first();
+      let label = '';
+      if (await labelEl.count() > 0) {
+        label = (await labelEl.textContent({ timeout: 1500 }).catch(() => ''))?.toLowerCase().trim() ?? '';
+      }
+      if (!label) {
+        label = (await container.textContent({ timeout: 1000 }).catch(() => ''))?.toLowerCase().trim() ?? '';
+      }
       if (!label) continue;
 
       // 1. Text inputs (LinkedIn, Website, Phone, Location, etc.)

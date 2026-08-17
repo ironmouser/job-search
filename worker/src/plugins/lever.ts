@@ -418,8 +418,14 @@ export class LeverPlugin extends ATSPlugin {
       .all();
 
     for (const container of questionContainers) {
-      const labelEl = container.locator('label, .question-label').first();
-      const label = (await labelEl.textContent())?.toLowerCase().trim() ?? '';
+      const labelEl = container.locator('label, .question-label, legend, .text').first();
+      let label = '';
+      if (await labelEl.count() > 0) {
+        label = (await labelEl.textContent({ timeout: 1500 }).catch(() => ''))?.toLowerCase().trim() ?? '';
+      }
+      if (!label) {
+        label = (await container.textContent({ timeout: 1000 }).catch(() => ''))?.toLowerCase().trim() ?? '';
+      }
 
       // Radio buttons — work auth and sponsorship
       const radios = container.locator('input[type="radio"]');
