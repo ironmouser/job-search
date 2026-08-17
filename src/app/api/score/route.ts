@@ -71,9 +71,6 @@ async function ensureAndScoreJob(
 
     if (!description) {
         console.warn(`Skipping score for job ${job.id} - description cannot be downloaded or is inadequate.`);
-        await prisma.opportunityScore.deleteMany({
-            where: { jobId: job.id, userId }
-        }).catch(() => {});
         return { jobId: job.id, skipped: true, reason: 'Description could not be downloaded.' };
     }
 

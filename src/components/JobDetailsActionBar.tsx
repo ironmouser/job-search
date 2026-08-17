@@ -145,39 +145,41 @@ export default function JobDetailsActionBar({
     const filterNew = (jobs: any[]) =>
       jobs.filter(j => j.id && !prefetchedJobs.current.has(j.id) && !j.isScored);
 
-    const nextToScore = filterNew(next3Jobs);
-    const prevToScore = filterNew(prev3Jobs);
+    const nextToProcess = filterNew(next3Jobs);
+    const prevToProcess = filterNew(prev3Jobs);
+    const allToProcess = [...nextToProcess, ...prevToProcess];
 
     // Mark all as queued immediately to prevent duplicate calls on concurrent re-renders
-    [...nextToScore, ...prevToScore].forEach(j => prefetchedJobs.current.add(j.id));
+    allToProcess.forEach(j => prefetchedJobs.current.add(j.id));
 
-    // Option 1: use the jobIds batch endpoint — one request per direction instead of
-    // one request per job, cutting auth/session overhead from up to 6 calls down to 2.
-    // On failure: remove IDs from the dedup set so they can be retried on the next nav.
-    if (nextToScore.length > 0) {
-      const nextIds = nextToScore.map(j => j.id);
+    // Split into two groups based on description adequacy:
+    // - Jobs with full descriptions → /api/score (batch)
+    // - Email stubs (no adequate description) → /api/jobs/{id}/fetch-details (fetch + score in one shot)
+    const readyToScore = allToProcess.filter(j => j.isDescriptionAdequate !== false);
+    const stubsToFetch = allToProcess.filter(j => j.isDescriptionAdequate === false).slice(0, 2);
+
+    if (readyToScore.length > 0) {
+      const ids = readyToScore.map(j => j.id);
       fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobIds: nextIds })
+        body: JSON.stringify({ jobIds: ids })
       }).catch(err => {
-        console.warn('Background batch score (next) failed:', err);
-        nextIds.forEach(id => prefetchedJobs.current.delete(id));
+        console.warn('Background batch score failed:', err);
+        ids.forEach(id => prefetchedJobs.current.delete(id));
       });
     }
 
-    if (prevToScore.length > 0) {
-      const prevIds = prevToScore.map(j => j.id);
-      fetch('/api/score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobIds: prevIds })
-      }).catch(err => {
-        console.warn('Background batch score (prev) failed:', err);
-        prevIds.forEach(id => prefetchedJobs.current.delete(id));
-      });
-    }
+    // Fire individual fetch-details calls for stub/email jobs (fetch description + score atomically)
+    stubsToFetch.forEach(j => {
+      fetch(`/api/jobs/${j.id}/fetch-details`, { method: 'POST' })
+        .catch(err => {
+          console.warn(`Background fetch-details failed for job ${j.id}:`, err);
+          prefetchedJobs.current.delete(j.id); // allow retry on next nav
+        });
+    });
   }, [currentIndex, sequence]);
+
 
   const handleNext = () => {
     if (!nextJob) return;
