@@ -7,24 +7,9 @@ dotenv.config({ path: '.env' });
 
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
-const ASSET_FILES = [
-  { file: 'thumbs.webp', type: 'image/webp' },
-  { file: 'lasso.webp', type: 'image/webp' },
-  { file: 'head.webp', type: 'image/webp' },
-  { file: 'fly.webp', type: 'image/webp' },
-  { file: 'confetti.webp', type: 'image/webp' },
-  { file: 'thumbs.webm', type: 'video/webm' },
-  { file: 'lasso.webm', type: 'video/webm' },
-  { file: 'head.webm', type: 'video/webm' },
-  { file: 'fly.webm', type: 'video/webm' },
-  { file: 'thumbs.gif', type: 'image/gif' },
-  { file: 'lasso.gif', type: 'image/gif' },
-  { file: 'head.gif', type: 'image/gif' },
-  { file: 'fly.gif', type: 'image/gif' },
-  { file: 'lost.gif', type: 'image/gif' },
-];
+const WEBP_FILES = ['thumbs.webp', 'lasso.webp', 'head.webp', 'fly.webp'];
 
-async function uploadAllAssets() {
+async function uploadWebpImages() {
   const bucket = process.env.AWS_S3_BUCKET_NAME || 'the-job-agent';
   const region = process.env.AWS_REGION || 'us-east-1';
 
@@ -41,7 +26,7 @@ async function uploadAllAssets() {
     },
   });
 
-  for (const { file: fileName, type: contentType } of ASSET_FILES) {
+  for (const fileName of WEBP_FILES) {
     const filePath = path.join(process.cwd(), 'public', fileName);
     if (!fs.existsSync(filePath)) {
       console.warn(`Warning: File not found at ${filePath}, skipping...`);
@@ -49,7 +34,7 @@ async function uploadAllAssets() {
     }
 
     const fileBuffer = fs.readFileSync(filePath);
-    console.log(`Uploading ${fileName} (${(fileBuffer.length / 1024).toFixed(1)} KB, ${contentType}) to s3://${bucket}/${fileName} ...`);
+    console.log(`Uploading ${fileName} (${(fileBuffer.length / 1024).toFixed(1)} KB) to s3://${bucket}/${fileName} ...`);
 
     try {
       await s3Client.send(
@@ -57,7 +42,7 @@ async function uploadAllAssets() {
           Bucket: bucket,
           Key: fileName,
           Body: fileBuffer,
-          ContentType: contentType,
+          ContentType: 'image/webp',
         })
       );
       const url = `https://${bucket}.s3.${region}.amazonaws.com/${fileName}`;
@@ -66,10 +51,10 @@ async function uploadAllAssets() {
       console.error(`✗ Failed to upload ${fileName}:`, err.message || err);
     }
   }
-  console.log('All asset uploads completed!');
+  console.log('All WebP uploads completed!');
 }
 
-uploadAllAssets().catch(err => {
-  console.error('Error during asset upload process:', err);
+uploadWebpImages().catch(err => {
+  console.error('Error during WebP upload process:', err);
   process.exit(1);
 });
