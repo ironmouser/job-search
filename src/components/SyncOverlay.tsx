@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const ANIMATION_SEQUENCE = ['thumbs.webm', 'lasso.webm', 'head.webm', 'fly.webm'];
+const ANIMATION_SEQUENCE = ['thumbs.webp', 'lasso.webp', 'head.webp', 'fly.webp'];
 
 /**
  * Returns a random index from 0 to total-1 that is guaranteed not equal to currentIndex.
@@ -34,19 +34,15 @@ export default function SyncOverlay({
 }) {
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   useEffect(() => {
     setMounted(true);
 
-    // Eagerly preload WebM files into browser cache on mount
+    // Eagerly preload WebP files into browser cache on mount
     if (typeof window !== 'undefined') {
       ANIMATION_SEQUENCE.forEach(filename => {
-        // Pre-fetch video byte stream into browser cache
-        fetch(`/${filename}`, { cache: 'force-cache' }).catch(() => {});
-        const video = document.createElement('video');
-        video.preload = 'auto';
-        video.src = `/${filename}`;
+        const img = new Image();
+        img.src = `/${filename}`;
       });
     }
   }, []);
@@ -79,17 +75,6 @@ export default function SyncOverlay({
       if (interval) clearInterval(interval);
     };
   }, [isSyncing]);
-
-  // Ensure the active video plays continuously
-  useEffect(() => {
-    if (isSyncing) {
-      const activeVideo = videoRefs.current[activeAnimIndex];
-      if (activeVideo) {
-        activeVideo.currentTime = 0;
-        activeVideo.play().catch(() => {});
-      }
-    }
-  }, [activeAnimIndex, isSyncing]);
 
   if (!isSyncing || !mounted) return null;
 
@@ -212,7 +197,7 @@ export default function SyncOverlay({
           </div>
         </div>
         
-        {/* WebM Video Container displaying 10-second looping sequence flush against bottom edge */}
+        {/* Animated WebP Image Container displaying 10-second looping sequence flush against bottom edge */}
         <div className="tenor-gif-container" style={{ position: 'relative', width: '100%', height: '270px', overflow: 'hidden' }}>
           {ANIMATION_SEQUENCE.map((filename, index) => {
             const isActive = activeAnimIndex === index;
@@ -236,14 +221,10 @@ export default function SyncOverlay({
                   overflow: 'hidden',
                 }}
               >
-                <video
-                  ref={el => { videoRefs.current[index] = el; }}
+                <img
                   src={`/${filename}`}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
+                  alt={`Syncing animation ${index + 1}`}
+                  loading="eager"
                   style={{
                     width: '70%',
                     height: '70%',
