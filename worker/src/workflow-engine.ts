@@ -107,34 +107,58 @@ export class WorkflowEngine {
         automationSupported: false,
       };
 
-      // ─── Intercept Aggregators ───────────────────────────────────────────
-      if (plugin.platform === ATSPlatform.UNKNOWN) {
+      // ─── Multi-Hop Aggregator & Apply Link Follower (Up to 3 Hops) ───────
+      const MAX_AGGREGATOR_HOPS = 3;
+      let hopCount = 0;
+
+      while (hopCount < MAX_AGGREGATOR_HOPS) {
+        // 1. Check if top-level page matches known ATS with strong confidence
+        if (plugin.platform !== ATSPlatform.UNKNOWN && detection.confidence >= 50) {
+          break;
+        }
+
+        // 2. Check if an embedded iframe contains a known ATS
+        const iframeMatch = await AggregatorHandler.detectIframeATS(browser, logger);
+        if (iframeMatch && iframeMatch.plugin.platform !== ATSPlatform.UNKNOWN && iframeMatch.result.confidence >= 50) {
+          plugin = iframeMatch.plugin;
+          detection = iframeMatch.result;
+          break;
+        }
+
+        // 3. If still unknown, attempt to find and follow the Apply button / link
         await this.updateStatus(session.sessionId, AutoApplyStatus.NAVIGATING_TO_ATS, {
-          currentStep: 'navigating_aggregator',
+          currentStep: `navigating_aggregator_hop_${hopCount + 1}`,
           stepsCompleted: 1,
         });
 
         const navigated = await AggregatorHandler.attemptClickThrough(browser, logger);
-        if (navigated) {
-          // Check if navigated target is closed
-          const targetClosedCheck = await detectJobClosed(browser, logger);
-          if (targetClosedCheck.isClosed) {
-            throw new InterventionError(
-              InterventionReason.JOB_CLOSED,
-              targetClosedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.',
-              browser.page.url() || currentUrl
-            );
-          }
-
-          html = await browser.getHtml();
-          redirectChain = await browser.getRedirectChain();
-          currentUrl = browser.page.url();
-          
-          match = pluginRegistry.detect(currentUrl, html, redirectChain);
-          plugin = match?.plugin ?? pluginRegistry.get(ATSPlatform.UNKNOWN)!;
-          detection = match?.result ?? detection;
+        if (!navigated) {
+          break;
         }
+
+        // Check if navigated target is closed
+        const targetClosedCheck = await detectJobClosed(browser, logger);
+        if (targetClosedCheck.isClosed) {
+          throw new InterventionError(
+            InterventionReason.JOB_CLOSED,
+            targetClosedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.',
+            browser.page.url() || currentUrl
+          );
+        }
+
+        html = await browser.getHtml();
+        redirectChain = await browser.getRedirectChain();
+        currentUrl = browser.page.url();
+
+        match = pluginRegistry.detect(currentUrl, html, redirectChain);
+        plugin = match?.plugin ?? pluginRegistry.get(ATSPlatform.UNKNOWN)!;
+        detection = match?.result ?? detection;
+
+        hopCount++;
       }
+
+      // Update context.jobUrl to the final resolved URL after aggregator navigation
+      context.jobUrl = currentUrl;
 
       // Formatted ATS detection banner
       await logger.info('ats_detected', [

@@ -29,8 +29,8 @@ const DETECTION_RULES: DetectionRule[] = [
   {
     platform: ATSPlatform.GREENHOUSE,
     automationSupported: true,
-    hostnamePatterns: [/^boards\.greenhouse\.io$/i, /\.greenhouse\.io$/i],
-    urlKeywords: ['greenhouse.io', 'greenhouse', 'gh_jid'],
+    hostnamePatterns: [/^boards\.greenhouse\.io$/i, /^job-boards\.greenhouse\.io$/i, /\.greenhouse\.io$/i],
+    urlKeywords: ['greenhouse.io', 'greenhouse', 'gh_jid', 'gh_src'],
   },
   {
     platform: ATSPlatform.LEVER,

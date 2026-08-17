@@ -77,6 +77,10 @@ export class BrowserSession {
   // ─── Navigation ───────────────────────────────────────────────────────────
 
   async navigate(url: string, waitUntil: 'load' | 'networkidle' | 'domcontentloaded' = 'domcontentloaded'): Promise<void> {
+    const current = this._page ? this._page.url() : '';
+    if (current && (current === url || (url.includes('#') && current.startsWith(url.split('#')[0])))) {
+      return;
+    }
     await this.page.goto(url, { waitUntil, timeout: 60_000 });
   }
 

@@ -43,8 +43,8 @@ export class GreenhousePlugin extends ATSPlugin {
 
     for (const u of allUrls) {
       try {
-        const hostname = new URL(u).hostname;
-        if (hostname === 'boards.greenhouse.io' || hostname.endsWith('.greenhouse.io')) {
+        const hostname = new URL(u).hostname.toLowerCase();
+        if (hostname === 'boards.greenhouse.io' || hostname === 'job-boards.greenhouse.io' || hostname.endsWith('.greenhouse.io') || hostname.includes('greenhouse.io')) {
           confidence += 80;
           detectedFeatures.push('hostname:greenhouse.io');
           break;
@@ -55,6 +55,10 @@ export class GreenhousePlugin extends ATSPlugin {
     if (html.includes('id="grnhse_app"') || html.includes("id='grnhse_app'")) {
       confidence += 15;
       detectedFeatures.push('html:#grnhse_app');
+    }
+    if (html.includes('<iframe') && html.includes('greenhouse.io')) {
+      confidence += 40;
+      detectedFeatures.push('iframe:greenhouse.io');
     }
     if (html.includes('div.opening') || html.includes('class="opening"')) {
       confidence += 5;
