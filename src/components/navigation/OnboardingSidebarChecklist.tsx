@@ -140,7 +140,7 @@ export default function OnboardingSidebarChecklist({
               title="Dismiss workspace setup"
               aria-label="Dismiss workspace setup"
             >
-              <X size={15} />
+              <X size={14} />
             </button>
             <button
               onClick={toggleOpen}
@@ -148,7 +148,7 @@ export default function OnboardingSidebarChecklist({
               title={isOpen ? "Collapse setup" : "Expand setup"}
               aria-label={isOpen ? "Collapse setup" : "Expand setup"}
             >
-              {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
           </div>
         </div>
@@ -186,9 +186,9 @@ export default function OnboardingSidebarChecklist({
               >
                 <div className="workspace-setup-item-status">
                   {isCompleted ? (
-                    <CheckCircle2 size={18} className="workspace-setup-icon-done" />
+                    <CheckCircle2 size={16} className="workspace-setup-icon-done" />
                   ) : (
-                    <Circle size={18} strokeWidth={1.5} className="workspace-setup-icon-pending" />
+                    <Circle size={16} strokeWidth={1.5} className="workspace-setup-icon-pending" />
                   )}
                 </div>
 
