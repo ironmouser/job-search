@@ -78,6 +78,10 @@ const ROLE_SYNONYM_CLUSTERS: Record<string, string[]> = {
   'medical assistant': ['Clinical Assistant', 'Healthcare Specialist', 'Patient Care Coordinator']
 };
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Strips common seniority and modifier prefixes/suffixes to isolate the core job title.
  */
@@ -86,13 +90,23 @@ export function getCoreKeyword(keyword: string): string {
   let cleaned = keyword.toLowerCase().trim();
 
   for (const prefix of SENIORITY_PREFIXES) {
-    // Regex matches prefix at start or end of string
-    const startRegex = new RegExp(`^${prefix}\\s+`, 'i');
-    const endRegex = new RegExp(`\\s+${prefix}$`, 'i');
+    const escaped = escapeRegex(prefix);
+    const startRegex = new RegExp(`^${escaped}\\s+`, 'i');
+    const endRegex = new RegExp(`\\s+${escaped}$`, 'i');
     cleaned = cleaned.replace(startRegex, '').replace(endRegex, '').trim();
   }
 
   return cleaned || keyword.trim();
+}
+
+/**
+ * Checks if targetText contains query with whole word boundary semantics.
+ */
+function matchesWholeWords(targetText: string, query: string): boolean {
+  if (!targetText || !query) return false;
+  const escaped = escapeRegex(query.toLowerCase().trim());
+  const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+  return regex.test(targetText.toLowerCase());
 }
 
 /**
@@ -113,9 +127,14 @@ export function expandSearchKeywords(keyword: string): string[] {
     results.push(core);
   }
 
-  // Find matching synonym clusters
+  // Find matching synonym clusters using word-boundary matching
   for (const [clusterKey, synonyms] of Object.entries(ROLE_SYNONYM_CLUSTERS)) {
-    if (lowerKeyword.includes(clusterKey) || lowerCore.includes(clusterKey) || clusterKey.includes(lowerCore)) {
+    const isMatch =
+      matchesWholeWords(lowerKeyword, clusterKey) ||
+      matchesWholeWords(lowerCore, clusterKey) ||
+      (lowerCore.length >= 4 && matchesWholeWords(clusterKey, lowerCore));
+
+    if (isMatch) {
       for (const syn of synonyms) {
         if (!results.some(r => r.toLowerCase() === syn.toLowerCase())) {
           results.push(syn);
