@@ -112,6 +112,7 @@ export class LeverPlugin extends ATSPlugin {
       }
 
       if (!clicked) {
+        await this.checkClosedJob(browser, logger, currentUrl);
         throw new InterventionError(
           InterventionReason.UNEXPECTED_PAGE,
           'Could not find the Apply button on this Lever job listing.',
@@ -143,6 +144,7 @@ export class LeverPlugin extends ATSPlugin {
     }
 
     if (!formFound) {
+      await this.checkClosedJob(browser, logger, page.url());
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
         'Could not locate the Lever application form. The page structure may have changed.',

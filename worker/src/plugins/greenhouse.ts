@@ -128,6 +128,7 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     if (!formFound) {
+      await this.checkClosedJob(browser, logger, page.url());
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
         'Could not locate the Greenhouse application form on this page. The form may require manual navigation.',

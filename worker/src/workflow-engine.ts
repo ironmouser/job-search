@@ -14,6 +14,7 @@ import { pluginRegistry } from './registry';
 import { InterventionError } from './plugins/base-plugin';
 import { AggregatorHandler } from './plugins/aggregator-handler';
 import { uploadBrowserScreenshot } from './s3';
+import { detectJobClosed } from './utils/job-status-detector';
 
 /**
  * WorkflowEngine — finite state machine for Auto Apply automation.
@@ -83,6 +84,16 @@ export class WorkflowEngine {
       await logger.info('page_navigated', `Navigating to ${context.jobUrl}`);
       await browser.navigate(context.jobUrl);
 
+      // Check if the landing page indicates the job is closed / no longer accepting applications
+      const initialClosedCheck = await detectJobClosed(browser, logger);
+      if (initialClosedCheck.isClosed) {
+        throw new InterventionError(
+          InterventionReason.JOB_CLOSED,
+          initialClosedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.',
+          browser.page.url() || context.jobUrl
+        );
+      }
+
       let html = await browser.getHtml();
       let redirectChain = await browser.getRedirectChain();
       let currentUrl = browser.page.url();
@@ -105,6 +116,16 @@ export class WorkflowEngine {
 
         const navigated = await AggregatorHandler.attemptClickThrough(browser, logger);
         if (navigated) {
+          // Check if navigated target is closed
+          const targetClosedCheck = await detectJobClosed(browser, logger);
+          if (targetClosedCheck.isClosed) {
+            throw new InterventionError(
+              InterventionReason.JOB_CLOSED,
+              targetClosedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.',
+              browser.page.url() || currentUrl
+            );
+          }
+
           html = await browser.getHtml();
           redirectChain = await browser.getRedirectChain();
           currentUrl = browser.page.url();

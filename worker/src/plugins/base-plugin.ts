@@ -1,6 +1,7 @@
 import { ATSPlatform, ATSDetectionResult, WorkflowContext, WorkflowResult, InterventionReason } from '../types';
 import { ExecutionLogger } from '../execution-logger';
 import { BrowserSession } from '../browser-session';
+import { detectJobClosed } from '../utils/job-status-detector';
 
 /**
  * ATSPlugin — Abstract base class for all ATS platform automation plugins.
@@ -387,6 +388,25 @@ export abstract class ATSPlugin {
 
     await logger.warn('submit_btn_not_found', 'All four tiers exhausted — submit button not found');
     return null;
+  }
+
+  /**
+   * Helper to check if the current page has closed-job or expired indicators.
+   * If detected, throws an InterventionError with InterventionReason.JOB_CLOSED.
+   */
+  protected async checkClosedJob(
+    browser: BrowserSession,
+    logger: ExecutionLogger,
+    fallbackUrl?: string
+  ): Promise<void> {
+    const closedCheck = await detectJobClosed(browser, logger);
+    if (closedCheck.isClosed) {
+      throw new InterventionError(
+        InterventionReason.JOB_CLOSED,
+        closedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.',
+        browser.page?.url() || fallbackUrl
+      );
+    }
   }
 }
 

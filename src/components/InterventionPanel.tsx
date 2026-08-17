@@ -9,6 +9,7 @@ interface InterventionPanelProps {
   description: string;
   screenshotUrl?: string | null;
   pageUrl?: string | null;
+  jobId?: string | null;
   onResolved: () => void;
 }
 
@@ -17,6 +18,7 @@ const REASON_LABELS: Record<string, string> = {
   mfa_required:         'Two-Factor Authentication Required',
   unknown_question:     'Application Question Required',
   unexpected_page:      'Unsupported ATS or Custom Page Layout',
+  job_closed:           'Job No Longer Accepting Applications',
   resume_rejected:      'Resume Format Rejected by ATS',
   attachment_missing:   'Required Attachment Missing',
   login_required:       'Account Login Required',
@@ -24,6 +26,7 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 function getReasonIcon(reason: string, isUnsupportedOrFatal: boolean) {
+  if (reason === 'job_closed') return <ShieldAlert size={16} color="#ef4444" />;
   if (isUnsupportedOrFatal) return <AlertTriangle size={16} color="#f97316" />;
   switch (reason) {
     case 'captcha': return <ShieldAlert size={16} color="#fbbf24" />;
@@ -43,6 +46,7 @@ export function InterventionPanel({
   description,
   screenshotUrl,
   pageUrl,
+  jobId,
   onResolved,
 }: InterventionPanelProps) {
   const [resolving, setResolving] = useState(false);
@@ -94,13 +98,17 @@ export function InterventionPanel({
     }
   }
 
+  const isClosed = reason === 'job_closed';
+
   const isUnsupportedOrFatal =
-    reason === 'unexpected_page' ||
-    reason === 'resume_rejected' ||
-    reason === 'assessment_required' ||
-    description.toLowerCase().includes('not currently supported') ||
-    description.toLowerCase().includes('apply manually') ||
-    description.toLowerCase().includes('cannot automate');
+    !isClosed && (
+      reason === 'unexpected_page' ||
+      reason === 'resume_rejected' ||
+      reason === 'assessment_required' ||
+      description.toLowerCase().includes('not currently supported') ||
+      description.toLowerCase().includes('apply manually') ||
+      description.toLowerCase().includes('cannot automate')
+    );
 
   async function resolve(res: 'completed' | 'skipped' | 'cancelled') {
     setResolving(true);
@@ -120,6 +128,28 @@ export function InterventionPanel({
     }
   }
 
+  async function handleDismissAndArchive() {
+    setResolving(true);
+    setResolution('skipped');
+    try {
+      if (jobId) {
+        await fetch(`/api/jobs/${jobId}/archive`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isArchived: true }),
+        }).catch(() => {});
+      }
+      await fetch(`/api/auto-apply/interventions/${interventionId}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolution: 'skipped' }),
+      });
+      onResolved();
+    } finally {
+      setResolving(false);
+    }
+  }
+
   function handleManualContinue() {
     if (pageUrl) {
       window.open(pageUrl, '_blank', 'noopener,noreferrer');
@@ -127,9 +157,9 @@ export function InterventionPanel({
     resolve('skipped');
   }
 
-  const badgeColor = isUnsupportedOrFatal ? '#f97316' : '#fbbf24';
-  const borderColor = isUnsupportedOrFatal ? 'rgba(249, 115, 22, 0.4)' : 'rgba(251, 191, 36, 0.4)';
-  const bgGradient = isUnsupportedOrFatal ? 'rgba(249, 115, 22, 0.08)' : 'rgba(251, 191, 36, 0.08)';
+  const badgeColor = isClosed ? '#ef4444' : isUnsupportedOrFatal ? '#f97316' : '#fbbf24';
+  const borderColor = isClosed ? 'rgba(239, 68, 68, 0.4)' : isUnsupportedOrFatal ? 'rgba(249, 115, 22, 0.4)' : 'rgba(251, 191, 36, 0.4)';
+  const bgGradient = isClosed ? 'rgba(239, 68, 68, 0.08)' : isUnsupportedOrFatal ? 'rgba(249, 115, 22, 0.08)' : 'rgba(251, 191, 36, 0.08)';
 
   return (
     <div
@@ -159,6 +189,8 @@ export function InterventionPanel({
           if (match && match[1]) {
             displayDesc = `I did not have enough information to answer: "${match[1].trim()}"`;
           }
+        } else if (reason === 'job_closed') {
+          displayDesc = 'This job posting has been closed, filled, or is no longer accepting applications on the employer website.';
         }
         return (
           <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
@@ -175,7 +207,63 @@ export function InterventionPanel({
         />
       )}
 
-      {isUnsupportedOrFatal ? (
+      {isClosed ? (
+        <>
+          <div
+            style={{
+              fontSize: '0.85rem',
+              color: 'var(--text-primary)',
+              background: 'rgba(239, 68, 68, 0.06)',
+              borderRadius: '0.6rem',
+              padding: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.65rem',
+              lineHeight: 1.55,
+            }}
+          >
+            <div>
+              <strong style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
+                <ShieldAlert size={16} /> Posting Status
+              </strong>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                The employer is no longer accepting submissions for this opening. You can archive this job to keep your tracker organized.
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              className="btn-primary"
+              onClick={handleDismissAndArchive}
+              disabled={resolving}
+              style={{ flex: 2, minWidth: '180px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', padding: '0.65rem 1.25rem', fontSize: '0.9rem', fontWeight: 600, background: '#ef4444', borderColor: '#dc2626' }}
+              id={`intervention-archive-${interventionId}`}
+            >
+              {resolving ? 'Archiving…' : 'Dismiss & Archive Job'}
+            </button>
+            {pageUrl && (
+              <button
+                className="btn-outline"
+                onClick={() => window.open(pageUrl, '_blank', 'noopener,noreferrer')}
+                style={{ flex: 1, minWidth: '140px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', padding: '0.65rem 1rem', fontSize: '0.85rem' }}
+                id={`intervention-view-page-${interventionId}`}
+              >
+                <ExternalLink size={14} /> View Posting
+              </button>
+            )}
+            <button
+              className="btn-outline"
+              onClick={() => resolve('skipped')}
+              disabled={resolving}
+              style={{ flex: 1, minWidth: '100px', padding: '0.65rem 1rem', fontSize: '0.85rem' }}
+              id={`intervention-dismiss-${interventionId}`}
+            >
+              Dismiss
+            </button>
+          </div>
+        </>
+      ) : isUnsupportedOrFatal ? (
         <>
           <div
             style={{

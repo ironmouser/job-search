@@ -44,6 +44,7 @@ export enum InterventionReason {
   MFA_REQUIRED = 'mfa_required',
   UNKNOWN_QUESTION = 'unknown_question',
   UNEXPECTED_PAGE = 'unexpected_page',
+  JOB_CLOSED = 'job_closed',
   RESUME_REJECTED = 'resume_rejected',
   ATTACHMENT_MISSING = 'attachment_missing',
   LOGIN_REQUIRED = 'login_required',

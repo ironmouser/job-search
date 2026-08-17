@@ -684,6 +684,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         <div style={{ margin: '0.25rem 0' }}>
           <InterventionPanel
             interventionId={pendingIntervention.id}
+            jobId={jobId}
             reason={pendingIntervention.reason}
             description={pendingIntervention.description}
             screenshotUrl={pendingIntervention.screenshotUrl}

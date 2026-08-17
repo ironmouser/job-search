@@ -87,12 +87,12 @@ Seeking high-growth tech opportunities as a ${searchKeyword}.
             update: updateData,
             create: {
                 userId: session.user.id,
-                searchKeyword: data.searchKeyword || '',
+                searchKeyword: searchKeyword,
                 searchLocation: data.searchLocation || '',
                 remoteOnly: Boolean(data.remoteOnly),
                 theme: 'light',
                 resumeMarkdown: resumeText,
-                profile: data.profile || '',
+                profile: finalProfile,
                 sources: sources
             }
         });

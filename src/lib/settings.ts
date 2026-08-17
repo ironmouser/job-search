@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { UserPreferences } from '@prisma/client';
+import { extractJobTitleFromProfileOrResume } from './recovery';
 
 let columnsChecked = false;
 
@@ -20,6 +21,19 @@ export async function getUserSettings(userId: string): Promise<any> {
             where: { userId }
         });
         if (!prefs) return {};
+
+        // Self-heal searchKeyword if it was wiped or missing but exists in profile
+        if (!prefs.searchKeyword || !prefs.searchKeyword.trim()) {
+            const restored = extractJobTitleFromProfileOrResume(prefs.profile, prefs.resumeMarkdown);
+            if (restored) {
+                prefs.searchKeyword = restored;
+                prisma.userPreferences.update({
+                    where: { id: prefs.id },
+                    data: { searchKeyword: restored }
+                }).catch(() => {});
+            }
+        }
+
         return prefs;
     } catch (e: any) {
         console.warn('Prisma findUnique threw, attempting raw SQL query fallback:', e?.message || e);

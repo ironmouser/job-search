@@ -1,5 +1,8 @@
 import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
+import { detectJobClosed } from '../utils/job-status-detector';
+import { InterventionError } from './base-plugin';
+import { InterventionReason } from '../types';
 
 /**
  * AggregatorHandler
@@ -16,6 +19,16 @@ export class AggregatorHandler {
    */
   static async attemptClickThrough(browser: BrowserSession, logger: ExecutionLogger): Promise<boolean> {
     const page = browser.page;
+    
+    // Check first if the page explicitly states the job is closed / no longer available
+    const closedCheck = await detectJobClosed(browser, logger);
+    if (closedCheck.isClosed) {
+      throw new InterventionError(
+        InterventionReason.JOB_CLOSED,
+        closedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.',
+        page.url()
+      );
+    }
     
     // Words that indicate this is NOT the apply button
     const BLOCKLIST = /\b(next|continue|back|previous|save|cancel|skip|draft|login|sign in)\b/i;
@@ -44,6 +57,14 @@ export class AggregatorHandler {
     }
 
     if (!targetElement) {
+      const recheck = await detectJobClosed(browser, logger);
+      if (recheck.isClosed) {
+        throw new InterventionError(
+          InterventionReason.JOB_CLOSED,
+          recheck.reason || 'This position is no longer accepting applications or has been closed by the employer.',
+          page.url()
+        );
+      }
       await logger.warn('aggregator_handler', 'No Apply button found on the page.');
       return false;
     }

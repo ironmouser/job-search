@@ -41,7 +41,7 @@ export async function POST(
     // Verify ownership
     let intervention = await prisma.interventionRequest.findUnique({
       where: { id: interventionId },
-      select: { userId: true, resolvedAt: true, sessionId: true },
+      select: { userId: true, resolvedAt: true, sessionId: true, reason: true, jobId: true },
     });
 
     if (!intervention) {
@@ -59,12 +59,18 @@ export async function POST(
             },
           });
         } else {
+          const failureReason = sessionRec.failureReason === 'job_closed'
+            ? 'job_closed'
+            : body.resolution === 'skipped'
+              ? 'switched_to_manual_apply'
+              : 'user_cancelled_at_intervention';
+
           await prisma.autoApplySession.update({
             where: { id: sessionRec.id },
             data: {
               status: 'cancelled',
               completedAt: new Date(),
-              failureReason: body.resolution === 'skipped' ? 'switched_to_manual_apply' : 'user_cancelled_at_intervention',
+              failureReason,
             },
           });
         }
@@ -95,14 +101,32 @@ export async function POST(
         },
       });
     } else {
+      const isJobClosed = intervention.reason === 'job_closed';
+      const failureReason = isJobClosed
+        ? 'job_closed'
+        : body.resolution === 'skipped'
+          ? 'switched_to_manual_apply'
+          : 'user_cancelled_at_intervention';
+
       await prisma.autoApplySession.update({
         where: { id: intervention.sessionId },
         data: {
-          status: 'cancelled',
+          status: isJobClosed ? 'skipped' : 'cancelled',
           completedAt: new Date(),
-          failureReason: body.resolution === 'skipped' ? 'switched_to_manual_apply' : 'user_cancelled_at_intervention',
+          failureReason,
         },
       });
+
+      if (isJobClosed && intervention.jobId) {
+        await prisma.userJob.updateMany({
+          where: { userId, jobId: intervention.jobId },
+          data: { status: 'closed' },
+        });
+        await prisma.job.update({
+          where: { id: intervention.jobId },
+          data: { status: 'closed' },
+        });
+      }
     }
 
     return NextResponse.json({ success: true });

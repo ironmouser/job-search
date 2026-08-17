@@ -131,6 +131,7 @@ export class WorkdayPlugin extends ATSPlugin {
     await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
     if (!clicked) {
+      await this.checkClosedJob(browser, logger, context.jobUrl);
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
         'Could not find Apply button on Workday job page',

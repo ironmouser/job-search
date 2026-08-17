@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateWorker } from '@/lib/auto-apply/worker-auth';
-import { AutoApplyStatus, CreateInterventionPayload, InterventionStatus } from '@/lib/auto-apply/types';
+import { AutoApplyStatus, CreateInterventionPayload, InterventionStatus, InterventionReason } from '@/lib/auto-apply/types';
 
 /**
  * POST /api/worker/sessions/[sessionId]/intervention
@@ -43,7 +43,7 @@ export async function POST(
     }
 
     // Create the intervention record and update session status atomically
-    const [intervention] = await prisma.$transaction([
+    const transactions: any[] = [
       prisma.interventionRequest.create({
         data: {
           sessionId,
@@ -60,9 +60,26 @@ export async function POST(
         data: {
           status: AutoApplyStatus.NEEDS_INTERVENTION,
           currentStep: 'needs_intervention',
+          failureReason: body.reason === InterventionReason.JOB_CLOSED ? 'job_closed' : undefined,
+          failureDetails: body.description,
         },
       }),
-    ]);
+    ];
+
+    if (body.reason === InterventionReason.JOB_CLOSED) {
+      transactions.push(
+        prisma.userJob.updateMany({
+          where: { userId: session.userId, jobId: session.jobId },
+          data: { status: 'closed' },
+        }),
+        prisma.job.update({
+          where: { id: session.jobId },
+          data: { status: 'closed' },
+        })
+      );
+    }
+
+    const [intervention] = await prisma.$transaction(transactions);
 
     return NextResponse.json({ interventionId: intervention.id });
   } catch (error: any) {

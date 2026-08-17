@@ -3,6 +3,7 @@ import { ATSPlugin, InterventionError } from './base-plugin';
 import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
+import { detectJobClosed } from '../utils/job-status-detector';
 
 /**
  * GenericFallbackPlugin — catches any platform not identified by other plugins.
@@ -27,6 +28,15 @@ export class GenericFallbackPlugin extends ATSPlugin {
   }
 
   async prepare(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
+    const closedCheck = await detectJobClosed(browser, logger);
+    if (closedCheck.isClosed) {
+      throw new InterventionError(
+        InterventionReason.JOB_CLOSED,
+        closedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.',
+        browser.page.url() || context.jobUrl
+      );
+    }
+
     await logger.warn('plugin_loaded', 'No known ATS detected — generic fallback active');
     throw new InterventionError(
       InterventionReason.UNEXPECTED_PAGE,

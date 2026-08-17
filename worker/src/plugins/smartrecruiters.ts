@@ -52,6 +52,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     await logger.info('plugin_loaded', `SmartRecruiters plugin active — navigating to ${context.jobUrl}`);
     await browser.navigate(context.jobUrl, 'domcontentloaded');
     await browser.page.waitForTimeout(2000);
+    await this.checkClosedJob(browser, logger, context.jobUrl);
 
     // If an "I'm interested" or "Apply" button is present on the page, click it to show the form
     const applyBtn = await browser.page.$(
@@ -155,6 +156,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
 
     const submitBtn = await this.findSubmitButton(targetContext, logger);
     if (!submitBtn) {
+      await this.checkClosedJob(browser, logger, context.jobUrl);
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Submit button not found on SmartRecruiters form', context.jobUrl);
     }
 

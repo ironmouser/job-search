@@ -59,6 +59,7 @@ export class WorkablePlugin extends ATSPlugin {
     await browser.navigate(applyUrl, 'domcontentloaded');
     await logger.info('page_navigated', `Loaded Workable URL: ${applyUrl}`);
     await browser.page.waitForTimeout(2000);
+    await this.checkClosedJob(browser, logger, applyUrl);
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
@@ -168,6 +169,7 @@ export class WorkablePlugin extends ATSPlugin {
 
     const submitBtn = await this.findSubmitButton(targetContext, logger);
     if (!submitBtn) {
+      await this.checkClosedJob(browser, logger, context.jobUrl);
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Could not find submit button on Workable form', context.jobUrl);
     }
 

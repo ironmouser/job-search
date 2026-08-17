@@ -66,6 +66,7 @@ export class AshbyPlugin extends ATSPlugin {
 
     // Allow dynamic iframe or SPA form components to load
     await browser.page.waitForTimeout(2000);
+    await this.checkClosedJob(browser, logger, context.jobUrl);
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
@@ -252,6 +253,7 @@ export class AshbyPlugin extends ATSPlugin {
       ['.ashby-application-form-submit-button']
     );
     if (!submitBtn) {
+      await this.checkClosedJob(browser, logger, context.jobUrl);
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Could not find submit button on Ashby application form', context.jobUrl);
     }
 

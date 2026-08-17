@@ -52,6 +52,7 @@ export class TaleoPlugin extends ATSPlugin {
     await logger.info('plugin_loaded', `Taleo plugin active — navigating to ${context.jobUrl}`);
     await browser.navigate(context.jobUrl, 'domcontentloaded');
     await browser.page.waitForTimeout(2500);
+    await this.checkClosedJob(browser, logger, context.jobUrl);
 
     // Look for "Apply Online" or "Apply" button on Taleo job description page
     const applyBtn = await browser.page.$(
@@ -156,6 +157,7 @@ export class TaleoPlugin extends ATSPlugin {
 
     const submitBtn = await this.findSubmitButton(targetContext, logger);
     if (!submitBtn) {
+      await this.checkClosedJob(browser, logger, context.jobUrl);
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Submit button not found on Taleo form', context.jobUrl);
     }
 

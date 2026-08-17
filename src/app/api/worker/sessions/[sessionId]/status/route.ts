@@ -77,6 +77,24 @@ export async function PATCH(
           appliedAt: new Date(),
         },
       });
+    } else if (body.failureReason === 'job_closed' || body.failureDetails?.toLowerCase().includes('no longer accepting')) {
+      await prisma.userJob.updateMany({
+        where: {
+          userId: session.userId,
+          jobId: session.jobId,
+        },
+        data: {
+          status: 'closed',
+        },
+      });
+      await prisma.job.update({
+        where: {
+          id: session.jobId,
+        },
+        data: {
+          status: 'closed',
+        },
+      });
     }
 
     return NextResponse.json({ success: true, sessionId });

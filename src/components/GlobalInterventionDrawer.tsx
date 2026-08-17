@@ -10,11 +10,13 @@ interface GlobalInterventionDrawerProps {
   onClose: () => void;
   intervention: {
     id: string;
+    jobId?: string | null;
     reason: string;
     description: string;
     screenshotUrl?: string | null;
     pageUrl?: string | null;
   } | null;
+  jobId?: string | null;
   jobTitle?: string;
   companyName?: string;
   onResolved: () => void;
@@ -24,6 +26,7 @@ export function GlobalInterventionDrawer({
   isOpen,
   onClose,
   intervention,
+  jobId,
   jobTitle,
   companyName,
   onResolved,
@@ -95,6 +98,7 @@ export function GlobalInterventionDrawer({
         {/* Embedded Intervention Panel */}
         <InterventionPanel
           interventionId={intervention.id}
+          jobId={intervention.jobId || jobId}
           reason={intervention.reason}
           description={intervention.description}
           screenshotUrl={intervention.screenshotUrl}

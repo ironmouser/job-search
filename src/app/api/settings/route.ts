@@ -6,6 +6,7 @@ import { encrypt } from '@/lib/encryption';
 import { ensureKeywordColumnsExist, ALL_PRO_SOURCES, DEFAULT_PRO_SOURCES } from '@/lib/settings';
 import { getEffectiveTier } from '@/lib/tier';
 import { logSuspiciousActivity } from '@/lib/security';
+import { extractJobTitleFromProfileOrResume } from '@/lib/recovery';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,9 +18,21 @@ export async function GET() {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         
-        const prefs = await prisma.userPreferences.findUnique({
+        let prefs = await prisma.userPreferences.findUnique({
             where: { userId: session.user.id }
         });
+
+        // Self-heal searchKeyword if it was wiped or missing but exists in profile
+        if (prefs && (!prefs.searchKeyword || !prefs.searchKeyword.trim())) {
+            const restored = extractJobTitleFromProfileOrResume(prefs.profile, prefs.resumeMarkdown);
+            if (restored) {
+                prefs.searchKeyword = restored;
+                await prisma.userPreferences.update({
+                    where: { id: prefs.id },
+                    data: { searchKeyword: restored }
+                }).catch(() => {});
+            }
+        }
         
         const globalSettings = await prisma.globalSettings.findUnique({
             where: { id: 'system' }
@@ -208,7 +221,6 @@ export async function POST(request: Request) {
 
 
         let updateData: any = {
-            searchKeyword: data.searchKeyword,
             jobLevel: data.jobLevel || 'Mid-level',
             searchLocation: data.searchLocation,
             includeKeywords: data.includeKeywords,
@@ -267,6 +279,12 @@ export async function POST(request: Request) {
             coverLetterPdfMargin: data.coverLetterPdfMargin,
             coverLetterPdfHeaderLayout: data.coverLetterPdfHeaderLayout,
         };
+
+        // Only update searchKeyword if a valid non-empty string is provided
+        // This prevents partial payload updates (ProfileForm, card widgets, modals) from wiping existing saved job titles
+        if (typeof data.searchKeyword === 'string' && data.searchKeyword.trim().length > 0) {
+            updateData.searchKeyword = data.searchKeyword.trim();
+        }
 
         if (data.emailAppPassword && data.emailAppPassword !== '********') {
             updateData.emailAppPassword = encrypt(data.emailAppPassword);

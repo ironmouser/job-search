@@ -13,7 +13,26 @@ export function formatFailureExplanation(
   const rawDetails = (details || '').trim();
   const combined = `${reasonCode} ${rawDetails}`.toLowerCase();
 
-  // 1. Account creation / Login required
+  // 1. Job Closed / No Longer Available
+  if (
+    reasonCode.includes('job_closed') ||
+    combined.includes('no longer accepting') ||
+    combined.includes('no longer available') ||
+    combined.includes('position closed') ||
+    combined.includes('job closed') ||
+    combined.includes('listing closed') ||
+    combined.includes('posting closed') ||
+    combined.includes('has expired') ||
+    combined.includes('been filled') ||
+    combined.includes('applications are closed') ||
+    combined.includes('applications for this position are closed') ||
+    combined.includes('not accepting applications') ||
+    combined.includes('vacancy closed')
+  ) {
+    return 'This position is no longer accepting applications or has been closed by the employer.';
+  }
+
+  // 2. Account creation / Login required
   if (
     reasonCode.includes('account') ||
     reasonCode.includes('login') ||

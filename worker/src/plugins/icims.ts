@@ -52,6 +52,7 @@ export class ICIMSPlugin extends ATSPlugin {
     await logger.info('plugin_loaded', `iCIMS plugin active — navigating to ${context.jobUrl}`);
     await browser.navigate(context.jobUrl, 'domcontentloaded');
     await browser.page.waitForTimeout(2500);
+    await this.checkClosedJob(browser, logger, context.jobUrl);
 
     // Look for iCIMS iframe if present
     const frame = await browser.findFormFrame(['#icims_content_iframe', 'iframe[name="icims_iframe"]', 'form']);
@@ -152,6 +153,7 @@ export class ICIMSPlugin extends ATSPlugin {
 
     const submitBtn = await this.findSubmitButton(targetContext, logger);
     if (!submitBtn) {
+      await this.checkClosedJob(browser, logger, context.jobUrl);
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Submit button not found on iCIMS form', context.jobUrl);
     }
 
