@@ -167,6 +167,16 @@ export async function POST(req: Request) {
           },
         });
         await handleUserUpgradeToPro(userId);
+        await prisma.upgradeEvent.create({
+          data: {
+            userId,
+            status: "SUCCEEDED",
+            stripeSessionId: session.id,
+            stripeCustomerId: customerId || user.stripeCustomerId,
+            priceId: priceId || user.stripePriceId,
+            planTier: "PRO",
+          },
+        }).catch(() => {});
       } else {
         // One-time payment fallback
         await prisma.user.update({
@@ -178,6 +188,15 @@ export async function POST(req: Request) {
           },
         });
         await handleUserUpgradeToPro(userId);
+        await prisma.upgradeEvent.create({
+          data: {
+            userId,
+            status: "SUCCEEDED",
+            stripeSessionId: session.id,
+            stripeCustomerId: sessionCustId || user.stripeCustomerId,
+            planTier: "PRO",
+          },
+        }).catch(() => {});
       }
     } catch (err) {
       console.error(`[Stripe Webhook] Error processing checkout session for user ${userId}:`, err);
@@ -393,12 +412,54 @@ export async function POST(req: Request) {
                 stripeCurrentPeriodEnd: null,
               },
             });
+            await prisma.upgradeEvent.create({
+              data: {
+                userId: user.id,
+                status: "CANCELLED",
+                stripeCustomerId: customerId || user.stripeCustomerId,
+                failureReason: "Subscription cancelled / deleted",
+                planTier: "FREE",
+              },
+            }).catch(() => {});
             console.log(`[Stripe Webhook] Reset user ${user.id} subscription state from customer.subscription.deleted`);
           }
         }
       }
     } catch (err) {
       console.error("[Stripe Webhook] Error processing customer.subscription.deleted:", err);
+    }
+  }
+
+  // ─── invoice.payment_failed ────────────────────────────────────────────────
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as any;
+    const customerId = getCustomerId(invoice.customer);
+    const customerEmail = invoice.customer_email;
+
+    try {
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            ...(customerId ? [{ stripeCustomerId: customerId }] : []),
+            ...(customerEmail ? [{ email: { equals: customerEmail.trim(), mode: "insensitive" as const } }] : []),
+          ],
+        },
+      });
+
+      if (user) {
+        await prisma.upgradeEvent.create({
+          data: {
+            userId: user.id,
+            status: "FAILED",
+            stripeCustomerId: customerId || user.stripeCustomerId,
+            failureReason: invoice.last_payment_error?.message || "Payment attempt failed on invoice",
+            planTier: "PRO",
+          },
+        }).catch(() => {});
+        console.log(`[Stripe Webhook] Recorded upgrade failure for user ${user.id} from invoice.payment_failed`);
+      }
+    } catch (err) {
+      console.error("[Stripe Webhook] Error processing invoice.payment_failed:", err);
     }
   }
 

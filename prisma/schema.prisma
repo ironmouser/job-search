@@ -307,6 +307,7 @@ model User {
   deviceVerifications  DeviceVerification[]
   collisionLogsTarget  AccountCollisionLog[]   @relation("CollisionTarget")
   collisionLogsPrimary AccountCollisionLog[]   @relation("CollisionPrimary")
+  upgradeEvents        UpgradeEvent[]
 }
 
 
@@ -655,5 +656,28 @@ model QRSessionToken {
   @@index([token])
   @@index([userId])
   @@map("qr_session_tokens")
+}
+
+model UpgradeEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id")
+  status           String    @default("ATTEMPTED") // 'ATTEMPTED', 'SUCCEEDED', 'FAILED', 'CANCELLED'
+  priceId          String?   @map("price_id")
+  stripeSessionId  String?   @map("stripe_session_id")
+  stripeCustomerId String?   @map("stripe_customer_id")
+  planTier         String    @default("PRO") @map("plan_tier")
+  amount           Int?
+  currency         String?   @default("usd")
+  failureReason    String?   @map("failure_reason")
+  metadata         Json?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([stripeSessionId])
+  @@index([createdAt(sort: Desc)])
+  @@map("upgrade_events")
 }
 

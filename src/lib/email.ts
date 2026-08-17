@@ -56,12 +56,17 @@ export async function fetchEmailsAndExtractJobs(
         select: { id: true, lastSyncedAt: true }
     });
 
-    let sinceDate = new Date();
+    // Look back at least 7 days so repeated sync runs never miss recent job postings
+    const defaultLookback = new Date();
+    defaultLookback.setDate(defaultLookback.getDate() - 7);
+    let sinceDate = defaultLookback;
     if (syncLog?.lastSyncedAt) {
-      sinceDate = new Date(syncLog.lastSyncedAt);
-    } else {
-      // Default to 2 days ago if no log exists
-      sinceDate.setDate(sinceDate.getDate() - 2);
+      const lastSync = new Date(syncLog.lastSyncedAt);
+      const maxLookback = new Date();
+      maxLookback.setDate(maxLookback.getDate() - 14);
+      if (lastSync < defaultLookback) {
+        sinceDate = lastSync < maxLookback ? maxLookback : lastSync;
+      }
     }
 
     console.log(`Fetching emails since ${sinceDate.toISOString()}...`);
@@ -76,27 +81,37 @@ export async function fetchEmailsAndExtractJobs(
         }
       }
 
-      console.log(`Fetched ${messages.length} emails. Parsing recent job messages with AI in parallel...`);
+      console.log(`Fetched ${messages.length} emails. Parsing job messages with AI...`);
       onProgress?.(0, `Fetched ${messages.length} email messages. Extracting job postings...`);
-      const recentMessages = messages.slice(-5);
       const candidatePayloads = [];
 
-      for (const source of recentMessages) {
+      for (const source of messages) {
         const parsed = await simpleParser(source);
         const text = parsed.text || '';
         const html = parsed.html || '';
         const subject = parsed.subject || '';
 
-        // Filter out emails from personal/free domains to avoid scammers
+        // Filter out emails from personal/free domains to avoid scammers, unless sent/forwarded by the user
         const fromAddress = parsed.from?.value?.[0]?.address?.toLowerCase() || '';
+        const userEmail = (prefs.emailAddress || '').toLowerCase().trim();
+        const isFromSelf = userEmail && fromAddress === userEmail;
         const personalDomains = ['@gmail.com', '@yahoo.com', '@outlook.com', '@hotmail.com', '@aol.com', '@icloud.com'];
-        if (personalDomains.some(domain => fromAddress.endsWith(domain))) {
+        if (!isFromSelf && personalDomains.some(domain => fromAddress.endsWith(domain))) {
              continue;
         }
 
+        // Clean HTML to text if plain text is empty
+        const htmlText = html
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const effectiveText = text.trim() || htmlText;
+
         // Pre-filter: Check if the email likely contains a job
-        const emailContent = `${subject} ${text}`.toLowerCase();
-        const jobKeywords = ['job', 'role', 'opportunity', 'career', 'hiring', 'engineer', 'developer', 'position', 'application', 'manager', 'director', 'interview'];
+        const emailContent = `${subject} ${effectiveText}`.toLowerCase();
+        const jobKeywords = ['job', 'role', 'opportunity', 'career', 'hiring', 'engineer', 'developer', 'position', 'application', 'manager', 'director', 'interview', 'opening'];
         const looksLikeJobEmail = jobKeywords.some(keyword => emailContent.includes(keyword));
 
         if (!looksLikeJobEmail) continue;
@@ -113,12 +128,15 @@ export async function fetchEmailsAndExtractJobs(
              return true;
         });
 
-        if (!text && uniqueUrls.length === 0) continue;
+        if (!effectiveText && uniqueUrls.length === 0) continue;
 
         candidatePayloads.push({
           emailContentForAI: `
+EMAIL SUBJECT:
+${subject}
+
 EMAIL TEXT:
-${text}
+${effectiveText}
 
 LINKS FOUND IN EMAIL:
 ${uniqueUrls.join('\n')}
@@ -127,27 +145,33 @@ ${uniqueUrls.join('\n')}
       }
 
       let runningFoundCount = 0;
-      // AI extractions
-      const extractedJobBatches = await Promise.all(
-        candidatePayloads.map(async ({ emailContentForAI }) => {
-          try {
-            const extracted = await extractJobsFromEmailText(emailContentForAI, {
-              searchKeyword: prefs.searchKeyword || undefined,
-              jobLevel: prefs.jobLevel || undefined,
-              includeKeywords: prefs.includeKeywords || undefined,
-              excludeKeywords: prefs.excludeKeywords || undefined,
-            });
-            if (Array.isArray(extracted) && extracted.length > 0) {
-              runningFoundCount += extracted.length;
-              onProgress?.(runningFoundCount, `Extracted ${runningFoundCount} job listing${runningFoundCount === 1 ? '' : 's'} from email...`);
+      // AI extractions in parallel batches
+      const extractedJobBatches: any[][] = [];
+      const batchSize = 5;
+      for (let i = 0; i < candidatePayloads.length; i += batchSize) {
+        const chunk = candidatePayloads.slice(i, i + batchSize);
+        const batchResults = await Promise.all(
+          chunk.map(async ({ emailContentForAI }) => {
+            try {
+              const extracted = await extractJobsFromEmailText(emailContentForAI, {
+                searchKeyword: prefs.searchKeyword || undefined,
+                jobLevel: prefs.jobLevel || undefined,
+                includeKeywords: prefs.includeKeywords || undefined,
+                excludeKeywords: prefs.excludeKeywords || undefined,
+              });
+              if (Array.isArray(extracted) && extracted.length > 0) {
+                runningFoundCount += extracted.length;
+                onProgress?.(runningFoundCount, `Extracted ${runningFoundCount} job listing${runningFoundCount === 1 ? '' : 's'} from email...`);
+              }
+              return extracted;
+            } catch (e) {
+              console.error('Error extracting jobs from email text:', e);
+              return [];
             }
-            return extracted;
-          } catch (e) {
-            console.error('Error extracting jobs from email text:', e);
-            return [];
-          }
-        })
-      );
+          })
+        );
+        extractedJobBatches.push(...batchResults);
+      }
 
       const rawJobs: any[] = [];
       for (const extractedJobs of extractedJobBatches) {

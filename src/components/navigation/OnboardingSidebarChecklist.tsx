@@ -125,93 +125,84 @@ export default function OnboardingSidebarChecklist({
   }
 
   return (
-    <div className="profile-checklist-card animate-fade-in">
-      {/* Header Button */}
-      <button
-        onClick={toggleOpen}
-        className="profile-checklist-header"
-        aria-expanded={isOpen}
-        title="Toggle workspace setup tasks"
-      >
-        <div className="checklist-header-left">
-          <div className="checklist-header-text">
-            <span className="checklist-title">
-              {isAllComplete ? 'Setup Complete' : 'Workspace Setup'}
-            </span>
-            <span className="checklist-fraction">
-              {progress.completed} of {progress.total} tasks
-            </span>
+    <div className="workspace-setup-card animate-fade-in">
+      {/* Header Area */}
+      <div className="workspace-setup-header">
+        {/* Top Row: Title + Action Buttons */}
+        <div className="workspace-setup-top-row">
+          <span className="workspace-setup-title">
+            {isAllComplete ? 'Setup Complete' : 'Workspace Setup'}
+          </span>
+          <div className="workspace-setup-actions">
+            <button
+              onClick={handleDismiss}
+              className="workspace-setup-action-btn"
+              title="Dismiss workspace setup"
+              aria-label="Dismiss workspace setup"
+            >
+              <X size={15} />
+            </button>
+            <button
+              onClick={toggleOpen}
+              className="workspace-setup-action-btn"
+              title={isOpen ? "Collapse setup" : "Expand setup"}
+              aria-label={isOpen ? "Collapse setup" : "Expand setup"}
+            >
+              {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
           </div>
         </div>
 
-        <div className="checklist-header-right">
-          <span className={`checklist-pct-badge ${isAllComplete ? 'all-done' : ''}`}>
+        {/* Sub Row: Task count + Percentage badge */}
+        <div className="workspace-setup-sub-row">
+          <span className="workspace-setup-fraction">
+            {progress.completed} of {progress.total} tasks
+          </span>
+          <span className={`workspace-setup-pct-badge ${isAllComplete ? 'all-done' : ''}`}>
             {progress.percentage}%
           </span>
-          <span
-            onClick={handleDismiss}
-            title="Dismiss workspace setup tasks"
-            aria-label="Dismiss workspace setup tasks"
-            style={{
-              cursor: 'pointer',
-              padding: '2px',
-              borderRadius: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--muted-foreground)',
-              transition: 'color 0.15s ease',
-            }}
-          >
-            <X size={13} />
-          </span>
-          {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </div>
-      </button>
+      </div>
 
-      {/* Mini Progress Track */}
-      <div className="checklist-progress-track">
+      {/* Progress Track */}
+      <div className="workspace-setup-progress-track">
         <div
-          className={`checklist-progress-bar ${isAllComplete ? 'all-done' : ''}`}
+          className={`workspace-setup-progress-bar ${isAllComplete ? 'all-done' : ''}`}
           style={{ width: `${progress.percentage}%` }}
         />
       </div>
 
-      {/* Expanded Task List */}
+      {/* Expanded Task Items List */}
       {isOpen && (
-        <div className="checklist-items-container">
+        <div className="workspace-setup-items-container">
           {allTasks.map((task) => {
             const isCompleted = completedOnboardingTasks.has(task.id);
             return (
               <button
                 key={task.id}
                 onClick={() => handleTaskClick(task)}
-                className={`checklist-item-row ${isCompleted ? 'is-complete' : 'is-pending'}`}
+                className={`workspace-setup-item-row ${isCompleted ? 'is-complete' : 'is-pending'}`}
                 title={`Start: ${task.title}`}
               >
-                <div className="checklist-item-status">
+                <div className="workspace-setup-item-status">
                   {isCompleted ? (
-                    <CheckCircle2 size={14} className="status-icon-done" />
+                    <CheckCircle2 size={18} className="workspace-setup-icon-done" />
                   ) : (
-                    <Circle size={14} className="status-icon-pending" />
+                    <Circle size={18} strokeWidth={1.5} className="workspace-setup-icon-pending" />
                   )}
                 </div>
 
-                <div className="checklist-item-content">
-                  <span className="item-title">{task.title}</span>
-                  <span className="item-desc">{task.description}</span>
-                </div>
-
-                <div className="checklist-item-action">
-                  <ChevronRight size={13} className="item-arrow" />
+                <div className="workspace-setup-item-content">
+                  <span className="workspace-setup-item-title">{task.title}</span>
+                  <span className="workspace-setup-item-desc">{task.description}</span>
                 </div>
               </button>
             );
           })}
 
           {isAllComplete && (
-            <div className="checklist-complete-note">
-              <CheckCircle2 size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
+            <div className="workspace-setup-complete-note">
+              <CheckCircle2 size={14} style={{ color: '#22c55e', flexShrink: 0 }} />
               <span>Workspace setup finished! You're ready to automate applications.</span>
             </div>
           )}

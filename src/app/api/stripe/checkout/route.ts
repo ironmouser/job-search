@@ -118,6 +118,17 @@ export async function POST(request: Request) {
       metadata: { userId: user.id },
     });
 
+    await prisma.upgradeEvent.create({
+      data: {
+        userId: user.id,
+        status: "ATTEMPTED",
+        priceId,
+        stripeSessionId: stripeSession.id,
+        stripeCustomerId: stripeCustomerId || undefined,
+        planTier: "PRO",
+      },
+    }).catch((e) => console.warn("Could not record upgrade attempt:", e));
+
     return NextResponse.json({ url: stripeSession.url });
   } catch (error) {
     console.error("STRIPE_CHECKOUT_ERROR", error);
@@ -126,6 +137,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  let currentUserId: string | null = null;
   try {
     const session = await getServerSession(authOptions);
 
@@ -142,6 +154,7 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.redirect(new URL("/checkout", request.url));
     }
+    currentUserId = user.id;
 
     let stripeCustomerId = user.stripeCustomerId;
 
@@ -173,6 +186,17 @@ export async function GET(request: Request) {
       metadata: { userId: user.id },
     });
 
+    await prisma.upgradeEvent.create({
+      data: {
+        userId: user.id,
+        status: "ATTEMPTED",
+        priceId,
+        stripeSessionId: stripeSession.id,
+        stripeCustomerId: stripeCustomerId || undefined,
+        planTier: "PRO",
+      },
+    }).catch((e) => console.warn("Could not record upgrade attempt:", e));
+
     if (stripeSession.url) {
       return NextResponse.redirect(stripeSession.url, 303);
     } else {
@@ -180,6 +204,16 @@ export async function GET(request: Request) {
     }
   } catch (error) {
     console.error("STRIPE_CHECKOUT_GET_ERROR", error);
+    if (currentUserId) {
+      await prisma.upgradeEvent.create({
+        data: {
+          userId: currentUserId,
+          status: "FAILED",
+          failureReason: error instanceof Error ? error.message : "Checkout redirect failed",
+          planTier: "PRO",
+        },
+      }).catch(() => {});
+    }
     return NextResponse.redirect(new URL("/upgrade?error=checkout_failed", request.url));
   }
 }
