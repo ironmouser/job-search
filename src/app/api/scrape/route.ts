@@ -9,7 +9,7 @@ import { getEffectiveTier } from '@/lib/tier';
 
 
 import { isUsLocation, isRemoteLocation, extractStateAbbr, isOutsideUsLocation } from '@/lib/locationUtils';
-import { expandSearchKeywords } from '@/lib/keywordExpansion';
+import { expandSearchKeywordsWithAI } from '@/lib/keywordExpansion';
 
 export async function POST(request: Request) {
     try {
@@ -150,9 +150,9 @@ export async function POST(request: Request) {
                     let totalRawJobsFound = 0;
                     const allRawJobs: any[] = [];
 
-                    // DB-First Instant Matching: Pull recent matching jobs from global database pool across expanded keywords (14-day window)
+                    // DB-First Instant Matching: Pull recent matching jobs from global database pool across AI-expanded keywords (14-day window)
+                    const expandedKeywords = await expandSearchKeywordsWithAI(keyword, userId);
                     try {
-                        const expandedKeywords = expandSearchKeywords(keyword);
                         const orConditions = expandedKeywords.flatMap(kw => [
                             { title: { contains: kw, mode: 'insensitive' as const } },
                             { description: { contains: kw, mode: 'insensitive' as const } }
@@ -174,6 +174,9 @@ export async function POST(request: Request) {
                     } catch (dbErr: any) {
                         console.warn(`[DB-First Pre-Check Warning]: ${dbErr.message}`);
                     }
+
+                    // Derive up to 3 keyword variants for live scraper rotation (original + top 2 AI synonyms)
+                    const scraperKeywords = expandedKeywords.slice(0, 3);
 
                     const tasks: Promise<void>[] = [];
 
@@ -215,52 +218,84 @@ export async function POST(request: Request) {
                         locationList = [location];
                     }
 
+                    // Location-aware scrapers: rotate over scraperKeywords × locationList
+                    // scraperKeywords = [original keyword, ...up to 2 AI synonyms] (max 3)
                     if (sources.indeed) {
-                        for (const loc of locationList) {
-                            tasks.push(runScraperTask(locationList.length > 1 ? `Indeed (${loc})` : 'Indeed', () => scrapeIndeed(keyword, loc), 25000));
+                        for (const kw of scraperKeywords) {
+                            for (const loc of locationList) {
+                                const label = scraperKeywords.length > 1 || locationList.length > 1 ? `Indeed (${kw} · ${loc})` : 'Indeed';
+                                tasks.push(runScraperTask(label, () => scrapeIndeed(kw, loc), 25000));
+                            }
                         }
                     }
                     if (sources.linkedin) {
-                        for (const loc of locationList) {
-                            tasks.push(runScraperTask(locationList.length > 1 ? `LinkedIn (${loc})` : 'LinkedIn', () => scrapeLinkedIn(keyword, loc), 25000));
+                        for (const kw of scraperKeywords) {
+                            for (const loc of locationList) {
+                                const label = scraperKeywords.length > 1 || locationList.length > 1 ? `LinkedIn (${kw} · ${loc})` : 'LinkedIn';
+                                tasks.push(runScraperTask(label, () => scrapeLinkedIn(kw, loc), 25000));
+                            }
                         }
                     }
                     if (sources.ziprecruiter) {
-                        for (const loc of locationList) {
-                            tasks.push(runScraperTask(locationList.length > 1 ? `ZipRecruiter (${loc})` : 'ZipRecruiter', () => scrapeZipRecruiter(keyword, loc), 25000));
+                        for (const kw of scraperKeywords) {
+                            for (const loc of locationList) {
+                                const label = scraperKeywords.length > 1 || locationList.length > 1 ? `ZipRecruiter (${kw} · ${loc})` : 'ZipRecruiter';
+                                tasks.push(runScraperTask(label, () => scrapeZipRecruiter(kw, loc), 25000));
+                            }
                         }
                     }
                     if (sources.dice && isPro) {
-                        for (const loc of locationList) {
-                            tasks.push(runScraperTask(locationList.length > 1 ? `Dice (${loc})` : 'Dice', () => scrapeDice(keyword, loc), 25000));
+                        for (const kw of scraperKeywords) {
+                            for (const loc of locationList) {
+                                const label = scraperKeywords.length > 1 || locationList.length > 1 ? `Dice (${kw} · ${loc})` : 'Dice';
+                                tasks.push(runScraperTask(label, () => scrapeDice(kw, loc), 25000));
+                            }
                         }
                     }
                     if (customUrls.length > 0) tasks.push(runScraperTask('Custom Career Pages', () => scrapeCustomPages(customUrls), 25000));
                     if (sources.weworkremotely || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.nodesk) {
-                        tasks.push(runScraperTask('Remote Aggregators', () => scrapeRemoteAggregators(keyword, sources), 15000));
+                        // Remote aggregators: keyword-flexible APIs — rotate keywords, single location pass
+                        for (const kw of scraperKeywords) {
+                            tasks.push(runScraperTask(scraperKeywords.length > 1 ? `Remote Aggregators (${kw})` : 'Remote Aggregators', () => scrapeRemoteAggregators(kw, sources), 15000));
+                        }
                     }
                     if (sources.himalayas) {
-                        tasks.push(runScraperTask('Himalayas', () => scrapeHimalayas(keyword), 10000));
+                        for (const kw of scraperKeywords) {
+                            tasks.push(runScraperTask(scraperKeywords.length > 1 ? `Himalayas (${kw})` : 'Himalayas', () => scrapeHimalayas(kw), 10000));
+                        }
                     }
                     if (sources.jobicy) {
-                        tasks.push(runScraperTask('Jobicy', () => scrapeJobicy(keyword), 10000));
+                        for (const kw of scraperKeywords) {
+                            tasks.push(runScraperTask(scraperKeywords.length > 1 ? `Jobicy (${kw})` : 'Jobicy', () => scrapeJobicy(kw), 10000));
+                        }
                     }
                     if (sources.jobspresso) {
-                        tasks.push(runScraperTask('Jobspresso', () => scrapeJobspresso(keyword), 10000));
+                        for (const kw of scraperKeywords) {
+                            tasks.push(runScraperTask(scraperKeywords.length > 1 ? `Jobspresso (${kw})` : 'Jobspresso', () => scrapeJobspresso(kw), 10000));
+                        }
                     }
                     if (sources.snagajob) {
-                        for (const loc of locationList) {
-                            tasks.push(runScraperTask(locationList.length > 1 ? `Snagajob (${loc})` : 'Snagajob', () => scrapeSnagajob(keyword, loc), 25000));
+                        for (const kw of scraperKeywords) {
+                            for (const loc of locationList) {
+                                const label = scraperKeywords.length > 1 || locationList.length > 1 ? `Snagajob (${kw} · ${loc})` : 'Snagajob';
+                                tasks.push(runScraperTask(label, () => scrapeSnagajob(kw, loc), 25000));
+                            }
                         }
                     }
                     if (sources.builtin) {
-                        for (const loc of locationList) {
-                            tasks.push(runScraperTask(locationList.length > 1 ? `Built In (${loc})` : 'Built In', () => scrapeBuiltIn(keyword, loc), 25000));
+                        for (const kw of scraperKeywords) {
+                            for (const loc of locationList) {
+                                const label = scraperKeywords.length > 1 || locationList.length > 1 ? `Built In (${kw} · ${loc})` : 'Built In';
+                                tasks.push(runScraperTask(label, () => scrapeBuiltIn(kw, loc), 25000));
+                            }
                         }
                     }
                     if (sources.usajobs) {
-                        for (const loc of locationList) {
-                            tasks.push(runScraperTask(locationList.length > 1 ? `USAJobs (${loc})` : 'USAJobs', () => scrapeUSAJobs(keyword, loc), 20000));
+                        for (const kw of scraperKeywords) {
+                            for (const loc of locationList) {
+                                const label = scraperKeywords.length > 1 || locationList.length > 1 ? `USAJobs (${kw} · ${loc})` : 'USAJobs';
+                                tasks.push(runScraperTask(label, () => scrapeUSAJobs(kw, loc), 20000));
+                            }
                         }
                     }
                     if (sources.remotepoc && (isPro || !globalSettings?.remotepocIsPro)) {
