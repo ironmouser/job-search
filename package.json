@@ -11,7 +11,8 @@
     "lint": "eslint",
     "upload:lost-gif": "node scripts/upload-lost-gif.js",
     "upload:gifs": "node scripts/upload-all-gifs.js",
-    "upload:webp": "node scripts/upload-webp.js"
+    "upload:webp": "node scripts/upload-webp.js",
+    "upload:mp4": "node scripts/upload-mp4.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

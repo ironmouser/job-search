@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-const ANIMATION_SEQUENCE = ['thumbs.webp', 'lasso.webp', 'head.webp', 'fly.webp'];
+const ANIMATION_SEQUENCE = ['thumbs.mp4', 'lasso.mp4', 'head.mp4', 'fly.mp4'];
 
 /**
  * Returns a random index from 0 to total-1 that is guaranteed not equal to currentIndex.
@@ -34,15 +34,18 @@ export default function SyncOverlay({
 }) {
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   useEffect(() => {
     setMounted(true);
 
-    // Eagerly preload WebP files into browser cache on mount
+    // Eagerly preload MP4 video files into browser cache on mount
     if (typeof window !== 'undefined') {
       ANIMATION_SEQUENCE.forEach(filename => {
-        const img = new Image();
-        img.src = `/${filename}`;
+        fetch(`/${filename}`, { cache: 'force-cache' }).catch(() => {});
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.src = `/${filename}`;
       });
     }
   }, []);
@@ -75,6 +78,17 @@ export default function SyncOverlay({
       if (interval) clearInterval(interval);
     };
   }, [isSyncing]);
+
+  // Ensure the active video plays continuously
+  useEffect(() => {
+    if (isSyncing) {
+      const activeVideo = videoRefs.current[activeAnimIndex];
+      if (activeVideo) {
+        activeVideo.currentTime = 0;
+        activeVideo.play().catch(() => {});
+      }
+    }
+  }, [activeAnimIndex, isSyncing]);
 
   if (!isSyncing || !mounted) return null;
 
@@ -197,7 +211,7 @@ export default function SyncOverlay({
           </div>
         </div>
         
-        {/* Animated WebP Image Container displaying 10-second looping sequence flush against bottom edge */}
+        {/* MP4 Video Container displaying 10-second looping sequence flush against bottom edge */}
         <div className="tenor-gif-container" style={{ position: 'relative', width: '100%', height: '270px', overflow: 'hidden' }}>
           {ANIMATION_SEQUENCE.map((filename, index) => {
             const isActive = activeAnimIndex === index;
@@ -221,15 +235,27 @@ export default function SyncOverlay({
                   overflow: 'hidden',
                 }}
               >
-                <img
+                <video
+                  ref={el => { videoRefs.current[index] = el; }}
                   src={`/${filename}`}
-                  alt={`Syncing animation ${index + 1}`}
-                  loading="eager"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls={false}
+                  disablePictureInPicture
+                  disableRemotePlayback
+                  preload="auto"
                   style={{
                     width: '70%',
                     height: '70%',
                     objectFit: 'contain',
                     display: 'block',
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    outline: 'none',
+                    border: 'none',
                   }}
                 />
               </div>
