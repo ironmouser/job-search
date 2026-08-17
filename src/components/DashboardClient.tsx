@@ -2025,37 +2025,42 @@ export default function DashboardClient({
       {/* Bulk Action Bar when jobs are checked */}
       {checkedJobs.size > 0 && (
         <div
+          className="dashboard-bulk-bar"
           style={{
             position: 'fixed',
             bottom: '5.5rem',
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 9970,
-            background: 'var(--bg-secondary, #0f172a)',
-            border: '1px solid var(--accent-primary, #2563eb)',
+            background: '#0f172a',
+            border: '1px solid #2563eb',
             borderRadius: '9999px',
             padding: '0.6rem 1.25rem',
-            boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(37, 99, 235, 0.25)',
             display: 'flex',
             alignItems: 'center',
             gap: '0.85rem',
-            color: 'var(--text-primary, #f8fafc)',
+            color: '#f8fafc',
             fontSize: '0.85rem',
             fontWeight: 600,
           }}
         >
-          <span>{checkedJobs.size} Selected</span>
+          <span style={{ color: '#f8fafc', whiteSpace: 'nowrap' }}>
+            {checkedJobs.size} Selected
+          </span>
 
           <button
             onClick={handleStartBatchApply}
             className="btn-primary"
             style={{
-              padding: '0.4rem 0.9rem',
-              fontSize: '0.8rem',
+              padding: '0.45rem 1rem',
+              fontSize: '0.82rem',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               borderRadius: '9999px',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
             }}
           >
             <Bot size={16} /> 1-Click Auto Apply ({checkedJobs.size})
@@ -2063,15 +2068,32 @@ export default function DashboardClient({
 
           <button
             onClick={() => setIsCleanupModalOpen(true)}
-            className="btn-outline"
-            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', borderRadius: '9999px' }}
+            className="bulk-dock-btn-outline"
+            style={{
+              padding: '0.45rem 0.85rem',
+              fontSize: '0.82rem',
+              borderRadius: '9999px',
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
           >
             Archive / Delete
           </button>
 
           <button
             onClick={() => setCheckedJobs(new Set())}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem' }}
+            className="bulk-dock-deselect-btn"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              padding: '0.45rem 0.25rem',
+            }}
           >
             Deselect All
           </button>

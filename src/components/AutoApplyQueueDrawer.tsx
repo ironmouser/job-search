@@ -160,19 +160,19 @@ export function AutoApplyQueueDrawer({
         zIndex: 9980,
         width: '420px',
         maxWidth: 'calc(100vw - 3rem)',
-        background: 'var(--bg-secondary, #0f172a)',
-        border: '1px solid var(--border-glass, #334155)',
+        background: 'var(--card, #111111)',
+        border: '1px solid var(--border, #334155)',
         borderRadius: '12px',
         padding: '1.1rem',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
         display: 'flex',
         flexDirection: 'column',
         gap: '0.85rem',
-        color: 'var(--text-primary, #f8fafc)',
+        color: 'var(--foreground, #f8fafc)',
       }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass, #334155)', paddingBottom: '0.6rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border, rgba(255, 255, 255, 0.1))', paddingBottom: '0.6rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Bot size={18} color="#3b82f6" />
           <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>
@@ -182,14 +182,14 @@ export function AutoApplyQueueDrawer({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
           <button
             onClick={() => setCollapsed(true)}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+            style={{ background: 'none', border: 'none', color: 'var(--muted-foreground, #94a3b8)', cursor: 'pointer', padding: '2px' }}
             title="Minimize Drawer"
           >
             <ChevronDown size={17} />
           </button>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+            style={{ background: 'none', border: 'none', color: 'var(--muted-foreground, #94a3b8)', cursor: 'pointer', padding: '2px' }}
             title="Close Drawer"
           >
             <X size={17} />
@@ -198,7 +198,7 @@ export function AutoApplyQueueDrawer({
       </div>
 
       {/* Stats Summary */}
-      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.78rem', color: '#94a3b8' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.78rem', color: 'var(--muted-foreground, #94a3b8)' }}>
         <span style={{ color: '#3b82f6', fontWeight: 600 }}>Active: {activeCount}/{MAX_CONCURRENT_ACTIVE}</span>
         <span>Queued: {queuedCount}</span>
         <span style={{ color: '#10b981', fontWeight: 600 }}>Applied: {completedCount}</span>
@@ -220,14 +220,14 @@ export function AutoApplyQueueDrawer({
                 justifyContent: 'space-between',
                 padding: '0.5rem 0.75rem',
                 borderRadius: '6px',
-                background: isAct ? 'rgba(59, 130, 246, 0.1)' : isApp ? 'rgba(16, 185, 129, 0.1)' : isFail ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-primary, #1e293b)',
-                border: `1px solid ${isAct ? 'rgba(59, 130, 246, 0.3)' : isApp ? 'rgba(16, 185, 129, 0.3)' : isFail ? 'rgba(239, 68, 68, 0.3)' : 'var(--border-glass, #334155)'}`,
+                background: isAct ? 'rgba(59, 130, 246, 0.1)' : isApp ? 'rgba(16, 185, 129, 0.1)' : isFail ? 'rgba(239, 68, 68, 0.1)' : 'var(--secondary, #1e293b)',
+                border: `1px solid ${isAct ? 'rgba(59, 130, 246, 0.3)' : isApp ? 'rgba(16, 185, 129, 0.3)' : isFail ? 'rgba(239, 68, 68, 0.3)' : 'var(--border, #334155)'}`,
                 fontSize: '0.82rem',
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', overflow: 'hidden', paddingRight: '0.5rem' }}>
                 <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
-                <span style={{ fontSize: '0.73rem', color: '#94a3b8' }}>{item.company}</span>
+                <span style={{ fontSize: '0.73rem', color: 'var(--muted-foreground, #94a3b8)' }}>{item.company}</span>
               </div>
               <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 {isAct && <Loader2 size={15} color="#3b82f6" className="animate-spin" />}

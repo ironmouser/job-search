@@ -3024,6 +3024,47 @@ body:not(.light-theme) .job-action-bar-divider {
   }
 }
 
+/* ─── Dashboard Bulk Action Floating Bar (1-Click Auto Apply Floating Dock) ─── */
+
+.dashboard-bulk-bar {
+  animation: bulkBarPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bulkBarPopIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.bulk-dock-btn-outline {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bulk-dock-btn-outline:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  color: #ffffff !important;
+}
+
+.bulk-dock-deselect-btn {
+  color: #cbd5e1 !important;
+  transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+
+.bulk-dock-deselect-btn:hover {
+  color: #ffffff !important;
+  text-decoration: underline;
+}
+
 /* ─── 4-Step Workflow Dock & Popover Styling ───────────────────────────── */
 
 .job-step-btn {
