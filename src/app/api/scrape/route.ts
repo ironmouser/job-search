@@ -9,6 +9,7 @@ import { getEffectiveTier } from '@/lib/tier';
 
 
 import { isUsLocation, isRemoteLocation, extractStateAbbr, isOutsideUsLocation } from '@/lib/locationUtils';
+import { expandSearchKeywords } from '@/lib/keywordExpansion';
 
 export async function POST(request: Request) {
     try {
@@ -51,20 +52,47 @@ export async function POST(request: Request) {
             where: { id: userId },
             select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
         });
-        const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
-        let sources = settings.sources ? { ...settings.sources } : (isPro ? { ...DEFAULT_PRO_SOURCES } : { greenhouse: true, weworkremotely: true, remotive: true, nodesk: true, himalayas: true, jobicy: true, jobspresso: true });
 
-        const FREE_ALLOWED_SOURCES = new Set(['greenhouse', 'weworkremotely', 'remotive', 'nodesk', 'himalayas', 'jobicy', 'jobspresso']);
+        // New users in their 7-day Pro Free Trial or active Pro subscribers evaluate to 'PRO'
+        const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
+
+        const DEFAULT_FREE_SOURCES: Record<string, boolean> = {
+            greenhouse: true,
+            weworkremotely: true,
+            remotive: true,
+            nodesk: true,
+            himalayas: true,
+            jobicy: true,
+            jobspresso: true,
+            snagajob: true,
+            usajobs: true,
+            builtin: true,
+        };
+
+        let sources = settings.sources ? { ...settings.sources } : (isPro ? { ...DEFAULT_PRO_SOURCES } : { ...DEFAULT_FREE_SOURCES });
+
+        const FREE_ALLOWED_SOURCES = new Set([
+            'greenhouse',
+            'weworkremotely',
+            'remotive',
+            'nodesk',
+            'himalayas',
+            'jobicy',
+            'jobspresso',
+            'snagajob',
+            'usajobs',
+            'builtin'
+        ]);
 
         if (!isPro) {
-            // Free tier users ONLY have access to approved free sources
+            // Post-trial Free tier users are restricted to standard open sources
             for (const key of Object.keys(sources)) {
                 if (!FREE_ALLOWED_SOURCES.has(key)) {
                     sources[key] = false;
                 }
             }
         } else {
-            // Ensure any un-configured Pro sources use DEFAULT_PRO_SOURCES
+            // Active Pro Trial users and Pro subscribers have full access to all premium sources (Indeed, LinkedIn, ZipRecruiter, Dice, etc.)
             for (const [key, defaultVal] of Object.entries(DEFAULT_PRO_SOURCES)) {
                 if (sources[key] === undefined) {
                     sources[key] = defaultVal;
@@ -93,17 +121,21 @@ export async function POST(request: Request) {
                     let totalRawJobsFound = 0;
                     const allRawJobs: any[] = [];
 
-                    // DB-First Instant Matching: Pull recent matching jobs from global database pool
+                    // DB-First Instant Matching: Pull recent matching jobs from global database pool across expanded keywords (14-day window)
                     try {
+                        const expandedKeywords = expandSearchKeywords(keyword);
+                        const orConditions = expandedKeywords.flatMap(kw => [
+                            { title: { contains: kw, mode: 'insensitive' as const } },
+                            { description: { contains: kw, mode: 'insensitive' as const } }
+                        ]);
+
                         const dbFirstJobs = await prisma.job.findMany({
                             where: {
-                                createdAt: { gte: new Date(Date.now() - 48 * 60 * 60 * 1000) },
-                                OR: [
-                                    { title: { contains: keyword, mode: 'insensitive' } },
-                                    { description: { contains: keyword, mode: 'insensitive' } }
-                                ]
+                                createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
+                                OR: orConditions
                             },
-                            take: 100
+                            take: 200,
+                            orderBy: { createdAt: 'desc' }
                         });
                         if (dbFirstJobs.length > 0) {
                             allRawJobs.push(...dbFirstJobs);

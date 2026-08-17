@@ -269,7 +269,7 @@ export async function normalizeAndSaveJobs(
                     messages: [
                         {
                             role: 'system',
-                            content: 'You are an AI recruitment triage filter. Review candidate job listings against the candidate search criteria and background. Discard promotions, spam, and roles with incompatible career tracks or seniority mismatches. Return ONLY valid JSON matching: {"results": [{"index": 0, "pass": true, "reason": "Relevant role"}]}'
+                            content: 'You are an AI recruitment triage filter. Review candidate job listings against the candidate search criteria and background. Discard obvious spam, completely unrelated fields, and severe seniority mismatches. Allow adjacent and relevant career track titles (e.g., Account Executive or Client Success for Account Manager; Software Engineer or Full Stack for Developer). Return ONLY valid JSON matching: {"results": [{"index": 0, "pass": true, "reason": "Relevant role"}]}'
                         },
                         {
                             role: 'user',

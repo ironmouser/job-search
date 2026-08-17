@@ -53,18 +53,33 @@ Seeking high-growth tech opportunities as a ${searchKeyword}.
             sources: sources
         };
 
-        // 1. Ensure User record exists in DB first
-        await prisma.user.upsert({
+        // 1. Ensure User record exists in DB first with active 7-day Pro Free Trial if new
+        const existingUser = await prisma.user.findUnique({
             where: { id: session.user.id },
-            update: { isOnboarded: true },
-            create: {
-                id: session.user.id,
-                email: session.user.email || 'user@example.com',
-                name: session.user.name || 'User',
-                isOnboarded: true,
-                planTier: 'FREE',
-            }
+            select: { trialEndsAt: true, planTier: true }
         });
+
+        if (!existingUser) {
+            await prisma.user.create({
+                data: {
+                    id: session.user.id,
+                    email: session.user.email || 'user@example.com',
+                    name: session.user.name || 'User',
+                    isOnboarded: true,
+                    planTier: 'FREE',
+                    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                }
+            });
+        } else {
+            const updateFields: any = { isOnboarded: true };
+            if (!existingUser.trialEndsAt && existingUser.planTier === 'FREE') {
+                updateFields.trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            }
+            await prisma.user.update({
+                where: { id: session.user.id },
+                data: updateFields
+            });
+        }
 
         // 2. Create or Update User Preferences
         await prisma.userPreferences.upsert({
