@@ -11,9 +11,12 @@ export async function POST() {
         }
 
         const result = await restoreMissingJobTitles();
+        const msg = result.cleanedCount > 0
+            ? `Restored ${result.restoredCount} user job titles and cleaned ${result.cleanedCount} invalid entries.`
+            : `Successfully restored job titles for ${result.restoredCount} user(s).`;
         return NextResponse.json({
             success: true,
-            message: `Successfully restored job titles for ${result.restoredCount} user(s).`,
+            message: msg,
             data: result
         });
     } catch (e: any) {
