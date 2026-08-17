@@ -280,13 +280,25 @@ export class WorkflowEngine {
     }
 
     if (err instanceof InterventionError) {
-      await logger.warn('unhandled_intervention_caught', `Intervention required: ${err.reason} - ${err.description}`);
+      let finalReason = err.reason as InterventionReason;
+      let finalDesc = err.description;
+
+      // Always re-check if page indicates the job is closed/expired before prompting user
+      try {
+        const closedCheck = await detectJobClosed(browser, logger);
+        if (closedCheck.isClosed) {
+          finalReason = InterventionReason.JOB_CLOSED;
+          finalDesc = closedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.';
+        }
+      } catch {}
+
+      await logger.warn('unhandled_intervention_caught', `Intervention required: ${finalReason} - ${finalDesc}`);
       try {
         const interventionManager = new InterventionManager(session.sessionId, this.apiClient, logger);
         await interventionManager.requestIntervention(
           browser,
-          err.reason as InterventionReason,
-          err.description,
+          finalReason,
+          finalDesc,
           err.pageUrl
         );
       } catch (interventionErr) {
@@ -304,7 +316,7 @@ export class WorkflowEngine {
           await logger.flush();
           return await this.fail(session.sessionId, logger, 'intervention_timeout', interventionErr.message);
         }
-        return await this.fail(session.sessionId, logger, err.reason, err.description);
+        return await this.fail(session.sessionId, logger, finalReason, finalDesc);
       }
     }
 
@@ -346,11 +358,23 @@ export class WorkflowEngine {
       } catch (err) {
         if (err instanceof InterventionError) {
           attempts++;
+          let finalReason = err.reason as InterventionReason;
+          let finalDesc = err.description;
+
+          // Always check if page indicates the job is closed/expired before prompting user
+          try {
+            const closedCheck = await detectJobClosed(browser, logger);
+            if (closedCheck.isClosed) {
+              finalReason = InterventionReason.JOB_CLOSED;
+              finalDesc = closedCheck.reason || 'This position is no longer accepting applications or has been closed by the employer.';
+            }
+          } catch {}
+
           const interventionManager = new InterventionManager(sessionId, this.apiClient, logger);
           await interventionManager.requestIntervention(
             browser,
-            err.reason as InterventionReason,
-            err.description,
+            finalReason,
+            finalDesc,
             err.pageUrl
           );
 

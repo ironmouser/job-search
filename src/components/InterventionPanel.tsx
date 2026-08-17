@@ -25,8 +25,8 @@ const REASON_LABELS: Record<string, string> = {
   assessment_required:  'Candidate Assessment Required',
 };
 
-function getReasonIcon(reason: string, isUnsupportedOrFatal: boolean) {
-  if (reason === 'job_closed') return <ShieldAlert size={16} color="#ef4444" />;
+function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: boolean) {
+  if (isClosed || reason === 'job_closed') return <ShieldAlert size={16} color="#ef4444" />;
   if (isUnsupportedOrFatal) return <AlertTriangle size={16} color="#f97316" />;
   switch (reason) {
     case 'captcha': return <ShieldAlert size={16} color="#fbbf24" />;
@@ -98,7 +98,18 @@ export function InterventionPanel({
     }
   }
 
-  const isClosed = reason === 'job_closed';
+  const isClosed =
+    reason === 'job_closed' ||
+    description.toLowerCase().includes('no longer accepting') ||
+    description.toLowerCase().includes('no longer available') ||
+    description.toLowerCase().includes('position closed') ||
+    description.toLowerCase().includes('job closed') ||
+    description.toLowerCase().includes('has expired') ||
+    description.toLowerCase().includes('been filled') ||
+    description.toLowerCase().includes('applications are closed') ||
+    description.toLowerCase().includes('publication is closed') ||
+    description.toLowerCase().includes('opening has been closed') ||
+    description.toLowerCase().includes('not accepting applications');
 
   const isUnsupportedOrFatal =
     !isClosed && (
@@ -176,9 +187,9 @@ export function InterventionPanel({
       id={`intervention-panel-${interventionId}`}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        {getReasonIcon(reason, isUnsupportedOrFatal)}
+        {getReasonIcon(reason, isClosed, isUnsupportedOrFatal)}
         <span style={{ fontWeight: 700, color: badgeColor, fontSize: '0.95rem' }}>
-          {REASON_LABELS[reason] ?? reason}
+          {isClosed ? REASON_LABELS.job_closed : (REASON_LABELS[reason] ?? reason)}
         </span>
       </div>
 
@@ -189,7 +200,7 @@ export function InterventionPanel({
           if (match && match[1]) {
             displayDesc = `I did not have enough information to answer: "${match[1].trim()}"`;
           }
-        } else if (reason === 'job_closed') {
+        } else if (isClosed) {
           displayDesc = 'This job posting has been closed, filled, or is no longer accepting applications on the employer website.';
         }
         return (

@@ -7,29 +7,41 @@ export interface JobClosedDetectionResult {
   matchedText?: string;
 }
 
-// High-confidence patterns safe for banners, alerts, and HTML fallback
+// High-confidence patterns safe for page text, banners, alerts, and HTML fallback
 const STRICT_CLOSED_PATTERNS: RegExp[] = [
-  /no longer accepting applications/i,
-  /no longer accepting submissions/i,
+  /no longer accepting (?:applications|submissions|candidates|resumes)/i,
   /no longer open for applications/i,
   /not accepting applications at this time/i,
-  /we are no longer accepting applications/i,
-  /applications are (?:now )?closed/i,
-  /applications for this (?:position|role|job) are (?:now )?closed/i,
-  /this (?:position|role|job|opening|posting|vacancy|listing|requisition) (?:is|has been) (?:no longer available|closed|filled|expired|archived|paused|removed|cancelled)/i,
-  /this (?:position|role|job|opening|posting|vacancy|listing|requisition) is no longer (?:accepting applications|active|open|available)/i,
-  /the (?:job|position|role|posting) you are (?:looking for|trying to view) (?:has closed|is no longer available|has expired|is no longer active)/i,
+  /not currently accepting applications/i,
+  /we are no longer accepting/i,
+  /applications are (?:now |currently )?closed/i,
+  /applications for this (?:position|role|job|opening) are (?:now |currently )?closed/i,
+  /this (?:position|role|job|opening|posting|vacancy|listing|requisition) (?:is|has been) (?:no longer available|closed|filled|expired|archived|paused|removed|cancelled|inactive|ended)/i,
+  /this (?:position|role|job|opening|posting|vacancy|listing|requisition) is no longer (?:accepting applications|active|open|available|taking applications)/i,
+  /the (?:job|position|role|posting) you are (?:looking for|trying to view) (?:has closed|is no longer available|has expired|is no longer active|is closed)/i,
   /the job posting you are looking for has closed or expired/i,
   /the job you selected is no longer open for applications/i,
   /job (?:posting|listing) has expired/i,
   /posting has expired/i,
+  /listing has expired/i,
   /position (?:has been )?filled/i,
   /role (?:has been )?filled/i,
-  /vacancy (?:closed|expired)/i,
+  /job (?:has been )?filled/i,
+  /vacancy (?:closed|expired|filled)/i,
   /sorry,\s*(?:this\s*)?(?:job|position|role|opening)\s*(?:is no longer available|has expired|is no longer open|is closed)/i,
   /this publication is closed/i,
   /this opening has been closed/i,
   /this job is no longer open/i,
+  /this job is closed/i,
+  /this position is closed/i,
+  /this role is closed/i,
+  /application deadline has passed/i,
+  /deadline for applications has passed/i,
+  /submissions are closed/i,
+  /this job has been archived/i,
+  /job is inactive/i,
+  /this posting is inactive/i,
+  /this listing is inactive/i,
 ];
 
 // Short standalone badge/chip patterns (matched against trimmed text in dedicated status elements)
@@ -41,6 +53,10 @@ const STANDALONE_BADGE_PATTERNS: RegExp[] = [
   /^\s*position filled\s*$/i,
   /^\s*job closed\s*$/i,
   /^\s*position closed\s*$/i,
+  /^\s*no longer available\s*$/i,
+  /^\s*no longer accepting applications\s*$/i,
+  /^\s*applications closed\s*$/i,
+  /^\s*inactive\s*$/i,
 ];
 
 /**
@@ -57,10 +73,13 @@ export async function detectJobClosed(
   }
 
   try {
-    // 1. Evaluate DOM elements (banners, alerts, status chips, headings, error containers)
+    // 1. Evaluate DOM elements & clean innerText directly from the browser context
     const domDetection = await page.evaluate(() => {
-      const bannerSnippets: string[] = [];
+      const docTitle = document.title || '';
+      const bodyText = document.body ? (document.body.innerText || document.body.textContent || '') : '';
+      
       const badgeSnippets: string[] = [];
+      const bannerSnippets: string[] = [];
 
       // Dedicated status/badge elements
       const badgeSelectors = [
@@ -69,8 +88,13 @@ export async function detectJobClosed(
         '[class*="badge"]',
         '[class*="chip"]',
         '[class*="tag"]',
+        '[data-test*="closed"]',
+        '[data-testid*="closed"]',
         '.artdeco-inline-feedback',
+        '.artdeco-inline-feedback__message',
         '.jobs-details__top-card',
+        '.jobs-box__html-content',
+        'figcaption',
       ];
 
       for (const sel of badgeSelectors) {
@@ -78,7 +102,7 @@ export async function detectJobClosed(
           const els = document.querySelectorAll(sel);
           els.forEach(el => {
             const text = ((el as HTMLElement).innerText || el.textContent || '').trim();
-            if (text && text.length < 100) {
+            if (text && text.length < 300) {
               badgeSnippets.push(text);
             }
           });
@@ -92,6 +116,8 @@ export async function detectJobClosed(
         '[class*="banner"]',
         '[class*="warning"]',
         '[class*="error"]',
+        '[class*="notice"]',
+        '[class*="message"]',
         '[role="alert"]',
         '[role="status"]',
         'header',
@@ -105,15 +131,33 @@ export async function detectJobClosed(
           const els = document.querySelectorAll(sel);
           els.forEach(el => {
             const text = ((el as HTMLElement).innerText || el.textContent || '').trim();
-            if (text && text.length < 500) {
+            if (text && text.length < 1000) {
               bannerSnippets.push(text);
             }
           });
         } catch {}
       }
 
-      return { bannerSnippets, badgeSnippets };
-    }).catch(() => ({ bannerSnippets: [] as string[], badgeSnippets: [] as string[] }));
+      return { docTitle, bodyText, badgeSnippets, bannerSnippets };
+    }).catch(() => ({ docTitle: '', bodyText: '', badgeSnippets: [] as string[], bannerSnippets: [] as string[] }));
+
+    // Check document title (e.g. "Job Closed - Company")
+    if (domDetection.docTitle) {
+      for (const pattern of STRICT_CLOSED_PATTERNS) {
+        const match = domDetection.docTitle.match(pattern);
+        if (match) {
+          const matchedText = match[0];
+          if (logger) {
+            await logger.warn('job_closed_detected_title', `Detected closed job status in title: "${matchedText}"`);
+          }
+          return {
+            isClosed: true,
+            reason: `This job is no longer accepting applications (${matchedText}).`,
+            matchedText,
+          };
+        }
+      }
+    }
 
     // Check standalone badge elements
     for (const text of domDetection.badgeSnippets) {
@@ -131,14 +175,32 @@ export async function detectJobClosed(
       }
     }
 
-    // Check banner elements with strict patterns
+    // Check banner/alert elements with strict patterns
     for (const text of domDetection.bannerSnippets) {
       for (const pattern of STRICT_CLOSED_PATTERNS) {
         const match = text.match(pattern);
         if (match) {
           const matchedText = match[0];
           if (logger) {
-            await logger.warn('job_closed_detected', `Detected closed job posting: "${matchedText}"`);
+            await logger.warn('job_closed_detected_banner', `Detected closed job posting banner: "${matchedText}"`);
+          }
+          return {
+            isClosed: true,
+            reason: `This job is no longer accepting applications (${matchedText}).`,
+            matchedText,
+          };
+        }
+      }
+    }
+
+    // Check full visible rendered page text (document.body.innerText)
+    if (domDetection.bodyText) {
+      for (const pattern of STRICT_CLOSED_PATTERNS) {
+        const match = domDetection.bodyText.match(pattern);
+        if (match) {
+          const matchedText = match[0];
+          if (logger) {
+            await logger.warn('job_closed_detected_body', `Detected closed job status in body text: "${matchedText}"`);
           }
           return {
             isClosed: true,

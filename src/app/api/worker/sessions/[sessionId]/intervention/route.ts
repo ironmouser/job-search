@@ -42,6 +42,21 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
+    const isJobClosed =
+      body.reason === InterventionReason.JOB_CLOSED ||
+      body.description?.toLowerCase().includes('no longer accepting') ||
+      body.description?.toLowerCase().includes('no longer available') ||
+      body.description?.toLowerCase().includes('position closed') ||
+      body.description?.toLowerCase().includes('job closed') ||
+      body.description?.toLowerCase().includes('has expired') ||
+      body.description?.toLowerCase().includes('been filled') ||
+      body.description?.toLowerCase().includes('applications are closed') ||
+      body.description?.toLowerCase().includes('publication is closed') ||
+      body.description?.toLowerCase().includes('opening has been closed') ||
+      body.description?.toLowerCase().includes('not accepting applications');
+
+    const effectiveReason = isJobClosed ? InterventionReason.JOB_CLOSED : body.reason;
+
     // Create the intervention record and update session status atomically
     const transactions: any[] = [
       prisma.interventionRequest.create({
@@ -49,7 +64,7 @@ export async function POST(
           sessionId,
           userId: session.userId,
           jobId: session.jobId,
-          reason: body.reason,
+          reason: effectiveReason,
           description: body.description,
           screenshotUrl: body.screenshotUrl ?? null,
           pageUrl: body.pageUrl ?? null,
@@ -60,13 +75,13 @@ export async function POST(
         data: {
           status: AutoApplyStatus.NEEDS_INTERVENTION,
           currentStep: 'needs_intervention',
-          failureReason: body.reason === InterventionReason.JOB_CLOSED ? 'job_closed' : undefined,
+          failureReason: isJobClosed ? 'job_closed' : undefined,
           failureDetails: body.description,
         },
       }),
     ];
 
-    if (body.reason === InterventionReason.JOB_CLOSED) {
+    if (isJobClosed) {
       transactions.push(
         prisma.userJob.updateMany({
           where: { userId: session.userId, jobId: session.jobId },
