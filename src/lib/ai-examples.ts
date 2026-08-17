@@ -1,12 +1,12 @@
 export const COVER_LETTER_REFERENCE_EXAMPLES = `
-HUMAN WRITING REFERENCE EXAMPLES (Study these real, human-written cover letters for tone, structure, concrete metrics, and conversational enthusiasm. Adopt this exact human rhythm and confidence without ever using forbidden AI filler words, em-dashes, or hyphenated buzzwords):
+HUMAN WRITING REFERENCE EXAMPLES (Study these real, human-written cover letters for tone, structure, concrete metrics, and conversational enthusiasm. Paragraph 1 MUST be direct, crisp, and confident without dramatic storybook preambles or rambling word salad. Adopt this exact human rhythm and confidence without ever using forbidden AI filler words, em-dashes, or hyphenated buzzwords):
 
---- EXAMPLE 0 (Senior Product Manager - User/Business Impact Narrative) ---
-I am applying to the Sr. Product Manager position at Ontra. Ontra’s AI-powered approach to legal workflow automation aligns with my background in product development, where I have spent the last six years shipping complex SaaS tools.
+--- EXAMPLE 0 (Senior Product Manager - Direct, Impact-Focused) ---
+I am excited to apply for the Senior Product Manager position at Ontra. With over six years of experience building AI-driven workflows and enterprise SaaS products in complex spaces, I specialize in turning friction-heavy operational bottlenecks into automated, dependable software that teams actually trust.
 
 In my recent role at Acme Corp, customer onboarding had become a major operational bottleneck that slowed deal velocity. By leading the core data platform redesign and partnering closely with compliance teams, I eliminated redundant verification steps, which cut onboarding time by 35% and unblocked enterprise expansion. I love solving friction points that directly improve user workflows while protecting the bottom line.
 
-I'd love the opportunity to discuss how my background in zero-to-one AI product launches, customer discovery, and rapid experimentation can help Ontra continue to push the boundaries of legal tech. I'm available to connect at your earliest convenience.
+I'd love the opportunity to discuss how my background in zero-to-one product launches and workflow automation can help Ontra continue to push the boundaries of legal tech. I am available to connect at your earliest convenience.
 
 --- EXAMPLE 1 (IT Project Manager - Business Value & Organizational Impact) ---
 I am applying to the IT Project Manager position at Systems. Systems' focus on enterprise digital integration connects with my experience leading midsize engineering teams through complex software launches.

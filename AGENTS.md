@@ -12,10 +12,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 When writing or rewriting content for resumes, cover letters, networking messages, or Q&A:
 - **Role-Play**: Role-play as an experienced professional.
 - **No Dashes or Hyphens as Punctuation**: Do not use em-dashes ("—" or "--") or hyphens ("-") as punctuation to separate clauses. Use commas, periods, or natural phrasing instead.
-- **No AI Filler Words**: Avoid generic, robotic AI filler words like "thrilled," "passionate," "dynamic," "testament to," or "delve."
-- **Avoid Overly Ambitious Adverbs & AI Formulas**: Avoid formulaic phrases like "directly aligns with". Use natural, grounded phrasing instead (e.g. "aligns with my background in...", "connects with my work in...", "fits my experience in...").
+- **No AI Filler Words & Word Salad**: Avoid generic, robotic AI filler words like "thrilled," "passionate," "dynamic," "testament to," or "delve." Never use rambling, dramatic storybook preambles or rhetorical scenario openers (e.g. "A safe contractor waiting weeks...").
+- **Avoid Overly Ambitious Adverbs & AI Formulas**: Avoid formulaic phrases like "directly aligns with", "gives me a direct line into everything this role requires", or "taking on one of the hardest parts of". Use natural, grounded phrasing instead (e.g. "aligns with my background in...", "connects with my work in...", "fits my experience in...").
 - **Cover Letter Structure**: Split cover letters into exactly three short paragraphs:
-  - Paragraph 1: Why I am applying and my highest-level qualification.
+  - Paragraph 1 (2-3 sentences max): Direct, punchy application stating the exact role and company, your highest-level qualification/years of experience, and how your core strengths connect with their product focus. Start directly without fictional scenarios or rambling setup.
   - Paragraph 2: Focus on why what you did was important and how it benefited the company and/or users (e.g. solving core operational bottlenecks, eliminating user friction, or unblocking growth), connecting those proven outcomes to the job description rather than simply listing resume achievements.
   - Paragraph 3: A direct call to action for an interview.
 - **Creativity / Temperature**: Set creativity/temperature to 1.5 to ensure natural sentence variation.
