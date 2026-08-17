@@ -15,7 +15,79 @@ const JOB_BOARDS = [
   'wellfound.com',
   'greenhouse.io',
   'lever.co',
+  'ashbyhq.com',
+  'smartrecruiters.com',
+  'workday.com',
+  'jobvite.com',
+  'dice.com',
+  'builtin.com',
+  'levels.fyi',
+  'otta.com',
+  'hiring.cafe',
 ];
+
+const KNOWN_JOB_SENDERS = [
+  'linkedin.com',
+  'indeed.com',
+  'glassdoor.com',
+  'ziprecruiter.com',
+  'greenhouse.io',
+  'lever.co',
+  'ashbyhq.com',
+  'smartrecruiters.com',
+  'workday.com',
+  'jobvite.com',
+  'monster.com',
+  'wellfound.com',
+  'dice.com',
+  'builtin.com',
+  'levels.fyi',
+  'otta.com',
+  'hiring.cafe',
+  'talent',
+  'careers',
+  'recruiting',
+  'jobs',
+];
+
+const JOB_KEYWORDS = [
+  'job',
+  'role',
+  'opportunity',
+  'career',
+  'hiring',
+  'engineer',
+  'developer',
+  'position',
+  'application',
+  'interview',
+  'opening',
+  'alert',
+  'match',
+  'matches',
+  'recommended',
+  'applied',
+  'applicant',
+  'candidate',
+  'recruiter',
+  'employment',
+  'talent',
+  'offer',
+];
+
+const PERSONAL_DOMAINS = [
+  '@gmail.com',
+  '@yahoo.com',
+  '@outlook.com',
+  '@hotmail.com',
+  '@aol.com',
+  '@icloud.com',
+  '@protonmail.com',
+  '@proton.me',
+  '@zoho.com',
+];
+
+const MAX_CANDIDATE_EMAILS = 50;
 
 export async function fetchEmailsAndExtractJobs(
   userId: string,
@@ -23,7 +95,7 @@ export async function fetchEmailsAndExtractJobs(
 ) {
   onProgress?.(0, 'Connecting to IMAP mail server...');
   const prefs = await prisma.userPreferences.findUnique({
-    where: { userId }
+    where: { userId },
   });
 
   if (!prefs?.emailAddress || !prefs?.emailAppPassword) {
@@ -34,6 +106,7 @@ export async function fetchEmailsAndExtractJobs(
   const imapPort = prefs.imapPort || 993;
   const imapUser = prefs.emailAddress;
   const imapPass = decrypt(prefs.emailAppPassword);
+  const userEmail = (prefs.emailAddress || '').toLowerCase().trim();
 
   const client = new ImapFlow({
     host: imapHost,
@@ -50,104 +123,143 @@ export async function fetchEmailsAndExtractJobs(
     await client.connect();
     onProgress?.(0, 'Connected to mail server. Checking inbox...');
 
-    // 1. Get last sync time
+    // 1. Calculate incremental sync window (Max lookback: 7 days)
     const syncLog = await prisma.syncLog.findFirst({
-        where: { userId, syncType: 'email' },
-        select: { id: true, lastSyncedAt: true }
+      where: { userId, syncType: 'email' },
+      select: { id: true, lastSyncedAt: true },
     });
 
-    // Look back at least 7 days so repeated sync runs never miss recent job postings
-    const defaultLookback = new Date();
-    defaultLookback.setDate(defaultLookback.getDate() - 7);
-    let sinceDate = defaultLookback;
+    const maxLookbackDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+    let sinceDate = maxLookbackDate;
+
     if (syncLog?.lastSyncedAt) {
-      const lastSync = new Date(syncLog.lastSyncedAt);
-      const maxLookback = new Date();
-      maxLookback.setDate(maxLookback.getDate() - 14);
-      if (lastSync < defaultLookback) {
-        sinceDate = lastSync < maxLookback ? maxLookback : lastSync;
-      }
+      // 2-hour safety buffer to prevent missing in-flight emails or clock-skewed deliveries
+      const bufferedLastSync = new Date(new Date(syncLog.lastSyncedAt).getTime() - 2 * 60 * 60 * 1000);
+      // Use the buffered last sync if it is more recent than 7 days ago
+      sinceDate = bufferedLastSync > maxLookbackDate ? bufferedLastSync : maxLookbackDate;
     }
 
-    console.log(`Fetching emails since ${sinceDate.toISOString()}...`);
+    console.log(`[Email Sync] Fetching candidate emails since ${sinceDate.toISOString()}...`);
 
     const lock = await client.getMailboxLock('INBOX');
     try {
-      const messages = [];
-      // Fetch messages since the date
-      for await (const message of client.fetch({ since: sinceDate }, { source: true, envelope: true })) {
-        if (message.source) {
-          messages.push(message.source);
+      // Stage 1: Fast Envelope Scan & Pre-filter without downloading full bodies
+      onProgress?.(0, 'Scanning email headers for job alerts...');
+      const candidateHeaders: Array<{ uid: number; subject: string; from: string }> = [];
+
+      for await (const message of client.fetch({ since: sinceDate }, { envelope: true, uid: true })) {
+        const subject = message.envelope?.subject || '';
+        const fromAddress = message.envelope?.from?.[0]?.address?.toLowerCase() || '';
+        const fromName = message.envelope?.from?.[0]?.name?.toLowerCase() || '';
+
+        const isFromSelf = Boolean(userEmail && fromAddress === userEmail);
+        const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
+
+        // Skip non-self personal domain senders to avoid spam/phishing
+        if (!isFromSelf && isPersonalSender) {
+          continue;
+        }
+
+        const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
+        const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
+        const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
+
+        if (isFromSelf || isKnownJobSender || hasJobKeyword) {
+          candidateHeaders.push({
+            uid: message.uid,
+            subject,
+            from: fromAddress,
+          });
         }
       }
 
-      console.log(`Fetched ${messages.length} emails. Parsing job messages with AI...`);
-      onProgress?.(0, `Fetched ${messages.length} email messages. Extracting job postings...`);
-      const candidatePayloads = [];
+      console.log(`[Email Sync] Discovered ${candidateHeaders.length} matching job email headers.`);
 
-      for (const source of messages) {
-        const parsed = await simpleParser(source);
-        const text = parsed.text || '';
-        const html = parsed.html || '';
-        const subject = parsed.subject || '';
-
-        // Filter out emails from personal/free domains to avoid scammers, unless sent/forwarded by the user
-        const fromAddress = parsed.from?.value?.[0]?.address?.toLowerCase() || '';
-        const userEmail = (prefs.emailAddress || '').toLowerCase().trim();
-        const isFromSelf = userEmail && fromAddress === userEmail;
-        const personalDomains = ['@gmail.com', '@yahoo.com', '@outlook.com', '@hotmail.com', '@aol.com', '@icloud.com'];
-        if (!isFromSelf && personalDomains.some(domain => fromAddress.endsWith(domain))) {
-             continue;
+      if (candidateHeaders.length === 0) {
+        onProgress?.(0, 'No new job alert emails found since last sync.');
+        // Update sync log even if no new emails to move the window forward
+        if (syncLog) {
+          await prisma.syncLog.update({
+            where: { id: syncLog.id },
+            data: { lastSyncedAt: new Date() },
+          });
+        } else {
+          await prisma.syncLog.create({
+            data: { userId, syncType: 'email', lastSyncedAt: new Date() },
+          });
         }
+        return 0;
+      }
 
-        // Clean HTML to text if plain text is empty
-        const htmlText = html
-          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        const effectiveText = text.trim() || htmlText;
+      // Stage 2: Cap candidate emails at 50 (most recent first)
+      const selectedCandidates = candidateHeaders.slice(-MAX_CANDIDATE_EMAILS).reverse();
+      onProgress?.(0, `Found ${selectedCandidates.length} candidate job alert email${selectedCandidates.length === 1 ? '' : 's'}. Downloading content...`);
 
-        // Pre-filter: Check if the email likely contains a job
-        const emailContent = `${subject} ${effectiveText}`.toLowerCase();
-        const jobKeywords = ['job', 'role', 'opportunity', 'career', 'hiring', 'engineer', 'developer', 'position', 'application', 'manager', 'director', 'interview', 'opening'];
-        const looksLikeJobEmail = jobKeywords.some(keyword => emailContent.includes(keyword));
+      const candidatePayloads: Array<{ emailContentForAI: string; subject: string }> = [];
 
-        if (!looksLikeJobEmail) continue;
+      // Download content for selected UIDs
+      for (let i = 0; i < selectedCandidates.length; i++) {
+        const item = selectedCandidates[i];
+        try {
+          const downloadResult = await client.download(String(item.uid), undefined, { uid: true });
+          if (!downloadResult?.content) continue;
 
-        // Extract all unique URLs from HTML
-        const urlRegex = /(https?:\/\/[^\s<"']+)/g;
-        const matches = html.match(urlRegex) || [];
-        
-        // Filter out media/assets and obvious non-job links
-        const uniqueUrls = Array.from(new Set(matches)).filter(u => {
-             const lower = u.toLowerCase();
-             if (lower.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf)$/i)) return false;
-             if (lower.includes('unsubscribe') || lower.includes('preferences') || lower.includes('notifications') || lower.includes('privacy')) return false;
-             return true;
-        });
+          const parsed = await simpleParser(downloadResult.content);
+          const text = (parsed.text || '').trim();
+          const html = parsed.html || '';
+          const subject = parsed.subject || item.subject || '';
 
-        if (!effectiveText && uniqueUrls.length === 0) continue;
+          // Clean HTML to text if plain text is minimal
+          const htmlText = html
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
 
-        candidatePayloads.push({
-          emailContentForAI: `
+          const effectiveText = text || htmlText;
+
+          // Extract job links from HTML and text
+          const urlRegex = /(https?:\/\/[^\s<"']+)/g;
+          const htmlUrls = html.match(urlRegex) || [];
+          const textUrls = effectiveText.match(urlRegex) || [];
+          const allUrls = Array.from(new Set([...htmlUrls, ...textUrls])).filter(u => {
+            const lower = u.toLowerCase();
+            if (lower.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf|webp)$/i)) return false;
+            if (lower.includes('unsubscribe') || lower.includes('preferences') || lower.includes('notifications') || lower.includes('privacy') || lower.includes('mailto:')) return false;
+            return true;
+          });
+
+          if (!effectiveText && allUrls.length === 0) continue;
+
+          // Focus snippet for AI processing (first 4,000 chars is sufficient for job titles/snippets)
+          const textSnippet = effectiveText.slice(0, 4000);
+
+          candidatePayloads.push({
+            subject,
+            emailContentForAI: `
 EMAIL SUBJECT:
 ${subject}
 
 EMAIL TEXT:
-${effectiveText}
+${textSnippet}
 
 LINKS FOUND IN EMAIL:
-${uniqueUrls.join('\n')}
-          `
-        });
+${allUrls.slice(0, 30).join('\n')}
+            `.trim(),
+          });
+        } catch (msgErr) {
+          console.warn(`[Email Sync] Warning: failed to parse message UID ${item.uid}:`, msgErr);
+        }
       }
 
+      onProgress?.(0, `Processing ${candidatePayloads.length} email message${candidatePayloads.length === 1 ? '' : 's'} for job postings...`);
+
+      // Stage 3: AI Job Extraction in concurrent batches of 5
       let runningFoundCount = 0;
-      // AI extractions in parallel batches
       const extractedJobBatches: any[][] = [];
       const batchSize = 5;
+
       for (let i = 0; i < candidatePayloads.length; i += batchSize) {
         const chunk = candidatePayloads.slice(i, i + batchSize);
         const batchResults = await Promise.all(
@@ -161,7 +273,10 @@ ${uniqueUrls.join('\n')}
               });
               if (Array.isArray(extracted) && extracted.length > 0) {
                 runningFoundCount += extracted.length;
-                onProgress?.(runningFoundCount, `Extracted ${runningFoundCount} job listing${runningFoundCount === 1 ? '' : 's'} from email...`);
+                onProgress?.(
+                  runningFoundCount,
+                  `Extracted ${runningFoundCount} job listing${runningFoundCount === 1 ? '' : 's'} from email alerts...`
+                );
               }
               return extracted;
             } catch (e) {
@@ -173,57 +288,63 @@ ${uniqueUrls.join('\n')}
         extractedJobBatches.push(...batchResults);
       }
 
+      // Stage 4: Format and Deduplicate Extracted Jobs
       const rawJobs: any[] = [];
       for (const extractedJobs of extractedJobBatches) {
         for (const job of extractedJobs) {
-             if (!job.url) continue;
+          if (!job.url) continue;
 
-             // Ensure tracking pixels or images aren't included
-             if (job.url.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf)$/i)) continue;
+          // Ensure tracking pixels or images aren't included
+          if (job.url.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf|webp)$/i)) continue;
 
-             const jobTitle = job.title?.trim();
-             if (!jobTitle || jobTitle.toLowerCase().includes('unknown')) {
-                 continue; // Skip invalid or unknown jobs
-             }
+          const jobTitle = job.title?.trim();
+          if (!jobTitle || jobTitle.toLowerCase().includes('unknown')) {
+            continue;
+          }
 
-             const boardMatch = JOB_BOARDS.find(b => job.url.toLowerCase().includes(b)) || job.source;
-             const sourceCategory = boardMatch ? `Email Sync (${boardMatch})` : 'Email Sync';
-             
-             const shortDescParts = [job.description, job.requirements].filter(Boolean).map(s => String(s).trim()).filter(s => s.length > 0);
-             const extractedDesc = shortDescParts.join('\n\n');
-             const finalDesc = (extractedDesc.length > 15) 
-               ? `${extractedDesc}\n\nFound via email link: ${job.url}`
-               : `Found via email link: ${job.url}`;
+          const boardMatch = JOB_BOARDS.find(b => job.url.toLowerCase().includes(b)) || job.source;
+          const sourceCategory = boardMatch ? `Email Sync (${boardMatch})` : 'Email Sync';
 
-             rawJobs.push({
-                title: jobTitle,
-                company: cleanCompanyName(job.company) || 'Unknown Company',
-                location: job.location || 'Remote/Unknown',
-                salary_range: job.salary_range || null,
-                description: finalDesc,
-                requirements: job.requirements || null,
-                url: job.url,
-                source: sourceCategory
-             });
+          const shortDescParts = [job.description, job.requirements]
+            .filter(Boolean)
+            .map(s => String(s).trim())
+            .filter(s => s.length > 0);
+          const extractedDesc = shortDescParts.join('\n\n');
+          const finalDesc =
+            extractedDesc.length > 15
+              ? `${extractedDesc}\n\nFound via email link: ${job.url}`
+              : `Found via email link: ${job.url}`;
+
+          rawJobs.push({
+            title: jobTitle,
+            company: cleanCompanyName(job.company) || 'Unknown Company',
+            location: job.location || 'Remote/Unknown',
+            salary_range: job.salary_range || null,
+            description: finalDesc,
+            requirements: job.requirements || null,
+            url: job.url,
+            source: sourceCategory,
+          });
         }
       }
 
-      // 3. Save to database
+      // Stage 5: Save & Normalize
       let newJobsSaved = 0;
       if (rawJobs.length > 0) {
         const result: any = await normalizeAndSaveJobs(rawJobs, userId, { isEmailSync: true, onProgress });
         newJobsSaved = typeof result?.newSavedCount === 'number' ? result.newSavedCount : (result?.length || rawJobs.length);
       }
 
+      // Update SyncLog timestamp
       if (syncLog) {
-         await prisma.syncLog.update({
-            where: { id: syncLog.id },
-            data: { lastSyncedAt: new Date() }
-         });
+        await prisma.syncLog.update({
+          where: { id: syncLog.id },
+          data: { lastSyncedAt: new Date() },
+        });
       } else {
-         await prisma.syncLog.create({
-            data: { userId, syncType: 'email', lastSyncedAt: new Date() }
-         });
+        await prisma.syncLog.create({
+          data: { userId, syncType: 'email', lastSyncedAt: new Date() },
+        });
       }
 
       // Log email sync execution run instance
@@ -240,7 +361,6 @@ ${uniqueUrls.join('\n')}
       }
 
       return newJobsSaved;
-
     } finally {
       lock.release();
     }
