@@ -4,6 +4,8 @@ import EmailProvider from "next-auth/providers/email"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
+import { headers } from "next/headers"
+import { parseDeviceType } from "@/lib/device-detection"
 import { evaluateAccountCollision } from "@/lib/anti-abuse/detector"
 
 export const authOptions: AuthOptions = {
@@ -138,10 +140,27 @@ export const authOptions: AuthOptions = {
       }
       if (user?.id) {
         try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: { trialEndsAt: true, planTier: true, isTrialDeferred: true }
-          });
+          let userAgent = '';
+          try {
+            const reqHeaders = await headers();
+            userAgent = reqHeaders.get('user-agent') || '';
+          } catch {
+            // headers() might not be available in certain environments
+          }
+          const detectedDevice = parseDeviceType(userAgent);
+
+          let dbUser: any = null;
+          try {
+            dbUser = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: { trialEndsAt: true, planTier: true, isTrialDeferred: true, regDeviceType: true }
+            });
+          } catch {
+            dbUser = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: { trialEndsAt: true, planTier: true, isTrialDeferred: true }
+            });
+          }
 
           if (dbUser && !dbUser.trialEndsAt && dbUser.planTier === 'FREE') {
             // Evaluate account collision (email normalization & disposable domain check)
@@ -156,10 +175,26 @@ export const authOptions: AuthOptions = {
             }
           }
 
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLoginAt: new Date() }
-          });
+          try {
+            const updateData: any = {
+              lastLoginAt: new Date(),
+              deviceLastUsed: detectedDevice,
+              lastUserAgent: userAgent ? userAgent.slice(0, 500) : null,
+            };
+            if (dbUser && !dbUser.regDeviceType) {
+              updateData.regDeviceType = detectedDevice;
+            }
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: updateData
+            });
+          } catch {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { lastLoginAt: new Date() }
+            });
+          }
         } catch (e) {
           console.error("Error updating user on signIn:", e);
         }

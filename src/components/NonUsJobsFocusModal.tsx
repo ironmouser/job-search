@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { X, Globe } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Globe, X, Loader2 } from 'lucide-react';
 
 interface NonUsJobsFocusModalProps {
   intlJobCount: number;
@@ -14,123 +15,195 @@ export default function NonUsJobsFocusModal({
   onKeepAll,
   onUsOnly,
 }: NonUsJobsFocusModalProps) {
+  const [mounted, setMounted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onKeepAll();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onKeepAll]);
+
   const handleUsOnly = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch('/api/jobs/delete-non-us', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        onUsOnly(data.deletedIds ?? []);
+        onUsOnly(data.deletedJobIds || data.deletedIds || []);
       } else {
         onUsOnly([]);
       }
     } catch {
       onUsOnly([]);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  return (
+  if (!mounted || typeof document === 'undefined') return null;
+
+  const modalContent = (
     <div
-      className="glass-card animate-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isSubmitting) {
+          onKeepAll();
+        }
+      }}
       style={{
-        background: 'var(--card)',
-        color: 'var(--card-foreground)',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '1rem 1.25rem',
-        marginBottom: '1.25rem',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-        position: 'relative',
-        width: '100%',
-        boxSizing: 'border-box',
+        justifyContent: 'center',
+        background: 'rgba(0, 0, 0, 0.6)',
+        padding: '1rem',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 300px' }}>
+      <div
+        className="animate-fade-in"
+        style={{
+          background: 'var(--card)',
+          color: 'var(--card-foreground)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: '28px 24px',
+          maxWidth: '460px',
+          width: '100%',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)',
+          position: 'relative',
+          textAlign: 'center',
+          boxSizing: 'border-box',
+        }}
+      >
+        <button
+          onClick={onKeepAll}
+          disabled={isSubmitting}
+          aria-label="Close modal"
+          title="Close modal"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--muted-foreground)',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            padding: '6px',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: isSubmitting ? 0.5 : 1,
+            transition: 'color 0.15s ease, background 0.15s ease',
+          }}
+        >
+          <X size={18} />
+        </button>
+
         <div
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
             background: 'rgba(59, 130, 246, 0.12)',
             color: 'var(--accent-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            flexShrink: 0,
+            margin: '0 auto 16px auto',
           }}
         >
-          <Globe size={20} />
+          <Globe size={26} />
         </div>
-        <div>
-          <div style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--foreground)' }}>
-            Focus on U.S. Jobs?
-          </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginTop: '2px' }}>
-            Found{' '}
-            <strong style={{ color: 'var(--foreground)' }}>
-              {intlJobCount} international {intlJobCount === 1 ? 'job' : 'jobs'}
-            </strong>{' '}
-            in your results. Would you like to filter to U.S.-only roles?
-          </div>
-        </div>
-      </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-        <button
-          onClick={handleUsOnly}
+        <h2
           style={{
-            padding: '6px 14px',
-            borderRadius: '6px',
-            border: 'none',
-            background: 'var(--accent-primary)',
-            color: '#ffffff',
-            fontWeight: 600,
-            fontSize: '0.85rem',
-            cursor: 'pointer',
-            transition: 'opacity 0.15s ease',
+            margin: '0 0 10px 0',
+            fontSize: '1.25rem',
+            fontWeight: 700,
+            color: 'var(--foreground)',
           }}
         >
-          U.S. Only
-        </button>
-        <button
-          onClick={onKeepAll}
+          Focus on U.S. Jobs?
+        </h2>
+
+        <p
           style={{
-            padding: '6px 12px',
-            borderRadius: '6px',
-            border: '1px solid var(--border)',
-            background: 'transparent',
+            margin: '0 0 24px 0',
+            fontSize: '0.925rem',
             color: 'var(--muted-foreground)',
-            fontWeight: 500,
-            fontSize: '0.85rem',
-            cursor: 'pointer',
+            lineHeight: 1.6,
           }}
         >
-          Keep All
-        </button>
-        <button
-          onClick={onKeepAll}
-          title="Dismiss notice"
-          aria-label="Dismiss notice"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--muted-foreground)',
-            cursor: 'pointer',
-            padding: '4px',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <X size={16} />
-        </button>
+          We found{' '}
+          <strong style={{ color: 'var(--foreground)' }}>
+            {intlJobCount} international {intlJobCount === 1 ? 'job' : 'jobs'}
+          </strong>{' '}
+          in your results. Would you like to filter to U.S.-only roles?
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button
+            onClick={onKeepAll}
+            disabled={isSubmitting}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              background: 'var(--secondary, #f3f4f6)',
+              color: 'var(--foreground)',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.6 : 1,
+              transition: 'background 0.15s ease, opacity 0.15s ease',
+            }}
+          >
+            Keep All
+          </button>
+          <button
+            onClick={handleUsOnly}
+            disabled={isSubmitting}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              background: 'var(--accent-primary)',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              opacity: isSubmitting ? 0.8 : 1,
+              transition: 'opacity 0.15s ease',
+            }}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Updating...</span>
+              </>
+            ) : (
+              'U.S. Only'
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
-}
 
+  return createPortal(modalContent, document.body);
+}

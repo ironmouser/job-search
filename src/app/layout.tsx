@@ -3,6 +3,7 @@ import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import AuthProvider from "@/components/AuthProvider";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import DeviceTracker from "@/components/DeviceTracker";
 
 const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://www.jobagenthq.com";
 
@@ -58,6 +59,7 @@ export default function RootLayout({
       <body className="light-theme" suppressHydrationWarning>
         <GoogleAnalytics />
         <AuthProvider>
+          <DeviceTracker />
           <ThemeProvider>
             {children}
           </ThemeProvider>

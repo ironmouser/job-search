@@ -112,9 +112,36 @@ export default function DashboardClient({
     } catch (e) {}
   }, [searchLocation]);
 
+  const handleKeepAllNonUs = () => {
+    hasDismissedNonUsModal.current = true;
+    setShowNonUsModal(false);
+    try {
+      localStorage.setItem('has_seen_non_us_prompt', 'true');
+    } catch (e) {}
+    fetch('/api/jobs/dismiss-non-us', { method: 'POST' }).catch((err) =>
+      console.error('Failed to persist non-US dismiss setting:', err)
+    );
+  };
+
+  const handleUsOnlyNonUs = (deletedIds: string[]) => {
+    hasDismissedNonUsModal.current = true;
+    try {
+      localStorage.setItem('has_seen_non_us_prompt', 'true');
+    } catch (e) {}
+    if (deletedIds && deletedIds.length > 0) {
+      setJobList((prev: any[]) => prev.filter((j: any) => !deletedIds.includes(j.id)));
+    }
+    setShowNonUsModal(false);
+  };
+
   // Detect international jobs and show the focus prompt once
   useEffect(() => {
-    if (hasSeenNonUsPrompt || noInternational || hasDismissedNonUsModal.current) return;
+    let localDismissed = false;
+    try {
+      localDismissed = localStorage.getItem('has_seen_non_us_prompt') === 'true';
+    } catch (e) {}
+
+    if (hasSeenNonUsPrompt || noInternational || hasDismissedNonUsModal.current || localDismissed) return;
     const intlJobs = (jobs || []).filter((j: any) => isInternationalLocation(j.location || ''));
     if (intlJobs.length > 0) {
       setIntlJobCount(intlJobs.length);
@@ -122,7 +149,7 @@ export default function DashboardClient({
     }
   // Run only on first render / when jobs list changes after a sync
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs]);
+  }, [jobs, hasSeenNonUsPrompt, noInternational]);
 
 
 
@@ -1014,15 +1041,8 @@ export default function DashboardClient({
           {showNonUsModal && (
             <NonUsJobsFocusModal
               intlJobCount={intlJobCount}
-              onKeepAll={() => {
-                hasDismissedNonUsModal.current = true;
-                setShowNonUsModal(false);
-              }}
-              onUsOnly={(deletedIds) => {
-                hasDismissedNonUsModal.current = true;
-                setJobList((prev: any[]) => prev.filter((j: any) => !deletedIds.includes(j.id)));
-                setShowNonUsModal(false);
-              }}
+              onKeepAll={handleKeepAllNonUs}
+              onUsOnly={handleUsOnlyNonUs}
             />
           )}
 

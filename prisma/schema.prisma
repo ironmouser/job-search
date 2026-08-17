@@ -292,6 +292,11 @@ model User {
   primaryUserId        String?   @map("primary_user_id")
   unifiedQuotaGroupId  String?   @map("unified_quota_group_id")
 
+  // Device telemetry tracking
+  regDeviceType        String?   @map("reg_device_type")
+  deviceLastUsed       String?   @map("device_last_used")
+  lastUserAgent        String?   @map("last_user_agent")
+
   accounts      Account[]
   sessions      Session[]
   
