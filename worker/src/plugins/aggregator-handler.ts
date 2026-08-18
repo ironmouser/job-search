@@ -62,6 +62,21 @@ export class AggregatorHandler {
 
     await logger.info('aggregator_handler', `Scanning page for Apply actions at ${currentUrl}...`);
 
+    // ─── Pre-click: Neutralize non-interactive backdrop overlays ──────────────
+    await page.evaluate(() => {
+      document.querySelectorAll('.modal__overlay, .top-level-modal-container').forEach((el) => {
+        const style = window.getComputedStyle(el);
+        if (
+          el.classList.contains('invisible') ||
+          el.classList.contains('opacity-0') ||
+          style.opacity === '0' ||
+          style.visibility === 'hidden'
+        ) {
+          (el as HTMLElement).style.pointerEvents = 'none';
+        }
+      });
+    }).catch(() => {});
+
     // ─── 1. Check for JSON-LD directApply URL ──────────────────────────────────
     try {
       const jsonLdUrls: string[] = await page.$$eval('script[type="application/ld+json"]', (scripts) => {
@@ -109,7 +124,7 @@ export class AggregatorHandler {
         const text = ((await el.textContent().catch(() => null)) ?? '').trim();
         const ariaLabel = (await el.getAttribute('aria-label').catch(() => null)) ?? '';
         const title = (await el.getAttribute('title').catch(() => null)) ?? '';
-        const href = (await el.getAttribute('href').catch(() => null)) ?? '';
+        let href = (await el.getAttribute('href').catch(() => null)) ?? '';
         const dataApplyUrl = (await el.getAttribute('data-apply-url').catch(() => null)) ?? 
                              (await el.getAttribute('data-job-apply-url').catch(() => null)) ??
                              (await el.getAttribute('data-url').catch(() => null)) ??
@@ -118,6 +133,10 @@ export class AggregatorHandler {
                              (await el.getAttribute('data-automation-id').catch(() => null)) ?? '';
         const id = (await el.getAttribute('id').catch(() => null)) ?? '';
         const className = (await el.getAttribute('class').catch(() => null)) ?? '';
+
+        if (!href) {
+          href = await el.$eval('a[href]', (a: any) => a.getAttribute('href')).catch(() => '') || '';
+        }
 
         const allAttributesText = `${ariaLabel} ${title} ${dataTracking} ${id} ${className}`;
 
@@ -181,8 +200,8 @@ export class AggregatorHandler {
     if (inPageAnchorTarget) {
       try {
         await logger.info('aggregator_handler', 'Clicking in-page Apply anchor...');
-        await inPageAnchorTarget.scrollIntoViewIfNeeded();
-        await inPageAnchorTarget.click();
+        await inPageAnchorTarget.scrollIntoViewIfNeeded().catch(() => {});
+        await inPageAnchorTarget.click().catch(() => inPageAnchorTarget.evaluate((n: HTMLElement) => n.click()));
         await page.waitForTimeout(1500);
         return true;
       } catch {}
@@ -196,18 +215,46 @@ export class AggregatorHandler {
 
         const context = page.context();
 
-        // Listen for new tab or top-level navigation
-        const [newPage] = await Promise.all([
-          Promise.race([
-            context.waitForEvent('page', { timeout: 12000 }).catch(() => null),
-            page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }).then(() => null).catch(() => null)
-          ]),
-          bestClickTarget.click({ timeout: 5000 })
-        ]);
+        // Helper to click resiliently (normal -> force -> DOM evaluate)
+        const performClick = async (target: any) => {
+          try {
+            await target.click({ timeout: 3000 });
+          } catch (clickErr: any) {
+            await logger.info('aggregator_handler', `Standard click blocked or timed out. Retrying with force click...`);
+            try {
+              await target.click({ force: true, timeout: 3000 });
+            } catch {
+              await logger.info('aggregator_handler', 'Force click intercepted. Falling back to native DOM click...');
+              await target.evaluate((node: HTMLElement) => {
+                node.scrollIntoView({ block: 'center' });
+                node.click();
+              });
+            }
+          }
+        };
+
+        // Listen for new tab or top-level navigation while executing click
+        const pagePromise = context.waitForEvent('page', { timeout: 10000 }).catch(() => null);
+        const navPromise = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => null);
+
+        await performClick(bestClickTarget);
+
+        let newPage = await Promise.race([pagePromise, navPromise.then(() => null)]);
+
+        // Check if context has any new pages that were opened
+        if (!newPage) {
+          const allPages = context.pages();
+          if (allPages.length > 1) {
+            const candidateNewPage = allPages[allPages.length - 1];
+            if (candidateNewPage !== page) {
+              newPage = candidateNewPage;
+            }
+          }
+        }
 
         if (newPage) {
           await logger.info('aggregator_handler', 'Apply button opened a new tab. Switching to new tab...');
-          await newPage.waitForLoadState('domcontentloaded');
+          await newPage.waitForLoadState('domcontentloaded').catch(() => {});
           (browser as any)._page = newPage;
           await page.close().catch(() => {});
           return true;
@@ -215,10 +262,12 @@ export class AggregatorHandler {
 
         // Check if an off-site modal opened (like LinkedIn sign-in / offsite modal)
         await page.waitForTimeout(1500);
-        const modalOffsiteLink = await page.$('div[role="dialog"] a[href*="externalApply"], .sign-up-modal a[href*="externalApply"], a[data-tracking-control-name*="apply-link-offsite"]').catch(() => null);
-        if (modalOffsiteLink) {
-          const offsiteHref = await modalOffsiteLink.getAttribute('href').catch(() => null);
-          if (offsiteHref) {
+        const modalOffsiteSelector = 'div[role="dialog"] a[href*="externalApply"], .sign-up-modal a[href*="externalApply"], a[data-tracking-control-name*="apply-link-offsite"], a[data-tracking-control-name*="apply"], .modal__dialog a[href], .sign-up-modal a[href]';
+        const modalOffsiteLinks = await page.$$(modalOffsiteSelector).catch(() => []);
+
+        for (const modalLink of modalOffsiteLinks) {
+          const offsiteHref = await modalLink.getAttribute('href').catch(() => null);
+          if (offsiteHref && (offsiteHref.includes('http') || offsiteHref.startsWith('/'))) {
             const absoluteOffsite = new URL(offsiteHref, page.url()).href;
             await logger.info('aggregator_handler', `Found offsite apply link inside modal: ${absoluteOffsite}`);
             await page.goto(absoluteOffsite, { waitUntil: 'domcontentloaded', timeout: 25000 });
@@ -227,8 +276,10 @@ export class AggregatorHandler {
         }
 
         const newUrl = browser.page.url();
-        await logger.info('aggregator_handler', `Navigation complete. Current URL: ${newUrl}`);
-        return true;
+        if (newUrl !== currentUrl) {
+          await logger.info('aggregator_handler', `Navigation complete. Current URL: ${newUrl}`);
+          return true;
+        }
       } catch (err: any) {
         await logger.warn('aggregator_handler', `Failed to click Apply button: ${err.message}`);
       }
