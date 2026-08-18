@@ -6,7 +6,7 @@ import { headers } from 'next/headers';
 import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 import { logSuspiciousActivity } from '@/lib/security';
-import { isDescriptionAdequate } from '@/lib/jobFetcher';
+import { isDescriptionAdequate, extractUrlFromStubDescription } from '@/lib/jobFetcher';
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
     try {
