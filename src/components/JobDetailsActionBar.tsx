@@ -13,6 +13,8 @@ import {
   SlidersHorizontal,
   Loader2,
   FileText,
+  Send,
+  ChevronUp,
 } from 'lucide-react';
 import FeedbackButtons from './FeedbackButtons';
 import { useJobNav } from './JobDetailsNavWrapper';
@@ -46,6 +48,7 @@ export default function JobDetailsActionBar({
 
   const [sequence, setSequence] = useState<any[]>([]);
   const [loadingSeq, setLoadingSeq] = useState(true);
+  const [showApplyPopover, setShowApplyPopover] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAutoApplying, setIsAutoApplying] = useState(false);
   const [isJitResumeOpen, setIsJitResumeOpen] = useState(false);
@@ -220,6 +223,7 @@ export default function JobDetailsActionBar({
 
   const handleStep3AutoApply = async () => {
     trackDockAction('step3_auto_apply', currentJobId);
+    setShowApplyPopover(false);
     const element = document.getElementById('step-3-apply');
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
@@ -238,6 +242,27 @@ export default function JobDetailsActionBar({
     } catch (err) {
       console.error('Failed to trigger auto apply:', err);
       setIsAutoApplying(false);
+    }
+  };
+
+  const handleStep3ApplyDirectly = () => {
+    trackDockAction('step3_apply_directly', currentJobId);
+    setShowApplyPopover(false);
+
+    fetch(`/api/jobs/${currentJobId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'applied', applied_at: new Date().toISOString() })
+    })
+      .then(() => router.refresh())
+      .catch(console.error);
+
+    if (jobUrl) {
+      window.open(jobUrl, '_blank', 'noopener,noreferrer');
+    }
+    const section = document.getElementById('step-3-apply');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -322,29 +347,113 @@ export default function JobDetailsActionBar({
           )}
         </button>
 
-        {/* Step 3: Apply */}
-        <button
-          type="button"
-          onClick={handleStep3AutoApply}
-          disabled={isAutoApplying}
-          className={`command-bar-btn ${status === 'applied' ? '' : 'command-bar-btn-primary'}`}
-          style={status === 'applied' ? { background: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981', color: '#34d399' } : {}}
-        >
-          <span style={{ opacity: 0.8, fontSize: '0.75rem' }}>3.</span>
-          {status === 'applied' ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#34d399' }}>
-              <CheckCircle2 size={14} /> Applied
-            </span>
-          ) : isAutoApplying ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#ffffff' }}>
-              <Loader2 size={14} className="animate-spin" /> Auto Applying...
-            </span>
-          ) : (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-              <Zap size={14} style={{ color: '#fbbf24' }} /> Auto Apply
-            </span>
+        {/* Step 3: Apply (with Dropup Options) */}
+        <div style={{ position: 'relative' }}>
+          {showApplyPopover && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 9960,
+              }}
+              onClick={() => setShowApplyPopover(false)}
+            />
           )}
-        </button>
+
+          {showApplyPopover && (
+            <div className="job-apply-popover">
+              <button
+                type="button"
+                onClick={handleStep3AutoApply}
+                disabled={isAutoApplying}
+                className="command-bar-btn"
+                style={{
+                  width: '100%',
+                  justifyContent: 'space-between',
+                  padding: '0.45rem 0.65rem',
+                  borderRadius: '8px',
+                  background: 'rgba(99, 102, 241, 0.14)',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  color: '#ffffff',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <Zap size={14} style={{ color: '#fbbf24' }} /> Auto Apply
+                </span>
+                <span style={{
+                  fontSize: '0.68rem',
+                  background: 'rgba(251, 191, 36, 0.2)',
+                  color: '#fbbf24',
+                  padding: '0.1rem 0.45rem',
+                  borderRadius: '9999px',
+                  fontWeight: 700,
+                }}>
+                  1-Click
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleStep3ApplyDirectly}
+                className="command-bar-btn"
+                style={{
+                  width: '100%',
+                  justifyContent: 'space-between',
+                  padding: '0.45rem 0.65rem',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: 'var(--text-primary, #ffffff)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <ExternalLink size={14} style={{ color: '#38bdf8' }} /> Apply Directly
+                </span>
+                <span style={{
+                  fontSize: '0.68rem',
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  color: '#38bdf8',
+                  padding: '0.1rem 0.45rem',
+                  borderRadius: '9999px',
+                  fontWeight: 700,
+                }}>
+                  Direct
+                </span>
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              if (status === 'applied') {
+                const element = document.getElementById('step-3-apply');
+                if (element) element.scrollIntoView({ behavior: 'smooth' });
+              } else {
+                setShowApplyPopover(prev => !prev);
+              }
+            }}
+            disabled={isAutoApplying}
+            className={`command-bar-btn ${status === 'applied' ? '' : 'command-bar-btn-primary'}`}
+            style={status === 'applied' ? { background: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981', color: '#34d399' } : {}}
+            title="Apply Options"
+          >
+            <span style={{ opacity: 0.8, fontSize: '0.75rem' }}>3.</span>
+            {status === 'applied' ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#34d399' }}>
+                <CheckCircle2 size={14} /> Applied
+              </span>
+            ) : isAutoApplying ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#ffffff' }}>
+                <Loader2 size={14} className="animate-spin" /> Auto Applying...
+              </span>
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Send size={14} /> Apply <ChevronUp size={12} style={{ transform: showApplyPopover ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* Step 4: Q&A */}
         <button
@@ -408,6 +517,8 @@ export default function JobDetailsActionBar({
     initialIsArchived,
     localHasAssets,
     isGenerating,
+    isAutoApplying,
+    showApplyPopover,
     status,
     hasActiveFilters,
     currentIndex,

@@ -2961,6 +2961,42 @@ body.light-theme .command-bar-btn:not(.command-bar-btn-primary):not(.command-bar
   border-color: #94a3b8;
 }
 
+/* ─── Step 3 Apply Popover Menu ───────────────────────────────────────── */
+.job-apply-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0d1117;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 12px;
+  padding: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 195px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(59, 130, 246, 0.2);
+  z-index: 9970;
+  animation: popoverFadeIn 0.15s ease-out;
+}
+
+body.light-theme .job-apply-popover {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 /* ─── Global Fixed Bottom Auto Apply & Live Updates Bar ─────────────── */
 
 .global-auto-apply-bar {
