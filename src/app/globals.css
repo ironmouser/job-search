@@ -3072,10 +3072,10 @@ body.light-theme .auto-apply-bar-body {
 /* ─── Drawer Left Panel (Queue List) ─────────────────────────────────── */
 
 .drawer-queue-sidebar {
-  border-right: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-right: 1px solid var(--border, rgba(255, 255, 255, 0.08));
   display: flex;
   flex-direction: column;
-  background: var(--background-card, rgba(13, 17, 23, 0.95));
+  background: var(--background-card, #0d1117);
   overflow-y: auto;
 }
 
@@ -3090,7 +3090,7 @@ body.light-theme .drawer-queue-sidebar {
   font-weight: 700;
   letter-spacing: 0.05em;
   color: var(--text-secondary, #8b949e);
-  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3105,40 +3105,42 @@ body.light-theme .drawer-queue-header {
   padding: 0.65rem 0.85rem;
   border-radius: 8px;
   cursor: pointer;
-  background: var(--background-card, rgba(255, 255, 255, 0.03));
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  background: var(--background-card, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  transition: all 0.18s ease;
+  transition: all 0.15s ease;
   user-select: none;
 }
 
 .drawer-queue-item:hover {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(37, 99, 235, 0.05);
+  border-color: rgba(37, 99, 235, 0.3);
 }
 
 .drawer-queue-item.active {
-  background: rgba(99, 102, 241, 0.14) !important;
-  border: 1.5px solid #818cf8 !important;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.22);
+  background: rgba(37, 99, 235, 0.08) !important;
+  border: 1.5px solid #2563eb !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
 }
 
 body.light-theme .drawer-queue-item {
-  background: #f8fafc;
+  background: #ffffff;
   border-color: #e2e8f0;
 }
 
 body.light-theme .drawer-queue-item:hover {
-  background: #f1f5f9;
-  border-color: #818cf8;
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 body.light-theme .drawer-queue-item.active {
-  background: rgba(99, 102, 241, 0.1) !important;
-  border-color: #6366f1 !important;
+  background: rgba(37, 99, 235, 0.05) !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
 }
+
 
 /* ─── Mobile FAB & Action Sheet ──────────────────────────────────────── */
 

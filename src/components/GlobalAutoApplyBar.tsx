@@ -454,21 +454,21 @@ export function GlobalAutoApplyBar() {
         <div className="auto-apply-bar-body" style={{ overflowY: 'auto' }}>
           {activeDrawerTab === 'auto-apply' && hasActiveQueue ? (
             <>
-              {/* Left Panel: Queue List matching System Analytics style */}
+              {/* Left Panel: Queue List */}
               <div className="drawer-queue-sidebar">
                 <div className="drawer-queue-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                    <ListOrdered size={14} color="var(--accent-primary, #818cf8)" />
+                    <ListOrdered size={14} color="#0070f3" />
                     <span>QUEUE ({activeSessions.length})</span>
                   </div>
                   <span style={{
-                    background: 'rgba(99, 102, 241, 0.15)',
-                    color: '#818cf8',
+                    background: 'rgba(0, 112, 243, 0.08)',
+                    color: '#0070f3',
                     padding: '0.15rem 0.55rem',
                     borderRadius: '9999px',
                     fontSize: '0.72rem',
                     fontWeight: 700,
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    border: '1px solid rgba(0, 112, 243, 0.2)',
                   }}>
                     {ongoingCount} Active
                   </span>
@@ -495,18 +495,18 @@ export function GlobalAutoApplyBar() {
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            color: isSel ? '#818cf8' : 'var(--text-primary)',
+                            color: isSel ? '#0070f3' : 'var(--text-primary)',
                           }}>
                             {session.job?.title || 'Job Application'}
                           </span>
                           {isInter ? (
-                            <AlertTriangle size={14} color="#fbbf24" className="animate-pulse" />
+                            <AlertTriangle size={14} color="#f59e0b" />
                           ) : isAct ? (
-                            <Loader2 size={14} color="#818cf8" className="animate-spin" />
+                            <Loader2 size={14} color="#0070f3" className="animate-spin" />
                           ) : isApp ? (
-                            <CheckCircle2 size={14} color="#34d399" />
+                            <CheckCircle2 size={14} color="#10b981" />
                           ) : (
-                            <AlertCircle size={14} color="#f87171" />
+                            <AlertCircle size={14} color="#ef4444" />
                           )}
                         </div>
 
@@ -515,38 +515,32 @@ export function GlobalAutoApplyBar() {
                             {session.job?.company || ''}
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-                            <span style={{
-                              fontWeight: 700,
-                              fontSize: '0.68rem',
-                              padding: '0.1rem 0.45rem',
-                              borderRadius: '9999px',
-                              textTransform: 'capitalize',
-                              background: isInter
-                                ? 'rgba(245, 158, 11, 0.15)'
-                                : isApp
-                                ? 'rgba(16, 185, 129, 0.15)'
-                                : isFail
-                                ? 'rgba(239, 68, 68, 0.15)'
-                                : 'rgba(99, 102, 241, 0.15)',
-                              color: isInter
-                                ? '#fbbf24'
-                                : isApp
-                                ? '#34d399'
-                                : isFail
-                                ? '#f87171'
-                                : '#818cf8',
-                              border: `1px solid ${
-                                isInter
-                                  ? 'rgba(245, 158, 11, 0.35)'
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 600 }}>
+                              <span style={{
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                background: isInter
+                                  ? '#f59e0b'
                                   : isApp
-                                  ? 'rgba(16, 185, 129, 0.35)'
+                                  ? '#10b981'
                                   : isFail
-                                  ? 'rgba(239, 68, 68, 0.35)'
-                                  : 'rgba(99, 102, 241, 0.35)'
-                              }`,
-                            }}>
-                              {session.status.replace(/_/g, ' ')}
-                            </span>
+                                  ? '#ef4444'
+                                  : '#0070f3'
+                              }} />
+                              <span style={{
+                                color: isInter
+                                  ? '#f59e0b'
+                                  : isApp
+                                  ? '#10b981'
+                                  : isFail
+                                  ? '#ef4444'
+                                  : 'var(--text-secondary)',
+                                textTransform: 'capitalize'
+                              }}>
+                                {session.status.replace(/_/g, ' ')}
+                              </span>
+                            </div>
 
                             {isAct && (
                               <button
@@ -558,11 +552,11 @@ export function GlobalAutoApplyBar() {
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '2px',
-                                  background: 'rgba(239, 68, 68, 0.12)',
-                                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                                  color: '#f87171',
+                                  background: 'transparent',
+                                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                                  color: 'var(--text-secondary)',
                                   borderRadius: '4px',
-                                  padding: '0.12rem 0.35rem',
+                                  padding: '0.1rem 0.35rem',
                                   fontSize: '0.68rem',
                                   fontWeight: 600,
                                   cursor: 'pointer',
@@ -589,9 +583,9 @@ export function GlobalAutoApplyBar() {
               <div className="drawer-detail-content">
                 {hasIntervention && activeIntervention ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border, rgba(255,255,255,0.1))', paddingBottom: '0.75rem' }}>
                       <div>
-                        <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                           <AlertTriangle size={18} /> Action Required for Application
                         </h4>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -622,7 +616,7 @@ export function GlobalAutoApplyBar() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Header with Title & Direct Link */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border, rgba(255,255,255,0.1))', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <div>
                         <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                           {isApplied ? (
@@ -635,7 +629,7 @@ export function GlobalAutoApplyBar() {
                             </>
                           ) : (
                             <>
-                              <Sparkles size={18} color="#818cf8" /> Auto Apply in Progress
+                              <Loader2 size={18} color="#0070f3" className="animate-spin" /> Auto Apply in Progress
                             </>
                           )}
                         </h4>
@@ -648,15 +642,19 @@ export function GlobalAutoApplyBar() {
                         <button
                           type="button"
                           onClick={handleNavigateToJob}
-                          className="btn-primary"
                           style={{
                             fontSize: '0.82rem',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.4rem',
                             padding: '0.45rem 0.9rem',
-                            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                            background: '#0070f3',
+                            color: '#ffffff',
+                            borderRadius: '8px',
+                            border: 'none',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(0, 112, 243, 0.25)',
                           }}
                         >
                           <ExternalLink size={14} /> View Live Updates & Job
@@ -667,16 +665,18 @@ export function GlobalAutoApplyBar() {
                             type="button"
                             onClick={(e) => handleCancelJob(e, selectedSession.jobId)}
                             disabled={cancellingJobId === selectedSession.jobId}
-                            className="btn-outline"
                             style={{
                               fontSize: '0.82rem',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '0.35rem',
                               padding: '0.45rem 0.8rem',
-                              borderColor: 'rgba(239, 68, 68, 0.35)',
-                              color: '#f87171',
-                              background: 'rgba(239, 68, 68, 0.08)',
+                              border: '1px solid var(--border, rgba(255,255,255,0.15))',
+                              color: 'var(--text-secondary)',
+                              background: 'transparent',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
                             }}
                           >
                             {cancellingJobId === selectedSession.jobId ? (
@@ -690,22 +690,7 @@ export function GlobalAutoApplyBar() {
                       </div>
                     </div>
 
-                    {/* Sleek Minimal Stepper — matches AutoApplyPanel & System Analytics */}
-                    <style>{`
-                      @keyframes gbarStepperPulseRing {
-                        0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
-                        70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
-                        100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
-                      }
-                      @keyframes gbarStepperPulseAmber {
-                        0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-                        70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
-                        100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-                      }
-                      .gbar-stepper-active { animation: gbarStepperPulseRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-                      .gbar-stepper-amber  { animation: gbarStepperPulseAmber 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-                    `}</style>
-
+                    {/* Stepper matching clean system theme */}
                     <div style={{ padding: '0.35rem 0 0.25rem', width: '100%' }}>
                       {/* Track + Nodes */}
                       <div style={{ position: 'relative', height: '24px', width: '100%' }}>
@@ -717,7 +702,7 @@ export function GlobalAutoApplyBar() {
                           left: '16px',
                           right: '16px',
                           height: '2px',
-                          background: 'var(--border-glass, rgba(255,255,255,0.12))',
+                          background: 'var(--border, rgba(255,255,255,0.12))',
                           zIndex: 1,
                         }} />
 
@@ -734,11 +719,11 @@ export function GlobalAutoApplyBar() {
                           })`,
                           height: '2px',
                           background: isApplied
-                            ? 'linear-gradient(90deg, #6366f1 0%, #3b82f6 50%, #10b981 100%)'
+                            ? '#10b981'
                             : isFailed
                             ? '#ef4444'
-                            : 'linear-gradient(90deg, #6366f1 0%, #3b82f6 50%, #10b981 100%)',
-                          transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                            : '#0070f3',
+                          transition: 'width 0.4s ease',
                           zIndex: 2,
                         }} />
 
@@ -766,33 +751,34 @@ export function GlobalAutoApplyBar() {
                               }}>
                                 {isComplete ? (
                                   <div style={{
-                                    width: '22px', height: '22px',
+                                    width: '20px', height: '20px',
                                     borderRadius: '50%',
                                     background: '#10b981',
                                     color: '#ffffff',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: '0 2px 6px rgba(16,185,129,0.4)',
-                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 2px 6px rgba(16,185,129,0.3)',
+                                    transition: 'all 0.25s ease',
                                   }}>
-                                    <Check size={12} strokeWidth={3} />
+                                    <Check size={11} strokeWidth={3} />
                                   </div>
                                 ) : isFailedStep ? (
                                   <div style={{
-                                    width: '22px', height: '22px',
+                                    width: '20px', height: '20px',
                                     borderRadius: '50%',
                                     background: '#ef4444',
                                     color: '#ffffff',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   }}>
-                                    <AlertCircle size={13} />
+                                    <AlertCircle size={12} />
                                   </div>
                                 ) : isCurrent ? (
-                                  <div className="gbar-stepper-active" style={{
-                                    width: '22px', height: '22px',
+                                  <div style={{
+                                    width: '20px', height: '20px',
                                     borderRadius: '50%',
-                                    background: '#6366f1',
+                                    background: '#0070f3',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 2px 6px rgba(0, 112, 243, 0.3)',
+                                    transition: 'all 0.25s ease',
                                   }}>
                                     <div style={{
                                       width: '6px', height: '6px',
@@ -804,9 +790,8 @@ export function GlobalAutoApplyBar() {
                                   <div style={{
                                     width: '8px', height: '8px',
                                     borderRadius: '50%',
-                                    background: 'var(--border-glass, rgba(255,255,255,0.2))',
-                                    border: '1px solid var(--border-glass, rgba(255,255,255,0.15))',
-                                    transition: 'all 0.3s ease',
+                                    background: 'var(--border, rgba(255,255,255,0.2))',
+                                    transition: 'all 0.25s ease',
                                   }} />
                                 )}
                               </div>
@@ -834,9 +819,9 @@ export function GlobalAutoApplyBar() {
                               fontWeight: 700,
                               letterSpacing: '0.04em',
                               textTransform: 'uppercase',
-                              color: isComplete ? '#10b981' : isCurrent ? '#818cf8' : 'var(--text-secondary)',
+                              color: isComplete ? '#10b981' : isCurrent ? '#0070f3' : 'var(--text-secondary)',
                               whiteSpace: 'nowrap',
-                              transition: 'color 0.3s',
+                              transition: 'color 0.25s',
                             }}>
                               {st.label}
                             </span>
@@ -845,29 +830,25 @@ export function GlobalAutoApplyBar() {
                       </div>
                     </div>
 
-                    {/* Current Active Step Info Box styled like System Analytics card */}
+                    {/* Current Active Step Info Box styled like Connection Instructions Card */}
                     <div style={{
-                      background: isApplied
-                        ? 'rgba(16, 185, 129, 0.08)'
-                        : isFailed
-                        ? 'rgba(239, 68, 68, 0.08)'
-                        : 'rgba(99, 102, 241, 0.08)',
-                      border: `1px solid ${isApplied ? 'rgba(16,185,129,0.25)' : isFailed ? 'rgba(239,68,68,0.25)' : 'rgba(99,102,241,0.25)'}`,
-                      borderRadius: '10px',
+                      background: 'var(--background, rgba(255,255,255,0.02))',
+                      border: '1px solid var(--border, rgba(255,255,255,0.08))',
+                      borderRadius: '8px',
                       padding: '0.9rem 1.15rem',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                     }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         <span style={{
                           fontSize: '0.72rem',
                           fontWeight: 700,
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
-                          color: isApplied ? '#34d399' : isFailed ? '#f87171' : '#818cf8',
+                          color: 'var(--text-secondary, #64748b)',
                         }}>
-                          {isApplied ? 'Application Status' : isFailed ? 'Application Stopped' : `Current Step: ${currentStepLabel}`}
+                          {isApplied ? 'APPLICATION STATUS' : isFailed ? 'APPLICATION STOPPED' : `CURRENT STEP: ${currentStepLabel.toUpperCase()}`}
                         </span>
                         <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)' }}>
                           {isApplied
@@ -879,11 +860,11 @@ export function GlobalAutoApplyBar() {
                       </div>
                       <div style={{ flexShrink: 0 }}>
                         {isApplied ? (
-                          <ShieldCheck size={26} color="#10b981" />
+                          <CheckCircle2 size={24} color="#10b981" />
                         ) : isFailed ? (
-                          <AlertCircle size={22} color="#f87171" />
+                          <AlertCircle size={22} color="#ef4444" />
                         ) : (
-                          <Loader2 size={22} color="#818cf8" className="animate-spin" />
+                          <Loader2 size={22} color="#0070f3" className="animate-spin" />
                         )}
                       </div>
                     </div>
