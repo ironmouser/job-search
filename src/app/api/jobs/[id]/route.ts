@@ -29,7 +29,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         const isAdmin = (session.user as any).role === 'SYSTEM_ADMIN';
         const isGlobalJob = job.addedById === null;
 
-        if (description || applicationUrl) {
+        if (description) {
             // Allow modifying job description if user owns job, is admin, or it's a shared/global job stub
             const isOwnerOrAdmin = isAdmin || job.addedById === userId;
 
@@ -42,6 +42,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
             }
         }
 
+        const updateJobData: any = {};
+
+        if (applicationUrl) {
+            updateJobData.applicationUrl = applicationUrl.trim();
+        }
+
         if (description) {
             let formattedDesc = description;
             if (formattedDesc.length > 50 && !formattedDesc.includes('## ')) {
@@ -52,10 +58,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
                 }
             }
 
+            // If applicationUrl wasn't explicitly provided, check if description has an embedded URL
+            if (!updateJobData.applicationUrl) {
+                const embeddedUrl = extractUrlFromStubDescription(description);
+                if (embeddedUrl && !embeddedUrl.includes('ziprecruiter.com') && !embeddedUrl.includes('linkedin.com')) {
+                    updateJobData.applicationUrl = embeddedUrl;
+                }
+            }
+
+            updateJobData.description = formattedDesc;
+
             const targetJobId = id;
             const updatedJob = await prisma.job.update({
                 where: { id },
-                data: { description: formattedDesc }
+                data: updateJobData
             });
 
             await prisma.userJob.upsert({
@@ -72,10 +88,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
             return NextResponse.json({ success: true, newJobId: targetJobId });
         }
 
-        if (applicationUrl) {
+        if (Object.keys(updateJobData).length > 0) {
             await prisma.job.update({
                 where: { id },
-                data: { applicationUrl }
+                data: updateJobData
             });
         }
 
