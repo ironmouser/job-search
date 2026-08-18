@@ -235,33 +235,22 @@ export function GlobalAutoApplyBar() {
 
   return (
     <>
-      {/* Semi-transparent dark cover overlay when expanded */}
-      {isExpanded && (
-        <div
-          onClick={() => {
-            setIsExpanded(false);
-            setActiveDrawerTab(null);
-          }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.6)',
-            zIndex: 9940,
-            cursor: 'pointer',
-            transition: 'opacity 0.2s ease',
-          }}
-          aria-label="Close expanded command bar"
-          title="Click to minimize command bar"
-        />
-      )}
+      {/* Semi-transparent dark cover overlay when expanded with smooth fade */}
+      <div
+        onClick={() => {
+          setIsExpanded(false);
+          setActiveDrawerTab(null);
+        }}
+        className={`command-bar-backdrop ${isExpanded ? 'active' : ''}`}
+        aria-label="Close expanded command bar"
+        title="Click to minimize command bar"
+      />
 
       <div
         id="global-command-bar"
         className={`global-auto-apply-bar ${isExpanded ? 'expanded' : 'collapsed'}`}
         style={{
           left: sidebarWidth,
-          height: isExpanded ? '440px' : '52px',
-          maxHeight: '82vh',
         }}
       >
       {/* ─── Compact Command Bar Header (52px) ─── */}
@@ -471,8 +460,7 @@ export function GlobalAutoApplyBar() {
       </div>
 
       {/* ─── Expanded Drawer Body ─── */}
-      {isExpanded && (
-        <div className="auto-apply-bar-body" style={{ overflowY: 'auto' }}>
+      <div className="auto-apply-bar-body" style={{ overflowY: 'auto' }}>
           {activeDrawerTab === 'auto-apply' && hasActiveQueue ? (
             <>
               {/* Left Panel: Queue List */}
@@ -901,8 +889,7 @@ export function GlobalAutoApplyBar() {
             </div>
           )}
         </div>
-      )}
-    </div>
+      </div>
 
       {/* ─── Mobile FAB + Bottom Sheet ─── */}
       {isMobile && !isExpanded && (hasSelection || pageActions) && (
