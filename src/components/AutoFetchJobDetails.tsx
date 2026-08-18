@@ -9,6 +9,7 @@ import { safeCopyToClipboard } from '@/lib/clipboard';
 export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription }: { jobId: string; jobUrl?: string | null; initialDescription?: string | null }) {
   const router = useRouter();
   const [status, setStatus] = useState<'fetching' | 'scoring' | 'error'>('fetching');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [syncMessage, setSyncMessage] = useState('Connecting to job board...');
   const [showManual, setShowManual] = useState(false);
@@ -54,26 +55,44 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
     
     const fetchAndScore = async () => {
       setStatus('fetching');
+      setErrorMessage(null);
       try {
         // Fetch Details
         const fetchRes = await fetch(`/api/jobs/${jobId}/fetch-details`, { method: 'POST' });
         if (!fetchRes.ok) {
-          throw new Error('Failed to fetch details');
+          const errData = await fetchRes.json().catch(() => ({}));
+          const errMsg = errData.error || 'Failed to scrape full job details';
+          if (isMounted) {
+            setErrorMessage(errMsg);
+            setStatus('error');
+          }
+          return;
         }
 
         if (!isMounted) return;
         setStatus('scoring');
 
         // Score Job
-        await fetch('/api/score', { method: 'POST', body: JSON.stringify({ jobId }) });
+        try {
+          await fetch('/api/score', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId }) 
+          });
+        } catch (scoreErr) {
+          console.warn('Auto-score warning:', scoreErr);
+        }
 
         if (!isMounted) return;
         
         // Reload page to show new data
         router.refresh();
-      } catch (err) {
-        console.error('Error auto-fetching job details:', err);
-        if (isMounted) setStatus('error');
+      } catch (err: any) {
+        console.warn('Error auto-fetching job details:', err?.message || err);
+        if (isMounted) {
+          setErrorMessage(err?.message || 'Failed to fetch details');
+          setStatus('error');
+        }
       }
     };
 
@@ -121,11 +140,14 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
       <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {status === 'error' && !showManual && (
           <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', padding: '1rem', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-            <p style={{ margin: '0 0 0.75rem 0', fontWeight: 600, color: 'var(--danger)' }}>
+            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, color: 'var(--danger)' }}>
               Could not automatically extract full job details.
             </p>
-            <p style={{ margin: 0 }}>
-              The job board may be blocking automated scrapers. You can copy/open the job URL below to view the posting, then paste the full job description text manually.
+            <p style={{ margin: '0 0 0.5rem 0' }}>
+              {errorMessage || 'The job board may be blocking automated scrapers.'}
+            </p>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              You can open the source URL below to view the posting, then paste the full job description manually to score this role.
             </p>
           </div>
         )}

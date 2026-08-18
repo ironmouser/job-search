@@ -44,6 +44,7 @@ export class BrowserSession {
         '--disable-dev-shm-usage',     // Required in Docker (shared memory limit)
         '--disable-gpu',
         '--disable-extensions',
+        '--disable-blink-features=AutomationControlled',
         '--window-size=1920,1080',
       ],
     });
@@ -53,8 +54,22 @@ export class BrowserSession {
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
         'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-        'Chrome/120.0.0.0 Safari/537.36',
+        'Chrome/124.0.0.0 Safari/537.36',
       acceptDownloads: true,
+      locale: 'en-US',
+      timezoneId: 'America/New_York',
+    });
+
+    // Apply anti-detection stealth evasions to every page in this context
+    await this.context.addInitScript(() => {
+      const g = globalThis as any;
+      if (g.navigator) {
+        Object.defineProperty(g.navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(g.navigator, 'languages', { get: () => ['en-US', 'en'] });
+        Object.defineProperty(g.navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        Object.defineProperty(g.navigator, 'hardwareConcurrency', { get: () => 8 });
+      }
+      g.chrome = { runtime: {} };
     });
 
     // Auto-track and switch to any new tab or popup opened during automation

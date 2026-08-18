@@ -2024,79 +2024,38 @@ export default function DashboardClient({
 
       {/* Bulk Action Bar when jobs are checked */}
       {checkedJobs.size > 0 && (
-        <div
-          className="dashboard-bulk-bar"
-          style={{
-            position: 'fixed',
-            bottom: '5.5rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 9970,
-            background: '#0f172a',
-            border: '1px solid #2563eb',
-            borderRadius: '9999px',
-            padding: '0.6rem 1.25rem',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(37, 99, 235, 0.25)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.85rem',
-            color: '#f8fafc',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-          }}
-        >
-          <span style={{ color: '#f8fafc', whiteSpace: 'nowrap' }}>
-            {checkedJobs.size} Selected
-          </span>
+        <div className="dashboard-bulk-bar">
+          <div className="dashboard-bulk-info">
+            <span className="dashboard-bulk-badge">
+              <CheckCircle2 size={15} style={{ color: '#38bdf8' }} />
+              <span>{checkedJobs.size} Selected</span>
+            </span>
 
-          <button
-            onClick={handleStartBatchApply}
-            className="btn-primary"
-            style={{
-              padding: '0.45rem 1rem',
-              fontSize: '0.82rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              borderRadius: '9999px',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <Bot size={16} /> 1-Click Auto Apply ({checkedJobs.size})
-          </button>
+            <button
+              onClick={() => setCheckedJobs(new Set())}
+              className="bulk-dock-deselect-btn"
+            >
+              Deselect All
+            </button>
+          </div>
 
-          <button
-            onClick={() => setIsCleanupModalOpen(true)}
-            className="bulk-dock-btn-outline"
-            style={{
-              padding: '0.45rem 0.85rem',
-              fontSize: '0.82rem',
-              borderRadius: '9999px',
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
-          >
-            Archive / Delete
-          </button>
+          <div className="dashboard-bulk-actions">
+            <button
+              onClick={handleStartBatchApply}
+              className="btn-primary dashboard-bulk-apply-btn"
+            >
+              <Bot size={16} />
+              <span>1-Click Auto Apply ({checkedJobs.size})</span>
+            </button>
 
-          <button
-            onClick={() => setCheckedJobs(new Set())}
-            className="bulk-dock-deselect-btn"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '0.82rem',
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              padding: '0.45rem 0.25rem',
-            }}
-          >
-            Deselect All
-          </button>
+            <button
+              onClick={() => setIsCleanupModalOpen(true)}
+              className="bulk-dock-btn-outline dashboard-bulk-cleanup-btn"
+            >
+              <Trash2 size={15} />
+              <span>Archive / Delete</span>
+            </button>
+          </div>
         </div>
       )}
 

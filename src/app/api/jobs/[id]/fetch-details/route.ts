@@ -64,10 +64,11 @@ export async function POST(
             data: updatePayload
         });
 
-        // 4. Update UserJob status to discovered to trigger rescoring
-        await prisma.userJob.update({
+        // 4. Update or ensure UserJob exists
+        await prisma.userJob.upsert({
             where: { userId_jobId: { userId, jobId } },
-            data: { status: 'discovered' }
+            create: { userId, jobId, status: 'discovered' },
+            update: {}
         });
 
         // 5. Automatically score the job with the new description

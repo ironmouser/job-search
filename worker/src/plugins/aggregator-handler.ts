@@ -60,7 +60,14 @@ export class AggregatorHandler {
       );
     }
 
-    await logger.info('aggregator_handler', `Scanning page for Apply actions at ${currentUrl}...`);
+    // ─── Bot Protection / Challenge Settling ──────────────────────────────────
+    if (currentUrl.includes('__cf_chl_') || currentUrl.includes('cf_chl_prog') || page.frames().some(f => f.url().includes('cloudflare') || f.url().includes('turnstile'))) {
+      await logger.info('aggregator_handler', 'Cloudflare interstitial challenge detected, waiting for solver and page redirection...');
+      await page.waitForTimeout(5000);
+    }
+
+    const effectiveUrl = page.url();
+    await logger.info('aggregator_handler', `Scanning page for Apply actions at ${effectiveUrl}...`);
 
     // ─── Pre-click: Neutralize non-interactive backdrop overlays ──────────────
     await page.evaluate(() => {

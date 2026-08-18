@@ -3027,6 +3027,23 @@ body:not(.light-theme) .job-action-bar-divider {
 /* ─── Dashboard Bulk Action Floating Bar (1-Click Auto Apply Floating Dock) ─── */
 
 .dashboard-bulk-bar {
+  position: fixed;
+  bottom: 5.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9970;
+  background: #0f172a;
+  border: 1px solid #2563eb;
+  border-radius: 9999px;
+  padding: 0.55rem 1.15rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(37, 99, 235, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  color: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-sizing: border-box;
   animation: bulkBarPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -3039,6 +3056,52 @@ body:not(.light-theme) .job-action-bar-divider {
     opacity: 1;
     transform: translate(-50%, 0) scale(1);
   }
+}
+
+.dashboard-bulk-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dashboard-bulk-badge {
+  color: #f8fafc;
+  white-space: nowrap;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+}
+
+.dashboard-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dashboard-bulk-apply-btn {
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-bulk-cleanup-btn {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
 }
 
 .bulk-dock-btn-outline {
@@ -3056,13 +3119,70 @@ body:not(.light-theme) .job-action-bar-divider {
 }
 
 .bulk-dock-deselect-btn {
-  color: #cbd5e1 !important;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8 !important;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 0.35rem 0.4rem;
   transition: color 0.15s ease, text-decoration 0.15s ease;
 }
 
 .bulk-dock-deselect-btn:hover {
   color: #ffffff !important;
   text-decoration: underline;
+}
+
+/* Mobile & Tablet Responsive Adjustments */
+@media (max-width: 640px) {
+  .dashboard-bulk-bar {
+    width: calc(100% - 1.5rem);
+    max-width: 440px;
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 16px;
+    padding: 0.65rem 0.85rem;
+    gap: 0.55rem;
+    bottom: 5.5rem;
+  }
+
+  .dashboard-bulk-info {
+    justify-content: space-between;
+    width: 100%;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dashboard-bulk-badge {
+    font-size: 0.8rem;
+  }
+
+  .bulk-dock-deselect-btn {
+    font-size: 0.78rem;
+    padding: 0.15rem 0.3rem;
+  }
+
+  .dashboard-bulk-actions {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .dashboard-bulk-apply-btn {
+    flex: 1 1 0%;
+    min-width: 0;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .dashboard-bulk-cleanup-btn {
+    flex-shrink: 0;
+    padding: 0.5rem 0.65rem;
+    font-size: 0.8rem;
+  }
 }
 
 /* ─── 4-Step Workflow Dock & Popover Styling ───────────────────────────── */
