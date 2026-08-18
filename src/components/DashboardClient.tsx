@@ -1339,7 +1339,7 @@ export default function DashboardClient({
         )}
 
         {/* Matches Section Header Bar */}
-        <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: hasResumeState ? '3.5rem' : '0rem' }}>
+        <div className="matches-header-bar" style={{ marginBottom: '2rem', marginTop: '-0.5rem' }}>
           <div className="matches-header-left-group">
             <div className="matches-title-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
               <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', lineHeight: '36px' }}>
