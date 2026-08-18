@@ -209,6 +209,8 @@ export function GlobalAutoApplyBar() {
   const handleNavigateToJob = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!selectedSession) return;
+    setIsExpanded(false);
+    setActiveDrawerTab(null);
     router.push(`/job/${selectedSession.jobId}?autoApplyExpand=true#step-3-apply`);
   };
 

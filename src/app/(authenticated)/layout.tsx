@@ -4,6 +4,7 @@ import TourGuide from "@/components/common/TourGuide";
 import HelpPanel from "@/components/common/HelpPanel";
 import Navigation from "@/components/Navigation";
 import { GlobalAutoApplyBar } from "@/components/GlobalAutoApplyBar";
+import UserSessionGuard from "@/components/UserSessionGuard";
 
 export default function AuthenticatedLayout({
   children,
@@ -13,6 +14,7 @@ export default function AuthenticatedLayout({
   return (
     <HelpProvider>
       <AutoApplyBarProvider>
+        <UserSessionGuard />
         <TourGuide />
         <div className="app-container">
           <Navigation />

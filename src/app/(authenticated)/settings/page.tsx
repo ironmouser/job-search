@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2, Bookmark, ChevronLeft, ChevronRight, CheckCircle2, Zap, HelpCircle, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
+import { useCommandBar } from '@/contexts/AutoApplyBarContext';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -65,6 +66,7 @@ const isDeepEqual = (a: any, b: any): boolean => {
 
 export default function SettingsPage() {
     const router = useRouter();
+    const { setPageActions } = useCommandBar();
     const [settings, setSettings] = useState<any>({});
     const [initialSettings, setInitialSettings] = useState<any>(null);
     const [isDirty, setIsDirty] = useState(false);
@@ -291,6 +293,57 @@ export default function SettingsPage() {
             setSaving(false);
         }
     };
+
+    // Register Settings actions in the Global Command Bar (bottom bar)
+    useEffect(() => {
+        setPageActions(
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap' }}>
+                <button
+                    type="button"
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="command-bar-btn"
+                    title="Scroll to Top"
+                    style={{ padding: '0.32rem 0.55rem' }}
+                >
+                    <ChevronLeft size={14} />
+                </button>
+                <div style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.15)', margin: '0 0.1rem' }} />
+                {[
+                    { id: 'general', label: 'General' },
+                    { id: 'job-discovery', label: 'Discovery' },
+                    { id: 'scoring', label: 'AI Rules' },
+                    { id: 'email-sync', label: 'Email Sync' },
+                    { id: 'pdf-customizer', label: 'PDF Format' },
+                ].map(({ id, label }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleDockNav(id)}
+                        className={`command-bar-btn ${openSections[id] ? 'command-bar-btn-primary' : ''}`}
+                        title={`Jump to ${label}`}
+                    >
+                        <span>{label}</span>
+                    </button>
+                ))}
+                <div style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.15)', margin: '0 0.1rem' }} />
+                <button
+                    type="button"
+                    onClick={() => handleSave()}
+                    disabled={saving}
+                    className="command-bar-btn command-bar-btn-primary"
+                    style={{ color: '#ffffff', opacity: saving ? 0.8 : 1 }}
+                >
+                    {saving ? (
+                        <><Loader2 size={14} className="animate-spin" /><span style={{ color: '#ffffff' }}>Saving...</span></>
+                    ) : (
+                        <><Save size={14} /><span style={{ color: '#ffffff' }}>Save Settings</span></>
+                    )}
+                </button>
+            </div>
+        );
+        return () => setPageActions(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [saving, JSON.stringify(openSections)]);
 
     const handleTestEmail = async () => {
         setTestingEmail(true);
@@ -1029,87 +1082,7 @@ export default function SettingsPage() {
 
             </div>
 
-            {/* Floating Save Button Bar at Bottom */}
-            {mounted && createPortal(
-                <div className="floating-save-bar">
-                    {/* Left Saved Status Badge */}
-                    <div className="save-bar-pill-saved">
-                        <Bookmark size={14} />
-                        <span>Saved</span>
-                    </div>
 
-                    {/* Divider */}
-                    <div className="save-bar-divider" />
-
-                    {/* Previous/Scroll circular button */}
-                    <button
-                        type="button"
-                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="save-bar-circle-btn"
-                        title="Scroll to Top"
-                    >
-                        <ChevronLeft size={16} />
-                    </button>
-
-                    {/* Primary Action: Save All Changes */}
-                    <button
-                        onClick={() => handleSave()}
-                        disabled={saving}
-                        className="floating-save-btn"
-                        title={saving ? "Saving All Changes..." : "Save All Changes"}
-                    >
-                        <span className="save-btn-text">{saving ? "Saving All Changes..." : "Save All Changes"}</span>
-                        {saving ? <Loader2 className="animate-spin" size={16} /> : <ChevronRight size={16} />}
-                    </button>
-
-                    {/* Section Jump Buttons */}
-                    <button
-                        type="button"
-                        onClick={() => handleDockNav('general')}
-                        className={`save-bar-section-btn ${openSections.general ? 'active' : ''}`}
-                        title="Toggle General Preferences"
-                    >
-                        <span>General</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => handleDockNav('job-discovery')}
-                        className={`save-bar-section-btn ${openSections['job-discovery'] ? 'active' : ''}`}
-                        title="Toggle Job Discovery"
-                    >
-                        <span>Discovery</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => handleDockNav('scoring')}
-                        className={`save-bar-section-btn ${openSections.scoring ? 'active' : ''}`}
-                        title="Toggle AI Rules"
-                    >
-                        <span>AI Rules</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => handleDockNav('email-sync')}
-                        className={`save-bar-section-btn ${openSections['email-sync'] ? 'active' : ''}`}
-                        title="Toggle Email Sync"
-                    >
-                        <span>Email Sync</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => handleDockNav('pdf-customizer')}
-                        className={`save-bar-section-btn ${openSections['pdf-customizer'] ? 'active' : ''}`}
-                        title="Toggle PDF Format"
-                    >
-                        <span>PDF Format</span>
-                    </button>
-                </div>,
-                document.body
-            )}
 
             {/* Unsaved Changes Dialog Modal */}
             {mounted && showDialog && createPortal(

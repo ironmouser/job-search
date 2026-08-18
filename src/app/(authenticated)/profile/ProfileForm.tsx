@@ -38,6 +38,7 @@ import Cropper from "react-easy-crop";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { trackProfileView, trackProfileResumeUpdate, trackProfileSave } from "@/lib/analytics";
 import RubricBuilder from "@/components/profile/RubricBuilder";
+import { useCommandBar } from "@/contexts/AutoApplyBarContext";
 
 interface ProfileFormProps {
   initialName: string;
@@ -101,6 +102,7 @@ export default function ProfileForm({
   email,
 }: ProfileFormProps) {
   const router = useRouter();
+  const { setPageActions } = useCommandBar();
   const { data: session, update } = useSession();
   const [name, setName] = useState(initialName);
   const [image, setImage] = useState(initialImage);
@@ -401,6 +403,58 @@ export default function ProfileForm({
       setSaving(false);
     }
   };
+
+  // Register Profile actions in the Global Command Bar (bottom bar)
+  useEffect(() => {
+    setPageActions(
+      <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "nowrap" }}>
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="command-bar-btn"
+          title="Scroll to Top"
+          style={{ padding: "0.32rem 0.55rem" }}
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 0.1rem" }} />
+        {[
+          { id: "personal-info", label: "Personal" },
+          { id: "work-auth", label: "Demographics" },
+          { id: "target-profile", label: "Target Role" },
+          { id: "base-resume", label: "Resume" },
+          { id: "avatar-settings", label: "Avatar" },
+          { id: "subscription", label: "Plan" },
+        ].map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => handleDockNav(id)}
+            className={`command-bar-btn ${openSections[id] ? "command-bar-btn-primary" : ""}`}
+            title={`Jump to ${label}`}
+          >
+            <span>{label}</span>
+          </button>
+        ))}
+        <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 0.1rem" }} />
+        <button
+          type="button"
+          onClick={handleSaveProfile}
+          disabled={saving}
+          className="command-bar-btn command-bar-btn-primary"
+          style={{ color: "#ffffff", opacity: saving ? 0.8 : 1 }}
+        >
+          {saving ? (
+            <><Loader2 size={14} className="animate-spin" /><span style={{ color: "#ffffff" }}>Saving...</span></>
+          ) : (
+            <><Save size={14} /><span style={{ color: "#ffffff" }}>Save Profile</span></>
+          )}
+        </button>
+      </div>
+    );
+    return () => setPageActions(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saving, JSON.stringify(openSections)]);
 
   const handleManageBilling = async () => {
     setRedirecting(true);
@@ -1353,96 +1407,6 @@ export default function ProfileForm({
         )}
       </div>
 
-      {/* Floating Save Button Bar at Bottom */}
-      {mounted && createPortal(
-        <div className="floating-save-bar">
-          {/* Left Saved Status Badge */}
-          <div className="save-bar-pill-saved">
-            <Bookmark size={14} />
-            <span>Saved</span>
-          </div>
-
-          {/* Divider */}
-          <div className="save-bar-divider" />
-
-          {/* Previous/Scroll circular button */}
-          <button
-            type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="save-bar-circle-btn"
-            title="Scroll to Top"
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          {/* Primary Action: Save All Changes */}
-          <button
-            onClick={handleSaveProfile}
-            disabled={saving}
-            className="floating-save-btn"
-            title={saving ? "Saving All Changes..." : "Save All Changes"}
-          >
-            <span className="save-btn-text">{saving ? "Saving All Changes..." : "Save All Changes"}</span>
-            {saving ? <Loader2 className="animate-spin" size={16} /> : <ChevronRight size={16} />}
-          </button>
-
-          {/* Section Jump Buttons */}
-          <button
-            type="button"
-            onClick={() => handleDockNav("personal-info")}
-            className={`save-bar-section-btn ${openSections['personal-info'] ? 'active' : ''}`}
-            title="Toggle Personal Info"
-          >
-            <span>Personal</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleDockNav("work-auth")}
-            className={`save-bar-section-btn ${openSections['work-auth'] ? 'active' : ''}`}
-            title="Toggle Demographics & Work Auth"
-          >
-            <span>Demographics</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleDockNav("target-profile")}
-            className={`save-bar-section-btn ${openSections['target-profile'] ? 'active' : ''}`}
-            title="Toggle Target Profile"
-          >
-            <span>Target Role</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleDockNav("base-resume")}
-            className={`save-bar-section-btn ${openSections['base-resume'] ? 'active' : ''}`}
-            title="Toggle Resume"
-          >
-            <span>Resume</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleDockNav("avatar-settings")}
-            className={`save-bar-section-btn ${openSections['avatar-settings'] ? 'active' : ''}`}
-            title="Toggle Avatar Settings"
-          >
-            <span>Avatar</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleDockNav("subscription")}
-            className={`save-bar-section-btn ${openSections.subscription ? 'active' : ''}`}
-            title="Toggle Subscription Plan"
-          >
-            <span>Plan</span>
-          </button>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }
