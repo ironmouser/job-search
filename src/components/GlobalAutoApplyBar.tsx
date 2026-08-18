@@ -266,8 +266,8 @@ export function GlobalAutoApplyBar() {
       >
       {/* ─── Compact Command Bar Header (52px) ─── */}
       <div className="auto-apply-bar-header">
-        {/* LEFT SECTION: Page Actions OR Batch Selection — hidden on mobile (FAB replaces it) */}
-        {!isMobile && (
+        {/* LEFT SECTION: Page Actions OR Batch Selection — hidden on mobile OR when expanded to reduce clutter */}
+        {!isMobile && !isExpanded && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0, flex: 1, overflowX: 'auto' }}>
             {hasSelection ? (
               /* Batch Selection Mode */
@@ -359,10 +359,31 @@ export function GlobalAutoApplyBar() {
           </div>
         )}
 
-        {/* On mobile: spacer so right section stays right-aligned */}
-        {isMobile && <div style={{ flex: 1 }} />}
+        {/* When expanded: show clean header title */}
+        {isExpanded && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Auto Apply Queue
+            </span>
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              color: '#0070f3',
+              background: 'rgba(0, 112, 243, 0.08)',
+              border: '1px solid rgba(0, 112, 243, 0.2)',
+              padding: '0.1rem 0.5rem',
+              borderRadius: '9999px'
+            }}>
+              {activeSessions.length} {activeSessions.length === 1 ? 'task' : 'tasks'}
+            </span>
+          </div>
+        )}
+
+        {/* Spacer so right section stays right-aligned */}
+        {(isMobile || isExpanded) && <div style={{ flex: 1 }} />}
 
         {/* RIGHT SECTION: Global Background Auto Apply Status & Drawer Toggle */}
+
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
           {hasActiveQueue ? (
@@ -884,7 +905,7 @@ export function GlobalAutoApplyBar() {
     </div>
 
       {/* ─── Mobile FAB + Bottom Sheet ─── */}
-      {isMobile && (hasSelection || pageActions) && (
+      {isMobile && !isExpanded && (hasSelection || pageActions) && (
         <>
           {/* FAB backdrop */}
           {isFabOpen && (
