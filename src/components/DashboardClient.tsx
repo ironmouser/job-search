@@ -84,13 +84,23 @@ export default function DashboardClient({
   }, [hasBaseResume]);
 
   const [searchRole, setSearchRole] = useState(searchKeyword || '');
+  const [searchLocationInput, setSearchLocationInput] = useState(searchLocation || '');
   const syncButtonRef = useRef<SyncButtonHandle>(null);
 
   useEffect(() => {
-    if (!isLoaded && searchKeyword && !searchRole) {
-      setSearchRole(searchKeyword);
+    if (!isLoaded) {
+      let savedRole = '';
+      let savedLocation = '';
+      try {
+        savedRole = localStorage.getItem('dashboard_search_role') || '';
+        savedLocation = localStorage.getItem('dashboard_search_location') || '';
+      } catch (e) {}
+
+      setSearchRole(savedRole || searchKeyword || '');
+      setSearchLocationInput(savedLocation || searchLocation || '');
+      setIsLoaded(true);
     }
-  }, [searchKeyword, isLoaded]);
+  }, [searchKeyword, searchLocation, isLoaded]);
 
   useEffect(() => {
     setJobList(jobs || []);
@@ -1322,99 +1332,215 @@ export default function DashboardClient({
         {/* Matches Section Header Bar */}
         <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: hasResumeState ? '3.5rem' : '0rem' }}>
           <div className="matches-header-left-group">
-            <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-              Matches ({filteredAndSortedJobs.length})
-            </h3>
+            <div className="matches-title-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', lineHeight: '36px' }}>
+                Matches ({filteredAndSortedJobs.length})
+              </h3>
+            </div>
 
-            {/* Target Job Title / Role Search Override Field */}
-            <div 
-              className="matches-search-input-wrapper"
-              style={{
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                minWidth: '220px',
-                maxWidth: '320px',
-                width: '100%'
-              }}
-            >
-              <Search 
-                size={14} 
+            {/* Target Job Title / Role Search Field with Label */}
+            <div className="matches-search-field-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label 
+                htmlFor="dashboard-search-role"
                 style={{ 
-                  position: 'absolute', 
-                  left: '11px', 
-                  color: 'var(--text-secondary)', 
-                  pointerEvents: 'none',
-                  opacity: 0.8
-                }} 
-              />
-              <input
-                type="text"
-                value={searchRole}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSearchRole(val);
-                  if (typeof window !== 'undefined') {
-                    localStorage.setItem('dashboard_search_role', val);
-                  }
+                  fontSize: '0.72rem', 
+                  fontWeight: 700, 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.04em', 
+                  color: 'var(--text-secondary)' 
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    syncButtonRef.current?.triggerSync();
-                  }
-                }}
-                placeholder={searchKeyword || 'Job Title or Role...'}
-                title="Job title or role to search for. Overrides discovery setting for this search."
-                className="matches-search-input"
+              >
+                Job Title
+              </label>
+              <div 
+                className="matches-search-input-wrapper"
                 style={{
-                  width: '100%',
-                  padding: '0.4rem 2rem 0.4rem 2.1rem',
-                  fontSize: '0.85rem',
-                  borderRadius: '9999px',
-                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
-                  background: 'var(--bg-glass, rgba(0, 0, 0, 0.2))',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                  height: '34px',
-                  boxSizing: 'border-box'
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: '200px',
+                  maxWidth: '260px',
+                  width: '100%'
                 }}
-              />
-              {searchRole ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchRole('');
+              >
+                <Search 
+                  size={14} 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '11px', 
+                    color: 'var(--text-secondary)', 
+                    pointerEvents: 'none',
+                    opacity: 0.8
+                  }} 
+                />
+                <input
+                  id="dashboard-search-role"
+                  type="text"
+                  value={searchRole}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchRole(val);
                     if (typeof window !== 'undefined') {
-                      localStorage.setItem('dashboard_search_role', '');
+                      localStorage.setItem('dashboard_search_role', val);
                     }
                   }}
-                  title="Clear search role (falls back to saved discovery setting)"
-                  style={{
-                    position: 'absolute',
-                    right: '8px',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    padding: '2px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '50%'
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      syncButtonRef.current?.triggerSync();
+                    }
                   }}
-                >
-                  <X size={13} />
-                </button>
-              ) : null}
+                  placeholder={searchKeyword || 'e.g. Product Manager'}
+                  title="Job title or role to search for"
+                  className="matches-search-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.4rem 2rem 0.4rem 2.1rem',
+                    fontSize: '0.85rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
+                    background: 'var(--bg-glass, rgba(0, 0, 0, 0.2))',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    height: '36px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                {searchRole ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchRole('');
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('dashboard_search_role', '');
+                      }
+                    }}
+                    title="Clear job title"
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '50%'
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Target Location Search Field with Label */}
+            <div className="matches-search-field-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label 
+                htmlFor="dashboard-search-location"
+                style={{ 
+                  fontSize: '0.72rem', 
+                  fontWeight: 700, 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.04em', 
+                  color: 'var(--text-secondary)' 
+                }}
+              >
+                Location
+              </label>
+              <div 
+                className="matches-search-input-wrapper"
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: '180px',
+                  maxWidth: '240px',
+                  width: '100%'
+                }}
+              >
+                <MapPin 
+                  size={14} 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '11px', 
+                    color: 'var(--text-secondary)', 
+                    pointerEvents: 'none',
+                    opacity: 0.8
+                  }} 
+                />
+                <input
+                  id="dashboard-search-location"
+                  type="text"
+                  value={searchLocationInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchLocationInput(val);
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('dashboard_search_location', val);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      syncButtonRef.current?.triggerSync();
+                    }
+                  }}
+                  placeholder={searchLocation || 'e.g. Remote, San Francisco'}
+                  title="Location to search for (defaults to your location preference)"
+                  className="matches-search-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.4rem 2rem 0.4rem 2.1rem',
+                    fontSize: '0.85rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
+                    background: 'var(--bg-glass, rgba(0, 0, 0, 0.2))',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    height: '36px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                {searchLocationInput ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchLocationInput('');
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('dashboard_search_location', '');
+                      }
+                    }}
+                    title="Clear location"
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '50%'
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {/* Search for Jobs (SyncButton) */}
-            <div className="matches-search-btn-wrapper">
+            <div className="matches-search-btn-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
               <SyncButton
                 ref={syncButtonRef}
                 compact={true}
                 searchKeywordOverride={searchRole.trim()}
+                searchLocationOverride={searchLocationInput.trim()}
                 autoTrigger={shouldAutoSync}
                 onSyncStateChange={(loading, text, count, isRefining) => {
                   setIsSyncing(loading);

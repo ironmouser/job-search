@@ -15,10 +15,11 @@ interface SyncButtonProps {
   compact?: boolean;
   autoTrigger?: boolean;
   searchKeywordOverride?: string;
+  searchLocationOverride?: string;
 }
 
 const SyncButton = forwardRef<SyncButtonHandle, SyncButtonProps>(function SyncButton(
-  { onSyncStateChange, onSyncComplete, compact = false, autoTrigger = false, searchKeywordOverride },
+  { onSyncStateChange, onSyncComplete, compact = false, autoTrigger = false, searchKeywordOverride, searchLocationOverride },
   ref
 ) {
   const [isLoading, setIsLoading] = useState(false);
@@ -52,7 +53,8 @@ const SyncButton = forwardRef<SyncButtonHandle, SyncButtonProps>(function SyncBu
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          keyword: searchKeywordOverride && searchKeywordOverride.trim() ? searchKeywordOverride.trim() : undefined
+          keyword: searchKeywordOverride && searchKeywordOverride.trim() ? searchKeywordOverride.trim() : undefined,
+          location: searchLocationOverride && searchLocationOverride.trim() ? searchLocationOverride.trim() : undefined
         })
       });
 

@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 const USER_SCOPED_KEYS = [
   'jobAgentDashboardState',
   'dashboard_search_role',
+  'dashboard_search_location',
   'dashboard_page',
   'dashboard_items_per_page',
   'last_clicked_job_id',

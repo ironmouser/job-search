@@ -1631,7 +1631,13 @@ details.glass-card > summary::marker { display: none; content: ''; }
     font-weight: 700 !important;
   }
 
-  /* Row 0.5: Matches Search Input Override */
+  /* Row 0.5: Matches Search Field Groups & Input Override */
+  .matches-search-field-group {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
   .matches-search-input-wrapper {
     width: 100% !important;
     max-width: none !important;
@@ -1774,17 +1780,24 @@ details.glass-card > summary::marker { display: none; content: ''; }
 
 .matches-header-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
   margin-top: 3.5rem;
 }
 
 .matches-header-left-group,
 .matches-header-top-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.matches-search-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .matches-search-input-wrapper {
