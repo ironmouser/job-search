@@ -3104,6 +3104,79 @@ body.light-theme .drawer-queue-item.active {
   border-color: #6366f1 !important;
 }
 
+/* ─── Mobile FAB & Action Sheet ──────────────────────────────────────── */
+
+.mobile-fab {
+  position: fixed;
+  right: 1.1rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  z-index: 9960;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5), 0 2px 8px rgba(0,0,0,0.35);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.mobile-fab:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.65);
+}
+
+.mobile-fab:active {
+  transform: scale(0.96);
+}
+
+.mobile-fab.fab-selection {
+  background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.5);
+}
+
+.mobile-fab.fab-alert {
+  background: linear-gradient(135deg, #d97706, #fbbf24);
+  box-shadow: 0 4px 20px rgba(251, 191, 36, 0.5);
+}
+
+.fab-action-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 9960;
+  background: #0d1117;
+  border-top: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+  transform: translateY(110%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.fab-action-sheet.open {
+  transform: translateY(0);
+}
+
+body.light-theme .fab-action-sheet {
+  background: #ffffff;
+  border-top-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Make command-bar-btn full-width inside action sheet */
+.fab-action-sheet .command-bar-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  font-size: 0.88rem;
+}
+
 /* ─── Drawer Right Panel (Selected Job Details & Stepper) ────────────── */
 
 .drawer-detail-content {
