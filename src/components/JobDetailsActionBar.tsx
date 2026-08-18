@@ -12,6 +12,7 @@ import {
   HelpCircle,
   SlidersHorizontal,
   Loader2,
+  FileText,
 } from 'lucide-react';
 import FeedbackButtons from './FeedbackButtons';
 import { useJobNav } from './JobDetailsNavWrapper';
@@ -94,7 +95,7 @@ export default function JobDetailsActionBar({
       const res = await fetch(`/api/jobs/sequence?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setSequence(data.jobs || []);
+        setSequence(data.sequence || data.jobs || []);
       }
     } catch (e) {
       console.error('Failed to load sequence for job action bar:', e);
@@ -125,19 +126,31 @@ export default function JobDetailsActionBar({
 
   const handlePrev = () => {
     if (!prevJob) return;
-    trackDockAction('navigate_prev', currentJobId);
-    triggerNavigate(prevJob.id, 'right');
+    trackDockAction('navigate_prev', currentJobId, { target_id: prevJob.id });
+    const targetUrl = `/job/${prevJob.id}`;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    triggerNavigate('prev', targetUrl, () => {
+      router.push(targetUrl);
+    });
   };
 
   const handleNext = () => {
     if (!nextJob) return;
-    trackDockAction('navigate_next', currentJobId);
-    triggerNavigate(nextJob.id, 'left');
+    trackDockAction('navigate_next', currentJobId, { target_id: nextJob.id });
+    const targetUrl = `/job/${nextJob.id}`;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    triggerNavigate('next', targetUrl, () => {
+      router.push(targetUrl);
+    });
   };
 
   useEffect(() => {
-    registerSwipeHandlers(handleNext, handlePrev);
-  }, [nextJob, prevJob]);
+    registerSwipeHandlers(
+      nextJob ? handleNext : null,
+      prevJob ? handlePrev : null
+    );
+    return () => registerSwipeHandlers(null, null);
+  }, [nextJob, prevJob, registerSwipeHandlers]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -162,6 +175,16 @@ export default function JobDetailsActionBar({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nextJob, prevJob]);
+
+  const handleStep1Review = () => {
+    trackDockAction('step1_review', currentJobId);
+    const element = document.getElementById('step-1-review');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const handleStep2Generate = async () => {
     trackDockAction('step2_generate_assets', currentJobId);
@@ -241,7 +264,7 @@ export default function JobDetailsActionBar({
 
         <div style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.15)', margin: '0 0.15rem' }} />
 
-        {/* Step 1: Prev & Next */}
+        {/* Prev & Next Navigation Buttons (without step number) */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
           <button
             type="button"
@@ -258,12 +281,27 @@ export default function JobDetailsActionBar({
             type="button"
             onClick={handleNext}
             disabled={!nextJob || currentIndex >= sequence.length - 1}
-            className="command-bar-btn command-bar-btn-primary"
+            className="command-bar-btn"
+            title="Next Job"
             style={{ opacity: (!nextJob || currentIndex >= sequence.length - 1) ? 0.45 : 1 }}
           >
-            <span>1. Next</span> <ChevronRight size={14} />
+            <span>Next</span> <ChevronRight size={14} />
           </button>
         </div>
+
+        <div style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.15)', margin: '0 0.15rem' }} />
+
+        {/* Step 1: Review Job */}
+        <button
+          type="button"
+          onClick={handleStep1Review}
+          className="command-bar-btn"
+          title="Jump to Job Description"
+        >
+          <span style={{ opacity: 0.75, fontSize: '0.75rem' }}>1.</span>
+          <FileText size={14} />
+          <span>Review Job</span>
+        </button>
 
         {/* Step 2: Generate Assets */}
         <button
@@ -378,6 +416,7 @@ export default function JobDetailsActionBar({
     nextJob,
     setPageActions,
   ]);
+
 
   return (
     <>

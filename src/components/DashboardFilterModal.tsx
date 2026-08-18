@@ -93,7 +93,7 @@ export default function DashboardFilterModal({
             {/* Search Keyword */}
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
-                Keyword Search
+                Keyword Filter
               </label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <Search size={16} style={{ position: 'absolute', left: '0.75rem', color: '#94a3b8' }} />
