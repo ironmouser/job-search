@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import AddJobUrlBar from '@/components/AddJobUrlBar';
 import DashboardDock, { SortOptionType } from '@/components/DashboardDock';
 import DashboardFilterModal from '@/components/DashboardFilterModal';
+import DashboardSearchModal from '@/components/DashboardSearchModal';
 import AddJobModal from '@/components/AddJobModal';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
 import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInternationalLocation, isOutsideUsLocation } from '@/lib/locationUtils';
@@ -254,8 +255,18 @@ export default function DashboardClient({
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [confettiJobId, setConfettiJobId] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
   const [isCleanupModalOpen, setIsCleanupModalOpen] = useState(false);
+
+  const handleExecuteSearchModal = useCallback((newKeyword: string, newLocation: string) => {
+    setSearchRole(newKeyword);
+    setSearchLocationInput(newLocation);
+    setIsSearchModalOpen(false);
+    setTimeout(() => {
+      syncButtonRef.current?.triggerSync();
+    }, 50);
+  }, []);
 
   const hasActiveFilters = Boolean(
     keywordFilter ||
@@ -717,23 +728,21 @@ export default function DashboardClient({
         </button>
 
         {/* Search & Sync Jobs */}
-        <div data-tour="dashboard-sync-jobs" style={{ display: 'inline-flex', alignItems: 'center' }}>
-          <SyncButton
-            compact={true}
-            onSyncStateChange={(loading, text, count, isRefining) => {
-              setIsSyncing(loading);
-              setSyncMessage(text);
-              if (loading) {
-                if (count !== undefined) setJobsFoundCount(count);
-                setIsRefiningJobs(!!isRefining);
-              } else {
-                setJobsFoundCount(null);
-                setIsRefiningJobs(false);
-              }
-            }}
-            onSyncComplete={() => {}}
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsSearchModalOpen(true)}
+          disabled={isSyncing || isEmailSyncing}
+          className="command-bar-btn"
+          title="Search 20+ Job Boards"
+          data-tour="dashboard-sync-jobs"
+        >
+          {isSyncing ? (
+            <Loader2 size={14} className="animate-spin" style={{ color: '#38bdf8' }} />
+          ) : (
+            <Search size={14} style={{ color: '#38bdf8' }} />
+          )}
+          <span>{isSyncing ? 'Searching...' : 'Search Jobs'}</span>
+        </button>
 
         {/* Divider */}
         <div style={{ width: '1px', height: '18px', background: '#30363d', margin: '0 0.15rem' }} />
@@ -2274,6 +2283,15 @@ export default function DashboardClient({
         setSortOption={setSortOption}
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}
+      />
+
+      {/* Dashboard Search Jobs Modal (from Bottom Command Bar) */}
+      <DashboardSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        defaultKeyword={searchRole || searchKeyword}
+        defaultLocation={searchLocationInput || searchLocation}
+        onSearch={handleExecuteSearchModal}
       />
 
       {/* Add Job Modal */}
