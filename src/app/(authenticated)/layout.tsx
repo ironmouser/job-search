@@ -1,8 +1,9 @@
 import { HelpProvider } from "@/contexts/HelpContext";
+import { AutoApplyBarProvider } from "@/contexts/AutoApplyBarContext";
 import TourGuide from "@/components/common/TourGuide";
 import HelpPanel from "@/components/common/HelpPanel";
 import Navigation from "@/components/Navigation";
-import { GlobalAutoApplyDock } from "@/components/GlobalAutoApplyDock";
+import { GlobalAutoApplyBar } from "@/components/GlobalAutoApplyBar";
 
 export default function AuthenticatedLayout({
   children,
@@ -11,15 +12,17 @@ export default function AuthenticatedLayout({
 }>) {
   return (
     <HelpProvider>
-      <TourGuide />
-      <div className="app-container">
-        <Navigation />
-        <main className="main-content">
-          {children}
-        </main>
-        <HelpPanel />
-        <GlobalAutoApplyDock />
-      </div>
+      <AutoApplyBarProvider>
+        <TourGuide />
+        <div className="app-container">
+          <Navigation />
+          <main className="main-content">
+            {children}
+          </main>
+          <HelpPanel />
+          <GlobalAutoApplyBar />
+        </div>
+      </AutoApplyBarProvider>
     </HelpProvider>
   );
 }

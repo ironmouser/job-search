@@ -1,9 +1,8 @@
 "use client";
 // Force Railway fresh build trigger
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText } from 'lucide-react';
-import { AutoApplyQueueDrawer, BatchQueueItem } from '@/components/AutoApplyQueueDrawer';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
@@ -27,6 +26,7 @@ import TrialStatusBanner from '@/components/TrialStatusBanner';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { AntiAbuseBanner } from '@/components/AntiAbuseBanner';
 import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
+import { useCommandBar } from '@/contexts/AutoApplyBarContext';
 
 
 const safeFormatDate = (dateVal: any) => {
@@ -174,21 +174,71 @@ export default function DashboardClient({
   const [isRefiningJobs, setIsRefiningJobs] = useState(false);
   const [shouldAutoSync, setShouldAutoSync] = useState(false);
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
-  const [batchQueueItems, setBatchQueueItems] = useState<BatchQueueItem[]>([]);
-  const [showQueueDrawer, setShowQueueDrawer] = useState(false);
+  const [isStartingBatch, setIsStartingBatch] = useState(false);
 
-  const handleStartBatchApply = () => {
-    if (checkedJobs.size === 0) return;
-    const selected = jobList.filter((j) => checkedJobs.has(j.id));
-    const items: BatchQueueItem[] = selected.map((j) => ({
-      jobId: j.id,
-      title: j.title,
-      company: cleanCompanyName(j.company),
-      status: 'queued',
-    }));
-    setBatchQueueItems(items);
-    setShowQueueDrawer(true);
-  };
+  // Use refs to always have the latest values without stale closures
+  const checkedJobsRef = useRef(checkedJobs);
+  const jobListRef = useRef(jobList);
+  const isStartingBatchRef = useRef(isStartingBatch);
+  checkedJobsRef.current = checkedJobs;
+  jobListRef.current = jobList;
+  isStartingBatchRef.current = isStartingBatch;
+
+  // Stable handler — always reads from refs so no stale closure issues
+  const handleStartBatchApply = useCallback(async () => {
+    if (checkedJobsRef.current.size === 0 || isStartingBatchRef.current) return;
+    setIsStartingBatch(true);
+    const selected = jobListRef.current.filter((j) => checkedJobsRef.current.has(j.id));
+    setCheckedJobs(new Set());
+
+    try {
+      await Promise.all(
+        selected.map(async (j) => {
+          try {
+            await fetch(`/api/auto-apply/${j.id}/start`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ simulationMode: false }),
+            });
+          } catch (err) {
+            console.error('Failed to start auto apply for job:', j.id, err);
+          }
+        })
+      );
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auto-apply-queue-start'));
+      }
+    } finally {
+      setIsStartingBatch(false);
+    }
+  }, []); // stable — no deps needed since we use refs
+
+  const { setSelectionState, setPageActions } = useCommandBar();
+
+  const handleDeselectAll = useCallback(() => {
+    setCheckedJobs(new Set());
+  }, []);
+
+  const handleOpenCleanup = useCallback(() => {
+    setIsCleanupModalOpen(true);
+  }, []);
+
+  // Sync selection state with Global Command & Bottom Bar
+  useEffect(() => {
+    if (checkedJobs.size > 0) {
+      setSelectionState({
+        count: checkedJobs.size,
+        isApplying: isStartingBatch,
+        onStartApply: handleStartBatchApply,
+        onDeselectAll: handleDeselectAll,
+        onArchiveDelete: handleOpenCleanup,
+      });
+    } else {
+      setSelectionState(null);
+    }
+  }, [checkedJobs.size, isStartingBatch, handleStartBatchApply, handleDeselectAll, handleOpenCleanup, setSelectionState]);
+
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -635,6 +685,105 @@ export default function DashboardClient({
       setSyncMessage('');
     }
   };
+
+  // Register Dashboard quick actions into the Global Command Bar
+  useEffect(() => {
+    setPageActions(
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap' }}>
+        {/* Scan Inbox */}
+        <button
+          type="button"
+          onClick={handleEmailSync}
+          disabled={isEmailSyncing || isSyncing}
+          className="command-bar-btn"
+          title="Scan inbox for job alerts"
+        >
+          {isEmailSyncing ? (
+            <Loader2 size={14} className="animate-spin" style={{ color: '#38bdf8' }} />
+          ) : (
+            <Mail size={14} style={{ color: '#38bdf8' }} />
+          )}
+          <span>{isEmailSyncing ? 'Scanning...' : 'Scan Inbox'}</span>
+        </button>
+
+        {/* Search & Sync Jobs */}
+        <div data-tour="dashboard-sync-jobs" style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <SyncButton
+            compact={true}
+            onSyncStateChange={(loading, text, count, isRefining) => {
+              setIsSyncing(loading);
+              setSyncMessage(text);
+              if (loading) {
+                if (count !== undefined) setJobsFoundCount(count);
+                setIsRefiningJobs(!!isRefining);
+              } else {
+                setJobsFoundCount(null);
+                setIsRefiningJobs(false);
+              }
+            }}
+            onSyncComplete={() => {}}
+          />
+        </div>
+
+        {/* Divider */}
+        <div style={{ width: '1px', height: '18px', background: '#30363d', margin: '0 0.15rem' }} />
+
+        {/* Filter Button */}
+        <button
+          type="button"
+          onClick={() => setIsFilterModalOpen(true)}
+          className="command-bar-btn"
+          style={{ position: 'relative' }}
+          title="Filter & Sort Jobs"
+        >
+          <SlidersHorizontal size={14} style={{ color: '#60a5fa' }} />
+          <span>Filter</span>
+          {hasActiveFilters && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: '#38bdf8',
+                boxShadow: '0 0 6px #38bdf8',
+              }}
+            />
+          )}
+        </button>
+
+        {/* Scrape & Add Job */}
+        <button
+          type="button"
+          onClick={() => setIsAddJobModalOpen(true)}
+          className="command-bar-btn"
+          title="Paste job URL to add to pipeline"
+        >
+          <Sparkles size={14} style={{ color: '#34d399' }} />
+          <span>Add Job</span>
+        </button>
+
+        {/* Clean Up Tool */}
+        <button
+          type="button"
+          onClick={() => setIsCleanupModalOpen(true)}
+          className="command-bar-btn command-bar-btn-danger"
+          title="Clean Up Dashboard"
+        >
+          <Trash2 size={14} />
+          <span>Clean Up</span>
+        </button>
+      </div>
+    );
+    return () => setPageActions(null);
+  }, [
+    isEmailSyncing,
+    isSyncing,
+    hasActiveFilters,
+    setPageActions,
+  ]);
 
   const toggleArchive = async (id: string) => {
     try {
@@ -1109,8 +1258,6 @@ export default function DashboardClient({
               <h2 className="stat-card-number">{totalArchived}</h2>
             </div>
           </div>
-
-          <AddJobUrlBar userPlanTier={userPlanTier} onJobAdded={(newJob) => setJobList(prev => [newJob, ...prev])} />
         </div>
 
         {/* Resume Activation Banner (Above Matches Section) */}
@@ -1173,7 +1320,7 @@ export default function DashboardClient({
         )}
 
         {/* Matches Section Header Bar */}
-        <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: hasResumeState ? '5.5rem' : '0rem' }}>
+        <div className="matches-header-bar" style={{ marginBottom: '1.25rem', marginTop: hasResumeState ? '3.5rem' : '0rem' }}>
           <div className="matches-header-left-group">
             <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
               Matches ({filteredAndSortedJobs.length})
@@ -1979,28 +2126,7 @@ export default function DashboardClient({
 
 
 
-      {/* Floating Dashboard Dock */}
-      <DashboardDock
-        onEmailSync={handleEmailSync}
-        isEmailSyncing={isEmailSyncing}
-        isSyncing={isSyncing}
-        onSyncStateChange={(loading, text, count, isRefining) => {
-          setIsSyncing(loading);
-          setSyncMessage(text);
-          if (loading) {
-            if (count !== undefined) setJobsFoundCount(count);
-            setIsRefiningJobs(!!isRefining);
-          } else {
-            setJobsFoundCount(null);
-            setIsRefiningJobs(false);
-          }
-        }}
-        onSyncComplete={() => {}}
-        onOpenFilterModal={() => setIsFilterModalOpen(true)}
-        hasActiveFilters={hasActiveFilters}
-        onOpenAddJobModal={() => setIsAddJobModalOpen(true)}
-        onOpenCleanupModal={() => setIsCleanupModalOpen(true)}
-      />
+
 
       {/* Dashboard Filter Modal */}
       <DashboardFilterModal
@@ -2032,52 +2158,9 @@ export default function DashboardClient({
         onJobAdded={(newJob) => setJobList((prev) => [newJob, ...prev])}
       />
 
-      {/* Bulk Action Bar when jobs are checked */}
-      {checkedJobs.size > 0 && (
-        <div className="dashboard-bulk-bar">
-          <div className="dashboard-bulk-info">
-            <span className="dashboard-bulk-badge">
-              <CheckCircle2 size={15} style={{ color: '#38bdf8' }} />
-              <span>{checkedJobs.size} Selected</span>
-            </span>
 
-            <button
-              onClick={() => setCheckedJobs(new Set())}
-              className="bulk-dock-deselect-btn"
-            >
-              Deselect All
-            </button>
-          </div>
 
-          <div className="dashboard-bulk-actions">
-            <button
-              onClick={handleStartBatchApply}
-              className="btn-primary dashboard-bulk-apply-btn"
-            >
-              <Bot size={16} />
-              <span>1-Click Auto Apply ({checkedJobs.size})</span>
-            </button>
 
-            <button
-              onClick={() => setIsCleanupModalOpen(true)}
-              className="bulk-dock-btn-outline dashboard-bulk-cleanup-btn"
-            >
-              <Trash2 size={15} />
-              <span>Archive / Delete</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Multi-Job Auto Apply Queue Drawer */}
-      <AutoApplyQueueDrawer
-        isOpen={showQueueDrawer}
-        onClose={() => setShowQueueDrawer(false)}
-        items={batchQueueItems}
-        onItemStatusChange={(jobId, status) => {
-          setJobList(prev => prev.map(j => j.id === jobId ? { ...j, status } : j));
-        }}
-      />
 
       {/* Cleanup Modal */}
       <DashboardCleanup

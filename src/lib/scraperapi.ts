@@ -1,4 +1,5 @@
-export { KNOWN_ATS_DOMAINS, isKnownATSUrl, isAggregatorUrl } from './urlUtils';
+import { KNOWN_ATS_DOMAINS, isKnownATSUrl, isAggregatorUrl } from './urlUtils';
+export { KNOWN_ATS_DOMAINS, isKnownATSUrl, isAggregatorUrl };
 
 const SCRAPERAPI_BASE = 'https://api.scraperapi.com';
 

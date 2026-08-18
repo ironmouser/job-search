@@ -5,26 +5,20 @@ import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
   ChevronRight,
-  Bookmark,
-  BookmarkX,
-  ThumbsUp,
-  ThumbsDown,
-  Layers,
-  X,
   Sparkles,
   CheckCircle2,
   ExternalLink,
   Zap,
   HelpCircle,
-  FileText,
-  Send,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Loader2,
 } from 'lucide-react';
 import FeedbackButtons from './FeedbackButtons';
 import { useJobNav } from './JobDetailsNavWrapper';
 import JobDetailsFilterModal from './JobDetailsFilterModal';
 import { trackDockAction } from '@/lib/analytics';
 import JitResumeUploadModal from './common/JitResumeUploadModal';
+import { useCommandBar } from '@/contexts/AutoApplyBarContext';
 
 interface JobDetailsActionBarProps {
   currentJobId: string;
@@ -43,21 +37,19 @@ export default function JobDetailsActionBar({
   hasAssets = false,
   jobUrl = '',
   status = 'discovered',
-  isPro = false
+  isPro = false,
 }: JobDetailsActionBarProps) {
   const router = useRouter();
   const { triggerNavigate, registerSwipeHandlers } = useJobNav();
+  const { setPageActions } = useCommandBar();
 
   const [sequence, setSequence] = useState<any[]>([]);
   const [loadingSeq, setLoadingSeq] = useState(true);
-  const [isFabOpen, setIsFabOpen] = useState(false);
-  const [showApplyPopover, setShowApplyPopover] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAutoApplying, setIsAutoApplying] = useState(false);
   const [isJitResumeOpen, setIsJitResumeOpen] = useState(false);
   const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
-  const [mobileApplyOpen, setMobileApplyOpen] = useState(false);
   const prefetchedJobs = useRef<Set<string>>(new Set());
-  const popoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setLocalHasAssets(hasAssets);
@@ -102,18 +94,15 @@ export default function JobDetailsActionBar({
       const res = await fetch(`/api/jobs/sequence?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.sequence) {
-          setSequence(data.sequence);
-        }
+        setSequence(data.jobs || []);
       }
-    } catch (err) {
-      console.error('Failed to load job sequence:', err);
+    } catch (e) {
+      console.error('Failed to load sequence for job action bar:', e);
     } finally {
       setLoadingSeq(false);
     }
   };
 
-  // Fetch sequence based on saved dashboard state
   useEffect(() => {
     loadSequence();
   }, [currentJobId]);
@@ -122,515 +111,293 @@ export default function JobDetailsActionBar({
   const prevJob = currentIndex > 0 ? sequence[currentIndex - 1] : null;
   const nextJob = currentIndex >= 0 && currentIndex < sequence.length - 1 ? sequence[currentIndex + 1] : null;
 
-  // Prefetch routes for Next & Previous
+  // Background Prefetch
   useEffect(() => {
-    if (nextJob?.id) {
-      router.prefetch(`/job/${nextJob.id}`);
-    }
-    if (prevJob?.id) {
+    if (prevJob && !prefetchedJobs.current.has(prevJob.id)) {
       router.prefetch(`/job/${prevJob.id}`);
+      prefetchedJobs.current.add(prevJob.id);
     }
-  }, [nextJob, prevJob, router]);
-
-  // Background fetch & score next 3 and previous 3 unscored jobs
-  useEffect(() => {
-    if (currentIndex < 0 || sequence.length === 0) return;
-
-    // Next 3 jobs ahead of the current position
-    const next3Jobs = sequence.slice(currentIndex + 1, currentIndex + 4);
-    // Previous 3 jobs behind the current position
-    const prev3Jobs = sequence.slice(Math.max(0, currentIndex - 3), currentIndex);
-
-    // Filter to only unscored, not-yet-queued jobs in each direction
-    const filterNew = (jobs: any[]) =>
-      jobs.filter(j => j.id && !prefetchedJobs.current.has(j.id) && !j.isScored);
-
-    const nextToProcess = filterNew(next3Jobs);
-    const prevToProcess = filterNew(prev3Jobs);
-    const allToProcess = [...nextToProcess, ...prevToProcess];
-
-    // Mark all as queued immediately to prevent duplicate calls on concurrent re-renders
-    allToProcess.forEach(j => prefetchedJobs.current.add(j.id));
-
-    // Split into two groups based on description adequacy:
-    // - Jobs with full descriptions → /api/score (batch)
-    // - Email stubs (no adequate description) → /api/jobs/{id}/fetch-details (fetch + score in one shot)
-    const readyToScore = allToProcess.filter(j => j.isDescriptionAdequate !== false);
-    const stubsToFetch = allToProcess.filter(j => j.isDescriptionAdequate === false).slice(0, 2);
-
-    if (readyToScore.length > 0) {
-      const ids = readyToScore.map(j => j.id);
-      fetch('/api/score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobIds: ids })
-      }).catch(err => {
-        console.warn('Background batch score failed:', err);
-        ids.forEach(id => prefetchedJobs.current.delete(id));
-      });
+    if (nextJob && !prefetchedJobs.current.has(nextJob.id)) {
+      router.prefetch(`/job/${nextJob.id}`);
+      prefetchedJobs.current.add(nextJob.id);
     }
-
-    // Fire individual fetch-details calls for stub/email jobs (fetch description + score atomically)
-    stubsToFetch.forEach(j => {
-      fetch(`/api/jobs/${j.id}/fetch-details`, { method: 'POST' })
-        .catch(err => {
-          console.warn(`Background fetch-details failed for job ${j.id}:`, err);
-          prefetchedJobs.current.delete(j.id); // allow retry on next nav
-        });
-    });
-  }, [currentIndex, sequence]);
-
-
-  const handleNext = () => {
-    if (!nextJob) return;
-    trackDockAction('dock_next_job', currentJobId, { target_id: nextJob.id });
-    const targetUrl = `/job/${nextJob.id}`;
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    triggerNavigate('next', targetUrl, () => {
-      router.push(targetUrl);
-    });
-  };
+  }, [prevJob, nextJob, router]);
 
   const handlePrev = () => {
     if (!prevJob) return;
-    trackDockAction('dock_prev_job', currentJobId, { target_id: prevJob.id });
-    const targetUrl = `/job/${prevJob.id}`;
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    triggerNavigate('prev', targetUrl, () => {
-      router.push(targetUrl);
-    });
+    trackDockAction('navigate_prev', currentJobId);
+    triggerNavigate(prevJob.id, 'right');
   };
 
-  // Register swipe handlers with the nav wrapper so mobile users can swipe
-  // left/right anywhere on the page to navigate between jobs.
+  const handleNext = () => {
+    if (!nextJob) return;
+    trackDockAction('navigate_next', currentJobId);
+    triggerNavigate(nextJob.id, 'left');
+  };
+
   useEffect(() => {
-    registerSwipeHandlers(
-      nextJob ? handleNext : null,
-      prevJob ? handlePrev : null
-    );
-    return () => {
-      registerSwipeHandlers(null, null);
+    registerSwipeHandlers(handleNext, handlePrev);
+  }, [nextJob, prevJob]);
+
+  // Keyboard navigation shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.getAttribute('contenteditable') === 'true';
+      if (isInput) return;
+
+      if (e.key === 'ArrowRight' || e.key === 'j' || e.key === 'J') {
+        if (nextJob) {
+          e.preventDefault();
+          handleNext();
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'k' || e.key === 'K') {
+        if (prevJob) {
+          e.preventDefault();
+          handlePrev();
+        }
+      }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nextJob, prevJob]);
 
   const handleStep2Generate = async () => {
-    trackDockAction('dock_generate_assets_click', currentJobId);
-    const section = document.getElementById('step-2-assets');
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
+    trackDockAction('step2_generate_assets', currentJobId);
+    const element = document.getElementById('step-2-assets');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
     }
 
-    if (!localHasAssets && !isGenerating) {
+    if (localHasAssets || isGenerating) return;
+
+    try {
       setIsGenerating(true);
-      try {
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId: currentJobId })
-        });
-        if (res.ok) {
-          setLocalHasAssets(true);
-          router.refresh();
-        } else {
-          const data = await res.json().catch(() => ({}));
-          if (data.errorCode === 'MISSING_BASE_RESUME') {
-            setIsJitResumeOpen(true);
-          }
+      const res = await fetch(`/api/jobs/${currentJobId}/tailor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: true })
+      });
+      if (res.ok) {
+        setLocalHasAssets(true);
+        router.refresh();
+      } else if (res.status === 400) {
+        const data = await res.json();
+        if (data.code === 'NO_RESUME') {
+          setIsJitResumeOpen(true);
         }
-      } catch (e) {
-        console.error('Failed to generate assets:', e);
-      } finally {
-        setIsGenerating(false);
       }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const handleResumeUploadSuccess = () => {
-    setIsJitResumeOpen(false);
-    setTimeout(() => {
-      handleStep2Generate();
-    }, 100);
-  };
-
-  const handleStep3AutoApply = () => {
-    trackDockAction('dock_auto_apply_click', currentJobId);
-    setShowApplyPopover(false);
-    setMobileApplyOpen(false);
-    setIsFabOpen(false);
-    const section = document.getElementById('step-3-apply');
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
+  const handleStep3AutoApply = async () => {
+    trackDockAction('step3_auto_apply', currentJobId);
+    const element = document.getElementById('step-3-apply');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
     }
-  };
 
-  const handleStep3ApplyNewTab = () => {
-    trackDockAction('dock_external_apply_click', currentJobId);
-    setShowApplyPopover(false);
-    setMobileApplyOpen(false);
-    setIsFabOpen(false);
-
-    fetch(`/api/jobs/${currentJobId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'applied', applied_at: new Date().toISOString() })
-    })
-      .then(() => router.refresh())
-      .catch(console.error);
-
-    if (jobUrl) {
-      window.open(jobUrl, '_blank');
-    }
-    const section = document.getElementById('step-3-apply');
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
+    try {
+      setIsAutoApplying(true);
+      await fetch(`/api/auto-apply/${currentJobId}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ simulationMode: false })
+      });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auto-apply-queue-start'));
+      }
+    } catch (err) {
+      console.error('Failed to trigger auto apply:', err);
+      setIsAutoApplying(false);
     }
   };
 
   const handleStep4QA = () => {
-    setIsFabOpen(false);
-    const section = document.getElementById('step-4-qa');
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
-      setTimeout(() => {
-        const textarea = section.querySelector('textarea');
-        if (textarea) {
-          textarea.focus();
-        }
-      }, 400);
+    trackDockAction('step4_qa', currentJobId);
+    const element = document.getElementById('step-4-qa');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  const handleMouseEnterPopover = () => {
-    if (popoverTimeout.current) clearTimeout(popoverTimeout.current);
-    setShowApplyPopover(true);
-  };
+  // Register Job Page actions into the Global Command Bar
+  useEffect(() => {
+    setPageActions(
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap' }}>
+        {/* Save & Feedback */}
+        <FeedbackButtons
+          jobId={currentJobId}
+          initialFeedback={initialFeedback}
+          initialIsArchived={initialIsArchived}
+          showSaveForLater={true}
+          compact={true}
+        />
 
-  const handleMouseLeavePopover = () => {
-    popoverTimeout.current = setTimeout(() => {
-      setShowApplyPopover(false);
-    }, 200);
-  };
+        <div style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.15)', margin: '0 0.15rem' }} />
 
-  return (
-    <>
-      {/* Desktop Action Bar — 4-Step Workflow Dock */}
-      <div className="job-action-bar-desktop">
-        {/* Left Reactions & Save */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <FeedbackButtons
-            jobId={currentJobId}
-            initialFeedback={initialFeedback}
-            initialIsArchived={initialIsArchived}
-            showSaveForLater={true}
-            compact={true}
-          />
+        {/* Step 1: Prev & Next */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+          <button
+            type="button"
+            onClick={handlePrev}
+            disabled={!prevJob || currentIndex <= 0}
+            className="command-bar-btn"
+            title="Previous Job"
+            style={{ padding: '0.32rem 0.55rem' }}
+          >
+            <ChevronLeft size={14} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!nextJob || currentIndex >= sequence.length - 1}
+            className="command-bar-btn command-bar-btn-primary"
+            style={{ opacity: (!nextJob || currentIndex >= sequence.length - 1) ? 0.45 : 1 }}
+          >
+            <span>1. Next</span> <ChevronRight size={14} />
+          </button>
         </div>
 
-        {/* Divider */}
-        <div className="job-action-bar-divider" />
-
-        {/* 4-Step Numbered Workflow Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {/* Step 1: Back & Next */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <button
-              onClick={handlePrev}
-              disabled={!prevJob || currentIndex <= 0}
-              className="btn-outline"
-              title="Previous Job"
-              style={{
-                padding: '0.4rem 0.65rem',
-                fontSize: '0.85rem',
-                borderRadius: '9999px',
-                opacity: (!prevJob || currentIndex <= 0) ? 0.4 : 1,
-                cursor: (!prevJob || currentIndex <= 0) ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <button
-              onClick={handleNext}
-              disabled={!nextJob || currentIndex >= sequence.length - 1}
-              className="btn-primary"
-              style={{
-                padding: '0.4rem 0.9rem',
-                fontSize: '0.85rem',
-                borderRadius: '9999px',
-                opacity: (!nextJob || currentIndex >= sequence.length - 1) ? 0.4 : 1,
-                cursor: (!nextJob || currentIndex >= sequence.length - 1) ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem'
-              }}
-            >
-              <span className="job-step-number" style={{ background: '#ffffff', color: 'var(--accent-primary, #0070f3)' }}>1</span>
-              Next <ChevronRight size={16} />
-            </button>
-          </div>
-
-          {/* Step 2: Generate Assets */}
-          <button
-            onClick={handleStep2Generate}
-            className="job-step-btn"
-            title={localHasAssets ? "Assets Generated — Scroll to view" : "Generate Cover Letter & Resume Extract"}
-          >
-            <span className="job-step-number">2</span>
-            {localHasAssets ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#10b981', fontWeight: 600 }}>
-                <CheckCircle2 size={14} /> Assets Ready
-              </span>
-            ) : (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Sparkles size={14} style={{ color: '#0070f3' }} /> {isGenerating ? 'Generating...' : 'Generate Assets'}
-              </span>
-            )}
-          </button>
-
-          {/* Step 3: Apply (Hover Popover Dropup) */}
-          <div
-            style={{ position: 'relative' }}
-            onMouseEnter={handleMouseEnterPopover}
-            onMouseLeave={handleMouseLeavePopover}
-          >
-            <button
-              onClick={() => setShowApplyPopover(prev => !prev)}
-              className="job-step-btn"
-              style={{
-                background: status === 'applied' ? 'rgba(16, 185, 129, 0.1)' : undefined,
-                borderColor: status === 'applied' ? '#10b981' : undefined,
-                color: status === 'applied' ? '#10b981' : undefined
-              }}
-            >
-              <span className="job-step-number">3</span>
-              {status === 'applied' ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
-                  <CheckCircle2 size={14} /> Applied
-                </span>
-              ) : (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <Send size={14} /> Apply <ChevronRight size={14} style={{ transform: 'rotate(-90deg)' }} />
-                </span>
-              )}
-            </button>
-
-            {/* Apply Popover Card */}
-            {showApplyPopover && (
-              <div className="job-apply-popover" onMouseEnter={handleMouseEnterPopover} onMouseLeave={handleMouseLeavePopover}>
-                <button onClick={handleStep3AutoApply} className="job-apply-option-btn">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Zap size={15} style={{ color: '#f59e0b' }} /> Auto Apply
-                  </span>
-                  <span style={{ fontSize: '0.7rem', background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', padding: '2px 6px', borderRadius: '10px', fontWeight: 600 }}>1-Click</span>
-                </button>
-
-                <button onClick={handleStep3ApplyNewTab} className="job-apply-option-btn">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <ExternalLink size={15} style={{ color: '#0070f3' }} /> Apply in New Tab
-                  </span>
-                  <span style={{ fontSize: '0.7rem', background: '#e2e8f0', color: '#475569', padding: '2px 6px', borderRadius: '10px', fontWeight: 600 }}>Direct</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Step 4: Q&A */}
-          <button onClick={handleStep4QA} className="job-step-btn" title="Jump to Application Q&A">
-            <span className="job-step-number">4</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <HelpCircle size={14} /> Q&A
+        {/* Step 2: Generate Assets */}
+        <button
+          type="button"
+          onClick={handleStep2Generate}
+          className="command-bar-btn"
+          title={localHasAssets ? "Assets Generated — Scroll to view" : "Generate Cover Letter & Resume Extract"}
+        >
+          <span style={{ opacity: 0.75, fontSize: '0.75rem' }}>2.</span>
+          {localHasAssets ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#34d399' }}>
+              <CheckCircle2 size={14} /> Assets Ready
             </span>
-          </button>
-
-          {/* Filter Button */}
-          <button
-            onClick={() => setIsFilterModalOpen(true)}
-            className="job-step-btn"
-            title="Filter & Sort Job Queue"
-            style={{
-              position: 'relative'
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <SlidersHorizontal size={14} /> Filter
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Sparkles size={14} style={{ color: '#38bdf8' }} /> {isGenerating ? 'Generating...' : 'Assets'}
             </span>
-            {hasActiveFilters && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '4px',
-                  right: '4px',
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: '#0070f3'
-                }}
-              />
-            )}
-          </button>
-        </div>
+          )}
+        </button>
+
+        {/* Step 3: Apply */}
+        <button
+          type="button"
+          onClick={handleStep3AutoApply}
+          disabled={isAutoApplying}
+          className={`command-bar-btn ${status === 'applied' ? '' : 'command-bar-btn-primary'}`}
+          style={status === 'applied' ? { background: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981', color: '#34d399' } : {}}
+        >
+          <span style={{ opacity: 0.8, fontSize: '0.75rem' }}>3.</span>
+          {status === 'applied' ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#34d399' }}>
+              <CheckCircle2 size={14} /> Applied
+            </span>
+          ) : isAutoApplying ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#ffffff' }}>
+              <Loader2 size={14} className="animate-spin" /> Auto Applying...
+            </span>
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Zap size={14} style={{ color: '#fbbf24' }} /> Auto Apply
+            </span>
+          )}
+        </button>
+
+        {/* Step 4: Q&A */}
+        <button
+          type="button"
+          onClick={handleStep4QA}
+          className="command-bar-btn"
+          title="Jump to Application Q&A"
+        >
+          <span style={{ opacity: 0.75, fontSize: '0.75rem' }}>4.</span>
+          <HelpCircle size={14} />
+          <span>Q&A</span>
+        </button>
+
+        {/* Filter Button */}
+        <button
+          type="button"
+          onClick={() => setIsFilterModalOpen(true)}
+          className="command-bar-btn"
+          style={{ position: 'relative' }}
+          title="Filter & Sort Job Queue"
+        >
+          <SlidersHorizontal size={14} style={{ color: '#60a5fa' }} />
+          <span>Filter</span>
+          {hasActiveFilters && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: '#38bdf8',
+                boxShadow: '0 0 6px #38bdf8',
+              }}
+            />
+          )}
+        </button>
 
         {/* Counter */}
         {currentIndex >= 0 && sequence.length > 0 && (
-          <span className="job-action-bar-counter">
-            {currentIndex + 1} of {sequence.length}
+          <span style={{
+            fontSize: '0.75rem',
+            color: '#f0f6fc',
+            fontWeight: 700,
+            padding: '0.25rem 0.6rem',
+            borderRadius: '6px',
+            background: '#161b22',
+            border: '1px solid #30363d',
+            whiteSpace: 'nowrap',
+          }}>
+            {currentIndex + 1} / {sequence.length}
           </span>
         )}
       </div>
+    );
+    return () => setPageActions(null);
+  }, [
+    currentJobId,
+    initialFeedback,
+    initialIsArchived,
+    localHasAssets,
+    isGenerating,
+    status,
+    hasActiveFilters,
+    currentIndex,
+    sequence.length,
+    prevJob,
+    nextJob,
+    setPageActions,
+  ]);
 
-      {/* Mobile Multi-Action FAB */}
-      <div className="job-action-bar-mobile">
-        {isFabOpen && (
-          <div className="job-fab-menu">
-            {/* Speed Dial Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
-                {currentIndex >= 0 && sequence.length > 0 ? `Job ${currentIndex + 1} of ${sequence.length}` : '4-Step Workflow'}
-              </span>
-              <button onClick={() => setIsFabOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px' }}>
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Step 1: Next & Prev */}
-            <div style={{ width: '100%', display: 'flex', gap: '0.5rem' }}>
-              <button
-                onClick={() => { setIsFabOpen(false); handlePrev(); }}
-                disabled={!prevJob || currentIndex <= 0}
-                className="btn-outline"
-                style={{ flex: 1, justifyContent: 'center', padding: '0.5rem', fontSize: '0.85rem' }}
-              >
-                <ChevronLeft size={16} /> Prev
-              </button>
-
-              <button
-                onClick={() => { setIsFabOpen(false); handleNext(); }}
-                disabled={!nextJob || currentIndex >= sequence.length - 1}
-                className="btn-primary"
-                style={{ flex: 1, justifyContent: 'center', padding: '0.5rem', fontSize: '0.85rem' }}
-              >
-                1. Next <ChevronRight size={16} />
-              </button>
-
-              <button
-                onClick={() => { setIsFabOpen(false); setIsFilterModalOpen(true); }}
-                className="btn-outline"
-                style={{ padding: '0.5rem 0.65rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
-                title="Filter Queue"
-              >
-                <SlidersHorizontal size={16} />
-                {hasActiveFilters && (
-                  <span style={{ position: 'absolute', top: '3px', right: '3px', width: '6px', height: '6px', borderRadius: '50%', background: '#0070f3' }} />
-                )}
-              </button>
-            </div>
-
-            {/* Step 2: Generate Assets */}
-            <button
-              onClick={() => { setIsFabOpen(false); handleStep2Generate(); }}
-              className="btn-outline"
-              style={{ width: '100%', justifyContent: 'space-between', padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Sparkles size={15} style={{ color: '#0070f3' }} /> 2. Generate Assets
-              </span>
-              {localHasAssets && <CheckCircle2 size={16} style={{ color: '#10b981' }} />}
-            </button>
-
-            {/* Step 3: Apply Toggle */}
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <button
-                onClick={() => setMobileApplyOpen(prev => !prev)}
-                className="btn-outline"
-                style={{ width: '100%', justifyContent: 'space-between', padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Send size={15} /> 3. Apply Options
-                </span>
-                <ChevronRight size={16} style={{ transform: mobileApplyOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }} />
-              </button>
-
-              {mobileApplyOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '0.75rem', borderLeft: '2px solid #0070f3', margin: '0.25rem 0' }}>
-                  <button onClick={handleStep3AutoApply} className="job-apply-option-btn">
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <Zap size={14} style={{ color: '#f59e0b' }} /> Auto Apply
-                    </span>
-                  </button>
-                  <button onClick={handleStep3ApplyNewTab} className="job-apply-option-btn">
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <ExternalLink size={14} style={{ color: '#0070f3' }} /> Apply in New Tab
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Step 4: Q&A */}
-            <button
-              onClick={handleStep4QA}
-              className="btn-outline"
-              style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
-            >
-              <HelpCircle size={15} /> 4. Application Q&A
-            </button>
-
-            {/* Reactions & Save */}
-            <div style={{ width: '100%', paddingTop: '0.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center' }}>
-              <FeedbackButtons
-                jobId={currentJobId}
-                initialFeedback={initialFeedback}
-                initialIsArchived={initialIsArchived}
-                showSaveForLater={true}
-                compact={true}
-              />
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={() => setIsFabOpen(prev => !prev)}
-          aria-label="Toggle 4-Step Workflow Actions"
-          style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'var(--accent-primary, #0070f3)',
-            color: '#ffffff',
-            border: 'none',
-            boxShadow: '0 8px 24px rgba(0, 112, 243, 0.4), 0 4px 12px rgba(0,0,0,0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'transform 0.2s ease'
-          }}
-        >
-          {isFabOpen ? <X size={26} /> : <Sparkles size={26} />}
-        </button>
-      </div>
-
-      {/* Filter & Sort Dialog Modal */}
+  return (
+    <>
+      {/* Modals remain managed at root level */}
       <JobDetailsFilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
-        onApply={loadSequence}
-        onJumpToFirst={(firstJobId) => {
-          if (firstJobId !== currentJobId) {
-            router.push(`/job/${firstJobId}`);
-          }
+        onApply={() => {
+          loadSequence();
+          setIsFilterModalOpen(false);
         }}
       />
 
       <JitResumeUploadModal
         isOpen={isJitResumeOpen}
         onClose={() => setIsJitResumeOpen(false)}
-        onSuccess={handleResumeUploadSuccess}
-        title="Upload Resume to Generate Assets"
-        description="To generate tailored resumes and cover letters for this job, please upload your base resume."
+        onSuccess={() => {
+          setIsJitResumeOpen(false);
+          handleStep2Generate();
+        }}
       />
     </>
   );

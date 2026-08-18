@@ -42,6 +42,10 @@
   --input-border: rgba(255, 255, 255, 0.12);
   --ring: rgba(0, 112, 243, 0.4);
 
+  /* Layout and Dynamic Bar offsets */
+  --sidebar-width: 220px;
+  --auto-apply-bar-offset: 0px;
+
   /* Legacy aliases (keep compatibility with existing code) */
   --bg-color: #0a0a0a;
   --bg-surface: #111111;
@@ -668,6 +672,7 @@ body.light-theme .sidebar {
 .main-content {
   flex: 1;
   padding: 2rem 2.5rem;
+  padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   height: 100vh;
   background-color: var(--background);
@@ -676,6 +681,7 @@ body.light-theme .sidebar {
 @media (max-width: 768px) {
   .main-content {
     padding: 1.25rem 1rem;
+    padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -1771,7 +1777,7 @@ details.glass-card > summary::marker { display: none; content: ''; }
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 5.5rem;
+  margin-top: 3.5rem;
 }
 
 .matches-header-left-group,
@@ -2885,176 +2891,239 @@ body.light-theme .accordion-summary-box {
   }
 }
 
-/* Desktop Action Bar Container — Light Mode Default */
-.job-action-bar-desktop {
-  position: fixed;
-  bottom: 1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  display: flex;
+/* ─── Global Command & Bottom Action Bar ────────────────────────────── */
+
+.command-bar-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.6rem 1.25rem;
-  background: #ffffff;
-  color: #0f172a;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 9999px;
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.job-action-bar-desktop .btn-outline {
-  background: #ffffff;
-  color: #1e293b;
-  border-color: #cbd5e1;
-}
-
-.job-action-bar-desktop .btn-outline:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #0f172a;
-}
-
-.job-action-bar-divider {
-  width: 1px;
-  height: 24px;
-  background: #e2e8f0;
-  margin: 0 0.5rem;
-}
-
-.job-action-bar-counter {
-  font-size: 0.85rem;
-  color: #475569;
+  gap: 0.35rem;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 0 0.25rem;
+  border-radius: 6px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #ffffff !important;
+  cursor: pointer;
   white-space: nowrap;
+  transition: all 0.15s ease;
+  user-select: none;
 }
 
-/* Mobile Multi-Action FAB Container */
-.job-action-bar-mobile {
-  display: none;
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  z-index: 9999;
+.command-bar-btn:hover:not(:disabled) {
+  background: #30363d;
+  border-color: #8b949e;
+  color: #ffffff !important;
 }
 
-.job-fab-menu {
+.command-bar-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.command-bar-btn-primary,
+body.light-theme .command-bar-btn-primary,
+.command-bar-btn-primary * {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border: 1px solid #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+.command-bar-btn-primary:hover:not(:disabled),
+body.light-theme .command-bar-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+}
+
+.command-bar-btn-danger {
+  background: rgba(239, 68, 68, 0.18) !important;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  color: #fca5a5 !important;
+}
+
+.command-bar-btn-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.28) !important;
+  border-color: #f87171 !important;
+  color: #ffffff !important;
+}
+
+body.light-theme .command-bar-btn:not(.command-bar-btn-primary):not(.command-bar-btn-danger) {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #0f172a !important;
+}
+
+body.light-theme .command-bar-btn:not(.command-bar-btn-primary):not(.command-bar-btn-danger):hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+/* ─── Global Fixed Bottom Auto Apply & Live Updates Bar ─────────────── */
+
+.global-auto-apply-bar {
   position: fixed;
-  bottom: 5.5rem;
-  right: 1.5rem;
+  bottom: 0;
+  right: 0;
+  left: var(--sidebar-width, 220px);
+  z-index: 9950;
+  background: #0d1117;
+  border-top: 1px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.8), 0 -2px 10px rgba(37, 99, 235, 0.2);
+  color: #f8fafc;
+  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1), left 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  align-items: flex-end;
+  overflow: hidden;
+}
+
+body.light-theme .global-auto-apply-bar {
   background: #ffffff;
+  border-top: 1px solid rgba(37, 99, 235, 0.25);
+  box-shadow: 0 -8px 24px -4px rgba(0, 0, 0, 0.12), 0 -2px 8px rgba(37, 99, 235, 0.08);
   color: #0f172a;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 16px;
-  padding: 1rem;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-  min-width: 240px;
-  max-width: calc(100vw - 3rem);
-  max-height: calc(100vh - 8rem);
-  overflow-y: auto;
-  animation: fadeIn 0.2s ease-out forwards;
-  z-index: 10000;
-}
-
-.job-fab-menu .btn-outline {
-  background: #ffffff;
-  color: #1e293b;
-  border-color: #cbd5e1;
-}
-
-.job-fab-menu .btn-outline:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #0f172a;
-}
-
-body:not(.light-theme) .job-action-bar-desktop {
-  background: rgba(18, 18, 18, 0.92);
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-}
-
-body:not(.light-theme) .job-action-bar-divider {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-@media (min-width: 1025px) {
-  .dashboard-dock-desktop {
-    display: flex !important;
-  }
-  .dashboard-dock-mobile {
-    display: none !important;
-  }
 }
 
 @media (max-width: 1024px) {
-  .job-action-bar-desktop:not(.dashboard-dock) {
-    display: none !important;
-  }
-
-  /* Show the job details FAB on mobile/tablet */
-  .job-action-bar-mobile {
-    display: flex !important;
-    flex-direction: column;
-    align-items: flex-end;
-  }
-
-  .dashboard-dock-desktop {
-    display: none !important;
-  }
-
-  .dashboard-dock-mobile {
-    display: block !important;
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    z-index: 9999;
-  }
-
-  .floating-save-bar {
-    display: none !important;
+  .global-auto-apply-bar {
+    left: 0 !important;
+    width: 100% !important;
   }
 }
 
-/* ─── Dashboard Bulk Action Floating Bar (1-Click Auto Apply Floating Dock) ─── */
+.global-auto-apply-bar.collapsed {
+  height: 54px;
+}
 
-.dashboard-bulk-bar {
-  position: fixed;
-  bottom: 5.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9970;
-  background: #0f172a;
-  border: 1px solid #2563eb;
-  border-radius: 9999px;
-  padding: 0.55rem 1.15rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(37, 99, 235, 0.25);
+.global-auto-apply-bar.expanded {
+  height: 440px;
+  max-height: 80vh;
+}
+
+.auto-apply-bar-header {
+  height: 54px;
+  min-height: 54px;
+  padding: 0 1.25rem;
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  color: #f8fafc;
-  font-size: 0.85rem;
-  font-weight: 600;
-  box-sizing: border-box;
-  animation: bulkBarPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  user-select: none;
+  background: #0d1117;
 }
 
-@keyframes bulkBarPopIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 10px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0) scale(1);
+body.light-theme .auto-apply-bar-header {
+  background: #ffffff;
+}
+
+.auto-apply-bar-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  border-top: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+  overflow: hidden;
+  background: var(--bg-primary, #0d1117);
+}
+
+body.light-theme .auto-apply-bar-body {
+  background: #f8fafc;
+  border-top-color: #e2e8f0;
+}
+
+/* ─── Drawer Left Panel (Queue List) ─────────────────────────────────── */
+
+.drawer-queue-sidebar {
+  border-right: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  display: flex;
+  flex-direction: column;
+  background: var(--background-card, rgba(13, 17, 23, 0.95));
+  overflow-y: auto;
+}
+
+body.light-theme .drawer-queue-sidebar {
+  background: #ffffff;
+  border-right-color: #e2e8f0;
+}
+
+.drawer-queue-header {
+  padding: 0.75rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #8b949e);
+  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+body.light-theme .drawer-queue-header {
+  color: #475569;
+  border-bottom-color: #e2e8f0;
+}
+
+.drawer-queue-item {
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--background-card, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.drawer-queue-item:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.drawer-queue-item.active {
+  background: rgba(99, 102, 241, 0.14) !important;
+  border: 1.5px solid #818cf8 !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.22);
+}
+
+body.light-theme .drawer-queue-item {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+body.light-theme .drawer-queue-item:hover {
+  background: #f1f5f9;
+  border-color: #818cf8;
+}
+
+body.light-theme .drawer-queue-item.active {
+  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: #6366f1 !important;
+}
+
+/* ─── Drawer Right Panel (Selected Job Details & Stepper) ────────────── */
+
+.drawer-detail-content {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--bg-primary, #0d1117);
+  padding: 1.25rem 1.5rem;
+  gap: 1rem;
+}
+
+body.light-theme .drawer-detail-content {
+  background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+  .auto-apply-bar-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    overflow-y: auto;
   }
 }
 

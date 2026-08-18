@@ -38,12 +38,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ activeSession: null });
     }
 
-    const activeSession = await prisma.autoApplySession.findFirst({
+    const activeSessions = await prisma.autoApplySession.findMany({
       where: {
         userId,
-        status: { in: ACTIVE_STATUSES },
+        OR: [
+          { status: { in: ACTIVE_STATUSES } },
+          {
+            status: { in: [AutoApplyStatus.APPLIED, 'applied', AutoApplyStatus.FAILED, 'failed'] },
+            updatedAt: { gte: new Date(Date.now() - 30 * 60 * 1000) }, // last 30 mins
+          },
+        ],
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
       select: {
         id: true,
         jobId: true,
@@ -79,9 +86,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ activeSession: activeSession ?? null });
+    const ongoingActiveSession = activeSessions.find(s => ACTIVE_STATUSES.includes(s.status as AutoApplyStatus)) ?? activeSessions[0] ?? null;
+
+    return NextResponse.json({
+      activeSession: ongoingActiveSession,
+      activeSessions: activeSessions,
+    });
   } catch (error: any) {
-    console.warn('[api/auto-apply/active] Query failed (returning null activeSession):', error?.message || error);
-    return NextResponse.json({ activeSession: null });
+    console.warn('[api/auto-apply/active] Query failed (returning empty sessions):', error?.message || error);
+    return NextResponse.json({ activeSession: null, activeSessions: [] });
   }
 }
