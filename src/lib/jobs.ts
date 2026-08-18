@@ -115,7 +115,9 @@ export async function normalizeAndSaveJobs(
             description,
             requirements: null,
             url: cleanedUrl,
+            applicationUrl: job.applicationUrl || null,
             source: job.source || 'Direct',
+            isEasyApply: !!job.isEasyApply,
         });
     }
 
@@ -345,7 +347,9 @@ export async function normalizeAndSaveJobs(
                         salaryRange: safeSalaryRange || null,
                         description: safeDescription,
                         url: cleanedUrl,
+                        applicationUrl: jobData.applicationUrl || null,
                         source: safeSource,
+                        isEasyApply: !!jobData.isEasyApply,
                     }
                 });
             } catch (e: any) {
@@ -357,14 +361,26 @@ export async function normalizeAndSaveJobs(
                     continue;
                 }
             }
-        } else if (!job.description || job.description.trim().length === 0) {
-            try {
-                await prisma.job.update({
-                    where: { id: job.id },
-                    data: { description: safeDescription }
-                });
-            } catch (e) {
-                console.warn(`[Job Update Description Error] Failed to update description for ${job.id}:`, e);
+        } else {
+            const updates: any = {};
+            if (!job.description || job.description.trim().length === 0) {
+                updates.description = safeDescription;
+            }
+            if (!job.applicationUrl && jobData.applicationUrl) {
+                updates.applicationUrl = jobData.applicationUrl;
+            }
+            if (!job.isEasyApply && jobData.isEasyApply) {
+                updates.isEasyApply = true;
+            }
+            if (Object.keys(updates).length > 0) {
+                try {
+                    await prisma.job.update({
+                        where: { id: job.id },
+                        data: updates
+                    });
+                } catch (e) {
+                    console.warn(`[Job Update Error] Failed to update job ${job.id}:`, e);
+                }
             }
         }
 

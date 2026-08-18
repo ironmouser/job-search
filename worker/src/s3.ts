@@ -43,8 +43,9 @@ export async function uploadScreenshotBuffer(
 ): Promise<string | null> {
   const client = getS3Client();
   if (!client) {
-    console.warn('[S3] AWS credentials not configured. Skipping screenshot upload.');
-    return null;
+    console.info('[S3] AWS credentials not configured — using base64 data URI fallback for screenshot.');
+    // Encode as data URI so screenshot proof is preserved even without S3 credentials
+    return `data:${contentType};base64,${buffer.toString('base64')}`;
   }
 
   const bucket = getS3BucketName();

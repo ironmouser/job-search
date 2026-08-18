@@ -140,6 +140,20 @@ export default function AdminDashboard() {
     daysRemaining?: number | null;
     error?: string;
   } | null>(null);
+  const [scraperApiStats, setScraperApiStats] = useState<{
+    requestCount: number | null;
+    requestLimit: number | null;
+    concurrentRequests: number | null;
+    concurrentRequestsLimit: number | null;
+    error?: string;
+  } | null>(null);
+  const [serpApiStats, setSerpApiStats] = useState<{
+    planName: string | null;
+    searchesLeft: number | null;
+    searchesPerMonth: number | null;
+    thisMonthUsage: number | null;
+    error?: string;
+  } | null>(null);
   const [s3Stats, setS3Stats] = useState<{ objectCount: number | null; totalSizeBytes: number | null; estimatedMonthlyCostUsd: number | null; error?: string } | null>(null);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
 
@@ -230,6 +244,8 @@ export default function AdminDashboard() {
             setAiCostToday(data.aiCostToday || null);
             setAiCostMonth(data.aiCostMonth || null);
             setScrapeDoCredits(data.scrapeDoCredits || null);
+            setScraperApiStats(data.scraperApiStats || null);
+            setSerpApiStats(data.serpApiStats || null);
             setS3Stats(data.s3Stats || null);
           }
         })
@@ -834,60 +850,97 @@ export default function AdminDashboard() {
                   <div style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Daily safeguard limit: <strong>$5.00</strong></div>
                 </div>
 
-                {/* Scrape.do */}
+                {/* ScraperAPI */}
                 <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <Shield size={16} style={{ color: '#34d399' }} />
-                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Scrape.do</span>
-                    {scrapeDoCredits?.plan && (
-                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#34d399', background: 'rgba(16,185,129,0.12)', padding: '1px 8px', borderRadius: '99px' }}>{scrapeDoCredits.plan}</span>
-                    )}
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>ScraperAPI</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#34d399', background: 'rgba(16,185,129,0.12)', padding: '1px 8px', borderRadius: '99px' }}>pay-per-request</span>
                   </div>
-                  {scrapeDoCredits?.error ? (
-                    <div style={{ fontSize: '0.82rem', color: 'var(--danger)' }}>{scrapeDoCredits.error}</div>
+                  {scraperApiStats?.error ? (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--danger)' }}>{scraperApiStats.error}</div>
                   ) : (
                     <>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem 0.75rem', marginBottom: '0.65rem' }}>
                         <div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Credits Used</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Used This Month</div>
                           <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#34d399' }}>
-                            {scrapeDoCredits?.total != null && scrapeDoCredits?.remaining != null
-                              ? (scrapeDoCredits.total - scrapeDoCredits.remaining).toLocaleString()
-                              : '—'}
+                            {scraperApiStats?.requestCount != null ? scraperApiStats.requestCount.toLocaleString() : '—'}
                           </div>
                         </div>
                         <div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Remaining</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Monthly Limit</div>
                           <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#34d399' }}>
-                            {scrapeDoCredits?.remaining != null ? scrapeDoCredits.remaining.toLocaleString() : '—'}
+                            {scraperApiStats?.requestLimit != null ? scraperApiStats.requestLimit.toLocaleString() : '—'}
                           </div>
                         </div>
                       </div>
-                      {scrapeDoCredits?.total != null && scrapeDoCredits?.remaining != null && (
+                      {scraperApiStats?.requestCount != null && scraperApiStats?.requestLimit != null && (
                         <>
                           <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden', marginBottom: '0.4rem' }}>
-                            <div style={{ height: '100%', width: `${Math.min(100, ((scrapeDoCredits.total - scrapeDoCredits.remaining) / scrapeDoCredits.total) * 100)}%`, background: '#34d399', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+                            <div style={{ height: '100%', width: `${Math.min(100, (scraperApiStats.requestCount / scraperApiStats.requestLimit) * 100)}%`, background: '#34d399', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                            {Math.round((scraperApiStats.requestCount / scraperApiStats.requestLimit) * 100)}% of {scraperApiStats.requestLimit.toLocaleString()} monthly requests used
+                          </div>
+                        </>
+                      )}
+                      {scraperApiStats?.concurrentRequests != null && (
+                        <div style={{ borderTop: '1px solid rgba(16,185,129,0.2)', paddingTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Concurrent Requests</span>
+                            <span style={{ color: '#34d399', fontWeight: 600 }}>
+                              {scraperApiStats.concurrentRequests} / {scraperApiStats.concurrentRequestsLimit ?? '?'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* SerpAPI */}
+                <div style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <Search size={16} style={{ color: '#fbbf24' }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>SerpAPI</span>
+                    {serpApiStats?.planName && (
+                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#fbbf24', background: 'rgba(251,191,36,0.12)', padding: '1px 8px', borderRadius: '99px' }}>{serpApiStats.planName}</span>
+                    )}
+                  </div>
+                  {serpApiStats?.error ? (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--danger)' }}>{serpApiStats.error}</div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem 0.75rem', marginBottom: '0.65rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Searches Left</div>
+                          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fbbf24' }}>
+                            {serpApiStats?.searchesLeft != null ? serpApiStats.searchesLeft.toLocaleString() : '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Monthly Plan</div>
+                          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fbbf24' }}>
+                            {serpApiStats?.searchesPerMonth != null ? serpApiStats.searchesPerMonth.toLocaleString() : '—'}
+                          </div>
+                        </div>
+                      </div>
+                      {serpApiStats?.searchesLeft != null && serpApiStats?.searchesPerMonth != null && (
+                        <>
+                          <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden', marginBottom: '0.4rem' }}>
+                            <div style={{ height: '100%', width: `${Math.min(100, ((serpApiStats.searchesPerMonth - serpApiStats.searchesLeft) / serpApiStats.searchesPerMonth) * 100)}%`, background: '#fbbf24', borderRadius: '99px', transition: 'width 0.4s ease' }} />
                           </div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                            {Math.round(((scrapeDoCredits.total - scrapeDoCredits.remaining) / scrapeDoCredits.total) * 100)}% of {scrapeDoCredits.total.toLocaleString()} monthly credits used
+                            {Math.round(((serpApiStats.searchesPerMonth - serpApiStats.searchesLeft) / serpApiStats.searchesPerMonth) * 100)}% of {serpApiStats.searchesPerMonth.toLocaleString()} monthly searches used
                           </div>
-                          {scrapeDoCredits?.periodStart && scrapeDoCredits?.periodEnd && (
-                            <div style={{ marginTop: '0.65rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(16,185,129,0.2)', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Period</span>
-                                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
-                                  {formatDate(scrapeDoCredits.periodStart)} to {formatDate(scrapeDoCredits.periodEnd)}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Resets In</span>
-                                <span style={{ color: '#34d399', fontWeight: 600 }}>
-                                  {scrapeDoCredits.daysRemaining != null ? `${scrapeDoCredits.daysRemaining} day${scrapeDoCredits.daysRemaining === 1 ? '' : 's'}` : '—'}
-                                </span>
-                              </div>
-                            </div>
-                          )}
                         </>
+                      )}
+                      {serpApiStats?.thisMonthUsage != null && (
+                        <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(251,191,36,0.2)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          <span>This Month Usage</span>
+                          <span style={{ color: '#fbbf24', fontWeight: 600 }}>{serpApiStats.thisMonthUsage.toLocaleString()} searches</span>
+                        </div>
                       )}
                     </>
                   )}

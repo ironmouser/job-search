@@ -53,9 +53,12 @@ export async function POST(
             return NextResponse.json({ error: 'Failed to scrape full job details. The site may be blocking automated access.' }, { status: 502 });
         }
 
+        // Prefer the direct ATS URL extracted during scraping (e.g. from ZipRecruiter JSON-LD),
+        // fall back to the final URL that successfully returned the description.
+        const directATSUrl = fetchResult.resolvedApplicationUrl || null;
         const updatePayload: any = {
             description: fetchResult.description + `\n\nApply at: ${usedUrl}`,
-            applicationUrl: usedUrl
+            applicationUrl: directATSUrl || usedUrl,
         };
 
         // 3. Update the job

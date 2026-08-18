@@ -60,10 +60,13 @@ export class AggregatorHandler {
       );
     }
 
-    // ─── Bot Protection / Challenge Settling ──────────────────────────────────
-    if (currentUrl.includes('__cf_chl_') || currentUrl.includes('cf_chl_prog') || page.frames().some(f => f.url().includes('cloudflare') || f.url().includes('turnstile'))) {
-      await logger.info('aggregator_handler', 'Cloudflare interstitial challenge detected, waiting for solver and page redirection...');
-      await page.waitForTimeout(5000);
+    // Check if the page content is adequate after navigation.
+    // If body text is very short the page may have been bot-blocked; log a warning
+    // and continue with what we have rather than waiting for a challenge that cannot
+    // be solved headlessly on a datacenter IP.
+    const bodyLen = await page.evaluate(() => (document.body?.innerText ?? '').length).catch(() => 0);
+    if (bodyLen < 300) {
+      await logger.warn('aggregator_handler', `Page body too short (${bodyLen} chars) after navigation — page may be bot-blocked. Proceeding with available content.`);
     }
 
     const effectiveUrl = page.url();
@@ -269,17 +272,42 @@ export class AggregatorHandler {
 
         // Check if an off-site modal opened (like LinkedIn sign-in / offsite modal)
         await page.waitForTimeout(1500);
-        const modalOffsiteSelector = 'div[role="dialog"] a[href*="externalApply"], .sign-up-modal a[href*="externalApply"], a[data-tracking-control-name*="apply-link-offsite"], a[data-tracking-control-name*="apply"], .modal__dialog a[href], .sign-up-modal a[href]';
+        const modalOffsiteSelector = 'div[role="dialog"] a[href], .sign-up-modal a[href], [class*="modal"] a[href], a[data-tracking-control-name*="apply-link-offsite"], a[data-tracking-control-name*="apply"]';
         const modalOffsiteLinks = await page.$$(modalOffsiteSelector).catch(() => []);
+
+        const IGNORED_MODAL_URL_PATTERNS = [
+          '/signup', '/cold-join', '/login', '/checkpoint', '/uas/',
+          '/authwall', 'accounts.google.com', 'apple.com', 'facebook.com'
+        ];
+
+        let targetModalUrl: string | null = null;
 
         for (const modalLink of modalOffsiteLinks) {
           const offsiteHref = await modalLink.getAttribute('href').catch(() => null);
-          if (offsiteHref && (offsiteHref.includes('http') || offsiteHref.startsWith('/'))) {
+          if (!offsiteHref) continue;
+
+          try {
             const absoluteOffsite = new URL(offsiteHref, page.url()).href;
-            await logger.info('aggregator_handler', `Found offsite apply link inside modal: ${absoluteOffsite}`);
-            await page.goto(absoluteOffsite, { waitUntil: 'domcontentloaded', timeout: 25000 });
-            return true;
-          }
+            const isIgnored = IGNORED_MODAL_URL_PATTERNS.some(p => absoluteOffsite.toLowerCase().includes(p));
+            if (isIgnored) continue;
+
+            // Prioritize links that explicitly go to an external site or ATS
+            const isAtsOrExternal = /(externalApply|\/apply|greenhouse|lever|ashby|workday|smartrecruiters|icims|taleo|bamboohr|workforce)/i.test(absoluteOffsite);
+            if (isAtsOrExternal) {
+              targetModalUrl = absoluteOffsite;
+              break;
+            }
+
+            if (!targetModalUrl && !absoluteOffsite.includes('linkedin.com')) {
+              targetModalUrl = absoluteOffsite;
+            }
+          } catch {}
+        }
+
+        if (targetModalUrl) {
+          await logger.info('aggregator_handler', `Found valid offsite apply link inside modal: ${targetModalUrl}`);
+          await page.goto(targetModalUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+          return true;
         }
 
         const newUrl = browser.page.url();

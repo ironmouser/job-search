@@ -37,6 +37,32 @@ export class GenericFallbackPlugin extends ATSPlugin {
       );
     }
 
+    const currentUrl = (browser.page.url() || context.jobUrl || '').toLowerCase();
+    if (
+      currentUrl.includes('linkedin.com/signup') ||
+      currentUrl.includes('linkedin.com/checkpoint') ||
+      currentUrl.includes('linkedin.com/jobs/view') ||
+      currentUrl.includes('linkedin.com/uas')
+    ) {
+      throw new InterventionError(
+        InterventionReason.LOGIN_REQUIRED,
+        'This role uses LinkedIn "Easy Apply" which requires signing into your personal LinkedIn account. Please click the link to apply directly with your profile.',
+        browser.page.url() || context.jobUrl
+      );
+    }
+
+    if (
+      currentUrl.includes('indeed.com/auth') ||
+      currentUrl.includes('indeed.com/account') ||
+      currentUrl.includes('indeed.com/viewjob')
+    ) {
+      throw new InterventionError(
+        InterventionReason.LOGIN_REQUIRED,
+        'This role uses Indeed "Apply" which requires signing into your personal Indeed account. Please click the link to apply directly with your profile.',
+        browser.page.url() || context.jobUrl
+      );
+    }
+
     await logger.warn('plugin_loaded', 'No known ATS detected — generic fallback active');
     throw new InterventionError(
       InterventionReason.UNEXPECTED_PAGE,

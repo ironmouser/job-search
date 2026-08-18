@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle, X, Zap } from 'lucide-react';
 import AutofillButton from './AutofillButton';
 import { AutoApplyPanel } from './AutoApplyPanel';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
@@ -18,6 +18,8 @@ interface ApplyStepAccordionProps {
   hasAssets: boolean;
   hasResume?: boolean;
   generationsLeftThisWeek?: number;
+  isEasyApply?: boolean;
+  jobSource?: string;
 }
 
 export function ApplyStepAccordion({
@@ -31,6 +33,8 @@ export function ApplyStepAccordion({
   hasAssets,
   hasResume,
   generationsLeftThisWeek,
+  isEasyApply,
+  jobSource,
 }: ApplyStepAccordionProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -235,8 +239,15 @@ export function ApplyStepAccordion({
     }
   }
 
+  const isApplied = activeSession?.status === 'applied' || activeSession?.status === 'simulated';
+
+  // If already applied, guarantee 100% confidence
+  const effectiveConfidenceData = isApplied
+    ? { platform: confidenceData?.platform || 'ATS', confidence: 100 }
+    : confidenceData;
+
   // Determine if we should show the low confidence warning
-  const showLowConfidenceWarning = confidenceData && confidenceData.confidence < 40;
+  const showLowConfidenceWarning = !isApplied && effectiveConfidenceData && effectiveConfidenceData.confidence < 40;
 
   const isInterventionOrRunning =
     isSessionActive ||
@@ -283,31 +294,80 @@ export function ApplyStepAccordion({
       {/* Accordion Divider */}
       <div style={{ borderTop: '1px solid var(--border-glass)' }} />
 
-      {/* Accordion Header */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        style={{
-          width: '100%',
-          background: '#2663eb22',
-          border: 'none',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'pointer',
-          textAlign: 'left',
-          transition: 'background 0.2s',
-        }}
-        className="accordion-header step-card-header-padding"
-      >
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-          <Sparkles size={16} color="var(--accent-primary)" />
-          Auto apply with AI
-          {!isPro && (
-            <span style={{ fontSize: '0.7rem', background: 'var(--accent-primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '0.5rem' }}>PRO</span>
-          )}
-        </span>
-        {isExpanded ? <ChevronUp size={18} color="var(--text-secondary)" /> : <ChevronDown size={18} color="var(--text-secondary)" />}
-      </button>
+      {isEasyApply ? (
+        <div
+          style={{
+            padding: '1.25rem 1.5rem',
+            background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Zap size={16} /> Easy Apply on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'Job Platform'}
+                </span>
+                <span style={{ fontSize: '0.7rem', background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Personal Account</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4, maxWidth: '580px' }}>
+                This role is hosted directly on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'the platform'}&apos;s internal network and requires signing into your personal account.
+              </p>
+            </div>
+
+            <a
+              href={activeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.65rem 1.25rem',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                textDecoration: 'none',
+                background: '#0284c7',
+                borderColor: '#0284c7',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Easy Apply on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'Platform'} <ExternalLink size={15} />
+            </a>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Accordion Header */}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{
+              width: '100%',
+              background: '#2663eb22',
+              border: 'none',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'background 0.2s',
+            }}
+            className="accordion-header step-card-header-padding"
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <Sparkles size={16} color="var(--accent-primary)" />
+              Auto apply with AI
+              {!isPro && (
+                <span style={{ fontSize: '0.7rem', background: 'var(--accent-primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '0.5rem' }}>PRO</span>
+              )}
+            </span>
+            {isExpanded ? <ChevronUp size={18} color="var(--text-secondary)" /> : <ChevronDown size={18} color="var(--text-secondary)" />}
+          </button>
+        </>
+      )}
 
       {/* Accordion Content */}
       {isExpanded && (
@@ -321,83 +381,85 @@ export function ApplyStepAccordion({
             gap: '1.5rem',
           }}
         >
-          {/* Direct URL Input Sub-Card */}
-          <div
-            style={{
-              border: '1px solid var(--border-glass, #e2e8f0)',
-              borderRadius: '12px',
-              padding: '1.25rem 1.35rem 1.15rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.85rem',
-              background: 'var(--bg-primary, #ffffff)',
-            }}
-          >
-            {/* Header: Label + Confidence Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <label
-                style={{
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  color: 'var(--text-secondary, #475569)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                }}
-              >
-                <LinkIcon size={15} /> Direct Job Application URL
-              </label>
-              {confidenceData && (
-                <AutoApplyConfidenceBadge confidence={confidenceData.confidence} showLabel />
-              )}
-            </div>
+          {/* Direct URL Input Sub-Card — only shown before application is submitted */}
+          {!isApplied && (
+            <div
+              style={{
+                border: '1px solid var(--border-glass, #e2e8f0)',
+                borderRadius: '12px',
+                padding: '1.25rem 1.35rem 1.15rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.85rem',
+                background: 'var(--bg-primary, #ffffff)',
+              }}
+            >
+              {/* Header: Label + Confidence Badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <label
+                  style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    color: 'var(--text-secondary, #475569)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  <LinkIcon size={15} /> Direct Job Application URL
+                </label>
+                {effectiveConfidenceData && (
+                  <AutoApplyConfidenceBadge confidence={effectiveConfidenceData.confidence} showLabel />
+                )}
+              </div>
 
-            {/* Input Row + Update URL Button */}
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-              <input
-                type="url"
-                value={customUrl || (hasAttemptedCustomUrl ? activeUrl : '')}
-                onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder={activeUrl || 'https://company.com/careers/job/12345'}
-                style={{
-                  flex: 1,
-                  padding: '0.65rem 0.95rem',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-glass, #e2e8f0)',
-                  background: 'var(--bg-secondary, #f8fafc)',
-                  color: 'var(--text-primary, #334155)',
-                  fontSize: '0.88rem',
-                  outline: 'none',
-                }}
-              />
-              <button
-                onClick={handleSaveCustomUrl}
-                disabled={!customUrl.trim() || isSavingUrl}
-                style={{
-                  whiteSpace: 'nowrap',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  fontSize: '0.85rem',
-                  padding: '0.65rem 1.15rem',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-glass, #e2e8f0)',
-                  background: 'var(--bg-primary, #ffffff)',
-                  color: 'var(--text-secondary, #475569)',
-                  fontWeight: 500,
-                  cursor: !customUrl.trim() || isSavingUrl ? 'not-allowed' : 'pointer',
-                  opacity: !customUrl.trim() ? 0.7 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {isSavingUrl ? <Loader2 size={13} className="animate-spin" /> : null}
-                Update URL
-              </button>
+              {/* Input Row + Update URL Button */}
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <input
+                  type="url"
+                  value={customUrl || (hasAttemptedCustomUrl ? activeUrl : '')}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                  placeholder={activeUrl || 'https://company.com/careers/job/12345'}
+                  style={{
+                    flex: 1,
+                    padding: '0.65rem 0.95rem',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-glass, #e2e8f0)',
+                    background: 'var(--bg-secondary, #f8fafc)',
+                    color: 'var(--text-primary, #334155)',
+                    fontSize: '0.88rem',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={handleSaveCustomUrl}
+                  disabled={!customUrl.trim() || isSavingUrl}
+                  style={{
+                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    fontSize: '0.85rem',
+                    padding: '0.65rem 1.15rem',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-glass, #e2e8f0)',
+                    background: 'var(--bg-primary, #ffffff)',
+                    color: 'var(--text-secondary, #475569)',
+                    fontWeight: 500,
+                    cursor: !customUrl.trim() || isSavingUrl ? 'not-allowed' : 'pointer',
+                    opacity: !customUrl.trim() ? 0.7 : 1,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {isSavingUrl ? <Loader2 size={13} className="animate-spin" /> : null}
+                  Update URL
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Finding & paste the direct application form (compact dismissed state) */}
-          {!isInterventionOrRunning && isHelpDismissed && (
+          {!isApplied && !isInterventionOrRunning && isHelpDismissed && (
             <div
               style={{
                 display: 'flex',
@@ -434,7 +496,7 @@ export function ApplyStepAccordion({
           )}
 
           {/* Finding the Direct Application Form Info Card (full state with close X) */}
-          {!isInterventionOrRunning && !isHelpDismissed && (
+          {!isApplied && !isInterventionOrRunning && !isHelpDismissed && (
             <div
               style={{
                 display: 'flex',

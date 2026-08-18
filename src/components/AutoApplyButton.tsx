@@ -9,6 +9,8 @@ interface AutoApplyButtonProps {
   hasAssets: boolean;
   hasResume?: boolean;
   currentStatus?: AutoApplyStatus | string | null;
+  /** If true, the job URL is an aggregator link — button shows a resolving state while start API pre-resolves */
+  isAggregatorJob?: boolean;
   onSessionStarted?: (sessionId: string) => void;
   onStartingChange?: (starting: boolean) => void;
 }
@@ -41,6 +43,7 @@ export function AutoApplyButton({
   hasAssets,
   hasResume,
   currentStatus,
+  isAggregatorJob,
   onSessionStarted,
   onStartingChange,
 }: AutoApplyButtonProps) {
@@ -143,7 +146,12 @@ export function AutoApplyButton({
       >
         {starting ? (
           <>
-            <Bot size={18} /> {!hasAssets ? 'Auto-tailoring & Starting…' : 'Starting…'}
+            <Bot size={18} />
+            {!hasAssets
+              ? 'Auto-tailoring & Starting…'
+              : isAggregatorJob
+              ? 'Resolving apply link…'
+              : 'Starting…'}
           </>
         ) : (
           <>

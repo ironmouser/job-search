@@ -154,3 +154,90 @@ export function isSafePublicUrl(rawUrl: string): boolean {
   }
 }
 
+export const KNOWN_ATS_DOMAINS = [
+  'myworkdayjobs.com',
+  'wd1.myworkdayjobs.com',
+  'wd2.myworkdayjobs.com',
+  'wd3.myworkdayjobs.com',
+  'wd5.myworkdayjobs.com',
+  'greenhouse.io',
+  'boards.greenhouse.io',
+  'lever.co',
+  'jobs.lever.co',
+  'ashbyhq.com',
+  'jobs.ashbyhq.com',
+  'workable.com',
+  'apply.workable.com',
+  'smartrecruiters.com',
+  'jobs.smartrecruiters.com',
+  'icims.com',
+  'taleo.net',
+  'recruitee.com',
+  'bamboohr.com',
+  'workforcenow.adp.com',
+  'adp.com',
+  'paylocity.com',
+  'ultipro.com',
+  'jobvite.com',
+  'applytojob.com',
+  'breezy.hr',
+  'hire.trakstar.com',
+  'careers.peoplesoft.com',
+  'successfactors.com',
+  'jobs.workday.com',
+];
+
+export function isKnownATSUrl(url?: string | null): boolean {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return KNOWN_ATS_DOMAINS.some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return KNOWN_ATS_DOMAINS.some((domain) => url.includes(domain));
+  }
+}
+
+export const AGGREGATOR_DOMAINS = [
+  'ziprecruiter.com',
+  'indeed.com',
+  'glassdoor.com',
+  'linkedin.com',
+  'builtin.com',
+  'wellfound.com',
+  'angel.co',
+  'dice.com',
+  'monster.com',
+  'careerbuilder.com',
+  'simplyhired.com',
+  'joblist.com',
+  'remote.co',
+  'remoteok.com',
+  'weworkremotely.com',
+  'himalayas.app',
+  'otta.com',
+  'hiring.cafe',
+  'levels.fyi',
+  'builtinnyc.com',
+  'builtinboston.com',
+  'builtinla.com',
+  'builtinsf.com',
+  'builtinseattle.com',
+  'builtinchicago.com',
+  'builtincolorado.com',
+  'builtintexas.com',
+];
+
+export function isAggregatorUrl(url?: string | null): boolean {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+    return AGGREGATOR_DOMAINS.some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return AGGREGATOR_DOMAINS.some((domain) => url.includes(domain));
+  }
+}
+

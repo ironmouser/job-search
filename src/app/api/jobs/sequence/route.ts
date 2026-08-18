@@ -57,7 +57,8 @@ export async function GET(request: Request) {
         job: {
           include: {
             opportunityScores: { where: { userId }, select: { totalScore: true } },
-            jobFeedbacks: { where: { userId }, select: { feedbackType: true } }
+            jobFeedbacks: { where: { userId }, select: { feedbackType: true } },
+            autoApplySessions: { where: { userId, status: 'applied' }, select: { id: true, status: true }, take: 1 }
           }
         }
       },
@@ -70,6 +71,7 @@ export async function GET(request: Request) {
       const score = j.opportunityScores?.[0]?.totalScore;
       const feedback = j.jobFeedbacks?.[0]?.feedbackType;
       const hasScore = uj.status === 'scored' || (score !== undefined && score !== null);
+      const isAutoApplied = !!(j.autoApplySessions && j.autoApplySessions.length > 0);
       return {
         id: j.id,
         title: j.title,
@@ -78,8 +80,9 @@ export async function GET(request: Request) {
         salary_range: j.salaryRange,
         status: uj.status,
         is_archived: uj.isArchived,
+        is_auto_applied: isAutoApplied,
         created_at: uj.createdAt,
-        automation_confidence: detectATSFromUrl(j.url).confidence,
+        automation_confidence: isAutoApplied ? 100 : detectATSFromUrl(j.url).confidence,
         source: j.source,
         description: j.description,
         opportunity_scores: j.opportunityScores,

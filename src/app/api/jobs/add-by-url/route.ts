@@ -11,6 +11,7 @@ import { callAI } from '@/lib/ai';
 import { cleanJobUrl, isTrustedJobUrl, isSafePublicUrl } from '@/lib/urlUtils';
 import { logSuspiciousActivity } from '@/lib/security';
 import { getEffectiveTier } from '@/lib/tier';
+import { fetchWithScraperAPI, extractATSUrlFromHtml } from '@/lib/scraperapi';
 
 async function extractJobMetadataWithGemini(rawText: string) {
   if ((!process.env.OPENAI_API_KEY && !process.env.DEEPSEEK_API_KEY) || !rawText || rawText.trim().length === 0) {
@@ -110,11 +111,12 @@ export async function POST(request: Request) {
     let description = manualDescription || job?.description || '';
 
     // If job does not exist and no manual description provided, attempt scraping
+    let resolvedApplicationUrl: string | null = null;
     if (!job && !manualDescription) {
       let rawHtml = '';
       let fetchSuccess = false;
 
-      // Direct scrape
+      // Tier 1: Direct scrape (fast, free)
       try {
         const res = await gotScraping({
           url: cleanUrl,
@@ -132,21 +134,18 @@ export async function POST(request: Request) {
         console.warn(`Direct fetch failed for custom URL ${cleanUrl}: ${e.message}`);
       }
 
-      // Proxy fallback via Scrape.do if direct fetch failed
-      if (!fetchSuccess && process.env.SCRAPEDO_API_KEY) {
-        try {
-          const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(cleanUrl)}`;
-          const sdRes = await gotScraping({
-            url: scrapeDoUrl,
-            timeout: { request: 30000 },
-            retry: { limit: 0 },
-          });
-          if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
-            rawHtml = sdRes.body.toString();
-            fetchSuccess = true;
+      // Tier 2: ScraperAPI (residential proxy + JS rendering + CAPTCHA solving)
+      // Universal — works for any site, not just known aggregators.
+      if (!fetchSuccess) {
+        const scraperHtml = await fetchWithScraperAPI(cleanUrl);
+        if (scraperHtml) {
+          rawHtml = scraperHtml;
+          fetchSuccess = true;
+          // Attempt to extract direct ATS URL from the rendered page
+          resolvedApplicationUrl = extractATSUrlFromHtml(scraperHtml);
+          if (resolvedApplicationUrl) {
+            console.info(`[add-by-url] Extracted direct ATS URL: ${resolvedApplicationUrl}`);
           }
-        } catch (sdErr: any) {
-          console.warn(`Scrape.do fetch failed for custom URL ${cleanUrl}: ${sdErr.message}`);
         }
       }
 
@@ -256,6 +255,8 @@ export async function POST(request: Request) {
             url: cleanUrl,
             source: 'User Submission',
             addedById: userId,
+            // Save direct ATS URL if extracted from the aggregator page during scraping
+            ...(resolvedApplicationUrl ? { applicationUrl: resolvedApplicationUrl } : {}),
           }
         });
       } catch (e: any) {

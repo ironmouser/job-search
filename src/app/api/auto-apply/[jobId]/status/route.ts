@@ -71,6 +71,10 @@ export async function GET(
       return NextResponse.json({ session: null });
     }
 
+    if (applySession.status === 'applied' || applySession.status === 'simulated') {
+      applySession.automationConfidence = 100;
+    }
+
     return NextResponse.json({ session: applySession });
   } catch (error: any) {
     console.warn('[auto-apply/status] Query failed (returning null session):', error?.message || error);

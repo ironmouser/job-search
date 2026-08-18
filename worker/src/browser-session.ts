@@ -60,18 +60,6 @@ export class BrowserSession {
       timezoneId: 'America/New_York',
     });
 
-    // Apply anti-detection stealth evasions to every page in this context
-    await this.context.addInitScript(() => {
-      const g = globalThis as any;
-      if (g.navigator) {
-        Object.defineProperty(g.navigator, 'webdriver', { get: () => undefined });
-        Object.defineProperty(g.navigator, 'languages', { get: () => ['en-US', 'en'] });
-        Object.defineProperty(g.navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-        Object.defineProperty(g.navigator, 'hardwareConcurrency', { get: () => 8 });
-      }
-      g.chrome = { runtime: {} };
-    });
-
     // Auto-track and switch to any new tab or popup opened during automation
     this.context.on('page', (newPage) => {
       this._page = newPage;

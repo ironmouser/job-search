@@ -9,7 +9,7 @@ import { getEffectiveTier } from '@/lib/tier';
 
 
 import { isUsLocation, isRemoteLocation, extractStateAbbr, isOutsideUsLocation } from '@/lib/locationUtils';
-import { expandSearchKeywordsWithAI } from '@/lib/keywordExpansion';
+import { expandSearchKeywords, expandSearchKeywordsWithAI } from '@/lib/keywordExpansion';
 
 export async function POST(request: Request) {
     try {
@@ -141,19 +141,42 @@ export async function POST(request: Request) {
         const stream = new ReadableStream({
             async start(controller) {
                 const sendEvent = (data: any) => {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+                    try {
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+                    } catch (e) {}
                 };
 
                 try {
-                    sendEvent({ type: 'status', message: `Initializing search for ${keyword}...` });
+                    sendEvent({ type: 'status', foundCount: 0, message: `Connecting to job sources for ${keyword}...` });
 
                     let totalRawJobsFound = 0;
                     const allRawJobs: any[] = [];
+                    const seenScrapedUrls = new Set<string>();
 
-                    // DB-First Instant Matching: Pull recent matching jobs from global database pool across AI-expanded keywords (14-day window)
-                    const expandedKeywords = await expandSearchKeywordsWithAI(keyword, userId);
+                    const registerJobs = (sourceLabel: string, rawList: any[]) => {
+                        if (!rawList || rawList.length === 0) return;
+                        let added = 0;
+                        for (const job of rawList) {
+                            const url = job.url || job.link;
+                            if (!url || seenScrapedUrls.has(url)) continue;
+                            seenScrapedUrls.add(url);
+                            allRawJobs.push(job);
+                            added++;
+                        }
+                        if (added > 0) {
+                            totalRawJobsFound += added;
+                            sendEvent({
+                                type: 'progress',
+                                foundCount: totalRawJobsFound,
+                                message: `Found ${added} new listings on ${sourceLabel} (${totalRawJobsFound} total)`
+                            });
+                        }
+                    };
+
+                    // Step 1: Instant Static DB matching (0ms wait)
+                    const initialKeywords = expandSearchKeywords(keyword);
                     try {
-                        const orConditions = expandedKeywords.flatMap(kw => [
+                        const orConditions = initialKeywords.flatMap(kw => [
                             { title: { contains: kw, mode: 'insensitive' as const } },
                             { description: { contains: kw, mode: 'insensitive' as const } }
                         ]);
@@ -167,21 +190,19 @@ export async function POST(request: Request) {
                             orderBy: { createdAt: 'desc' }
                         });
                         if (dbFirstJobs.length > 0) {
-                            allRawJobs.push(...dbFirstJobs);
-                            totalRawJobsFound += dbFirstJobs.length;
-                            sendEvent({ type: 'status', message: `Found ${dbFirstJobs.length} instant matching roles in global database pool!` });
+                            registerJobs('Database Pool', dbFirstJobs);
                         }
                     } catch (dbErr: any) {
                         console.warn(`[DB-First Pre-Check Warning]: ${dbErr.message}`);
                     }
 
-                    // Derive up to 3 keyword variants for live scraper rotation (original + top 2 AI synonyms)
-                    const scraperKeywords = expandedKeywords.slice(0, 3);
+                    // Step 2: Derive up to 3 keyword variants for live scraper rotation immediately
+                    const scraperKeywords = initialKeywords.slice(0, 3);
 
                     const tasks: Promise<void>[] = [];
 
                     const runScraperTask = async (name: string, fn: () => Promise<any[]>, timeoutMs = 25000) => {
-                        sendEvent({ type: 'status', message: `Querying ${name}...` });
+                        sendEvent({ type: 'status', foundCount: totalRawJobsFound, message: `Querying ${name}...` });
                         let timerId: NodeJS.Timeout | null = null;
                         try {
                             const timeoutPromise = new Promise<any[]>((_, reject) => {
@@ -189,9 +210,7 @@ export async function POST(request: Request) {
                             });
                             const res = await Promise.race([fn(), timeoutPromise]);
                             if (res && res.length > 0) {
-                                allRawJobs.push(...res);
-                                totalRawJobsFound += res.length;
-                                sendEvent({ type: 'status', message: `Found ${res.length} jobs from ${name}` });
+                                registerJobs(name, res);
                             }
                         } catch (err: any) {
                             console.warn(`Scraper task [${name}] issue: ${err.message}`);
@@ -219,7 +238,6 @@ export async function POST(request: Request) {
                     }
 
                     // Location-aware scrapers: rotate over scraperKeywords × locationList
-                    // scraperKeywords = [original keyword, ...up to 2 AI synonyms] (max 3)
                     if (sources.indeed) {
                         for (const kw of scraperKeywords) {
                             for (const loc of locationList) {
@@ -256,7 +274,11 @@ export async function POST(request: Request) {
                     if (sources.weworkremotely || sources.remoteok || sources.workingnomads || sources.remotive || sources.arbeitnow || sources.ycombinator || sources.nodesk) {
                         // Remote aggregators: keyword-flexible APIs — rotate keywords, single location pass
                         for (const kw of scraperKeywords) {
-                            tasks.push(runScraperTask(scraperKeywords.length > 1 ? `Remote Aggregators (${kw})` : 'Remote Aggregators', () => scrapeRemoteAggregators(kw, sources), 15000));
+                            tasks.push(runScraperTask(
+                                scraperKeywords.length > 1 ? `Remote Aggregators (${kw})` : 'Remote Aggregators',
+                                () => scrapeRemoteAggregators(kw, sources, (srcName, count, jobs) => registerJobs(srcName, jobs)),
+                                15000
+                            ));
                         }
                     }
                     if (sources.himalayas) {
@@ -305,6 +327,31 @@ export async function POST(request: Request) {
                     if (isPro && INTERNATIONAL_SOURCE_KEYS.some((s: string) => sources[s])) {
                         tasks.push(runScraperTask('International Boards', () => scrapeInternational(keyword, sources), 25000));
                     }
+
+                    // Background AI keyword expansion: discover additional synonyms in parallel without delaying initial scrapers
+                    const aiExpansionPromise = expandSearchKeywordsWithAI(keyword, userId).then(aiTerms => {
+                        const novelTerms = aiTerms.filter(t => !initialKeywords.some(ik => ik.toLowerCase() === t.toLowerCase())).slice(0, 2);
+                        if (novelTerms.length > 0) {
+                            const additionalTasks: Promise<void>[] = [];
+                            for (const kw of novelTerms) {
+                                if (sources.himalayas) additionalTasks.push(runScraperTask(`Himalayas (${kw})`, () => scrapeHimalayas(kw), 10000));
+                                if (sources.jobicy) additionalTasks.push(runScraperTask(`Jobicy (${kw})`, () => scrapeJobicy(kw), 10000));
+                                if (sources.jobspresso) additionalTasks.push(runScraperTask(`Jobspresso (${kw})`, () => scrapeJobspresso(kw), 10000));
+                                if (sources.weworkremotely || sources.remoteok || sources.remotive) {
+                                    additionalTasks.push(runScraperTask(
+                                        `Remote Aggregators (${kw})`,
+                                        () => scrapeRemoteAggregators(kw, sources, (srcName, count, jobs) => registerJobs(srcName, jobs)),
+                                        12000
+                                    ));
+                                }
+                            }
+                            return Promise.allSettled(additionalTasks);
+                        }
+                    }).catch(err => {
+                        console.warn(`[AI Expansion Background Notice]: ${err.message}`);
+                    });
+
+                    tasks.push(aiExpansionPromise as any);
 
                     await Promise.allSettled(tasks);
 

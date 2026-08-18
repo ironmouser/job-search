@@ -389,6 +389,8 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 hasAssets={!!(assets?.tailoredResumeMarkdown && assets?.coverLetterMarkdown)}
                 hasResume={hasBaseResume}
                 generationsLeftThisWeek={assetGenerationsLeft}
+                isEasyApply={!!job.isEasyApply}
+                jobSource={job.source || undefined}
               />
             </section>
 

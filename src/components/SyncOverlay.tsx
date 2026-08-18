@@ -188,12 +188,14 @@ export default function SyncOverlay({
                 <div style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                   {isRefining
                     ? (displayCount === 1 ? 'Refining 1 Candidate Match...' : `Refining ${displayCount} Candidate Matches...`)
-                    : (displayCount === 1 ? '1 Job Found So Far' : `${displayCount} Jobs Found So Far`)
+                    : (displayCount === 0 
+                        ? 'Scanning Job Sources...' 
+                        : (displayCount === 1 ? '1 Job Found So Far' : `${displayCount} Jobs Found So Far`))
                   }
                 </div>
                 {!isRefining && displayCount === 0 && (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Scanning job sources and active feeds...
+                    Connecting to 20+ active job boards & feeds...
                   </div>
                 )}
                 {isRefining && (

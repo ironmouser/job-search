@@ -11,6 +11,7 @@ import { prisma } from '../prisma';
 import { reformatJobDescriptionWithGemini, convertHtmlToMarkdown } from '../formatter';
 import { cleanCompanyName } from '../cleaners';
 import { isSafePublicUrl } from '../urlUtils';
+import { scrapeSerpApiGoogleJobs } from '../serpapi';
 
 async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
     if (!isSafePublicUrl(url)) {
@@ -60,26 +61,6 @@ async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.Cheerio
         }
 
         if (needsFallback) {
-            // Fallback to Scrape.do proxy for any block or non-200 status
-            if (process.env.SCRAPEDO_API_KEY) {
-                console.info(`Falling back to Scrape.do for ${url}`);
-                try {
-                    const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
-                    const sdRes = await gotScraping({
-                        url: scrapeDoUrl,
-                        timeout: { request: 12000 },
-                        retry: { limit: 0 },
-                        throwHttpErrors: false,
-                    });
-                    if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
-                        return { $: cheerio.load(sdRes.body), usedFirecrawl: true };
-                    }
-                    console.warn(`Scrape.do fallback failed for ${url} (Status: ${sdRes.statusCode})`);
-                } catch (err: any) {
-                    console.warn(`Scrape.do fallback error for ${url}: ${err.message}`);
-                }
-            }
-
             if (attempt === retries) return { $: null, usedFirecrawl: false };
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // simple backoff
         }
@@ -369,7 +350,11 @@ export async function scrapeCustomPages(urls: string[]) {
     return jobs;
 }
 
-export async function scrapeRemoteAggregators(keyword: string, sources: any) {
+export async function scrapeRemoteAggregators(
+    keyword: string, 
+    sources: any,
+    onProgress?: (source: string, count: number, jobs: any[]) => void
+) {
     const urls: { url: string; source: string }[] = [];
 
     if (sources.weworkremotely) urls.push({ url: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keyword)}`, source: 'weworkremotely' });
@@ -380,7 +365,20 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
     if (sources.nodesk) urls.push({ url: `https://nodesk.co/remote-jobs/`, source: 'nodesk' });
     // Note: Otta omitted from this batch due to requiring GraphQL reverse-engineering.
 
-    if (urls.length === 0) return [];
+    const sourceDisplayNames: Record<string, string> = {
+        weworkremotely: 'WeWorkRemotely',
+        remoteco: 'Remote.co',
+        remoteok: 'RemoteOK',
+        workingnomads: 'WorkingNomads',
+        remotive: 'Remotive',
+        arbeitnow: 'Arbeitnow (DE)',
+        himalayas: 'Himalayas',
+        jobspresso: 'Jobspresso',
+        justremote: 'JustRemote',
+        nodesk: 'Nodesk',
+        wellfound: 'Wellfound',
+        ycombinator: 'YCombinator'
+    };
 
     const jobs: any[] = [];
 
@@ -412,10 +410,6 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                         throwHttpErrors: false,
                         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
                     });
-                    if ((res.statusCode < 200 || res.statusCode >= 300) && process.env.SCRAPEDO_API_KEY) {
-                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
-                        res = await gotScraping({ url: scrapeDoUrl, responseType: 'json', throwHttpErrors: false });
-                    }
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         const data = res.body as any;
                         for (let i = 1; i < data.length; i++) {
@@ -444,10 +438,6 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
             if (source === 'remotive') {
                 try {
                     let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
-                    if ((res.statusCode < 200 || res.statusCode >= 300) && process.env.SCRAPEDO_API_KEY) {
-                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
-                        res = await gotScraping({ url: scrapeDoUrl, responseType: 'json', throwHttpErrors: false });
-                    }
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         const data = res.body as any;
                         if (data && Array.isArray(data.jobs)) {
@@ -480,17 +470,6 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
                     let res = await gotScraping({ url, responseType: 'json', throwHttpErrors: false });
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         data = res.body;
-                    } else if (process.env.SCRAPEDO_API_KEY) {
-                        console.info(`WorkingNomads returned ${res.statusCode}, falling back to Scrape.do`);
-                        const scrapeDoUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
-                        const sdRes = await gotScraping({ url: scrapeDoUrl, throwHttpErrors: false });
-                        if (sdRes.statusCode >= 200 && sdRes.statusCode < 300) {
-                            let raw = sdRes.body ? sdRes.body.toString() : '';
-                            const jsonMatch = raw.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
-                            if (jsonMatch) {
-                                try { data = JSON.parse(jsonMatch[0]); } catch (e) {}
-                            }
-                        }
                     }
 
                     if (data) {
@@ -789,34 +768,24 @@ export async function scrapeRemoteAggregators(keyword: string, sources: any) {
 
             try {
                 if (!errorMsg && pageJobs.length > 0) {
+                    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
                     await prisma.scrapeCache.upsert({
                         where: { source_keyword_location: cacheKey },
-                        update: { rawJobs: pageJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
-                        create: { ...cacheKey, rawJobs: pageJobs, expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
+                        update: { rawJobs: pageJobs, expiresAt: new Date(Date.now() + TWELVE_HOURS_MS) },
+                        create: { ...cacheKey, rawJobs: pageJobs, expiresAt: new Date(Date.now() + TWELVE_HOURS_MS) }
                     });
                 }
             } catch(e) {
                 console.warn('Failed to save aggregator cache:', e);
             }
 
+            if (pageJobs.length > 0) {
+                onProgress?.(sourceDisplayNames[source] || source, pageJobs.length, pageJobs);
+            }
+
             return { source, jobs: pageJobs, usedFirecrawl: sourceFcSites.length > 0, firecrawlSites: sourceFcSites, error: errorMsg, url, isCached: false };
         })
     );
-
-    const sourceDisplayNames: Record<string, string> = {
-        weworkremotely: 'WeWorkRemotely',
-        remoteco: 'Remote.co',
-        remoteok: 'RemoteOK',
-        workingnomads: 'WorkingNomads',
-        remotive: 'Remotive',
-        arbeitnow: 'Arbeitnow (DE)',
-        himalayas: 'Himalayas',
-        jobspresso: 'Jobspresso',
-        justremote: 'JustRemote',
-        nodesk: 'Nodesk',
-        wellfound: 'Wellfound',
-        ycombinator: 'YCombinator'
-    };
 
     for (const result of results) {
         if (result.status === 'fulfilled') {
@@ -1111,33 +1080,37 @@ export async function scrapeLeverApi(companySlug: string) {
     return jobs;
 }
 
-export async function scrapeIndeed(keyword: string, location: string) {
+export async function scrapeIndeed(keyword: string, location: string = 'Remote') {
+    if (process.env.SERPAPI_API_KEY) {
+        return scrapeSerpApiGoogleJobs(keyword, location);
+    }
     const jobs: any[] = [];
     const targetUrl = `https://www.indeed.com/jobs?q=${encodeURIComponent(keyword)}&l=${encodeURIComponent(location)}`;
 
     try {
-        const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(targetUrl)}`;
-        const res = await fetch(proxyUrl);
-        const html = await res.text();
-        const $ = cheerio.load(html);
-        
-        if ($) {
-            const mosaicData = $('script#mosaic-data').html();
-            if (mosaicData && mosaicData.includes('window.mosaic.providerData["mosaic-provider-jobcards"]')) {
-                const match = mosaicData.match(/window\.mosaic\.providerData\["mosaic-provider-jobcards"\]\s*=\s*(\{.*?\});/);
-                if (match && match[1]) {
-                    const parsed = JSON.parse(match[1]);
-                    const results = parsed?.metaData?.mosaicProviderJobCardsModel?.results || [];
-                    
-                    for (const job of results) {
-                        jobs.push({
-                            title: job.title,
-                            company: job.company,
-                            location: job.formattedLocation || location,
-                            url: `https://www.indeed.com${job.viewJobLink}`,
-                            salary: job.salarySnippet?.text || null,
-                            source: 'indeed'
-                        });
+        const res = await gotScraping({ url: targetUrl, timeout: { request: 12000 }, throwHttpErrors: false });
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+            const html = res.body.toString();
+            const $ = cheerio.load(html);
+            
+            if ($) {
+                const mosaicData = $('script#mosaic-data').html();
+                if (mosaicData && mosaicData.includes('window.mosaic.providerData["mosaic-provider-jobcards"]')) {
+                    const match = mosaicData.match(/window\.mosaic\.providerData\["mosaic-provider-jobcards"\]\s*=\s*(\{.*?\});/);
+                    if (match && match[1]) {
+                        const parsed = JSON.parse(match[1]);
+                        const results = parsed?.metaData?.mosaicProviderJobCardsModel?.results || [];
+                        
+                        for (const job of results) {
+                            jobs.push({
+                                title: job.title,
+                                company: job.company,
+                                location: job.formattedLocation || location,
+                                url: `https://www.indeed.com${job.viewJobLink}`,
+                                salary: job.salarySnippet?.text || null,
+                                source: 'indeed'
+                            });
+                        }
                     }
                 }
             }
@@ -1147,25 +1120,13 @@ export async function scrapeIndeed(keyword: string, location: string) {
             data: {
                 scraperName: 'Indeed (Native)',
                 targetUrl,
-                status: 'SUCCESS',
+                status: jobs.length > 0 ? 'SUCCESS' : 'PARTIAL',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
         });
     } catch (e: any) {
         console.error("Indeed Scrape Error:", e);
-        try {
-            await prisma.scraperLog.create({
-                data: {
-                    scraperName: 'Indeed (Native)',
-                    targetUrl,
-                    status: 'FAILURE',
-                    resultsCount: 0,
-                    usedFirecrawl: false,
-                    errorDetails: e.message
-                }
-            });
-        } catch {}
     }
     
     return jobs;
@@ -1239,48 +1200,25 @@ function extractGlassdoorApolloCache(html: string, $: cheerio.CheerioAPI): Recor
 }
 
 export async function scrapeGlassdoor(keyword: string, location: string = 'Remote') {
+    if (process.env.SERPAPI_API_KEY) {
+        return scrapeSerpApiGoogleJobs(keyword, location);
+    }
     const jobs: any[] = [];
     const searchSlug = encodeURIComponent(keyword.replace(/\s+/g, '-'));
     const targetUrl = `https://www.glassdoor.com/Job/${searchSlug}-jobs-SRCH_KO0,${keyword.length}.htm`;
-    const fallbackUrl = `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encodeURIComponent(keyword)}&locT=&locId=&locKeyword=${encodeURIComponent(location)}`;
 
     try {
-        let html = '';
-        let usedUrl = targetUrl;
-
-        // Use Scrape.do with super=true for Apollo data extraction
-        if (process.env.SCRAPEDO_API_KEY) {
-            const urls = [targetUrl, fallbackUrl];
-            for (const tryUrl of urls) {
-                const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(tryUrl)}`;
-                try {
-                    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
-                    if (res.ok) {
-                        const text = await res.text();
-                        if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied')) {
-                            html = text;
-                            usedUrl = tryUrl;
-                            break;
-                        }
-                    }
-                } catch { /* try fallback */ }
-            }
-        }
-
-        if (html) {
+        const res = await gotScraping({ url: targetUrl, timeout: { request: 15000 }, throwHttpErrors: false });
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+            const html = res.body.toString();
             const $ = cheerio.load(html);
-
-            // === PRIMARY: Apollo GraphQL cache extraction ===
-            // Glassdoor embeds ALL job data in Apollo cache with __ref resolution needed
             const apolloData = extractGlassdoorApolloCache(html, $);
             if (apolloData) {
-                // Find jobListings query key (format: jobListings({...params...}))
                 for (const [key, value] of Object.entries(apolloData)) {
                     if (!key.startsWith('jobListings')) continue;
                     const listingsData = value as any;
                     const listings: any[] = listingsData?.jobListings || listingsData?.jobResults || [];
                     for (const item of listings) {
-                        // Each item is a JobView with header/job/overview
                         const header = item?.jobview?.header || item?.header || item;
                         const jobTitle: string = header?.jobTitleText || header?.normalizedJobTitle || item?.jobTitle || '';
                         const jobLink: string = header?.jobLink || item?.jobLink || '';
@@ -1304,59 +1242,6 @@ export async function scrapeGlassdoor(keyword: string, location: string = 'Remot
                         }
                     }
                 }
-
-                // Also check for flat JobView: or JobListing: keys in the resolved cache
-                if (jobs.length === 0) {
-                    const rawCache = (() => {
-                        try {
-                            const nd = $('script#__NEXT_DATA__').html();
-                            if (nd) return JSON.parse(nd)?.props?.pageProps?.apolloCache;
-                        } catch { return null; }
-                    })();
-
-                    if (rawCache) {
-                        for (const [key, item] of Object.entries(rawCache as Record<string, any>)) {
-                            if (!key.startsWith('JobView:') && !key.startsWith('JobListing:')) continue;
-                            const title: string = item?.header?.jobTitleText || item?.jobTitleText || '';
-                            const jobLink: string = item?.header?.jobLink || item?.jobLink || '';
-                            const company: string = item?.header?.employer?.name || item?.header?.employerName || '';
-                            const loc: string = item?.header?.locationName || '';
-                            if (title && jobLink) {
-                                const fullUrl = jobLink.startsWith('http') ? jobLink : `https://www.glassdoor.com${jobLink}`;
-                                jobs.push({
-                                    title,
-                                    company: cleanCompanyName(company) || 'Unknown Company',
-                                    location: loc || location,
-                                    url: fullUrl,
-                                    source: 'glassdoor'
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-
-            // === FALLBACK: CSS selectors for job cards ===
-            if (jobs.length === 0) {
-                $('[data-test="jobListing"], li[data-test="job-tile"], div[class*="JobCard_jobCard"], li[class*="JobsList_jobListItem"], article[id^="job-listing-"], div[class*="jobCard"]').each((i, el) => {
-                    const aTag = $(el).find('a[data-test="job-title"], a[data-test="job-link"], a[class*="JobCard_jobTitle"], a[class*="jobTitle"], a[class*="JobCard_seoLink"], a[href*="/job-listing/"], a[href*="/partner/jobListing.htm"]').first();
-                    const jobTitle = aTag.text().trim();
-                    let jobUrl = aTag.attr('href') || '';
-                    if (jobUrl && !jobUrl.startsWith('http')) jobUrl = 'https://www.glassdoor.com' + jobUrl;
-                    const companyText = $(el).find('[class*="EmployerProfile_employerName"], [data-test="employer-name"], [class*="JobCard_companyName"], span[class*="employerName"], [class*="EmployerProfile_compactEmployerName"]').first().text().trim();
-                    const locationText = $(el).find('[data-test="emp-location"], [class*="JobCard_location"], [class*="location"]').first().text().trim() || location;
-                    const salaryText = $(el).find('[data-test="detailSalary"], [class*="SalaryEstimate"], [class*="JobCard_salaryEstimate"]').first().text().trim() || null;
-                    if (jobTitle && jobUrl) {
-                        jobs.push({
-                            title: jobTitle,
-                            company: cleanCompanyName(companyText) || 'Unknown Company',
-                            location: locationText,
-                            salary: salaryText,
-                            url: jobUrl.split('?')[0],
-                            source: 'glassdoor'
-                        });
-                    }
-                });
             }
         }
 
@@ -1364,25 +1249,13 @@ export async function scrapeGlassdoor(keyword: string, location: string = 'Remot
             data: {
                 scraperName: 'Glassdoor (Native)',
                 targetUrl,
-                status: 'SUCCESS',
+                status: jobs.length > 0 ? 'SUCCESS' : 'PARTIAL',
                 resultsCount: jobs.length,
                 usedFirecrawl: false
             }
         });
     } catch (e: any) {
         console.error("Glassdoor Scrape Error:", e);
-        try {
-            await prisma.scraperLog.create({
-                data: {
-                    scraperName: 'Glassdoor (Native)',
-                    targetUrl,
-                    status: 'FAILURE',
-                    resultsCount: 0,
-                    usedFirecrawl: false,
-                    errorDetails: e.message
-                }
-            });
-        } catch {}
     }
 
     return jobs;
@@ -1404,33 +1277,18 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
     try {
         let html = '';
 
-        if (process.env.SCRAPEDO_API_KEY) {
-            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(searchUrl)}`;
-            try {
-                const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
-                if (res.ok) {
-                    const text = await res.text();
-                    if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied')) {
-                        html = text;
-                    }
+        // Direct fetch (Dice uses SSR Next.js with embedded JSON)
+        try {
+            const res = await fetch(searchUrl, {
+                signal: AbortSignal.timeout(15000),
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
                 }
-            } catch { /* continue without proxy */ }
-        }
-
-        // Direct fetch fallback (no proxy)
-        if (!html) {
-            try {
-                const res = await fetch(searchUrl, {
-                    signal: AbortSignal.timeout(15000),
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                    }
-                });
-                if (res.ok) html = await res.text();
-            } catch { /* ignore */ }
-        }
+            });
+            if (res.ok) html = await res.text();
+        } catch { /* ignore */ }
 
         if (html) {
             const $ = cheerio.load(html);
@@ -1572,18 +1430,6 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                         }
                     } catch { /* fall through to proxy */ }
 
-                    // Only use scrape.do if the direct fetch was blocked or returned nothing
-                    if (!detailHtml && process.env.SCRAPEDO_API_KEY) {
-                        try {
-                            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(job.url)}`;
-                            const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
-                            if (res.ok) {
-                                const text = await res.text();
-                                if (text && !text.includes('403 Forbidden') && !text.includes('Access Denied')) detailHtml = text;
-                            }
-                        } catch { /* give up */ }
-                    }
-
                     if (!detailHtml) return;
 
 
@@ -1674,12 +1520,14 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
 }
 
 export async function scrapeLinkedIn(keyword: string, location: string = 'remote'): Promise<any[]> {
+    if (process.env.SERPAPI_API_KEY) {
+        return scrapeSerpApiGoogleJobs(keyword, location);
+    }
     try {
         const query = encodeURIComponent(keyword);
         const loc = encodeURIComponent(location);
         const url = `https://www.linkedin.com/jobs/search/?keywords=${query}&location=${loc}`;
         
-        // Let's use our fetchPage which handles proxy fallbacks nicely
         const { $ } = await fetchPage(url, 1);
         if (!$) return [];
 
@@ -1703,7 +1551,6 @@ export async function scrapeLinkedIn(keyword: string, location: string = 'remote
             }
         });
 
-        // Log to database
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'LinkedIn (Native)',
@@ -1717,32 +1564,22 @@ export async function scrapeLinkedIn(keyword: string, location: string = 'remote
         return jobs;
     } catch (error: any) {
         console.error("LinkedIn scrape error:", error);
-        try {
-            await prisma.scraperLog.create({
-                data: {
-                    scraperName: 'LinkedIn (Native)',
-                    targetUrl: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`,
-                    status: 'FAILURE',
-                    resultsCount: 0,
-                    usedFirecrawl: false,
-                    errorDetails: error.message
-                }
-            }).catch(() => {});
-        } catch {}
         return [];
     }
 }
 
 export async function scrapeZipRecruiter(keyword: string, location: string = 'remote'): Promise<any[]> {
+    if (process.env.SERPAPI_API_KEY) {
+        return scrapeSerpApiGoogleJobs(keyword, location);
+    }
     try {
         const query = encodeURIComponent(keyword);
         const loc = encodeURIComponent(location);
         const url = `https://www.ziprecruiter.com/jobs-search?search=${query}&location=${loc}`;
         
-        // super=true is required for ZipRecruiter on scrape.do
-        const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}&super=true&url=${encodeURIComponent(url)}`;
-        const res = await fetch(proxyUrl);
-        const html = await res.text();
+        const res = await gotScraping({ url, timeout: { request: 12000 }, throwHttpErrors: false });
+        if (res.statusCode < 200 || res.statusCode >= 300) return [];
+        const html = res.body.toString();
         
         const $ = cheerio.load(html);
         const jobs: any[] = [];
@@ -1755,8 +1592,6 @@ export async function scrapeZipRecruiter(keyword: string, location: string = 're
                     if (item['@type'] === 'ItemList' && item.itemListElement) {
                         for (const listEl of item.itemListElement) {
                             if (listEl['@type'] === 'ListItem' && listEl.name && listEl.url) {
-                                // Attempt to parse company and location from ZipRecruiter URL
-                                // e.g. /c/Capital-One/Job/...-in-Mclean,VA
                                 let company = 'Unknown Company';
                                 let jobLoc = location;
                                 
@@ -1785,7 +1620,6 @@ export async function scrapeZipRecruiter(keyword: string, location: string = 're
             } catch(e) {}
         });
 
-        // Log to database
         await prisma.scraperLog.create({
             data: {
                 scraperName: 'ZipRecruiter (Native)',
@@ -1799,18 +1633,6 @@ export async function scrapeZipRecruiter(keyword: string, location: string = 're
         return jobs;
     } catch (error: any) {
         console.error("ZipRecruiter scrape error:", error);
-        try {
-            await prisma.scraperLog.create({
-                data: {
-                    scraperName: 'ZipRecruiter (Native)',
-                    targetUrl: `https://www.ziprecruiter.com/jobs-search?search=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`,
-                    status: 'FAILURE',
-                    resultsCount: 0,
-                    usedFirecrawl: false,
-                    errorDetails: error.message
-                }
-            }).catch(() => {});
-        } catch {}
         return [];
     }
 }
@@ -1825,19 +1647,13 @@ export async function scrapeZipRecruiter(keyword: string, location: string = 're
 export async function scrapeInternational(keyword: string, sources: any) {
     const jobs: any[] = [];
 
-    async function fetchViaProxy(url: string, useSuper = false): Promise<cheerio.CheerioAPI | null> {
+    async function fetchViaProxy(url: string): Promise<cheerio.CheerioAPI | null> {
         try {
-            if (!process.env.SCRAPEDO_API_KEY) {
-                const res = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
-                if (!res.ok) return null;
-                return cheerio.load(await res.text());
-            }
-            const proxyUrl = `http://api.scrape.do?token=${process.env.SCRAPEDO_API_KEY}${useSuper ? '&super=true' : ''}&url=${encodeURIComponent(url)}`;
-            const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
+            const res = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
             if (!res.ok) return null;
             return cheerio.load(await res.text());
         } catch (e: any) {
-            console.warn(`fetchViaProxy error for ${url}: ${e.message}`);
+            console.warn(`fetch error for ${url}: ${e.message}`);
             return null;
         }
     }
@@ -1888,7 +1704,7 @@ export async function scrapeInternational(keyword: string, sources: any) {
         const slug = keyword.toLowerCase().replace(/\s+/g, '-');
         const url = `https://mx.computrabajo.com/trabajo-de-${slug}`;
         try {
-            const $ = await fetchViaProxy(url, true);
+            const $ = await fetchViaProxy(url);
             const pageJobs: any[] = [];
             if ($) {
                 $('a[href*="/ofertas-de-trabajo/"]').each((_, el) => {

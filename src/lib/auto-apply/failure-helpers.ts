@@ -32,7 +32,41 @@ export function formatFailureExplanation(
     return 'This position is no longer accepting applications or has been closed by the employer.';
   }
 
-  // 2. Account creation / Login required
+  // 2. Personal account / In-network Easy Apply (Contextual per platform)
+  if (
+    combined.includes('linkedin') ||
+    combined.includes('cold-join') ||
+    combined.includes('sign in to find your next job') ||
+    combined.includes('join to apply')
+  ) {
+    return 'This position uses LinkedIn "Easy Apply" which requires signing into your personal LinkedIn account. Please click the link above to apply directly with your profile.';
+  }
+
+  if (combined.includes('indeed') || combined.includes('indeed apply') || combined.includes('ia-directapply')) {
+    return 'This position uses Indeed "Apply" which requires signing into your personal Indeed account. Please click the link above to apply directly with your profile.';
+  }
+
+  if (combined.includes('ziprecruiter') || combined.includes('1-click apply') || combined.includes('zipapply')) {
+    return 'This position uses ZipRecruiter "1-Click Apply" which requires your personal ZipRecruiter account. Please click the link above to apply directly with your profile.';
+  }
+
+  if (combined.includes('dice') || combined.includes('dice-apply')) {
+    return 'This position uses Dice "Easy Apply" which requires signing into your personal Dice account. Please click the link above to apply directly with your profile.';
+  }
+
+  if (combined.includes('glassdoor')) {
+    return 'This position uses Glassdoor "Easy Apply" which requires signing into your personal Glassdoor account. Please click the link above to apply directly with your profile.';
+  }
+
+  if (
+    combined.includes('easy apply') ||
+    combined.includes('personal account') ||
+    combined.includes('personal profile')
+  ) {
+    return 'This position uses an in-network Easy Apply form that requires signing into your personal account. Please click the link above to apply directly.';
+  }
+
+  // 3. Account creation / Login required
   if (
     reasonCode.includes('account') ||
     reasonCode.includes('login') ||

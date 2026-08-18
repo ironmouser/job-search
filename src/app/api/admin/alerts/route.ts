@@ -97,65 +97,109 @@ export async function GET() {
             byProvider: bucketsToProviders(monthRows as any),
         };
 
-        // ── 4. Scrape.do — live credit balance & period ─────────────────────
-        const renewalDay = parseInt(process.env.SCRAPEDO_RENEWAL_DAY || '22', 10);
-        const now = new Date();
-        let periodStartDate: Date;
-        let periodEndDate: Date;
+        // ── 4. ScraperAPI — live credit/usage balance ─────────────────────────
+        const scraperApiKey = process.env.SCRAPERAPI_KEY;
+        const serpApiKey    = process.env.SERPAPI_API_KEY;
 
-        if (now.getDate() < renewalDay) {
-            periodStartDate = new Date(now.getFullYear(), now.getMonth() - 1, renewalDay);
-            periodEndDate   = new Date(now.getFullYear(), now.getMonth(), renewalDay);
-        } else {
-            periodStartDate = new Date(now.getFullYear(), now.getMonth(), renewalDay);
-            periodEndDate   = new Date(now.getFullYear(), now.getMonth() + 1, renewalDay);
+        interface ScraperApiStats {
+            requestCount: number | null;
+            requestLimit: number | null;
+            concurrentRequests: number | null;
+            concurrentRequestsLimit: number | null;
+            error?: string;
         }
 
-        const daysRemaining = Math.max(0, Math.ceil((periodEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-
-        let scrapeDoCredits: {
-            remaining: number | null;
-            total: number | null;
-            plan: string | null;
-            periodStart: string;
-            periodEnd: string;
-            daysRemaining: number;
-            error?: string;
-        } = {
-            remaining: null,
-            total: null,
-            plan: null,
-            periodStart: periodStartDate.toISOString(),
-            periodEnd: periodEndDate.toISOString(),
-            daysRemaining,
+        let scraperApiStats: ScraperApiStats = {
+            requestCount: null,
+            requestLimit: null,
+            concurrentRequests: null,
+            concurrentRequestsLimit: null,
         };
 
-        const scrapeDoToken = process.env.SCRAPEDO_API_KEY;
-        if (scrapeDoToken) {
+        if (scraperApiKey) {
             try {
-                const sdRes = await fetch(`https://api.scrape.do/info?token=${scrapeDoToken}`, {
+                const saRes = await fetch(`https://api.scraperapi.com/account?api_key=${scraperApiKey}`, {
                     signal: AbortSignal.timeout(5000),
                 });
-                if (sdRes.ok) {
-                    const sdData = await sdRes.json();
-                    // Scrape.do /info returns: { IsActive, ConcurrentRequest, MaxMonthlyRequest, RemainingMonthlyRequest, ... }
-                    scrapeDoCredits = {
-                        ...scrapeDoCredits,
-                        remaining: sdData.RemainingMonthlyRequest ?? sdData.remainingMonthlyRequests ?? sdData.remaining ?? null,
-                        total:     sdData.MaxMonthlyRequest       ?? sdData.monthlyRequests          ?? sdData.total     ?? null,
-                        plan:      sdData.plan ?? (sdData.IsActive ? 'Active' : 'Inactive'),
+                if (saRes.ok) {
+                    const saData = await saRes.json();
+                    scraperApiStats = {
+                        requestCount:             saData.requestCount            ?? null,
+                        requestLimit:             saData.requestLimit            ?? null,
+                        concurrentRequests:       saData.concurrentRequests       ?? null,
+                        concurrentRequestsLimit:  saData.concurrentRequestsLimit  ?? null,
                     };
                 } else {
-                    scrapeDoCredits.error = `HTTP ${sdRes.status}`;
+                    scraperApiStats.error = `HTTP ${saRes.status}`;
                 }
             } catch (err: any) {
-                scrapeDoCredits.error = err?.message ?? 'Unknown error';
+                scraperApiStats.error = err?.message ?? 'Unknown error';
             }
         } else {
-            scrapeDoCredits.error = 'SCRAPEDO_API_KEY not configured';
+            scraperApiStats.error = 'SCRAPERAPI_KEY not configured';
         }
 
-        // ── 5. AWS S3 — bucket object count & estimated size ─────────────────
+        // ── 5. SerpAPI — live search credit balance ────────────────────────────
+        interface SerpApiStats {
+            planName: string | null;
+            searchesLeft: number | null;
+            searchesPerMonth: number | null;
+            thisMonthUsage: number | null;
+            error?: string;
+        }
+
+        let serpApiStats: SerpApiStats = {
+            planName: null,
+            searchesLeft: null,
+            searchesPerMonth: null,
+            thisMonthUsage: null,
+        };
+
+        if (serpApiKey) {
+            try {
+                const serpRes = await fetch(`https://serpapi.com/account.json?api_key=${serpApiKey}`, {
+                    signal: AbortSignal.timeout(5000),
+                });
+                if (serpRes.ok) {
+                    const serpData = await serpRes.json();
+                    serpApiStats = {
+                        planName:        serpData.plan_name              ?? null,
+                        searchesLeft:    serpData.plan_searches_left     ?? null,
+                        searchesPerMonth: serpData.searches_per_month    ?? null,
+                        thisMonthUsage:  serpData.this_month_usage       ?? null,
+                    };
+                } else {
+                    serpApiStats.error = `HTTP ${serpRes.status}`;
+                }
+            } catch (err: any) {
+                serpApiStats.error = err?.message ?? 'Unknown error';
+            }
+        } else {
+            serpApiStats.error = 'SERPAPI_API_KEY not configured';
+        }
+
+        // ── Legacy scrapeDoCredits field (kept for backward compat) ──────────
+        // Populated from whichever provider is configured (SerpAPI preferred)
+        const renewalDay = parseInt(process.env.SCRAPEDO_RENEWAL_DAY || '22', 10);
+        const now2 = new Date();
+        let periodStartDate2: Date;
+        let periodEndDate2: Date;
+        if (now2.getDate() < renewalDay) {
+            periodStartDate2 = new Date(now2.getFullYear(), now2.getMonth() - 1, renewalDay);
+            periodEndDate2   = new Date(now2.getFullYear(), now2.getMonth(),     renewalDay);
+        } else {
+            periodStartDate2 = new Date(now2.getFullYear(), now2.getMonth(),     renewalDay);
+            periodEndDate2   = new Date(now2.getFullYear(), now2.getMonth() + 1, renewalDay);
+        }
+        const daysRemaining2 = Math.max(0, Math.ceil((periodEndDate2.getTime() - now2.getTime()) / (1000 * 60 * 60 * 24)));
+
+        const scrapeDoCredits = serpApiKey && !serpApiStats.error
+            ? { remaining: serpApiStats.searchesLeft, total: serpApiStats.searchesPerMonth, plan: serpApiStats.planName ?? 'SerpAPI', periodStart: periodStartDate2.toISOString(), periodEnd: periodEndDate2.toISOString(), daysRemaining: daysRemaining2 }
+            : scraperApiKey && !scraperApiStats.error
+            ? { remaining: scraperApiStats.requestLimit != null && scraperApiStats.requestCount != null ? scraperApiStats.requestLimit - scraperApiStats.requestCount : null, total: scraperApiStats.requestLimit, plan: 'ScraperAPI', periodStart: periodStartDate2.toISOString(), periodEnd: periodEndDate2.toISOString(), daysRemaining: daysRemaining2 }
+            : { remaining: null, total: null, plan: null, periodStart: periodStartDate2.toISOString(), periodEnd: periodEndDate2.toISOString(), daysRemaining: daysRemaining2, error: 'Neither SERPAPI_API_KEY nor SCRAPERAPI_KEY configured' };
+
+        // ── 6. AWS S3 — bucket object count & estimated size ─────────────────
         let s3Stats: { objectCount: number | null; totalSizeBytes: number | null; estimatedMonthlyCostUsd: number | null; error?: string } = {
             objectCount: null,
             totalSizeBytes: null,
@@ -213,6 +257,8 @@ export async function GET() {
             aiCostToday,
             aiCostMonth,
             scrapeDoCredits,
+            scraperApiStats,
+            serpApiStats,
             s3Stats,
         });
     } catch (error: any) {

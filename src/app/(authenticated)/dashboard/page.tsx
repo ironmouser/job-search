@@ -40,7 +40,8 @@ export default async function Dashboard() {
         job: {
           include: {
             opportunityScores: { where: { userId }, select: { totalScore: true } },
-            jobFeedbacks: { where: { userId }, select: { feedbackType: true } }
+            jobFeedbacks: { where: { userId }, select: { feedbackType: true } },
+            autoApplySessions: { where: { userId, status: 'applied' }, select: { id: true, status: true }, take: 1 }
           }
         }
       },
@@ -55,6 +56,7 @@ export default async function Dashboard() {
 
   const jobs = userJobs.map(uj => {
     const j = uj.job;
+    const isAutoApplied = !!(j.autoApplySessions && j.autoApplySessions.length > 0);
     return {
       id: j.id,
       title: j.title,
@@ -64,17 +66,19 @@ export default async function Dashboard() {
       url: j.url,
       description: j.description,
       source: j.source,
+      isEasyApply: j.isEasyApply || false,
       
       status: uj.status,
       is_archived: uj.isArchived,
       is_viewed: j.isViewed || false,
+      is_auto_applied: isAutoApplied,
       created_at: uj.createdAt,
       applied_at: uj.appliedAt,
       unlockedBySubmission: uj.unlockedBySubmission || j.addedById === userId,
 
       opportunity_scores: j.opportunityScores.map((s: any) => ({ total_score: s.totalScore })),
       job_feedback: j.jobFeedbacks.map((f: any) => ({ feedback_type: f.feedbackType })),
-      automation_confidence: detectATSFromUrl(j.url).confidence
+      automation_confidence: isAutoApplied ? 100 : detectATSFromUrl(j.url).confidence
     };
   }).filter(j => {
     if (j.is_archived) return true;

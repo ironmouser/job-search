@@ -1456,6 +1456,11 @@ export default function DashboardClient({
                             {isEmailJob && (
                               <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Emailed Job</span>
                             )}
+                            {job.isEasyApply && (
+                              <span title="In-network Easy Apply role (requires personal account)" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>
+                                {job.source && !job.source.toLowerCase().includes('google') ? `${job.source} Easy Apply` : 'Easy Apply'}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -1596,6 +1601,11 @@ export default function DashboardClient({
                       )}
                       {isEmailJob && (
                         <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>Emailed Job</span>
+                      )}
+                      {job.isEasyApply && (
+                        <span title="In-network Easy Apply role (requires personal account)" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>
+                          {job.source && !job.source.toLowerCase().includes('google') ? `${job.source} Easy Apply` : 'Easy Apply'}
+                        </span>
                       )}
                     </div>
                     <Link href={`/job/${job.id}`} onClick={() => handleMarkViewed(job.id)} style={{ textDecoration: 'none' }} className={isEmailJob ? 'email-job-title' : 'job-title'}>

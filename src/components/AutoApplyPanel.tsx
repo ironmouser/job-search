@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
@@ -10,8 +11,9 @@ import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
-import { Bot, Building2, Clock, CheckCircle2, AlertCircle, Loader2, Check } from 'lucide-react';
+import { Bot, Building2, Clock, CheckCircle2, AlertCircle, Loader2, Check, Eye, X, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { trackAutoApplyAction } from '@/lib/analytics';
+import { isAggregatorUrl } from '@/lib/urlUtils';
 
 interface AutoApplyPanelProps {
   jobId: string;
@@ -90,9 +92,15 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
   const [session, setSession] = useState<SessionData | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
-  const [bgConfidence, setBgConfidence] = useState<{ platform: string; confidence: number } | null>(null);
+  const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isActive = isStarting || (session ? ACTIVE_STATUSES.has(session.status as AutoApplyStatus) : false);
+  const isAggregatorJob = isAggregatorUrl(jobUrl);
 
   useEffect(() => {
     onStatusChange?.(session, isActive);
@@ -117,49 +125,6 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
-
-  // Background confidence calculation
-  useEffect(() => {
-    if (!jobUrl) return;
-    let isMounted = true;
-
-    fetch('/api/auto-apply/detect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobUrl }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (!isMounted) return;
-        return fetch('/api/auto-apply/confidence', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            platform: d.platform,
-            requiresLogin: false,
-            hasResumeUpload: true,
-            hasCoverLetterUpload: true,
-            hasCaptcha: false,
-            hasAssessments: false,
-            hasDynamicQuestionnaire: false,
-            hasWorkAuthQuestions: true,
-            hasSalaryQuestions: false,
-            previousSuccessRate: 0,
-          }),
-        })
-          .then((r) => r.json())
-          .then((conf) => {
-            if (isMounted) {
-              setBgConfidence({ platform: d.platform, confidence: conf.confidence });
-            }
-          });
-      })
-      .catch(() => null);
-
-    return () => {
-      isMounted = false;
-    };
-  }, [jobUrl]);
 
   // Poll while active (every 1 second for live stepper animations)
   useEffect(() => {
@@ -603,56 +568,266 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
       </div>
 
       {/* Submission Receipt Card when applied */}
-      {session?.status === AutoApplyStatus.APPLIED && (
-        <div
-          id="auto-apply-success-receipt"
-          style={{
-            background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
-            borderRadius: '10px',
-            padding: '1.1rem 1.25rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700, color: '#10b981', fontSize: '0.95rem' }}>
-              <CheckCircle2 size={19} /> Application Submitted Successfully
-            </span>
-            {session.completedAt && (
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Clock size={12} /> {new Date(session.completedAt).toLocaleString()}
+      {session?.status === AutoApplyStatus.APPLIED && (() => {
+        const screenshotProofUrl = (session as any)?.confirmationScreenshotUrl || (session as any)?.screenshotUrl || null;
+        return (
+          <div
+            id="auto-apply-success-receipt"
+            style={{
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              borderRadius: '10px',
+              padding: '1.1rem 1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700, color: '#10b981', fontSize: '0.95rem' }}>
+                <CheckCircle2 size={19} /> Application Submitted Successfully
               </span>
+              {session.completedAt && (
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Clock size={12} /> {new Date(session.completedAt).toLocaleString()}
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <CheckCircle2 size={14} color="#10b981" /> Tailored Resume Attached
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <CheckCircle2 size={14} color="#10b981" /> Cover Letter Submitted
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <CheckCircle2 size={14} color="#10b981" /> Work Auth & Profile Mapped
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <CheckCircle2 size={14} color="#10b981" /> EEOC Demographics Complete
+              </span>
+              {screenshotProofUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setIsScreenshotModalOpen(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: '#2563eb',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                  title="View Confirmation Screenshot Proof"
+                >
+                  <CheckCircle2 size={14} color="#10b981" />
+                  <span style={{ textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    View Confirmation Screenshot <Eye size={12} />
+                  </span>
+                </button>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <CheckCircle2 size={14} color="#10b981" /> Confirmation Receipt Verified
+                </span>
+              )}
+            </div>
+
+            {screenshotProofUrl && (
+              <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary, #475569)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <ImageIcon size={14} /> Submission Confirmation Proof:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsScreenshotModalOpen(true)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      padding: '0.3rem 0.7rem',
+                      borderRadius: '6px',
+                      border: '1px solid #10b981',
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      color: '#059669',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <Eye size={13} /> View Confirmation Screenshot
+                  </button>
+                </div>
+
+                <div
+                  onClick={() => setIsScreenshotModalOpen(true)}
+                  title="Click to view full screenshot proof"
+                  style={{
+                    cursor: 'pointer',
+                    position: 'relative',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    border: '1px solid var(--border-glass, #e2e8f0)',
+                    maxHeight: '180px',
+                    background: '#000000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <img
+                    src={screenshotProofUrl}
+                    alt="Submission confirmation screenshot proof"
+                    style={{ maxHeight: '180px', width: '100%', objectFit: 'contain' }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '8px',
+                      right: '8px',
+                      background: 'rgba(0, 0, 0, 0.75)',
+                      color: '#ffffff',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.72rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <Eye size={12} /> Click to enlarge
+                  </div>
+                </div>
+              </div>
             )}
           </div>
+        );
+      })()}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <CheckCircle2 size={14} color="#10b981" /> Tailored Resume Attached
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <CheckCircle2 size={14} color="#10b981" /> Cover Letter Submitted
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <CheckCircle2 size={14} color="#10b981" /> Work Auth & Profile Mapped
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <CheckCircle2 size={14} color="#10b981" /> EEOC Demographics Complete
-            </span>
-          </div>
+      {/* Confirmation Screenshot Fullscreen Modal Portal */}
+      {mounted && isScreenshotModalOpen && ((session as any)?.confirmationScreenshotUrl || (session as any)?.screenshotUrl) && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.75)',
+            padding: '1.25rem',
+          }}
+          onClick={() => setIsScreenshotModalOpen(false)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-primary, #ffffff)',
+              color: 'var(--text-primary, #0f172a)',
+              borderRadius: '12px',
+              maxWidth: '960px',
+              width: '100%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
+              border: '1px solid var(--border-glass, #334155)',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.9rem 1.25rem',
+                borderBottom: '1px solid var(--border-glass, #e2e8f0)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <CheckCircle2 size={18} color="#10b981" />
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Application Submission Confirmation</span>
+                {session?.completedAt && (
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #64748b)' }}>
+                    • {new Date(session.completedAt).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <a
+                  href={(session as any)?.confirmationScreenshotUrl || (session as any)?.screenshotUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.8rem',
+                    color: '#2563eb',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  <ExternalLink size={14} /> Open Full Size
+                </a>
+                <button
+                  onClick={() => setIsScreenshotModalOpen(false)}
+                  aria-label="Close confirmation screenshot modal"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary, #64748b)',
+                    padding: '4px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
 
-          {(session as any).confirmationScreenshotUrl && (
-            <div style={{ marginTop: '0.25rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>Submission Confirmation Proof:</span>
+            {/* Modal Image Body */}
+            <div
+              style={{
+                padding: '1rem',
+                overflowY: 'auto',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                background: '#090d16',
+                flex: 1,
+                maxHeight: 'calc(90vh - 70px)',
+              }}
+            >
               <img
-                src={(session as any).confirmationScreenshotUrl}
-                alt="Submission confirmation screenshot proof"
-                style={{ borderRadius: '6px', border: '1px solid var(--border-glass)', maxHeight: '180px', width: '100%', objectFit: 'contain', background: '#000' }}
+                src={(session as any)?.confirmationScreenshotUrl || (session as any)?.screenshotUrl}
+                alt="Submission confirmation screenshot proof full resolution"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: 'calc(90vh - 100px)',
+                  height: 'auto',
+                  borderRadius: '6px',
+                  objectFit: 'contain',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.4)',
+                }}
               />
             </div>
-          )}
-        </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Failure Banner with Human Explanation (only when no intervention panel is active) */}
@@ -703,6 +878,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
             hasAssets={hasAssets}
             hasResume={hasResume}
             currentStatus={session?.status}
+            isAggregatorJob={isAggregatorJob}
             onSessionStarted={() => fetchStatus()}
             onStartingChange={(starting) => setIsStarting(starting)}
           />

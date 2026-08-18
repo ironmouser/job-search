@@ -25,6 +25,7 @@ model Job {
   appliedAt        DateTime? @map("applied_at") @db.Timestamptz(6)
   isArchived       Boolean   @default(false) @map("is_archived")
   isViewed         Boolean   @default(false) @map("is_viewed")
+  isEasyApply      Boolean   @default(false) @map("is_easy_apply")
 
   userJobs          UserJob[]
   opportunityScores OpportunityScore[]

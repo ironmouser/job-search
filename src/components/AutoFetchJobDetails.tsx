@@ -32,7 +32,7 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
     if (status === 'fetching') {
         const messages = [
             'Connecting to job board...',
-            'Bypassing bot protection...',
+            'Resolving job details...',
             'Extracting full job description...',
             'Reading page content...',
             'Almost there...'

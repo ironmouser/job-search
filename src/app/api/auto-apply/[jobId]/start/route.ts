@@ -3,13 +3,19 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
+import { isAggregatorUrl, isKnownATSUrl, fetchWithScraperAPI, extractATSUrlFromHtml } from '@/lib/scraperapi';
 
 /**
  * POST /api/auto-apply/[jobId]/start
  *
  * Initiates an Auto Apply session for a job.
  * Creates an AutoApplySession with status=queued.
- * The DigitalOcean worker picks it up within POLL_INTERVAL_MS.
+ * The Railway worker picks it up within POLL_INTERVAL_MS.
+ *
+ * Pre-flight: If the job only has an aggregator URL (no applicationUrl saved),
+ * we attempt to resolve the direct ATS portal URL via ScraperAPI before queuing.
+ * This lets the worker navigate straight to the ATS instead of hitting aggregator
+ * bot walls.
  *
  * Requires:
  *  - User is authenticated
@@ -43,7 +49,7 @@ export async function POST(
     // 1. Verify the job exists and is associated with this user
     const userJob = await prisma.userJob.findUnique({
       where: { userId_jobId: { userId, jobId } },
-      include: { job: { select: { id: true, url: true, title: true, company: true, description: true } } },
+      include: { job: { select: { id: true, url: true, applicationUrl: true, title: true, company: true, description: true, isEasyApply: true, source: true } } },
     });
 
     if (!userJob) {
@@ -113,7 +119,79 @@ export async function POST(
       );
     }
 
-    // 4. Create the session
+    // If the job is already known to be Easy Apply / personal account required, block automation early
+    if (userJob.job.isEasyApply) {
+      const sourceName = userJob.job.source || 'the platform';
+      return NextResponse.json(
+        {
+          error: `This role uses ${sourceName} Easy Apply and requires your personal account. Please apply directly.`,
+          isEasyApply: true,
+          source: userJob.job.source,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 4. Pre-flight: Resolve aggregator URL to direct ATS portal URL via ScraperAPI.
+    //    If applicationUrl is already a direct ATS link, skip this step entirely.
+    //    This ensures the worker navigates straight to the ATS form, bypassing bot walls.
+    const jobUrl = userJob.job.url;
+    const existingApplicationUrl = userJob.job.applicationUrl;
+
+    const needsResolution =
+      !existingApplicationUrl &&
+      jobUrl &&
+      isAggregatorUrl(jobUrl) &&
+      !isKnownATSUrl(jobUrl);
+
+    if (needsResolution) {
+      console.info(`[auto-apply/start] Pre-flight: resolving aggregator URL for job ${jobId}: ${jobUrl}`);
+      try {
+        const html = await fetchWithScraperAPI(jobUrl);
+        if (html) {
+          const resolvedUrl = extractATSUrlFromHtml(html);
+          if (resolvedUrl) {
+            console.info(`[auto-apply/start] Resolved direct ATS URL: ${resolvedUrl}`);
+            await prisma.job.update({
+              where: { id: jobId },
+              data: { applicationUrl: resolvedUrl },
+            });
+          } else {
+            // Check if page is an in-network Easy Apply / sign-in wall
+            const htmlLower = html.toLowerCase();
+            const isInNetworkEasyApply =
+              htmlLower.includes('cold-join') ||
+              htmlLower.includes('join to apply') ||
+              htmlLower.includes('sign-in-modal') ||
+              htmlLower.includes('ia-directapply') ||
+              htmlLower.includes('indeed-apply-widget') ||
+              htmlLower.includes('1-click apply');
+
+            if (isInNetworkEasyApply) {
+              console.info(`[auto-apply/start] Identified in-network Easy Apply role. Updating job ${jobId} to isEasyApply=true.`);
+              await prisma.job.update({
+                where: { id: jobId },
+                data: { isEasyApply: true },
+              });
+              const sourceName = userJob.job.source || 'the job board';
+              return NextResponse.json(
+                {
+                  error: `This position is hosted on ${sourceName} 'Easy Apply' and requires your personal account. Please click the link to apply directly.`,
+                  isEasyApply: true,
+                },
+                { status: 400 }
+              );
+            }
+            console.info(`[auto-apply/start] ScraperAPI rendered the page but no direct ATS URL found — worker will attempt aggregator navigation.`);
+          }
+        }
+      } catch (resolveErr: any) {
+        // Non-fatal — worker will attempt aggregator navigation as fallback
+        console.warn(`[auto-apply/start] Pre-flight URL resolution failed for ${jobUrl}: ${resolveErr.message}`);
+      }
+    }
+
+    // 5. Create the session
     const applySession = await prisma.autoApplySession.create({
       data: {
         userId,
@@ -133,6 +211,12 @@ export async function POST(
     }, { status: 201 });
   } catch (error: any) {
     console.error('[auto-apply/start] Error:', error);
-    return NextResponse.json({ error: 'Failed to start Auto Apply session' }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || 'Failed to start Auto Apply session' },
+      { status: 500 }
+    );
   }
 }
+
+
+
