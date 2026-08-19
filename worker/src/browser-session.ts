@@ -35,7 +35,7 @@ export class BrowserSession {
 
   // ─── Lifecycle ────────────────────────────────────────────────────────────
 
-  async launch(): Promise<void> {
+  async launch(storageState?: any): Promise<void> {
     this.browser = await chromium.launch({
       headless: true,
       args: [
@@ -49,7 +49,7 @@ export class BrowserSession {
       ],
     });
 
-    this.context = await this.browser.newContext({
+    const contextOptions: any = {
       viewport: { width: 1920, height: 1080 },
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
@@ -58,7 +58,13 @@ export class BrowserSession {
       acceptDownloads: true,
       locale: 'en-US',
       timezoneId: 'America/New_York',
-    });
+    };
+
+    if (storageState && typeof storageState === 'object') {
+      contextOptions.storageState = storageState;
+    }
+
+    this.context = await this.browser.newContext(contextOptions);
 
     // Auto-track and switch to any new tab or popup opened during automation
     this.context.on('page', (newPage) => {

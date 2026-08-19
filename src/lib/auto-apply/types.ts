@@ -36,6 +36,10 @@ export enum ATSPlatform {
   SMARTRECRUITERS = 'smartrecruiters',
   TALEO = 'taleo',
   ICIMS = 'icims',
+  ZIPRECRUITER_NATIVE = 'ziprecruiter_native',
+  DICE_NATIVE = 'dice_native',
+  LINKEDIN_EASY_APPLY = 'linkedin_easy_apply',
+  INDEED_APPLY = 'indeed_apply',
   UNKNOWN = 'unknown',
 }
 
@@ -48,6 +52,8 @@ export enum InterventionReason {
   RESUME_REJECTED = 'resume_rejected',
   ATTACHMENT_MISSING = 'attachment_missing',
   LOGIN_REQUIRED = 'login_required',
+  SESSION_EXPIRED = 'session_expired',
+  JOB_BOARD_AUTH_REQUIRED = 'job_board_auth_required',
   ASSESSMENT_REQUIRED = 'assessment_required',
   REVIEW_GATE = 'review_gate',
   /** Job board modal/page did not yield a valid application destination URL. */
@@ -174,6 +180,10 @@ export interface QueuedSession {
   resumeMarkdown: string;
   coverLetterMarkdown: string;
   userProfile: UserProfile;
+  connectedSession?: {
+    provider: string;
+    storageState: any;
+  } | null;
 }
 
 /** Full context fetched by the worker before executing the workflow */
@@ -198,6 +208,10 @@ export interface SessionContext {
     coverLetterMarkdown: string;
   };
   userProfile: UserProfile;
+  connectedSession?: {
+    provider: string;
+    storageState: any;
+  } | null;
 }
 
 // ─── Status Updates (Worker → Railway) ───────────────────────────────────────

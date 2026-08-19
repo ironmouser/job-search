@@ -314,6 +314,7 @@ model User {
   collisionLogsTarget  AccountCollisionLog[]   @relation("CollisionTarget")
   collisionLogsPrimary AccountCollisionLog[]   @relation("CollisionPrimary")
   upgradeEvents        UpgradeEvent[]
+  connectedJobBoards   ConnectedJobBoard[]
 }
 
 
@@ -688,4 +689,27 @@ model UpgradeEvent {
   @@index([createdAt(sort: Desc)])
   @@map("upgrade_events")
 }
+
+model ConnectedJobBoard {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  provider         String    // "linkedin", "indeed", "ziprecruiter", "dice"
+  encryptedSession String    @map("encrypted_session") @db.Text
+  iv               String
+  authTag          String    @map("auth_tag")
+  status           String    @default("connected") // "connected", "expired", "disconnected"
+  profileName      String?   @map("profile_name")
+  profileEmail     String?   @map("profile_email")
+  lastUsedAt       DateTime? @map("last_used_at") @db.Timestamptz(6)
+  expiresAt        DateTime? @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("connected_job_boards")
+}
+
 

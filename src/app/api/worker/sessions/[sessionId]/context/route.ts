@@ -80,6 +80,50 @@ export async function GET(
     const locationMatch = resumeText.match(/[A-Z][a-zA-Z\s]+,\s*[A-Z]{2}(?:\s+\d{5})?/);
     const linkedinMatch = resumeText.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/i);
 
+    let connectedSession: { provider: string; storageState: any } | null = null;
+    const jobUrlLower = (session.job.url || '').toLowerCase();
+    let targetProvider: string | null = null;
+
+    if (jobUrlLower.includes('ziprecruiter.com') || jobUrlLower.includes('zipapply.com')) {
+      targetProvider = 'ziprecruiter';
+    } else if (jobUrlLower.includes('dice.com')) {
+      targetProvider = 'dice';
+    } else if (jobUrlLower.includes('linkedin.com')) {
+      targetProvider = 'linkedin';
+    } else if (jobUrlLower.includes('indeed.com')) {
+      targetProvider = 'indeed';
+    }
+
+    if (targetProvider) {
+      try {
+        const board = await prisma.connectedJobBoard.findUnique({
+          where: {
+            userId_provider: {
+              userId: session.userId,
+              provider: targetProvider,
+            },
+          },
+        });
+
+        if (board && board.status === 'connected') {
+          const { decryptSession } = await import('@/lib/session-vault');
+          const storageState = decryptSession(board.encryptedSession, board.iv, board.authTag);
+          if (storageState) {
+            connectedSession = { provider: targetProvider, storageState };
+            // Update lastUsedAt in background
+            prisma.connectedJobBoard
+              .update({
+                where: { id: board.id },
+                data: { lastUsedAt: new Date() },
+              })
+              .catch((err) => console.warn('[worker/context] Could not update lastUsedAt:', err));
+          }
+        }
+      } catch (err) {
+        console.warn('[worker/context] Failed to resolve connected board session:', err);
+      }
+    }
+
     const payload = {
       session: {
         id: session.id,
@@ -122,6 +166,7 @@ export async function GET(
         accountPassword: (prefs as any)?.defaultAccountPassword ?? undefined,
         accountEmail: prefs?.emailAddress || userEmail || undefined,
       },
+      connectedSession,
     };
 
     return NextResponse.json(payload);

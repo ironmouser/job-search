@@ -75,6 +75,7 @@ export class WorkflowEngine {
         coverLetterMarkdown: session.coverLetterMarkdown,
         userProfile: session.userProfile,
         simulationMode: session.simulationMode,
+        connectedSession: session.connectedSession,
       };
 
       // ─── Step 2: Launch browser ──────────────────────────────────────────
@@ -83,7 +84,13 @@ export class WorkflowEngine {
         stepsCompleted: 1,
       });
 
-      await logger.timed('browser_launched', () => browser.launch(), 'Browser launched');
+      await logger.timed(
+        'browser_launched',
+        () => browser.launch(session.connectedSession?.storageState),
+        session.connectedSession
+          ? `Browser launched with connected ${session.connectedSession.provider} session`
+          : 'Browser launched'
+      );
 
       // ─── Step 3: Detect ATS ──────────────────────────────────────────────
       await logger.info('page_navigated', `Navigating to ${context.jobUrl}`);

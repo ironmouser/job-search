@@ -39,23 +39,23 @@ export function formatFailureExplanation(
     combined.includes('sign in to find your next job') ||
     combined.includes('join to apply')
   ) {
-    return 'This position uses LinkedIn "Easy Apply" which requires signing into your personal LinkedIn account. Please click the link above to apply directly with your profile.';
+    return 'This position uses LinkedIn "Easy Apply". Connect your LinkedIn account in Settings to automate these applications, or click the link above to apply directly.';
   }
 
   if (combined.includes('indeed') || combined.includes('indeed apply') || combined.includes('ia-directapply')) {
-    return 'This position uses Indeed "Apply" which requires signing into your personal Indeed account. Please click the link above to apply directly with your profile.';
+    return 'This position uses Indeed "Apply". Connect your Indeed account in Settings to automate these applications, or click the link above to apply directly.';
   }
 
   if (combined.includes('ziprecruiter') || combined.includes('1-click apply') || combined.includes('zipapply')) {
-    return 'This position uses ZipRecruiter "1-Click Apply" which requires your personal ZipRecruiter account. Please click the link above to apply directly with your profile.';
+    return 'This position uses ZipRecruiter "1-Click Apply". Connect your ZipRecruiter account in Settings to automate these applications, or click the link above to apply directly.';
   }
 
   if (combined.includes('dice') || combined.includes('dice-apply')) {
-    return 'This position uses Dice "Easy Apply" which requires signing into your personal Dice account. Please click the link above to apply directly with your profile.';
+    return 'This position uses Dice "Easy Apply". Connect your Dice account in Settings to automate these applications, or click the link above to apply directly.';
   }
 
   if (combined.includes('glassdoor')) {
-    return 'This position uses Glassdoor "Easy Apply" which requires signing into your personal Glassdoor account. Please click the link above to apply directly with your profile.';
+    return 'This position uses Glassdoor "Easy Apply". Connect your account in Settings or click the link above to apply directly.';
   }
 
   if (

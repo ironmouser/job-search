@@ -125,16 +125,61 @@ export async function GET(request: NextRequest) {
       willingToRelocate: (prefs as any)?.willingToRelocate ?? undefined,
     };
 
+    let connectedSession: { provider: string; storageState: any } | null = null;
+    const targetUrl = session.job.applicationUrl ?? session.job.url;
+    const targetUrlLower = (targetUrl || '').toLowerCase();
+    let targetProvider: string | null = null;
+
+    if (targetUrlLower.includes('ziprecruiter.com') || targetUrlLower.includes('zipapply.com')) {
+      targetProvider = 'ziprecruiter';
+    } else if (targetUrlLower.includes('dice.com')) {
+      targetProvider = 'dice';
+    } else if (targetUrlLower.includes('linkedin.com')) {
+      targetProvider = 'linkedin';
+    } else if (targetUrlLower.includes('indeed.com')) {
+      targetProvider = 'indeed';
+    }
+
+    if (targetProvider) {
+      try {
+        const board = await prisma.connectedJobBoard.findUnique({
+          where: {
+            userId_provider: {
+              userId: session.userId,
+              provider: targetProvider,
+            },
+          },
+        });
+
+        if (board && board.status === 'connected') {
+          const { decryptSession } = await import('@/lib/session-vault');
+          const storageState = decryptSession(board.encryptedSession, board.iv, board.authTag);
+          if (storageState) {
+            connectedSession = { provider: targetProvider, storageState };
+            prisma.connectedJobBoard
+              .update({
+                where: { id: board.id },
+                data: { lastUsedAt: new Date() },
+              })
+              .catch((err) => console.warn('[worker/queue/poll] Could not update lastUsedAt:', err));
+          }
+        }
+      } catch (err) {
+        console.warn('[worker/queue/poll] Failed to resolve connected board session:', err);
+      }
+    }
+
     const payload = {
       sessionId: session.id,
       jobId: session.jobId,
       userId: session.userId,
       // Prefer applicationUrl (direct ATS link set by user) over the job listing URL
-      jobUrl: session.job.applicationUrl ?? session.job.url,
+      jobUrl: targetUrl,
       simulationMode: session.simulationMode,
       resumeMarkdown: assets.tailoredResumeMarkdown,
       coverLetterMarkdown: assets.coverLetterMarkdown,
       userProfile,
+      connectedSession,
     };
 
     return NextResponse.json(payload);

@@ -74,4 +74,6 @@ import './plugins/workable';
 import './plugins/smartrecruiters';
 import './plugins/taleo';
 import './plugins/icims';
+import './plugins/ziprecruiter-apply';
+import './plugins/dice-apply';
 import './plugins/generic-fallback';
