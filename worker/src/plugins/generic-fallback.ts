@@ -66,7 +66,7 @@ export class GenericFallbackPlugin extends ATSPlugin {
     await logger.warn('plugin_loaded', 'No known ATS detected — generic fallback active');
     throw new InterventionError(
       InterventionReason.UNEXPECTED_PAGE,
-      'This job application uses an ATS platform that is not currently supported by Auto Apply. Please apply manually.',
+      'This application uses a custom careers portal that Auto Apply does not currently support. Please apply manually using the link above.',
       context.jobUrl
     );
   }

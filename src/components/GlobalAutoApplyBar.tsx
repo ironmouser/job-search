@@ -19,6 +19,7 @@ import {
   Sparkles,
   ShieldCheck,
   Check,
+  Zap,
 } from 'lucide-react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { InterventionPanel } from './InterventionPanel';
@@ -91,6 +92,13 @@ export function GlobalAutoApplyBar() {
 
   const [activeSessions, setActiveSessions] = useState<AutoApplyQueueItem[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [quota, setQuota] = useState<{
+    monthlyRemaining: number;
+    monthlyLimit: number;
+    dailyRemaining: number;
+    dailyLimit: number;
+    tier: string;
+  } | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState('220px');
   const [isMobile, setIsMobile] = useState(false);
@@ -129,6 +137,9 @@ export function GlobalAutoApplyBar() {
       const res = await fetch('/api/auto-apply/active', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
+        if (data.quota) {
+          setQuota(data.quota);
+        }
         const list: AutoApplyQueueItem[] = data.activeSessions || (data.activeSession ? [data.activeSession] : []);
         setActiveSessions(list);
 
@@ -348,7 +359,7 @@ export function GlobalAutoApplyBar() {
           </div>
         )}
 
-        {/* When expanded: show clean header title */}
+        {/* When expanded: show clean header title and quota */}
         {isExpanded && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -365,6 +376,22 @@ export function GlobalAutoApplyBar() {
             }}>
               {activeSessions.length} {activeSessions.length === 1 ? 'task' : 'tasks'}
             </span>
+            {quota && quota.tier !== 'FREE' && (
+              <span style={{
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: '#f59e0b',
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                padding: '0.1rem 0.5rem',
+                borderRadius: '9999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}>
+                <Zap size={11} fill="currentColor" /> {quota.monthlyRemaining} of {quota.monthlyLimit} left
+              </span>
+            )}
           </div>
         )}
 

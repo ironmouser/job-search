@@ -11,9 +11,23 @@ import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
-import { Bot, Building2, Clock, CheckCircle2, AlertCircle, Loader2, Check, Eye, X, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Bot, Building2, Clock, CheckCircle2, AlertCircle, Loader2, Check, Eye, X, ExternalLink, Image as ImageIcon, Zap } from 'lucide-react';
 import { trackAutoApplyAction } from '@/lib/analytics';
 import { isAggregatorUrl } from '@/lib/urlUtils';
+
+export interface AutoApplyQuota {
+  tier: 'PRO' | 'TRIAL' | 'FREE';
+  monthlyLimit: number;
+  monthlyUsed: number;
+  monthlyRemaining: number;
+  dailyLimit: number;
+  dailyUsed: number;
+  dailyRemaining: number;
+  canApply: boolean;
+  blockedReason: 'MONTHLY_LIMIT_EXCEEDED' | 'DAILY_LIMIT_EXCEEDED' | 'FREE_TIER' | null;
+  dailyResetsAt: string;
+  monthlyResetsAt: string;
+}
 
 interface AutoApplyPanelProps {
   jobId: string;
@@ -90,6 +104,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
   const isAdmin = userRole === 'SYSTEM_ADMIN' || userRole === 'ORGANIZATION_ADMIN' || userRole === 'ADMIN';
 
   const [session, setSession] = useState<SessionData | null>(null);
+  const [quota, setQuota] = useState<AutoApplyQuota | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
@@ -114,6 +129,9 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         if (data.session) {
           setSession(data.session);
           setIsStarting(false);
+        }
+        if (data.quota) {
+          setQuota(data.quota);
         }
       }
     } catch {
@@ -869,6 +887,86 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         </div>
       )}
 
+      {/* Auto Apply Quota Display & Rate Limit Banners */}
+      {quota && quota.tier !== 'FREE' && (
+        <div
+          id={`auto-apply-quota-bar-${jobId}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            marginTop: '0.35rem',
+            marginBottom: '0.2rem',
+            fontSize: '0.82rem',
+            color: 'var(--text-muted)',
+          }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}>
+            <Zap size={14} color="#f59e0b" fill="currentColor" />
+            <strong style={{ color: quota.monthlyRemaining <= 5 ? '#f59e0b' : 'var(--text-primary)' }}>
+              {quota.monthlyRemaining} of {quota.monthlyLimit}
+            </strong>{' '}
+            {quota.tier === 'TRIAL' ? 'trial auto-applies remaining' : 'auto-applies remaining this month'}
+          </span>
+          {quota.dailyRemaining < quota.dailyLimit && quota.dailyRemaining > 0 && (
+            <span style={{ color: quota.dailyRemaining <= 3 ? '#f59e0b' : 'var(--text-muted)', fontSize: '0.78rem' }}>
+              ({quota.dailyRemaining} left today · resets midnight UTC)
+            </span>
+          )}
+        </div>
+      )}
+
+      {quota?.blockedReason === 'DAILY_LIMIT_EXCEEDED' && (
+        <div
+          id="auto-apply-daily-limit-banner"
+          style={{
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            borderRadius: '8px',
+            padding: '0.75rem 0.95rem',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.6rem',
+            fontSize: '0.84rem',
+            color: 'var(--text-primary)',
+            marginTop: '0.35rem',
+            marginBottom: '0.25rem',
+          }}
+        >
+          <Zap size={17} color="#f59e0b" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <strong style={{ color: '#d97706', display: 'block', marginBottom: '0.15rem' }}>Daily Safety Limit Reached (15/15)</strong>
+            <span>Your daily velocity limit is reached to protect your monthly allowance. Resets tonight at midnight UTC. You still have <strong>{quota.monthlyRemaining}</strong> applications remaining this month.</span>
+          </div>
+        </div>
+      )}
+
+      {quota?.blockedReason === 'MONTHLY_LIMIT_EXCEEDED' && (
+        <div
+          id="auto-apply-monthly-limit-banner"
+          style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            borderRadius: '8px',
+            padding: '0.75rem 0.95rem',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.6rem',
+            fontSize: '0.84rem',
+            color: 'var(--text-primary)',
+            marginTop: '0.35rem',
+            marginBottom: '0.25rem',
+          }}
+        >
+          <AlertCircle size={17} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <strong style={{ color: '#ef4444', display: 'block', marginBottom: '0.15rem' }}>Monthly Allowance Reached ({quota.monthlyLimit}/{quota.monthlyLimit})</strong>
+            <span>You have used all {quota.monthlyLimit} automated applications for this billing period. Quota resets on {new Date(quota.monthlyResetsAt).toLocaleDateString()}.</span>
+          </div>
+        </div>
+      )}
+
       {/* Auto Apply button (start / cancel) - hidden when intervention controls take over */}
       {!(isInterventionStatus && pendingIntervention) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
@@ -879,6 +977,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
             hasResume={hasResume}
             currentStatus={session?.status}
             isAggregatorJob={isAggregatorJob}
+            quota={quota}
             onSessionStarted={() => fetchStatus()}
             onStartingChange={(starting) => setIsStarting(starting)}
           />

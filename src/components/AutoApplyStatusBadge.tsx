@@ -43,6 +43,13 @@ export function AutoApplyStatusBadge({ status, failureReason, failureDetails }: 
     ? formatFailureExplanation(failureReason, failureDetails) 
     : undefined;
 
+  const isDestinationNotFound = failureReason === 'application_destination_not_found';
+
+  // Override the label for destination-not-found skips so it reads as a distinct failure type
+  const displayLabel = (status === AutoApplyStatus.SKIPPED && isDestinationNotFound)
+    ? 'Destination Not Found'
+    : label;
+
   const renderIcon = () => {
     if (RUNNING_STATUSES.has(status as AutoApplyStatus)) {
       return <Loader2 size={12} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />;
@@ -50,6 +57,8 @@ export function AutoApplyStatusBadge({ status, failureReason, failureDetails }: 
     if (status === AutoApplyStatus.NEEDS_INTERVENTION) return <AlertTriangle size={12} />;
     if (status === AutoApplyStatus.APPLIED || status === AutoApplyStatus.SIMULATED) return <CheckCircle2 size={12} />;
     if (status === AutoApplyStatus.FAILED) return <XCircle size={12} />;
+    // Amber warning for destination-not-found skips
+    if (status === AutoApplyStatus.SKIPPED && isDestinationNotFound) return <AlertTriangle size={12} />;
     return null;
   };
 
@@ -60,7 +69,7 @@ export function AutoApplyStatusBadge({ status, failureReason, failureDetails }: 
       style={{ cursor: humanExplanation ? 'help' : 'default', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
     >
       {renderIcon()}
-      {label}
+      {displayLabel}
     </span>
   );
 }

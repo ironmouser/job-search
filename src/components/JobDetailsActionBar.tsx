@@ -231,16 +231,23 @@ export default function JobDetailsActionBar({
 
     try {
       setIsAutoApplying(true);
-      await fetch(`/api/auto-apply/${currentJobId}/start`, {
+      const res = await fetch(`/api/auto-apply/${currentJobId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ simulationMode: false })
       });
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('auto-apply-queue-start'));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'Failed to start auto apply');
+      } else {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auto-apply-queue-start'));
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to trigger auto apply:', err);
+      alert(err?.message || 'Failed to trigger auto apply');
+    } finally {
       setIsAutoApplying(false);
     }
   };

@@ -1,7 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Check, ShieldAlert, Smartphone, HelpCircle, FileText, Paperclip, Key, ClipboardList, ExternalLink, Save, ArrowRight, Zap } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import {
+  AlertTriangle,
+  Check,
+  ShieldAlert,
+  Smartphone,
+  HelpCircle,
+  FileText,
+  Paperclip,
+  Key,
+  ClipboardList,
+  ExternalLink,
+  Save,
+  ArrowRight,
+  Zap,
+  Maximize2,
+  ImageIcon,
+  X,
+} from 'lucide-react';
 
 interface InterventionPanelProps {
   interventionId: string;
@@ -14,15 +32,16 @@ interface InterventionPanelProps {
 }
 
 const REASON_LABELS: Record<string, string> = {
-  captcha:              'CAPTCHA Verification Required',
-  mfa_required:         'Two-Factor Authentication Required',
-  unknown_question:     'Application Question Required',
-  unexpected_page:      'Unsupported ATS or Custom Page Layout',
-  job_closed:           'Job No Longer Accepting Applications',
-  resume_rejected:      'Resume Format Rejected by ATS',
-  attachment_missing:   'Required Attachment Missing',
-  login_required:       'Account Login Required',
-  assessment_required:  'Candidate Assessment Required',
+  captcha:                           'CAPTCHA Verification Required',
+  mfa_required:                      'Two-Factor Authentication Required',
+  unknown_question:                  'Application Question Required',
+  unexpected_page:                   'Custom Portal or Unsupported Layout',
+  job_closed:                        'Job No Longer Accepting Applications',
+  resume_rejected:                   'Resume Format Rejected by ATS',
+  attachment_missing:                'Required Attachment Missing',
+  login_required:                    'Account Login Required',
+  assessment_required:               'Candidate Assessment Required',
+  application_destination_not_found: 'Application Destination Not Found',
 };
 
 function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: boolean) {
@@ -51,9 +70,26 @@ export function InterventionPanel({
 }: InterventionPanelProps) {
   const [resolving, setResolving] = useState(false);
   const [resolution, setResolution] = useState<'completed' | 'skipped' | 'cancelled' | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
 
   const [settings, setSettings] = useState<any>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isScreenshotModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsScreenshotModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isScreenshotModalOpen]);
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
@@ -116,9 +152,11 @@ export function InterventionPanel({
       reason === 'unexpected_page' ||
       reason === 'resume_rejected' ||
       reason === 'assessment_required' ||
+      reason === 'application_destination_not_found' ||
       description.toLowerCase().includes('not currently supported') ||
       description.toLowerCase().includes('apply manually') ||
-      description.toLowerCase().includes('cannot automate')
+      description.toLowerCase().includes('cannot automate') ||
+      description.toLowerCase().includes('unable to determine')
     );
 
   async function resolve(res: 'completed' | 'skipped' | 'cancelled') {
@@ -219,11 +257,86 @@ export function InterventionPanel({
       })()}
 
       {screenshotUrl && (
-        <img
-          src={screenshotUrl}
-          alt="Screenshot of the job application screen"
-          style={{ borderRadius: '8px', border: '1px solid var(--border-glass)', maxHeight: '200px', objectFit: 'contain' }}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <ImageIcon size={14} /> Screen Capture
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsScreenshotModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                padding: '0.3rem 0.65rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border-glass, rgba(255,255,255,0.15))',
+                background: 'var(--bg-primary, rgba(255,255,255,0.06))',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              id={`intervention-view-screenshot-btn-${interventionId}`}
+              title="View larger version in focus modal"
+            >
+              <Maximize2 size={13} />
+              <span>View Larger Screenshot</span>
+            </button>
+          </div>
+
+          <div
+            onClick={() => setIsScreenshotModalOpen(true)}
+            style={{
+              position: 'relative',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              border: '1px solid var(--border-glass)',
+              background: '#090d16',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              maxHeight: '220px',
+            }}
+            title="Click to view larger screenshot"
+            id={`intervention-screenshot-preview-${interventionId}`}
+          >
+            <img
+              src={screenshotUrl}
+              alt="Screenshot of the job application screen"
+              style={{
+                maxHeight: '220px',
+                width: '100%',
+                objectFit: 'contain',
+                display: 'block',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '8px',
+                right: '8px',
+                background: 'rgba(0, 0, 0, 0.75)',
+                color: '#ffffff',
+                padding: '4px 8px',
+                borderRadius: '5px',
+                fontSize: '0.72rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontWeight: 500,
+                pointerEvents: 'none',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+              }}
+            >
+              <Maximize2 size={12} />
+              <span>Click to enlarge</span>
+            </div>
+          </div>
+        </div>
       )}
 
       {isClosed ? (
@@ -653,6 +766,127 @@ export function InterventionPanel({
             </button>
           </div>
         </>
+      )}
+      {/* Screenshot Focus Modal Portal */}
+      {mounted && isScreenshotModalOpen && screenshotUrl && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.75)',
+            padding: '1.25rem',
+          }}
+          onClick={() => setIsScreenshotModalOpen(false)}
+          id={`intervention-screenshot-modal-${interventionId}`}
+        >
+          <div
+            style={{
+              background: 'var(--bg-primary, #0f172a)',
+              color: 'var(--text-primary, #f8fafc)',
+              borderRadius: '12px',
+              maxWidth: '1000px',
+              width: '100%',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+              border: '1px solid var(--border-glass, #334155)',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.9rem 1.25rem',
+                borderBottom: '1px solid var(--border-glass, rgba(255,255,255,0.1))',
+                background: 'var(--bg-secondary, #1e293b)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
+                <ImageIcon size={18} color="#818cf8" />
+                <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                  Bot Captured Screenshot
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '4px' }}>
+                  {REASON_LABELS[reason] || reason}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <a
+                  href={screenshotUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.8rem',
+                    color: '#818cf8',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                  }}
+                  id={`intervention-modal-open-full-${interventionId}`}
+                >
+                  <ExternalLink size={14} /> Open Original in New Tab
+                </a>
+                <button
+                  onClick={() => setIsScreenshotModalOpen(false)}
+                  aria-label="Close screenshot focus modal"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary, #94a3b8)',
+                    padding: '4px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  id={`intervention-modal-close-${interventionId}`}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Image Body */}
+            <div
+              style={{
+                padding: '1rem',
+                overflowY: 'auto',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                background: '#090d16',
+                flex: 1,
+                maxHeight: 'calc(92vh - 65px)',
+              }}
+            >
+              <img
+                src={screenshotUrl}
+                alt="Job application screen captured by bot - enlarged focus view"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: 'calc(92vh - 90px)',
+                  height: 'auto',
+                  borderRadius: '6px',
+                  objectFit: 'contain',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+                }}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -226,8 +226,40 @@ export default function DashboardClient({
     setCheckedJobs(new Set());
 
     try {
+      // 1. Check current quota
+      let allowedCount = selected.length;
+      try {
+        const quotaRes = await fetch('/api/auto-apply/quota');
+        if (quotaRes.ok) {
+          const quotaData = await quotaRes.json();
+          const q = quotaData.quota;
+          if (q && !q.canApply) {
+            if (q.blockedReason === 'FREE_TIER') {
+              alert('Auto Apply is a Pro feature. Please upgrade to Pro to unlock automated applications.');
+            } else if (q.blockedReason === 'DAILY_LIMIT_EXCEEDED') {
+              alert(`Daily safety limit reached (${q.dailyLimit}/${q.dailyLimit}). Resets tonight at midnight UTC.`);
+            } else if (q.blockedReason === 'MONTHLY_LIMIT_EXCEEDED') {
+              alert(`Monthly auto-apply allowance reached (${q.monthlyLimit}/${q.monthlyLimit}). Quota resets on ${new Date(q.monthlyResetsAt).toLocaleDateString()}.`);
+            }
+            return;
+          }
+
+          if (q) {
+            const maxAvailable = Math.min(q.dailyRemaining, q.monthlyRemaining);
+            if (selected.length > maxAvailable) {
+              allowedCount = maxAvailable;
+              alert(`You have ${maxAvailable} auto-applies remaining today. We are queueing the first ${allowedCount} jobs.`);
+            }
+          }
+        }
+      } catch (quotaErr) {
+        console.warn('Quota check failed, attempting batch apply directly:', quotaErr);
+      }
+
+      const toApply = selected.slice(0, allowedCount);
+
       await Promise.all(
-        selected.map(async (j) => {
+        toApply.map(async (j) => {
           try {
             await fetch(`/api/auto-apply/${j.id}/start`, {
               method: 'POST',

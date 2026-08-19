@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
-import { Bot, Square } from 'lucide-react';
+import { Bot, Square, Zap } from 'lucide-react';
 import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
+import { AutoApplyQuota } from './AutoApplyPanel';
 
 interface AutoApplyButtonProps {
   jobId: string;
@@ -11,6 +12,7 @@ interface AutoApplyButtonProps {
   currentStatus?: AutoApplyStatus | string | null;
   /** If true, the job URL is an aggregator link — button shows a resolving state while start API pre-resolves */
   isAggregatorJob?: boolean;
+  quota?: AutoApplyQuota | null;
   onSessionStarted?: (sessionId: string) => void;
   onStartingChange?: (starting: boolean) => void;
 }
@@ -44,6 +46,7 @@ export function AutoApplyButton({
   hasResume,
   currentStatus,
   isAggregatorJob,
+  quota,
   onSessionStarted,
   onStartingChange,
 }: AutoApplyButtonProps) {
@@ -56,7 +59,8 @@ export function AutoApplyButton({
   }, [hasResume]);
 
   const isActive = currentStatus && ACTIVE_STATUSES.has(currentStatus as AutoApplyStatus);
-  const isDisabled = !!isActive;
+  const isQuotaBlocked = quota ? !quota.canApply : false;
+  const isDisabled = !!isActive || isQuotaBlocked;
 
   async function triggerAutoApplyStart() {
     setStarting(true);
@@ -127,14 +131,24 @@ export function AutoApplyButton({
         disabled={isDisabled || starting}
         onClick={handleStart}
         id={`auto-apply-btn-${jobId}`}
-        title={!hasAssets ? '1-Click Auto Apply (Tailors resume & submits)' : '1-Click Auto Apply'}
+        title={
+          isQuotaBlocked
+            ? quota?.blockedReason === 'DAILY_LIMIT_EXCEEDED'
+              ? `Daily safety limit reached (${quota.dailyLimit}/${quota.dailyLimit}). Resets tonight at midnight UTC.`
+              : quota?.blockedReason === 'MONTHLY_LIMIT_EXCEEDED'
+              ? `Monthly allowance reached (${quota.monthlyLimit}/${quota.monthlyLimit}). Resets on ${new Date(quota.monthlyResetsAt).toLocaleDateString()}.`
+              : 'Upgrade to Pro to unlock automated applications.'
+            : !hasAssets
+            ? '1-Click Auto Apply (Tailors resume & submits)'
+            : '1-Click Auto Apply'
+        }
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '0.55rem',
           padding: '0.7rem 1.35rem',
           borderRadius: '8px',
-          backgroundColor: '#a84a0c',
+          backgroundColor: isQuotaBlocked ? '#64748b' : '#a84a0c',
           color: '#ffffff',
           fontWeight: 600,
           fontSize: '0.9rem',
@@ -142,6 +156,7 @@ export function AutoApplyButton({
           cursor: isDisabled || starting ? 'not-allowed' : 'pointer',
           boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
           transition: 'background-color 0.2s',
+          opacity: isQuotaBlocked ? 0.85 : 1,
         }}
       >
         {starting ? (
@@ -152,6 +167,15 @@ export function AutoApplyButton({
               : isAggregatorJob
               ? 'Resolving apply link…'
               : 'Starting…'}
+          </>
+        ) : isQuotaBlocked ? (
+          <>
+            <Zap size={18} />
+            {quota?.blockedReason === 'DAILY_LIMIT_EXCEEDED'
+              ? 'Daily Limit Reached (0 left today)'
+              : quota?.blockedReason === 'MONTHLY_LIMIT_EXCEEDED'
+              ? 'Monthly Allowance Reached'
+              : 'Upgrade to Pro to Auto Apply'}
           </>
         ) : (
           <>

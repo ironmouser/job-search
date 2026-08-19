@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getAutoApplyQuota } from '@/lib/auto-apply/quota';
 
 /**
  * GET /api/auto-apply/[jobId]/status
  *
  * Polled by the frontend every 3 seconds to get the current status
- * of an Auto Apply session for a given job.
+ * of an Auto Apply session for a given job and the user's latest quota.
  *
  * Returns the most recent session for this user+job combination.
- * Returns null if no session has been created yet.
+ * Returns null session if no session has been created yet.
  */
 export async function GET(
   request: NextRequest,
@@ -25,8 +26,10 @@ export async function GET(
   const userId = session.user.id;
 
   try {
+    const quota = await getAutoApplyQuota(userId).catch(() => null);
+
     if (!prisma?.autoApplySession) {
-      return NextResponse.json({ session: null });
+      return NextResponse.json({ session: null, quota });
     }
 
     const applySession = await prisma.autoApplySession.findFirst({
@@ -68,16 +71,16 @@ export async function GET(
     });
 
     if (!applySession) {
-      return NextResponse.json({ session: null });
+      return NextResponse.json({ session: null, quota });
     }
 
     if (applySession.status === 'applied' || applySession.status === 'simulated') {
       applySession.automationConfidence = 100;
     }
 
-    return NextResponse.json({ session: applySession });
+    return NextResponse.json({ session: applySession, quota });
   } catch (error: any) {
     console.warn('[auto-apply/status] Query failed (returning null session):', error?.message || error);
-    return NextResponse.json({ session: null });
+    return NextResponse.json({ session: null, quota: null });
   }
 }

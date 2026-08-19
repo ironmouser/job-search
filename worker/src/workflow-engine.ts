@@ -9,7 +9,12 @@ import {
 import { RailwayAPIClient } from './api-client';
 import { BrowserSession } from './browser-session';
 import { ExecutionLogger } from './execution-logger';
-import { InterventionManager, InterventionCancelledError, InterventionTimeoutError } from './intervention-manager';
+import {
+  InterventionManager,
+  InterventionCancelledError,
+  InterventionSkippedError,
+  InterventionTimeoutError,
+} from './intervention-manager';
 import { pluginRegistry } from './registry';
 import { InterventionError } from './plugins/base-plugin';
 import { AggregatorHandler } from './plugins/aggregator-handler';
@@ -110,6 +115,7 @@ export class WorkflowEngine {
       // ─── Multi-Hop Aggregator & Apply Link Follower (Up to 3 Hops) ───────
       const MAX_AGGREGATOR_HOPS = 3;
       let hopCount = 0;
+      const allCandidateReports: import('./plugins/aggregator-handler').CandidateReport[] = [];
 
       while (hopCount < MAX_AGGREGATOR_HOPS) {
         // 1. Check if top-level page matches known ATS with strong confidence
@@ -131,8 +137,11 @@ export class WorkflowEngine {
           stepsCompleted: 1,
         });
 
-        const navigated = await AggregatorHandler.attemptClickThrough(browser, logger);
-        if (!navigated) {
+        const clickResult = await AggregatorHandler.attemptClickThrough(browser, logger, session.sessionId);
+        // Merge candidate reports from this hop
+        allCandidateReports.push(...clickResult.candidateReports);
+
+        if (!clickResult.navigated) {
           break;
         }
 
@@ -157,8 +166,40 @@ export class WorkflowEngine {
         hopCount++;
       }
 
+      // Store candidate diagnostic data in browserMetadata for dashboard visibility
+      if (allCandidateReports.length > 0) {
+        await this.updateStatus(session.sessionId, AutoApplyStatus.DETECTING_ATS, {
+          browserMetadata: {
+            modalCandidates: allCandidateReports.map(r => ({
+              text: r.text,
+              href: r.href,
+              resolvedHref: r.resolvedHref !== r.href ? r.resolvedHref : undefined,
+              classification: r.classification,
+              accepted: r.accepted,
+              reason: r.reason,
+            })),
+          },
+        });
+      }
+
       // Update context.jobUrl to the final resolved URL after aggregator navigation
       context.jobUrl = currentUrl;
+
+      // ─── Destination Validation Gate ──────────────────────────────────────
+      // If we're still on the original job board / aggregator domain after all hops
+      // and the ATS is still UNKNOWN, we failed to extract the application destination.
+      // Do NOT proceed to ATS detection — surface a clear failure reason instead.
+      if (plugin.platform === ATSPlatform.UNKNOWN) {
+        const { isLegitimateApplicationDestination } = await import('./utils/destination-validator');
+        const destinationValidation = isLegitimateApplicationDestination(currentUrl, session.jobUrl);
+        if (!destinationValidation.valid) {
+          throw new InterventionError(
+            InterventionReason.APPLICATION_DESTINATION_NOT_FOUND,
+            'We were unable to determine this application\'s destination from the job posting. Please open the job posting to apply directly.',
+            currentUrl
+          );
+        }
+      }
 
       // Formatted ATS detection banner
       await logger.info('ats_detected', [
@@ -287,6 +328,12 @@ export class WorkflowEngine {
     logger: ExecutionLogger,
     err: unknown
   ): Promise<WorkflowResult> {
+    if (err instanceof InterventionSkippedError) {
+      await logger.info('workflow_skipped', 'Session was marked as skipped');
+      await logger.flush();
+      return this.makeResult(AutoApplyStatus.SKIPPED, 'Session skipped');
+    }
+
     if (err instanceof InterventionCancelledError) {
       await logger.info('workflow_cancelled', 'User cancelled automation');
       await logger.flush();
@@ -326,6 +373,11 @@ export class WorkflowEngine {
           err.pageUrl
         );
       } catch (interventionErr) {
+        if (interventionErr instanceof InterventionSkippedError) {
+          await logger.info('workflow_skipped', 'Session was marked as skipped during intervention');
+          await logger.flush();
+          return this.makeResult(AutoApplyStatus.SKIPPED, 'Session skipped');
+        }
         if (interventionErr instanceof InterventionCancelledError) {
           await logger.info('workflow_cancelled', 'User cancelled automation during intervention');
           await logger.flush();

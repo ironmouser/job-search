@@ -150,7 +150,16 @@ export function formatFailureExplanation(
     return 'Auto apply was stopped by the user.';
   }
 
-  // 8. Timeout or Unexpected Layout
+  // 8. Application destination not found (adapter failure, not ATS failure)
+  if (
+    reasonCode.includes('application_destination_not_found') ||
+    combined.includes('unable to determine') ||
+    combined.includes('application\'s destination')
+  ) {
+    return 'We were unable to determine this application\'s destination from the job posting. Please open the job link to apply directly.';
+  }
+
+  // 9. Timeout or Unexpected Layout
   if (
     reasonCode.includes('timeout') ||
     reasonCode.includes('unexpected_page') ||

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Bot, AlertTriangle, Loader2, ChevronDown, ChevronUp, ExternalLink, Building2, CheckCircle2 } from 'lucide-react';
+import { Bot, AlertTriangle, Loader2, ChevronDown, ChevronUp, ExternalLink, Building2, CheckCircle2, Zap } from 'lucide-react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { GlobalInterventionDrawer } from './GlobalInterventionDrawer';
 
@@ -36,6 +36,13 @@ export function GlobalAutoApplyDock() {
   const pathname = usePathname();
   const isOnboarding = pathname?.startsWith('/onboarding');
   const [activeSession, setActiveSession] = useState<ActiveSessionData | null>(null);
+  const [quota, setQuota] = useState<{
+    monthlyRemaining: number;
+    monthlyLimit: number;
+    dailyRemaining: number;
+    dailyLimit: number;
+    tier: string;
+  } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [dismissedSessionId, setDismissedSessionId] = useState<string | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -47,6 +54,9 @@ export function GlobalAutoApplyDock() {
       if (res.ok) {
         const data = await res.json();
         const active = data.activeSession;
+        if (data.quota) {
+          setQuota(data.quota);
+        }
         if (active) {
           const isDismissed =
             active.id === dismissedSessionId ||
@@ -254,8 +264,20 @@ export function GlobalAutoApplyDock() {
           </div>
         )}
 
+        {/* Quota indicator */}
+        {quota && quota.tier !== 'FREE' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.73rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: '0.45rem' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Zap size={13} color="#f59e0b" fill="currentColor" /> Monthly Quota
+            </span>
+            <span style={{ fontWeight: 600, color: quota.monthlyRemaining <= 5 ? '#d97706' : '#0f172a' }}>
+              {quota.monthlyRemaining} of {quota.monthlyLimit} left
+            </span>
+          </div>
+        )}
+
         {/* Action Footer */}
-        <div style={{ display: 'flex', gap: '0.5rem', paddingTop: '0.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', paddingTop: '0.15rem' }}>
           <button
             onClick={handleNavigateToJob}
             className="btn-primary"

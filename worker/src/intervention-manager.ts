@@ -12,6 +12,14 @@ export class InterventionCancelledError extends Error {
   }
 }
 
+/** Thrown by the intervention manager when an intervention is skipped (auto or manual) */
+export class InterventionSkippedError extends Error {
+  constructor() {
+    super('Automation session was skipped during intervention');
+    this.name = 'InterventionSkippedError';
+  }
+}
+
 /** Thrown when an intervention times out with no user response */
 export class InterventionTimeoutError extends Error {
   constructor(reason: string) {
@@ -73,7 +81,14 @@ export class InterventionManager {
     };
 
     // Create the intervention request on Railway
-    const interventionId = await this.apiClient.createIntervention(this.sessionId, payload);
+    const result = await this.apiClient.createIntervention(this.sessionId, payload);
+    const interventionId = typeof result === 'string' ? result : result.interventionId;
+
+    if (typeof result === 'object' && result.autoResolved && result.resolution === 'skipped') {
+      await this.logger.info('intervention_auto_skipped', `Intervention auto-skipped: ${reason}`);
+      throw new InterventionSkippedError();
+    }
+
     await this.logger.info('intervention_created', `Intervention request created — waiting for user`, {
       interventionId,
     });
@@ -97,8 +112,7 @@ export class InterventionManager {
       }
 
       if (status.resolution === 'skipped') {
-        // Treat skip as cancel — don't resume, just stop this session
-        throw new InterventionCancelledError();
+        throw new InterventionSkippedError();
       }
 
       // resolution === 'completed' — user confirmed they resolved it

@@ -49,6 +49,8 @@ export enum InterventionReason {
   LOGIN_REQUIRED = 'login_required',
   ASSESSMENT_REQUIRED = 'assessment_required',
   REVIEW_GATE = 'review_gate',
+  /** Job board modal/page did not yield a valid application destination URL. */
+  APPLICATION_DESTINATION_NOT_FOUND = 'application_destination_not_found',
 }
 
 export enum LogLevel {

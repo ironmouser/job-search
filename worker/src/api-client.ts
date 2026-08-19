@@ -102,15 +102,15 @@ export class RailwayAPIClient {
   async createIntervention(
     sessionId: string,
     payload: CreateInterventionPayload
-  ): Promise<string> {
+  ): Promise<{ interventionId: string; autoResolved?: boolean; resolution?: string }> {
     const res = await this.request(
       'POST',
       `/api/worker/sessions/${sessionId}/intervention`,
       payload
     );
     if (!res.ok) throw new APIError('createIntervention', res.status, await res.text());
-    const data = (await res.json()) as { interventionId: string };
-    return data.interventionId;
+    const data = (await res.json()) as { interventionId: string; autoResolved?: boolean; resolution?: string };
+    return data;
   }
 
   /**

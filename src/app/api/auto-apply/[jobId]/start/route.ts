@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { isAggregatorUrl, isKnownATSUrl, fetchWithScraperAPI, extractATSUrlFromHtml } from '@/lib/scraperapi';
+import { getAutoApplyQuota } from '@/lib/auto-apply/quota';
 
 /**
  * POST /api/auto-apply/[jobId]/start
@@ -22,6 +23,7 @@ import { isAggregatorUrl, isKnownATSUrl, fetchWithScraperAPI, extractATSUrlFromH
  *  - Job exists and belongs to the user
  *  - Application assets (resume + cover letter) have been generated
  *  - No active session already running for this job
+ *  - User is within monthly and daily auto-apply quotas
  *
  * Body: { simulationMode?: boolean }
  */
@@ -43,9 +45,31 @@ export async function POST(
   } catch {
     // Body is optional
   }
-  const simulationMode = body.simulationMode ?? true; // Default: simulation mode on
+  const simulationMode = body.simulationMode ?? false; // Default to real apply
 
   try {
+    // 0. Enforce Auto Apply Quota & Velocity Limits
+    const quota = await getAutoApplyQuota(userId);
+    if (!quota.canApply) {
+      let errorMsg = 'Auto-apply limit reached.';
+      if (quota.blockedReason === 'FREE_TIER') {
+        errorMsg = 'Auto Apply is a Pro feature. Please upgrade to Pro to unlock automated applications.';
+      } else if (quota.blockedReason === 'MONTHLY_LIMIT_EXCEEDED') {
+        errorMsg = `You have used all ${quota.monthlyLimit} auto-applies for this billing period. Quota resets on ${new Date(quota.monthlyResetsAt).toLocaleDateString()}.`;
+      } else if (quota.blockedReason === 'DAILY_LIMIT_EXCEEDED') {
+        errorMsg = `You have reached your daily safety limit of ${quota.dailyLimit} auto-applies. Limit resets tonight at midnight UTC so your monthly quota stays protected.`;
+      }
+
+      return NextResponse.json(
+        {
+          error: errorMsg,
+          errorCode: quota.blockedReason,
+          quota,
+        },
+        { status: 429 }
+      );
+    }
+
     // 1. Verify the job exists and is associated with this user
     const userJob = await prisma.userJob.findUnique({
       where: { userId_jobId: { userId, jobId } },
