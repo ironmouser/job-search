@@ -618,7 +618,7 @@ export function GlobalAutoApplyBar() {
               {/* Right Panel: Contextual Live Status & User Interaction for Selected Job */}
               <div className="drawer-detail-content">
                 {hasIntervention && activeIntervention ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '800px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border, rgba(255,255,255,0.1))', paddingBottom: '0.75rem' }}>
                       <div>
                         <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
@@ -650,7 +650,7 @@ export function GlobalAutoApplyBar() {
                     />
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '800px' }}>
                     {/* Header with Title & Direct Link */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border, rgba(255,255,255,0.1))', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <div>

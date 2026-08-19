@@ -165,6 +165,7 @@ export async function GET(
         willingToRelocate: (prefs as any)?.willingToRelocate ?? undefined,
         accountPassword: (prefs as any)?.defaultAccountPassword ?? undefined,
         accountEmail: prefs?.emailAddress || userEmail || undefined,
+        accountAuthMode: ((prefs?.sources as any)?.accountAuthMode === 'create_account' ? 'create_account' : 'sign_in'),
       },
       connectedSession,
     };

@@ -142,14 +142,37 @@ export abstract class ATSPlugin {
     if (isGateActive) {
       const email = context?.userProfile?.accountEmail || context?.userProfile?.email;
       const password = context?.userProfile?.accountPassword;
+      const authMode = context?.userProfile?.accountAuthMode || 'sign_in';
 
       if (email && password) {
         try {
+          // If user specifically wants Sign In, check if we need to switch tabs from Create Account to Sign In
+          if (authMode === 'sign_in') {
+            const isCreateForm = (await page.locator('[data-automation-id*="verifyPassword" i], input[name*="verify" i], input[name*="confirm" i]').count().catch(() => 0)) > 0;
+            if (isCreateForm) {
+              const signInTab = page.locator('[data-automation-id="signInLink"], [data-automation-id="signInButton"], a:has-text("Sign In"), button:has-text("Sign In"), a:has-text("Already have an account"), button:has-text("Already have an account"), a:has-text("Log In"), button:has-text("Log In")').first();
+              if (await signInTab.count() > 0) {
+                await signInTab.click().catch(() => {});
+                await page.waitForTimeout(1500);
+              }
+            }
+          } else if (authMode === 'create_account') {
+            // If user wants Create Account, check if we need to switch tabs from Sign In to Create Account
+            const isSignInOnly = (await page.locator('[data-automation-id*="verifyPassword" i], input[name*="verify" i], input[name*="confirm" i]').count().catch(() => 0)) === 0;
+            if (isSignInOnly) {
+              const createTab = page.locator('[data-automation-id="createAccountLink"], [data-automation-id="createAccountButton"], a:has-text("Create Account"), button:has-text("Create Account"), a:has-text("Register"), button:has-text("Register"), a:has-text("Don\'t have an account"), button:has-text("Don\'t have an account")').first();
+              if (await createTab.count() > 0) {
+                await createTab.click().catch(() => {});
+                await page.waitForTimeout(1500);
+              }
+            }
+          }
+
           // Wait briefly for input fields to render in SPA DOM
           await page.waitForSelector('input[type="email"], input[type="password"], [data-automation-id*="email" i], [data-automation-id*="password" i]', { timeout: 3000 }).catch(() => {});
 
           const emailInput = page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
-          const passwordInputs = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
+          const passwordInputs = page.locator('input[type="password"], input[data-automation-id*="password" i], input[name*="password" i]');
 
           if (await emailInput.count() > 0 && await passwordInputs.count() > 0) {
             await emailInput.fill(email);
@@ -172,7 +195,14 @@ export abstract class ATSPlugin {
               await termsCheckbox.check().catch(() => {});
             }
 
-            const submitBtn = page.locator('button[type="submit"], [data-automation-id="createAccountSubmitButton"], [data-automation-id="signInSubmitButton"], [data-automation-id*="createAccount" i], [data-automation-id*="signIn" i], [data-automation-id*="submit" i], button:has-text("Create Account"), button:has-text("Sign In"), button:has-text("Register"), button:has-text("Log In")').first();
+            let submitBtn = authMode === 'create_account'
+              ? page.locator('[data-automation-id="createAccountSubmitButton"], [data-automation-id*="createAccount" i], button:has-text("Create Account"), button:has-text("Register"), button[type="submit"]').first()
+              : page.locator('[data-automation-id="signInSubmitButton"], [data-automation-id*="signIn" i], button:has-text("Sign In"), button:has-text("Log In"), button[type="submit"]').first();
+
+            if (await submitBtn.count() === 0) {
+              submitBtn = page.locator('button[type="submit"], [data-automation-id="createAccountSubmitButton"], [data-automation-id="signInSubmitButton"], [data-automation-id*="createAccount" i], [data-automation-id*="signIn" i], [data-automation-id*="submit" i], button:has-text("Create Account"), button:has-text("Sign In"), button:has-text("Register"), button:has-text("Log In")').first();
+            }
+
             if (await submitBtn.count() > 0) {
               await submitBtn.click();
               
@@ -191,13 +221,20 @@ export abstract class ATSPlugin {
               if (await errorEl.count() > 0) {
                 const text = await errorEl.textContent().catch(() => '');
                 if (text && text.trim().length > 0) {
-                  errorDetails = ` Portal message: "${text.trim().slice(0, 150)}"`;
+                  const cleanText = text.trim().slice(0, 150);
+                  if (/already exists/i.test(cleanText)) {
+                    errorDetails = ` An account with this email already exists on ${platformDisplayName}. Please select "Yes, sign me in" to use your existing password.`;
+                  } else if (/invalid|incorrect/i.test(cleanText)) {
+                    errorDetails = ` Invalid email or password reported by ${platformDisplayName}. Please check your credentials.`;
+                  } else {
+                    errorDetails = ` Portal notice: "${cleanText}"`;
+                  }
                 }
               }
 
               throw new InterventionError(
                 InterventionReason.LOGIN_REQUIRED,
-                `Attempted auto-fill, but the account gate is still active.${errorDetails} Please ensure your password meets Workday requirements (uppercase, lowercase, number, special char, min 8 chars).`,
+                errorDetails ? `Authentication issue: ${errorDetails.trim()}` : `Attempted auto-fill, but the account gate on ${platformDisplayName} is still active. Please verify your credentials or finish manually.`,
                 currentUrl || fallbackUrl
               );
             }

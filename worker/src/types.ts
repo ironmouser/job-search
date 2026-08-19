@@ -139,6 +139,7 @@ export interface UserProfile {
   willingToRelocate?: string;
   accountPassword?: string;
   accountEmail?: string;
+  accountAuthMode?: 'sign_in' | 'create_account';
 }
 
 export interface WorkflowContext {

@@ -3575,6 +3575,10 @@ body.light-theme .fab-action-sheet {
   gap: 1rem;
 }
 
+.drawer-detail-content > * {
+  max-width: 800px;
+}
+
 body.light-theme .drawer-detail-content {
   background: #f8fafc;
 }

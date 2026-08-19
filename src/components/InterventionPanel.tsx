@@ -19,6 +19,9 @@ import {
   Maximize2,
   ImageIcon,
   X,
+  Lock,
+  UserPlus,
+  LogIn,
 } from 'lucide-react';
 
 interface InterventionPanelProps {
@@ -39,7 +42,7 @@ const REASON_LABELS: Record<string, string> = {
   job_closed:                            'Job No Longer Accepting Applications',
   resume_rejected:                       'Resume Format Rejected by ATS',
   attachment_missing:                    'Required Attachment Missing',
-  login_required:                        'Account Login Required',
+  login_required:                        'Candidate Account Required',
   assessment_required:                   'Candidate Assessment Required',
   application_destination_not_found:     'Application Destination Not Found',
   application_not_found:                 'Application Control Not Found',
@@ -47,14 +50,30 @@ const REASON_LABELS: Record<string, string> = {
   application_blocked_by_modal:          'Application Blocked by Website Modal',
   application_blocked_by_marketing_modal:'Application Blocked by Marketing Popup',
   application_blocked_by_cookie_banner:  'Application Blocked by Cookie Consent',
-  application_blocked_by_login:          'Application Blocked by Login Requirement',
-  application_blocked_by_authentication: 'Application Blocked by Authentication',
+  application_blocked_by_login:          'Candidate Account Required',
+  application_blocked_by_authentication: 'Candidate Authentication Required',
   application_blocked_by_captcha:        'Application Blocked by Security CAPTCHA',
   application_blocked_by_bot_challenge:  'Application Blocked by Bot Verification',
   application_blocked_by_security_challenge: 'Application Blocked by Security Check',
   application_blocked_by_unknown_ui:     'Application Blocked by UI Overlay',
   application_interaction_failed:        'Application Interaction Failed',
 };
+
+function getPortalDisplayName(pageUrl?: string | null, description?: string | null): string {
+  const combined = `${pageUrl || ''} ${description || ''}`.toLowerCase();
+  if (combined.includes('workday') || combined.includes('myworkdayjobs')) return 'Workday';
+  if (combined.includes('greenhouse')) return 'Greenhouse';
+  if (combined.includes('lever')) return 'Lever';
+  if (combined.includes('taleo')) return 'Taleo';
+  if (combined.includes('icims')) return 'iCIMS';
+  if (combined.includes('smartrecruiters')) return 'SmartRecruiters';
+  if (combined.includes('jobvite')) return 'Jobvite';
+  if (combined.includes('ashby')) return 'Ashby';
+  if (combined.includes('adp') || combined.includes('workforcenow')) return 'ADP';
+  if (combined.includes('successfactors') || combined.includes('sap')) return 'SAP SuccessFactors';
+  if (combined.includes('bamboohr')) return 'BambooHR';
+  return 'The employer portal';
+}
 
 function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: boolean) {
   if (isClosed || reason === 'job_closed') return <ShieldAlert size={16} color="#ef4444" />;
@@ -95,6 +114,14 @@ export function InterventionPanel({
   const [settings, setSettings] = useState<any>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
+  const portalDisplayName = getPortalDisplayName(pageUrl, description);
+  const isAuthReason =
+    reason === 'login_required' ||
+    reason === 'application_blocked_by_login' ||
+    reason === 'application_blocked_by_authentication';
+
+  const [accountMode, setAccountMode] = useState<'sign_in' | 'create_account'>('sign_in');
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -116,9 +143,15 @@ export function InterventionPanel({
       .then(data => {
         setSettings(data);
         setLoadingSettings(false);
+        const lowerDesc = (description || '').toLowerCase();
+        if (lowerDesc.includes('create account') || lowerDesc.includes('registration') || lowerDesc.includes('register')) {
+          setAccountMode('create_account');
+        } else if (data?.accountAuthMode) {
+          setAccountMode(data.accountAuthMode === 'create_account' ? 'create_account' : 'sign_in');
+        }
       })
       .catch(() => setLoadingSettings(false));
-  }, []);
+  }, [description]);
 
   const isMissingAuth = settings && (
     !settings.usWorkAuthorization || 
@@ -140,13 +173,16 @@ export function InterventionPanel({
     setSettings((prev: any) => ({ ...prev, [key]: value }));
   };
 
-  async function saveSettings() {
+  async function saveSettings(extraData?: Record<string, any>) {
     if (!settings) return;
     try {
       await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
+        body: JSON.stringify({
+          ...settings,
+          ...extraData,
+        }),
       });
     } catch (e) {
       console.error('[InterventionPanel] Failed to save settings:', e);
@@ -183,7 +219,7 @@ export function InterventionPanel({
     setResolution(res);
     try {
       if (res === 'completed' && settings) {
-        await saveSettings();
+        await saveSettings({ accountAuthMode: accountMode });
       }
       await fetch(`/api/auto-apply/interventions/${interventionId}/resolve`, {
         method: 'POST',
@@ -260,7 +296,9 @@ export function InterventionPanel({
 
       {(() => {
         let displayDesc = description;
-        if (reason === 'unknown_question') {
+        if (isAuthReason) {
+          displayDesc = `${portalDisplayName} requires you to sign in or create a candidate account before Jahq can continue your application.`;
+        } else if (reason === 'unknown_question') {
           const match = description.match(/(?:requires your input|question):\s*["'“]?([^"'”\n]+)["'”]?/i);
           if (match && match[1]) {
             displayDesc = `I did not have enough information to answer: "${match[1].trim()}"`;
@@ -532,6 +570,96 @@ export function InterventionPanel({
         </>
       ) : (
         <>
+          {/* Candidate Account Required: User Choice Flow */}
+          {isAuthReason && (
+            <div
+              style={{
+                background: 'var(--background-card, rgba(255, 255, 255, 0.03))',
+                border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
+                borderRadius: '10px',
+                padding: '1rem 1.1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+              }}
+            >
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Key size={15} color="#818cf8" /> Do you already have a candidate account?
+              </span>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                {/* Option 1: Yes, sign me in */}
+                <div
+                  onClick={() => setAccountMode('sign_in')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.65rem',
+                    padding: '0.85rem 1rem',
+                    borderRadius: '8px',
+                    border: accountMode === 'sign_in' ? '1.5px solid #6366f1' : '1px solid var(--border-glass, rgba(255,255,255,0.12))',
+                    background: accountMode === 'sign_in' ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-primary, rgba(0,0,0,0.2))',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  id={`intervention-choice-signin-${interventionId}`}
+                >
+                  <input
+                    type="radio"
+                    id={`account-mode-signin-${interventionId}`}
+                    name={`account-mode-${interventionId}`}
+                    checked={accountMode === 'sign_in'}
+                    onChange={() => setAccountMode('sign_in')}
+                    style={{ marginTop: '0.2rem', accentColor: '#6366f1', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: accountMode === 'sign_in' ? '#ffffff' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <LogIn size={14} color={accountMode === 'sign_in' ? '#818cf8' : 'var(--text-secondary)'} /> Yes, sign me in
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      Enter credentials for your existing account
+                    </span>
+                  </div>
+                </div>
+
+                {/* Option 2: No, create an account */}
+                <div
+                  onClick={() => setAccountMode('create_account')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.65rem',
+                    padding: '0.85rem 1rem',
+                    borderRadius: '8px',
+                    border: accountMode === 'create_account' ? '1.5px solid #6366f1' : '1px solid var(--border-glass, rgba(255,255,255,0.12))',
+                    background: accountMode === 'create_account' ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-primary, rgba(0,0,0,0.2))',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  id={`intervention-choice-create-${interventionId}`}
+                >
+                  <input
+                    type="radio"
+                    id={`account-mode-create-${interventionId}`}
+                    name={`account-mode-${interventionId}`}
+                    checked={accountMode === 'create_account'}
+                    onChange={() => setAccountMode('create_account')}
+                    style={{ marginTop: '0.2rem', accentColor: '#6366f1', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: accountMode === 'create_account' ? '#ffffff' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <UserPlus size={14} color={accountMode === 'create_account' ? '#818cf8' : 'var(--text-secondary)'} /> No, create an account
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      Jahq will register an account with these credentials
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Contextual Guidance Banner */}
           <div
             style={{
               fontSize: '0.85rem',
@@ -551,8 +679,10 @@ export function InterventionPanel({
                 <ArrowRight size={16} /> What to do next
               </strong>
               <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>
-                {reason === 'login_required'
-                  ? 'Enter your desired account email and password below so the AI agent can create or sign into your candidate account.'
+                {isAuthReason
+                  ? (accountMode === 'sign_in'
+                      ? 'Enter the credentials for your existing account so the AI agent can sign in and continue your application.'
+                      : `${portalDisplayName} requires a candidate account before you can continue. The AI agent will create the account using the credentials you provide, then resume your application.`)
                   : showAuthForm 
                   ? 'Fill out your missing authorization details below or complete verification directly on the company site.' 
                   : 'Complete the verification or login directly on the job application page.'}
@@ -564,54 +694,73 @@ export function InterventionPanel({
                 <Zap size={16} color="#818cf8" /> What will happen next
               </strong>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Once submitted, click <strong>Create Account & Resume</strong> so the AI agent can automatically fill out and submit your application.
+                {isAuthReason
+                  ? (accountMode === 'sign_in'
+                      ? <>Once submitted, click <strong>Sign In & Resume Application</strong> so Jahq can authenticate and continue filling your application.</>
+                      : <>Once submitted, click <strong>Create Account & Resume</strong> so Jahq can register your profile and submit your application.</>)
+                  : <>Once submitted, click <strong>Resume Automation</strong> so the AI agent can automatically fill out and submit your application.</>}
               </span>
             </div>
           </div>
 
-          {(reason === 'login_required' || showAuthForm) && !loadingSettings && (
-            <div style={{ background: 'var(--background-card)', borderRadius: '8px', padding: '1rem', border: '1px solid var(--border-glass)', marginTop: '0.5rem' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Key size={16} color="#818cf8" /> {reason === 'login_required' ? 'Candidate Account Credentials' : 'Complete Authorization Settings'}
+          {(isAuthReason || showAuthForm) && !loadingSettings && (
+            <div style={{ background: 'var(--background-card)', borderRadius: '8px', padding: '1rem', border: '1px solid var(--border-glass)', marginTop: '0.25rem' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.92rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Key size={16} color="#818cf8" />
+                {isAuthReason
+                  ? (accountMode === 'sign_in' ? 'Sign in to your candidate account' : 'Create your candidate account')
+                  : 'Complete Authorization Settings'}
               </h4>
               <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                {reason === 'login_required'
-                  ? 'Provide the password you would like the AI agent to use to create or log into your candidate account for this job portal.'
+                {isAuthReason
+                  ? (accountMode === 'sign_in'
+                      ? 'Enter the credentials for your existing account so the AI agent can sign in and continue your application.'
+                      : `${portalDisplayName} requires a candidate account before you can continue. The AI agent will create the account using the credentials you provide, then resume your application.`)
                   : 'You are missing required authorization and demographic data. Please fill this out so the AI can answer related application questions. This will be saved to your profile for future applications.'}
               </p>
               
-              {reason === 'login_required' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+              {isAuthReason && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: showAuthForm ? '1rem' : '0.25rem' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Email</label>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Email</label>
                       <input
                         type="email"
                         value={settings?.emailAddress || ''}
                         onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
                         placeholder="e.g. user@example.com"
-                        style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                        style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
                       />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Account Password</label>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {accountMode === 'sign_in' ? 'Password' : 'Account Password'}
+                      </label>
                       <input
                         type="password"
                         value={settings?.defaultAccountPassword || ''}
                         onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
-                        placeholder="Enter password for portal account"
-                        style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                        placeholder={accountMode === 'sign_in' ? 'Enter your existing account password' : 'Enter desired password for account creation'}
+                        style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
                       />
                     </div>
                   </div>
-                  <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', background: 'rgba(99, 102, 241, 0.08)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                    💡 <strong>Password Requirements:</strong> Workday requires 8+ characters including an uppercase letter, lowercase letter, number, and special character (e.g. <code>!</code>, <code>@</code>, <code>#</code>, <code>$</code>, <code>%</code>).
+
+                  {accountMode === 'create_account' && (
+                    <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', background: 'rgba(99, 102, 241, 0.08)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                      💡 <strong>Password Requirements:</strong> {portalDisplayName.includes('portal') ? 'Candidate portals typically require' : `${portalDisplayName} requires`} 8+ characters including an uppercase letter, lowercase letter, number, and special character (e.g. <code>!</code>, <code>@</code>, <code>#</code>, <code>$</code>, <code>%</code>).
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                    <Lock size={13} color="#10b981" />
+                    <span>Your credentials are used only to complete this application.</span>
                   </div>
                 </div>
               )}
 
               {showAuthForm && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: isAuthReason ? '1rem' : '0', marginBottom: '1rem', borderTop: isAuthReason ? '1px solid var(--border-glass)' : 'none', paddingTop: isAuthReason ? '1rem' : '0' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
                     <select value={settings?.usWorkAuthorization || ''} onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)} style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
@@ -720,10 +869,10 @@ export function InterventionPanel({
             <button
               className="btn-primary"
               onClick={() => resolve('completed')}
-              disabled={resolving || (reason === 'login_required' && !settings?.defaultAccountPassword)}
+              disabled={resolving || (isAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress))}
               style={{
                 flex: 2,
-                minWidth: '160px',
+                minWidth: '180px',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -738,7 +887,16 @@ export function InterventionPanel({
               }}
               id={`intervention-resolve-${interventionId}`}
             >
-              {resolving && resolution === 'completed' ? 'Resuming…' : <><Check size={16} color="#ffffff" /> {reason === 'login_required' ? 'Create Account & Resume' : 'Resume Automation'}</>}
+              {resolving && resolution === 'completed'
+                ? 'Resuming…'
+                : (
+                  <>
+                    <Check size={16} color="#ffffff" />
+                    {isAuthReason
+                      ? (accountMode === 'sign_in' ? 'Sign In & Resume Application' : 'Create Account & Resume')
+                      : 'Resume Automation'}
+                  </>
+                )}
             </button>
             {pageUrl && (
               <button
