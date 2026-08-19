@@ -17,7 +17,56 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { trackSettingsView, trackSettingsSave } from '@/lib/analytics';
 import { getEffectiveTier } from '@/lib/tier';
-import { FREE_ALLOWED_SOURCES, INTERNATIONAL_SOURCES } from '@/lib/settings';
+import { FREE_ALLOWED_SOURCES, INTERNATIONAL_SOURCES, DEFAULT_PRO_SOURCES, DEFAULT_FREE_SOURCES } from '@/lib/settings';
+
+const SOURCE_LABELS: Record<string, string> = {
+    indeed: 'Indeed',
+    linkedin: 'LinkedIn',
+    ziprecruiter: 'ZipRecruiter',
+    dice: 'Dice',
+    snagajob: 'Snagajob',
+    usajobs: 'USAJobs (Gov)',
+    weworkremotely: 'WeWorkRemotely',
+    remotive: 'Remotive',
+    himalayas: 'Himalayas',
+    jobicy: 'Jobicy',
+    jobspresso: 'Jobspresso',
+    builtin: 'Built In',
+    nodesk: 'noDesk',
+    remoteok: 'RemoteOK',
+    workingnomads: 'WorkingNomads',
+    remotepoc: 'RemotePOC',
+    otta: 'Otta',
+    greenhouse: 'Greenhouse',
+    lever: 'Lever',
+    ashby: 'Ashby',
+    workable: 'Workable',
+    smartrecruiters: 'SmartRecruiters',
+    breezy: 'Breezy HR',
+    themuse: 'The Muse (Global)',
+    arbeitnow: 'Arbeitnow (DE)',
+    computrabajo: 'Computrabajo (LATAM)',
+    jobbank: 'Job Bank (CA)',
+};
+
+const SCRAPER_SOURCE_GROUPS = [
+    {
+        title: 'Global Aggregators',
+        sources: ['indeed', 'linkedin', 'ziprecruiter', 'dice', 'snagajob', 'usajobs']
+    },
+    {
+        title: 'US / Remote Tech',
+        sources: ['weworkremotely', 'remotive', 'himalayas', 'jobicy', 'nodesk', 'jobspresso', 'builtin', 'remoteok', 'workingnomads', 'remotepoc', 'otta']
+    },
+    {
+        title: 'Company Career Sites (ATS)',
+        sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy']
+    },
+    {
+        title: 'International Sources',
+        sources: ['arbeitnow', 'themuse', 'computrabajo', 'jobbank']
+    }
+];
 
 // Video instructions for email client setup
 const EMAIL_VIDEO_LINKS: Record<string, string> = {
@@ -78,7 +127,6 @@ export default function SettingsPage() {
     const [emailProvider, setEmailProvider] = useState<string>('gmail');
     const [testingEmail, setTestingEmail] = useState(false);
     const [emailTestResult, setEmailTestResult] = useState<{success?: boolean, error?: string} | null>(null);
-    const [previewStandardView, setPreviewStandardView] = useState(false);
 
     // Accordion state
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -602,159 +650,73 @@ export default function SettingsPage() {
                             </span>
                         </div>
 
-                        <div id="active-scrapers" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
+                        <div id="active-scrapers" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Active Scraper Sources</label>
-                                {isAdmin && (
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.05)', padding: '0.25rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={previewStandardView} 
-                                            onChange={(e) => setPreviewStandardView(e.target.checked)} 
-                                            style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--accent)' }}
-                                        />
-                                        <span>Preview Standard User (Categorized) View</span>
-                                    </label>
-                                )}
+                                <div>
+                                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>Active Scraper Sources</label>
+                                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0 0' }}>
+                                        Select which platforms and job boards to search during automatic and manual syncing.
+                                    </p>
+                                </div>
                             </div>
                             
-                            {(isAdmin && !previewStandardView) ? (
-                                [
-                                    {
-                                        title: 'Global Aggregators',
-                                        sources: ['indeed', 'linkedin', 'ziprecruiter', 'dice', 'snagajob', 'usajobs']
-                                    },
-                                    {
-                                        title: 'US / Remote Tech',
-                                        sources: ['weworkremotely', 'remoteok', 'workingnomads', 'remotive', 'remotepoc', 'nodesk', 'otta', 'himalayas', 'jobicy', 'jobspresso', 'builtin']
-                                    },
-                                    {
-                                        title: 'ATS Integrations',
-                                        sources: ['greenhouse', 'lever', 'ashby', 'workable', 'smartrecruiters', 'breezy']
-                                    },
-                                    {
-                                        title: 'International Sources',
-                                        sources: ['arbeitnow', 'themuse', 'computrabajo', 'jobbank']
-                                    }
-                                ].map(group => (
-                                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
-                                            {group.title}
-                                        </h4>
-                                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                                            {group.sources.map(source => {
-                                                const FREE_SOURCES_SET = new Set(FREE_ALLOWED_SOURCES);
-                                                const isProRequired = !FREE_SOURCES_SET.has(source);
-                                                
-                                                const isDisabled = isProRequired && !isPro;
-                                                
-                                                return (
-                                                    <label key={source} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={isDisabled ? false : (settings.sources?.[source] !== undefined ? settings.sources[source] : !INTERNATIONAL_SOURCES.includes(source))}
-                                                            disabled={isDisabled}
-                                                            onChange={(e) => {
-                                                                const newSources = { ...settings.sources, [source]: e.target.checked };
-                                                                handleChange('sources', newSources);
-                                                            }}
-                                                            style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
-                                                        />
-                                                        <span style={{ textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-                                                            {source === 'jobbank' ? 'Job Bank (CA)' : 
-                                              source === 'remotepoc' ? 'RemotePOC' : 
-                                              source === 'themuse' ? 'The Muse (Global)' :
-                                              source === 'computrabajo' ? 'Computrabajo (LATAM)' :
-                                              source === 'arbeitnow' ? 'Arbeitnow (DE)' :
-                                              source === 'nodesk' ? 'noDesk' :
-                                              source === 'otta' ? 'Otta' :
-                                              source === 'dice' ? 'Dice' :
-                                              source === 'snagajob' ? 'Snagajob' :
-                                              source === 'usajobs' ? 'USAJobs (Gov)' :
-                                              source === 'builtin' ? 'Built In' :
-                                              source === 'breezy' ? 'Breezy' : source}
-                                                            {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
-                                                        </span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
+                            {SCRAPER_SOURCE_GROUPS.map(group => (
+                                <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                    <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
+                                        {group.title}
+                                    </h4>
+                                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                        {group.sources.map(source => {
+                                            const FREE_SOURCES_SET = new Set(FREE_ALLOWED_SOURCES);
+                                            const isProRequired = !FREE_SOURCES_SET.has(source);
+                                            const isDisabled = isProRequired && !isPro;
+                                            const isChecked = isDisabled 
+                                                ? false 
+                                                : (settings.sources?.[source] !== undefined 
+                                                    ? settings.sources[source] 
+                                                    : (isPro ? (DEFAULT_PRO_SOURCES[source] ?? !INTERNATIONAL_SOURCES.includes(source)) : (DEFAULT_FREE_SOURCES[source] ?? false)));
+                                            
+                                            return (
+                                                <label 
+                                                    key={source} 
+                                                    style={{ 
+                                                        display: 'inline-flex', 
+                                                        alignItems: 'center', 
+                                                        gap: '0.45rem', 
+                                                        cursor: isDisabled ? 'not-allowed' : 'pointer', 
+                                                        opacity: isDisabled ? 0.55 : 1,
+                                                        padding: '0.35rem 0.65rem',
+                                                        borderRadius: '6px',
+                                                        background: isChecked ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                                        border: `1px solid ${isChecked ? 'rgba(99, 102, 241, 0.3)' : 'var(--border-glass)'}`,
+                                                        transition: 'all 0.15s ease'
+                                                    }} 
+                                                    title={isDisabled ? `Upgrade to Pro to enable ${SOURCE_LABELS[source] || source}` : ""}
+                                                >
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isChecked}
+                                                        disabled={isDisabled}
+                                                        onChange={(e) => {
+                                                            const newSources = { ...settings.sources, [source]: e.target.checked };
+                                                            handleChange('sources', newSources);
+                                                        }}
+                                                        style={{ cursor: isDisabled ? 'not-allowed' : 'pointer', accentColor: 'var(--accent)' }}
+                                                    />
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: isChecked ? 500 : 400 }}>
+                                                        {SOURCE_LABELS[source] || source}
+                                                        {isProRequired && !isPro && (
+                                                            <span style={{ fontSize: '0.625rem', padding: '0.08rem 0.32rem', background: 'var(--accent-primary, #6366f1)', color: 'white', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.04em' }}>
+                                                                PRO
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
                                     </div>
-                                ))
-                            ) : (
-                                [
-                                    {
-                                        title: 'Global Job Boards',
-                                        items: [
-                                            { label: 'Free', sources: ['snagajob', 'usajobs'] },
-                                            { label: 'Premium', sources: ['indeed', 'linkedin', 'ziprecruiter', 'dice'], isPro: true }
-                                        ]
-                                    },
-                                    {
-                                        title: 'Remote & Tech Jobs',
-                                        items: [
-                                            { label: 'Free', sources: ['weworkremotely', 'remotive', 'nodesk', 'himalayas', 'jobicy', 'jobspresso', 'builtin'] },
-                                            { label: 'Premium', sources: ['remoteok', 'workingnomads', 'remotepoc', 'otta'], isPro: true }
-                                        ]
-                                    },
-                                    {
-                                        title: 'Company Career Sites',
-                                        items: [
-                                            { label: 'Free', sources: ['greenhouse'] },
-                                            { label: 'Premium', sources: ['lever', 'ashby', 'workable', 'smartrecruiters', 'breezy'], isPro: true }
-                                        ]
-                                    },
-                                    {
-                                        title: 'International Job Boards',
-                                        items: [
-                                            { label: 'Global', sources: ['themuse'], isPro: true },
-                                            { label: 'Germany', sources: ['arbeitnow'], isPro: true },
-                                            { label: 'Latin America', sources: ['computrabajo'], isPro: true },
-                                            { label: 'Canada', sources: ['jobbank'], isPro: true }
-                                        ]
-                                    }
-                                ].map(group => (
-                                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
-                                            {group.title}
-                                        </h4>
-                                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                                            {group.items.map(item => {
-                                                const isProRequired = item.isPro;
-                                                const isDisabled = isProRequired && !isPro;
-                                                // Determine if all mapped sources are active (if category has sources)
-                                                const isChecked = !isDisabled && (
-                                                    item.sources.length === 0 
-                                                        ? false 
-                                                        : item.sources.every(source => (settings.sources?.[source] !== undefined ? settings.sources[source] : !INTERNATIONAL_SOURCES.includes(source)))
-                                                );
-
-                                                return (
-                                                    <label key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} title={isDisabled ? "Upgrade to Pro to use this source" : ""}>
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={isChecked}
-                                                            disabled={isDisabled}
-                                                            onChange={(e) => {
-                                                                const newSources = { ...settings.sources };
-                                                                item.sources.forEach(source => {
-                                                                    newSources[source] = e.target.checked;
-                                                                });
-                                                                handleChange('sources', newSources);
-                                                            }}
-                                                            style={{ cursor: isDisabled ? 'not-allowed' : 'pointer' }}
-                                                        />
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-                                                            {item.label}
-                                                            {isProRequired && !isPro && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem', background: 'var(--accent-primary)', color: 'white', borderRadius: '8px', fontWeight: 'bold' }}>PRO</span>}
-                                                        </span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                                </div>
+                            ))}
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', opacity: isPro ? 1 : 0.5 }}>
