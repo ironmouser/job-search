@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2, Bookmark, ChevronLeft, ChevronRight, CheckCircle2, Zap, HelpCircle, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
+import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2, Bookmark, ChevronLeft, ChevronRight, CheckCircle2, Zap, HelpCircle, ChevronDown, ChevronUp, Maximize2, Minimize2, Eye, EyeOff } from 'lucide-react';
 import { useCommandBar } from '@/contexts/AutoApplyBarContext';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -173,6 +173,7 @@ export default function SettingsPage() {
     const [showDialog, setShowDialog] = useState(false);
     const [pendingHref, setPendingHref] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const [showAppPassword, setShowAppPassword] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -1004,13 +1005,35 @@ export default function SettingsPage() {
                                 <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                                     App Password <span style={{ fontSize: '0.75rem', color: 'var(--warning)', opacity: 0.8, marginLeft: '0.5rem', fontWeight: 400 }}>(not your regular {providerDisplay} password)</span>
                                 </label>
-                                <input 
-                                    type="password"
-                                    value={settings.emailAppPassword || ''}
-                                    onChange={(e) => handleChange('emailAppPassword', e.target.value)}
-                                    placeholder={`Enter ${providerDisplay} App Password`}
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
-                                />
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <input 
+                                        type={showAppPassword ? "text" : "password"}
+                                        value={settings.emailAppPassword || ''}
+                                        onChange={(e) => handleChange('emailAppPassword', e.target.value)}
+                                        placeholder={`Enter ${providerDisplay} App Password`}
+                                        style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem 2.5rem 0.75rem 0.75rem', borderRadius: '8px' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAppPassword(!showAppPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            right: '0.75rem',
+                                            background: 'none',
+                                            border: 'none',
+                                            padding: '0.25rem',
+                                            cursor: 'pointer',
+                                            color: 'var(--text-secondary)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                        title={showAppPassword ? "Hide password" : "Show password"}
+                                        aria-label={showAppPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showAppPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>

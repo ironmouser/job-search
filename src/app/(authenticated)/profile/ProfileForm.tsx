@@ -31,6 +31,8 @@ import {
   Maximize2,
   Minimize2,
   AlertCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -171,6 +173,7 @@ export default function ProfileForm({
 
   const [settings, setSettings] = useState<any>({});
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [showDefaultPassword, setShowDefaultPassword] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1088,13 +1091,35 @@ export default function ProfileForm({
             {/* Default Candidate Account Password for Auto Apply */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem" }}>
               <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Default Job Portal Password</label>
-              <input
-                type="password"
-                value={settings.defaultAccountPassword || ''}
-                onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
-                placeholder="Optional password for automated candidate account creation"
-                style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
-              />
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  type={showDefaultPassword ? "text" : "password"}
+                  value={settings.defaultAccountPassword || ''}
+                  onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
+                  placeholder="Optional password for automated candidate account creation"
+                  style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem 2.5rem 0.75rem 0.75rem", borderRadius: "8px" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDefaultPassword(!showDefaultPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "0.75rem",
+                    background: "none",
+                    border: "none",
+                    padding: "0.25rem",
+                    cursor: "pointer",
+                    color: "var(--text-secondary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  title={showDefaultPassword ? "Hide password" : "Show password"}
+                  aria-label={showDefaultPassword ? "Hide password" : "Show password"}
+                >
+                  {showDefaultPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
                 Used by the AI agent to automatically create candidate accounts on portals (e.g. Workday, Taleo) that require login.
               </span>

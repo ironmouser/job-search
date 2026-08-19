@@ -22,6 +22,8 @@ import {
   Lock,
   UserPlus,
   LogIn,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface InterventionPanelProps {
@@ -121,6 +123,7 @@ export function InterventionPanel({
     reason === 'application_blocked_by_authentication';
 
   const [accountMode, setAccountMode] = useState<'sign_in' | 'create_account'>('sign_in');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -736,13 +739,35 @@ export function InterventionPanel({
                       <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {accountMode === 'sign_in' ? 'Password' : 'Account Password'}
                       </label>
-                      <input
-                        type="password"
-                        value={settings?.defaultAccountPassword || ''}
-                        onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
-                        placeholder={accountMode === 'sign_in' ? 'Enter your existing account password' : 'Enter desired password for account creation'}
-                        style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
-                      />
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={settings?.defaultAccountPassword || ''}
+                          onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
+                          placeholder={accountMode === 'sign_in' ? 'Enter your existing account password' : 'Enter desired password for account creation'}
+                          style={{ width: '100%', padding: '0.5rem 2.25rem 0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          style={{
+                            position: 'absolute',
+                            right: '0.5rem',
+                            background: 'none',
+                            border: 'none',
+                            padding: '0.25rem',
+                            cursor: 'pointer',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          title={showPassword ? 'Hide password' : 'Show password'}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
