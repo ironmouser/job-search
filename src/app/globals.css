@@ -318,25 +318,22 @@ details[open] summary .accordion-chevron {
 /* ─── Dashboard Top Section Banner (Mockup Spec) ─────────────────────────── */
 
 .dashboard-top-section {
-  margin: -2rem -2.5rem 50px -2.5rem !important;
-  padding: 2rem 2.5rem 1.5rem 2.5rem;
-  background: #110c08 url(/hero-dark.jpg) top right no-repeat !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid #0000000f;
+  padding: 2rem 2.5rem 1.5rem;
+  background: #110c08 url(/hero-dark.jpg) 100% 0 / 70% no-repeat !important;
+  margin: -2rem -2.5rem 50px !important;
   box-shadow: inset 0 -8px 14px -6px #00000026 !important;
-  background-size: 48% !important;
 }
 
 body:not(.light-theme) .dashboard-top-section {
-  background: #110c08 url(/hero-dark.jpg) top right no-repeat !important;
+  background: #110c08 url(/hero-dark.jpg) 100% 0 / 70% no-repeat !important;
   box-shadow: inset 0 -8px 14px -6px #00000026 !important;
-  background-size: 48% !important;
 }
 
 body.light-theme .dashboard-top-section {
-  background: #eff3f6 url(/hero.jpg) top right no-repeat !important;
+  background: #eff3f6 url(/hero.jpg) 100% 0 / 70% no-repeat !important;
+  border-bottom: 2px solid #fff !important;
   box-shadow: inset 0 -8px 14px -6px #00000026 !important;
-  background-size: 48% !important;
-  border-bottom: 2px #fff solid !important;
 }
 
 .dashboard-mission-control-title,
