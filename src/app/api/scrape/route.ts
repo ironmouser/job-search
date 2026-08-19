@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { normalizeAndSaveJobs } from '@/lib/jobs';
 import { scrapeCustomPages, scrapeRemoteAggregators, scrapeRemotePOC, scrapeHimalayas, scrapeJobicy, scrapeJobspresso, scrapeIndeed, scrapeGlassdoor, scrapeLinkedIn, scrapeZipRecruiter, scrapeInternational, scrapeDice, scrapeSnagajob, scrapeBuiltIn, scrapeUSAJobs } from '@/lib/scrapers/crawlee';
-import { getUserSettings, DEFAULT_PRO_SOURCES } from '@/lib/settings';
+import { getUserSettings, DEFAULT_PRO_SOURCES, DEFAULT_FREE_SOURCES, FREE_ALLOWED_SOURCES } from '@/lib/settings';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -86,38 +86,14 @@ export async function POST(request: Request) {
         // New users in their 7-day Pro Free Trial or active Pro subscribers evaluate to 'PRO'
         const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
 
-        const DEFAULT_FREE_SOURCES: Record<string, boolean> = {
-            greenhouse: true,
-            weworkremotely: true,
-            remotive: true,
-            nodesk: true,
-            himalayas: true,
-            jobicy: true,
-            jobspresso: true,
-            snagajob: true,
-            usajobs: true,
-            builtin: true,
-        };
-
         let sources = settings.sources ? { ...settings.sources } : (isPro ? { ...DEFAULT_PRO_SOURCES } : { ...DEFAULT_FREE_SOURCES });
 
-        const FREE_ALLOWED_SOURCES = new Set([
-            'greenhouse',
-            'weworkremotely',
-            'remotive',
-            'nodesk',
-            'himalayas',
-            'jobicy',
-            'jobspresso',
-            'snagajob',
-            'usajobs',
-            'builtin'
-        ]);
+        const freeAllowedSet = new Set(FREE_ALLOWED_SOURCES);
 
         if (!isPro) {
             // Post-trial Free tier users are restricted to standard open sources
             for (const key of Object.keys(sources)) {
-                if (!FREE_ALLOWED_SOURCES.has(key)) {
+                if (!freeAllowedSet.has(key)) {
                     sources[key] = false;
                 }
             }

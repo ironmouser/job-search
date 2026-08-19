@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { encrypt } from '@/lib/encryption';
-import { ensureKeywordColumnsExist, ALL_PRO_SOURCES, DEFAULT_PRO_SOURCES } from '@/lib/settings';
+import { ensureKeywordColumnsExist, ALL_PRO_SOURCES, DEFAULT_PRO_SOURCES, DEFAULT_FREE_SOURCES, FREE_ALLOWED_SOURCES } from '@/lib/settings';
 import { getEffectiveTier } from '@/lib/tier';
 import { logSuspiciousActivity } from '@/lib/security';
 import { extractJobTitleFromProfileOrResume } from '@/lib/recovery';
@@ -45,11 +45,11 @@ export async function GET() {
 
         const isPro = dbUser ? getEffectiveTier(dbUser) === 'PRO' : getEffectiveTier(session.user as any) === 'PRO';
 
-        let resolvedSources: Record<string, boolean> = { ...DEFAULT_PRO_SOURCES };
+        let resolvedSources: Record<string, boolean> = isPro ? { ...DEFAULT_PRO_SOURCES } : { ...DEFAULT_FREE_SOURCES };
 
         if (prefs?.sources) {
             const userSources = prefs.sources as Record<string, boolean>;
-            resolvedSources = { ...DEFAULT_PRO_SOURCES, ...userSources };
+            resolvedSources = { ...resolvedSources, ...userSources };
 
             if (isPro && !userSources.hasCustomizedProSources) {
                 for (const [src, defaultVal] of Object.entries(DEFAULT_PRO_SOURCES)) {

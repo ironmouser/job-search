@@ -88,17 +88,30 @@ export async function getUserSettings(userId: string): Promise<any> {
 }
 
 export const FREE_ALLOWED_SOURCES = [
-    'greenhouse',
     'weworkremotely',
     'remotive',
-    'nodesk',
     'himalayas',
     'jobicy',
+    'nodesk',
     'jobspresso',
+    'builtin',
+    'greenhouse',
     'snagajob',
-    'usajobs',
-    'builtin'
+    'usajobs'
 ];
+
+export const DEFAULT_FREE_SOURCES: Record<string, boolean> = {
+    weworkremotely: true,
+    remotive: true,
+    himalayas: true,
+    jobicy: true,
+    nodesk: true,
+    jobspresso: true,
+    builtin: true,
+    greenhouse: true,
+    snagajob: false,
+    usajobs: false
+};
 
 export const PREMIUM_NON_INTL_SOURCES = [
     'indeed',

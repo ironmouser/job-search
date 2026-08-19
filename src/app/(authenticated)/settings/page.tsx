@@ -686,15 +686,15 @@ export default function SettingsPage() {
                                     {
                                         title: 'Global Job Boards',
                                         items: [
-                                            { label: 'Free', sources: ['linkedin', 'snagajob', 'usajobs'] },
-                                            { label: 'Premium', sources: ['indeed', 'ziprecruiter', 'dice'], isPro: true }
+                                            { label: 'Free', sources: ['snagajob', 'usajobs'] },
+                                            { label: 'Premium', sources: ['indeed', 'linkedin', 'ziprecruiter', 'dice'], isPro: true }
                                         ]
                                     },
                                     {
                                         title: 'Remote & Tech Jobs',
                                         items: [
-                                            { label: 'Free', sources: ['remotive', 'remotepoc', 'nodesk', 'himalayas', 'jobicy', 'jobspresso', 'builtin'] },
-                                            { label: 'Premium', sources: ['weworkremotely', 'remoteok', 'workingnomads', 'otta'], isPro: true }
+                                            { label: 'Free', sources: ['weworkremotely', 'remotive', 'nodesk', 'himalayas', 'jobicy', 'jobspresso', 'builtin'] },
+                                            { label: 'Premium', sources: ['remoteok', 'workingnomads', 'remotepoc', 'otta'], isPro: true }
                                         ]
                                     },
                                     {
