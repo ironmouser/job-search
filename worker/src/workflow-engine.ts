@@ -116,6 +116,8 @@ export class WorkflowEngine {
       const MAX_AGGREGATOR_HOPS = 3;
       let hopCount = 0;
       const allCandidateReports: import('./plugins/aggregator-handler').CandidateReport[] = [];
+      const { normalizeUrl } = await import('./utils/destination-validator');
+      const visitedUrls = new Set<string>([normalizeUrl(currentUrl)]);
 
       while (hopCount < MAX_AGGREGATOR_HOPS) {
         // 1. Check if top-level page matches known ATS with strong confidence
@@ -137,7 +139,7 @@ export class WorkflowEngine {
           stepsCompleted: 1,
         });
 
-        const clickResult = await AggregatorHandler.attemptClickThrough(browser, logger, session.sessionId);
+        const clickResult = await AggregatorHandler.attemptClickThrough(browser, logger, session.sessionId, visitedUrls);
         // Merge candidate reports from this hop
         allCandidateReports.push(...clickResult.candidateReports);
 
@@ -158,6 +160,7 @@ export class WorkflowEngine {
         html = await browser.getHtml();
         redirectChain = await browser.getRedirectChain();
         currentUrl = browser.page.url();
+        visitedUrls.add(normalizeUrl(currentUrl));
 
         match = pluginRegistry.detect(currentUrl, html, redirectChain);
         plugin = match?.plugin ?? pluginRegistry.get(ATSPlatform.UNKNOWN)!;

@@ -16,6 +16,7 @@ import {
   classifyCandidate,
   isLegitimateApplicationDestination,
   extractApplicationUrlFromJson,
+  normalizeUrl,
   CandidateInfo,
   ClassificationResult,
 } from '../utils/destination-validator';
@@ -91,10 +92,12 @@ export class AggregatorHandler {
   static async attemptClickThrough(
     browser: BrowserSession,
     logger: ExecutionLogger,
-    sessionId?: string
+    sessionId?: string,
+    visitedUrls?: Set<string>
   ): Promise<ClickThroughResult> {
     const page = browser.page;
     const currentUrl = page.url();
+    const normalizedCurrentUrl = normalizeUrl(currentUrl);
     const allCandidateReports: CandidateReport[] = [];
 
     // ── Job closed check ──────────────────────────────────────────────────────
@@ -182,10 +185,25 @@ export class AggregatorHandler {
 
       for (const rawUrl of jsonLdUrls) {
         if (!rawUrl || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) continue;
+        const normalizedJsonUrl = normalizeUrl(rawUrl);
+
+        // Convergence check: if destination URL matches current URL, do not navigate again
+        if (normalizedJsonUrl === normalizedCurrentUrl) {
+          await logger.info('destination_discovery', `JSON-LD canonical destination matches current page (${rawUrl}) — destination convergence reached.`);
+          continue;
+        }
+
+        // Loop prevention check: if already visited in hop chain
+        if (visitedUrls && visitedUrls.has(normalizedJsonUrl)) {
+          await logger.info('destination_discovery', `JSON-LD URL (${rawUrl}) was already visited in this session — skipping redundant navigation.`);
+          continue;
+        }
+
         const validation = isLegitimateApplicationDestination(rawUrl, currentUrl);
         if (validation.valid) {
           await logger.info('destination_discovery', `Found valid application destination in JSON-LD metadata: ${rawUrl} (${validation.reason})`);
           await logger.info('application_navigation', `Phase 3: Direct navigation to JSON-LD destination: ${rawUrl}`);
+          visitedUrls?.add(normalizedJsonUrl);
           await page.goto(rawUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
           return { navigated: true, candidateReports: [] };
         } else {
@@ -199,12 +217,20 @@ export class AggregatorHandler {
 
     // ─── 3. Phase 3 Strategy A: Direct Navigation (Priority 1) ────────────────
     if (discovery.directUrl) {
-      await logger.info('application_navigation', `Phase 3: Direct navigation to accepted destination URL: ${discovery.directUrl}`);
-      try {
-        await page.goto(discovery.directUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
-        return { navigated: true, candidateReports: allCandidateReports };
-      } catch (err: any) {
-        await logger.warn('application_navigation', `Direct navigation failed: ${err.message}. Falling back to click/observe...`);
+      const normalizedDirect = normalizeUrl(discovery.directUrl);
+      if (normalizedDirect === normalizedCurrentUrl) {
+        await logger.info('destination_discovery', `Direct candidate URL matches current page (${discovery.directUrl}) — destination convergence reached.`);
+      } else if (visitedUrls && visitedUrls.has(normalizedDirect)) {
+        await logger.info('destination_discovery', `Direct candidate URL (${discovery.directUrl}) was already visited — skipping redirect loop.`);
+      } else {
+        await logger.info('application_navigation', `Phase 3: Direct navigation to accepted destination URL: ${discovery.directUrl}`);
+        try {
+          visitedUrls?.add(normalizedDirect);
+          await page.goto(discovery.directUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+          return { navigated: true, candidateReports: allCandidateReports };
+        } catch (err: any) {
+          await logger.warn('application_navigation', `Direct navigation failed: ${err.message}. Falling back to click/observe...`);
+        }
       }
     }
 

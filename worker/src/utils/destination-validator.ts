@@ -184,7 +184,23 @@ export function extractRedirectDestination(href: string): string | null {
   return null;
 }
 
-// ─── Domain Helpers ───────────────────────────────────────────────────────────
+export function normalizeUrl(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl);
+    const hostname = u.hostname.toLowerCase().replace(/^www\./, '');
+    let pathname = u.pathname.replace(/\/+$/, '') || '/';
+    const searchParams = new URLSearchParams();
+    u.searchParams.forEach((value, key) => {
+      if (!key.startsWith('utm_') && key !== 'ref' && key !== 'trk') {
+        searchParams.append(key, value);
+      }
+    });
+    const search = searchParams.toString();
+    return `${u.protocol}//${hostname}${pathname}${search ? '?' + search : ''}`;
+  } catch {
+    return rawUrl.trim().toLowerCase().replace(/\/+$/, '');
+  }
+}
 
 function getHostname(url: string): string {
   try {

@@ -1,21 +1,32 @@
-import { ATSPlatform, ATSDetectionResult, WorkflowContext, WorkflowResult, AutoApplyStatus, InterventionReason } from '../types';
+import {
+  ATSPlatform,
+  ATSDetectionResult,
+  WorkflowContext,
+  WorkflowResult,
+  AutoApplyStatus,
+  InterventionReason,
+} from '../types';
 import { ATSPlugin, InterventionError } from './base-plugin';
 import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
 import { detectJobClosed } from '../utils/job-status-detector';
+import { GenericApplicationAgent, GenericFormFiller } from '../generic-agent';
 
 /**
- * GenericFallbackPlugin — catches any platform not identified by other plugins.
+ * GenericFallbackPlugin — operates on unknown ATS platforms and custom employer career portals.
  *
- * Detection: always returns a low confidence score of 10 for UNKNOWN platform.
- * This ensures the registry always returns a match, even for unrecognized platforms.
+ * Detection: returns a baseline confidence score of 10 for UNKNOWN platform.
  *
- * Behavior: immediately signals for human intervention rather than attempting automation.
+ * Behavior: activates the Generic Application Agent to analyze page semantics, find application controls,
+ * safely handle UI obstructions, advance through application steps, and fill application forms.
  */
 export class GenericFallbackPlugin extends ATSPlugin {
   readonly platform = ATSPlatform.UNKNOWN;
-  readonly displayName = 'Unknown ATS';
+  readonly displayName = 'Unknown ATS / Custom Portal';
+
+  private readonly agent = new GenericApplicationAgent();
+  private readonly formFiller = new GenericFormFiller();
 
   detect(_url: string, _html: string, _redirectChain: string[]): ATSDetectionResult {
     // Always returns a low-confidence match — acts as the catch-all
@@ -23,7 +34,7 @@ export class GenericFallbackPlugin extends ATSPlugin {
       platform: ATSPlatform.UNKNOWN,
       confidence: 10,
       detectedFeatures: ['fallback:no-known-ats-detected'],
-      automationSupported: false,
+      automationSupported: true,
     };
   }
 
@@ -63,31 +74,22 @@ export class GenericFallbackPlugin extends ATSPlugin {
       );
     }
 
-    await logger.warn('plugin_loaded', 'No known ATS detected — generic fallback active');
-    throw new InterventionError(
-      InterventionReason.UNEXPECTED_PAGE,
-      'This application uses a custom careers portal that Auto Apply does not currently support. Please apply manually using the link above.',
-      context.jobUrl
-    );
+    await logger.info('plugin_loaded', 'No specialized ATS adapter selected — Activating Generic Application Agent');
+
+    // Initiate application transition via Generic Application Agent
+    await this.agent.initiateApplication(browser, context, logger);
   }
 
-  async apply(_b: BrowserSession, _c: WorkflowContext, _l: ExecutionLogger): Promise<void> {}
-
-  async validate(_b: BrowserSession, _c: WorkflowContext, _l: ExecutionLogger): Promise<{ valid: boolean; issues: string[] }> {
-    return { valid: false, issues: ['Unknown ATS — cannot automate'] };
+  async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
+    await this.formFiller.fillForm(browser, context, logger);
   }
 
-  async finalize(_b: BrowserSession, _c: WorkflowContext, _l: ExecutionLogger): Promise<WorkflowResult> {
-    return {
-      status: AutoApplyStatus.SKIPPED,
-      canComplete: false,
-      platform: ATSPlatform.UNKNOWN,
-      automationConfidence: 0,
-      stepsCompleted: 0,
-      stepsRemaining: 0,
-      blockingIssue: 'Unknown ATS platform — automation not supported',
-      estimatedSubmissionTime: null,
-    };
+  async validate(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<{ valid: boolean; issues: string[] }> {
+    return this.formFiller.validateForm(browser, context, logger);
+  }
+
+  async finalize(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<WorkflowResult> {
+    return this.formFiller.finalize(browser, context, logger);
   }
 }
 

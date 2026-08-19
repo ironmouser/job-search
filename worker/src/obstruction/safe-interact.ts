@@ -199,7 +199,12 @@ export async function safeInteract(
         }
 
         if (actionName === 'click') {
-          await locator.click({ force: true, timeout: timeoutMs });
+          try {
+            await locator.click({ force: true, timeout: timeoutMs });
+          } catch {
+            await locator.evaluate((node: HTMLElement) => node.click()).catch(() => {});
+          }
+          await locator.evaluate((node: HTMLElement) => node.click()).catch(() => {});
         } else {
           await action(locator);
         }
