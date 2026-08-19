@@ -1361,24 +1361,27 @@ export default function DashboardClient({
           </div>
         )}
 
-        {/* Matches Section Header Bar */}
-        <div className="matches-header-bar" style={{ marginBottom: '2rem', marginTop: '-0.5rem' }}>
-          <div className="matches-header-left-group">
-            <div className="matches-title-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-              <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', lineHeight: '36px' }}>
-                Matches ({filteredAndSortedJobs.length})
-              </h3>
-            </div>
+        {/* Matches Section Header */}
+        <div className="matches-section-header-group" style={{ marginBottom: '1.75rem', marginTop: '-0.5rem' }}>
+          {/* Matches Title Row */}
+          <div className="matches-title-row" style={{ marginBottom: '1.25rem' }}>
+            <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+              Matches ({filteredAndSortedJobs.length})
+            </h3>
+          </div>
 
+          {/* Unified Controls Toolbar Row */}
+          <div className="matches-header-bar" style={{ display: 'flex', alignItems: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
             {/* Target Job Title / Role Search Field with Label */}
-            <div className="matches-search-field-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div className="matches-search-field-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
               <label 
                 htmlFor="dashboard-search-role"
+                className="matches-search-label"
                 style={{ 
                   fontSize: '0.72rem', 
                   fontWeight: 700, 
                   textTransform: 'uppercase', 
-                  letterSpacing: '0.04em', 
+                  letterSpacing: '0.05em', 
                   color: 'var(--text-secondary)' 
                 }}
               >
@@ -1390,13 +1393,14 @@ export default function DashboardClient({
                   position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
-                  minWidth: '200px',
-                  maxWidth: '260px',
+                  minWidth: '190px',
+                  maxWidth: '250px',
                   width: '100%'
                 }}
               >
                 <Search 
                   size={14} 
+                  className="matches-search-icon"
                   style={{ 
                     position: 'absolute', 
                     left: '11px', 
@@ -1434,7 +1438,7 @@ export default function DashboardClient({
                     background: 'var(--bg-glass, rgba(0, 0, 0, 0.2))',
                     color: 'var(--text-primary)',
                     outline: 'none',
-                    height: '36px',
+                    height: '38px',
                     boxSizing: 'border-box'
                   }}
                 />
@@ -1448,6 +1452,7 @@ export default function DashboardClient({
                       }
                     }}
                     title="Clear job title"
+                    className="matches-search-clear-btn"
                     style={{
                       position: 'absolute',
                       right: '8px',
@@ -1469,14 +1474,15 @@ export default function DashboardClient({
             </div>
 
             {/* Target Location Search Field with Label */}
-            <div className="matches-search-field-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div className="matches-search-field-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
               <label 
                 htmlFor="dashboard-search-location"
+                className="matches-search-label"
                 style={{ 
                   fontSize: '0.72rem', 
                   fontWeight: 700, 
                   textTransform: 'uppercase', 
-                  letterSpacing: '0.04em', 
+                  letterSpacing: '0.05em', 
                   color: 'var(--text-secondary)' 
                 }}
               >
@@ -1488,13 +1494,14 @@ export default function DashboardClient({
                   position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
-                  minWidth: '180px',
-                  maxWidth: '240px',
+                  minWidth: '170px',
+                  maxWidth: '230px',
                   width: '100%'
                 }}
               >
                 <MapPin 
                   size={14} 
+                  className="matches-search-icon"
                   style={{ 
                     position: 'absolute', 
                     left: '11px', 
@@ -1532,7 +1539,7 @@ export default function DashboardClient({
                     background: 'var(--bg-glass, rgba(0, 0, 0, 0.2))',
                     color: 'var(--text-primary)',
                     outline: 'none',
-                    height: '36px',
+                    height: '38px',
                     boxSizing: 'border-box'
                   }}
                 />
@@ -1546,6 +1553,7 @@ export default function DashboardClient({
                       }
                     }}
                     title="Clear location"
+                    className="matches-search-clear-btn"
                     style={{
                       position: 'absolute',
                       right: '8px',
@@ -1585,124 +1593,134 @@ export default function DashboardClient({
                     setIsRefiningJobs(false);
                   }
                 }}
-                onSyncComplete={() => {}}
+                onSyncComplete={handleSyncComplete}
               />
             </div>
-          </div>
 
-          {/* Action Controls: Scan Inbox | Filter | Sort */}
-          <div className="matches-action-controls">
-            {/* Scan Inbox */}
-            <button
-              onClick={handleEmailSync}
-              disabled={isEmailSyncing || isSyncing}
-              className="action-control-btn btn-scan-inbox"
-              title={hasEmailCredentials ? 'Scan your synced email inbox for new job alerts' : 'Connect an email to scan for jobs'}
-              style={{
-                background: isEmailSyncing ? 'rgba(56, 189, 248, 0.2)' : 'rgba(56, 189, 248, 0.1)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                color: '#38bdf8',
-                opacity: isEmailSyncing || isSyncing ? 0.6 : 1,
-                cursor: isEmailSyncing || isSyncing ? 'not-allowed' : 'pointer'
-              }}
-            >
-              <Mail size={15} className={isEmailSyncing ? 'animate-spin' : ''} />
-              <span>{isEmailSyncing ? 'Scanning Inbox...' : 'Scan Inbox'}</span>
-            </button>
+            {/* Action Controls: Filter | Sort | View Toggles */}
+            <div className="matches-action-controls" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {/* Filter Toggle Button */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setIsFilterModalOpen(true)}
+                  className={`action-control-btn btn-filter ${hasActiveFilters ? 'active-filter' : ''}`}
+                  style={{
+                    position: 'relative',
+                    background: hasActiveFilters ? 'rgba(0, 112, 243, 0.15)' : undefined,
+                    borderColor: hasActiveFilters ? '#0070f3' : undefined,
+                    color: hasActiveFilters ? '#0070f3' : undefined,
+                    height: '38px',
+                    borderRadius: '8px'
+                  }}
+                >
+                  <SlidersHorizontal size={15} />
+                  <span>Filter</span>
+                  {hasActiveFilters && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        background: '#0070f3',
+                        boxShadow: '0 0 6px #0070f3'
+                      }}
+                    />
+                  )}
+                </button>
+              </div>
 
-            {/* Global Search Button */}
-            <button
-              onClick={() => setIsSearchModalOpen(true)}
-              className="action-control-btn btn-search-trigger"
-              style={{
-                background: 'rgba(0, 112, 243, 0.1)',
-                border: '1px solid rgba(0, 112, 243, 0.25)',
-                color: '#0070f3',
-              }}
-              title="Search and aggregate across 20+ live job platforms"
-            >
-              <Search size={15} />
-              <span>Search Online</span>
-            </button>
+              {/* Sort Selector Dropdown */}
+              <div
+                className="action-control-btn btn-sort"
+                title="Sort Job Feed"
+                style={{ height: '38px', borderRadius: '8px' }}
+              >
+                <ArrowUpDown size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as any)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'inherit',
+                    fontSize: '0.85rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    width: '100%'
+                  }}
+                >
+                  <option value="role_match" style={{ background: '#ffffff', color: '#0f172a' }}>Role Match</option>
+                  <option value="newest" style={{ background: '#ffffff', color: '#0f172a' }}>Newest First</option>
+                  <option value="score_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (High-Low)</option>
+                  <option value="score_asc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (Low-High)</option>
+                  <option value="company" style={{ background: '#ffffff', color: '#0f172a' }}>Company (A-Z)</option>
+                  <option value="salary_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Salary (High-Low)</option>
+                  <option value="remote" style={{ background: '#ffffff', color: '#0f172a' }}>Remote First</option>
+                </select>
+              </div>
 
-            {/* Filter Toggle Button */}
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setIsFilterModalOpen(true)}
-                className={`action-control-btn btn-filter ${hasActiveFilters ? 'active-filter' : ''}`}
+              {/* View Mode Toggle Segmented Control */}
+              <div
+                className="dashboard-view-toggles"
                 style={{
-                  position: 'relative',
-                  background: hasActiveFilters ? 'rgba(0, 112, 243, 0.15)' : undefined,
-                  borderColor: hasActiveFilters ? '#0070f3' : undefined,
-                  color: hasActiveFilters ? '#0070f3' : undefined,
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'var(--card-bg, rgba(255, 255, 255, 0.05))',
+                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
+                  borderRadius: '8px',
+                  padding: '3px',
+                  gap: '3px',
+                  height: '38px',
+                  boxSizing: 'border-box'
                 }}
               >
-                <SlidersHorizontal size={15} />
-                <span>Filter</span>
-                {hasActiveFilters && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: '4px',
-                      right: '4px',
-                      width: '7px',
-                      height: '7px',
-                      borderRadius: '50%',
-                      background: '#0070f3',
-                      boxShadow: '0 0 6px #0070f3'
-                    }}
-                  />
-                )}
-              </button>
-            </div>
-
-            {/* Sort Selector Dropdown */}
-            <div
-              className="action-control-btn btn-sort"
-              title="Sort Job Feed"
-            >
-              <ArrowUpDown size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as any)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'inherit',
-                  fontSize: '0.85rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  outline: 'none',
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  width: '100%'
-                }}
-              >
-                <option value="role_match" style={{ background: '#ffffff', color: '#0f172a' }}>Role Match</option>
-                <option value="newest" style={{ background: '#ffffff', color: '#0f172a' }}>Newest First</option>
-                <option value="score_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (High-Low)</option>
-                <option value="score_asc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (Low-High)</option>
-                <option value="company" style={{ background: '#ffffff', color: '#0f172a' }}>Company (A-Z)</option>
-                <option value="salary_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Salary (High-Low)</option>
-                <option value="remote" style={{ background: '#ffffff', color: '#0f172a' }}>Remote First</option>
-              </select>
-            </div>
-
-            <div className="dashboard-view-toggles">
-              <button 
-                onClick={() => setViewMode('grid')}
-                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                title="Grid View"
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <button 
-                onClick={() => setViewMode('table')}
-                className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                title="Table View"
-              >
-                <List size={18} />
-              </button>
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  title="Grid View"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '30px',
+                    padding: 0,
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: viewMode === 'grid' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <LayoutGrid size={16} />
+                </button>
+                <button 
+                  onClick={() => setViewMode('table')}
+                  className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  title="Table View"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '30px',
+                    padding: 0,
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: viewMode === 'table' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    color: viewMode === 'table' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <List size={16} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
