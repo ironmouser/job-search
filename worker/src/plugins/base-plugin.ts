@@ -2,6 +2,7 @@ import { ATSPlatform, ATSDetectionResult, WorkflowContext, WorkflowResult, Inter
 import { ExecutionLogger } from '../execution-logger';
 import { BrowserSession } from '../browser-session';
 import { detectJobClosed } from '../utils/job-status-detector';
+import { safeClick, safeInteract, SafeInteractOptions, SafeInteractResult, UIObstructionDetector } from '../obstruction';
 
 /**
  * ATSPlugin — Abstract base class for all ATS platform automation plugins.
@@ -407,6 +408,31 @@ export abstract class ATSPlugin {
         browser.page?.url() || fallbackUrl
       );
     }
+  }
+
+  /**
+   * Reusable obstruction-aware click helper available to all ATS plugins.
+   */
+  protected async safeClick(
+    ctx: import('playwright').Frame | import('playwright').Page,
+    target: import('playwright').Locator | string,
+    logger?: ExecutionLogger,
+    options?: SafeInteractOptions
+  ): Promise<SafeInteractResult> {
+    return safeClick(ctx, target, options, logger);
+  }
+
+  /**
+   * Reusable obstruction-aware interaction wrapper available to all ATS plugins.
+   */
+  protected async safeInteract(
+    ctx: import('playwright').Frame | import('playwright').Page,
+    target: import('playwright').Locator | string,
+    action: (loc: import('playwright').Locator) => Promise<void>,
+    logger?: ExecutionLogger,
+    options?: SafeInteractOptions
+  ): Promise<SafeInteractResult> {
+    return safeInteract(ctx, target, action, options, logger);
   }
 }
 

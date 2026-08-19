@@ -6,6 +6,12 @@ import { InterventionReason, ATSDetectionResult, ATSPlatform } from '../types';
 import { pluginRegistry } from '../registry';
 import { uploadBrowserScreenshot } from '../s3';
 import {
+  safeClick,
+  UIObstructionDetector,
+  UIObstructionResolver,
+  ObstructionType,
+} from '../obstruction';
+import {
   CandidateClassification,
   classifyCandidate,
   isLegitimateApplicationDestination,
@@ -108,6 +114,41 @@ export class AggregatorHandler {
 
     await logger.info('destination_discovery', `Phase 1: Scanning page for application destinations at ${page.url()}...`);
 
+    // ── Check for page obstructions (e.g. marketing/newsletter/cookie modals) ─
+    try {
+      const pageObstruction = await UIObstructionDetector.detectObstruction(page);
+      if (pageObstruction.detected) {
+        const type = pageObstruction.classification.type;
+        if (
+          type === ObstructionType.CAPTCHA ||
+          type === ObstructionType.BOT_CHALLENGE ||
+          type === ObstructionType.SECURITY_CHALLENGE
+        ) {
+          throw new InterventionError(
+            InterventionReason.APPLICATION_BLOCKED_BY_CAPTCHA,
+            `Application page is blocked by security challenge (${pageObstruction.classification.reason}).`,
+            currentUrl
+          );
+        }
+        if (type === ObstructionType.LOGIN_MODAL || type === ObstructionType.AUTHENTICATION_REQUIRED) {
+          throw new InterventionError(
+            InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,
+            `Application page requires candidate login (${pageObstruction.classification.reason}).`,
+            currentUrl
+          );
+        }
+        if (pageObstruction.classification.isSafeToDismiss) {
+          await logger.info(
+            'destination_discovery',
+            `Active non-critical obstruction detected on page: ${type}. Attempting safe recovery...`
+          );
+          await UIObstructionResolver.resolveObstruction(page, page.locator('body'), pageObstruction, logger);
+        }
+      }
+    } catch (err: any) {
+      if (err instanceof InterventionError) throw err;
+    }
+
     // ── Neutralize invisible backdrop overlays ────────────────────────────────
     await page.evaluate(() => {
       document.querySelectorAll('.modal__overlay, .top-level-modal-container').forEach((el) => {
@@ -209,21 +250,27 @@ export class AggregatorHandler {
         };
         page.on('response', responseHandler);
 
-        // Click helper: standard → force → native DOM eval
+        // Click helper: obstruction-aware safeClick → force fallback → native DOM eval
         const performClick = async (target: any) => {
-          try {
-            await target.click({ timeout: 3000 });
-          } catch {
-            await logger.info('application_navigation', 'Standard click blocked. Retrying with force click...');
-            try {
-              await target.click({ force: true, timeout: 3000 });
-            } catch {
-              await logger.info('application_navigation', 'Force click intercepted. Falling back to native DOM click...');
-              await target.evaluate((node: HTMLElement) => {
+          const res = await safeClick(
+            page,
+            target,
+            {
+              timeoutMs: 4000,
+              allowForceFallback: true,
+              maxRecoveryAttempts: 3,
+              actionName: 'apply_candidate_click',
+            },
+            logger
+          );
+
+          if (!res.success) {
+            await target
+              .evaluate((node: HTMLElement) => {
                 node.scrollIntoView({ block: 'center' });
                 node.click();
-              });
-            }
+              })
+              .catch(() => {});
           }
         };
 
@@ -571,7 +618,12 @@ export class AggregatorHandler {
       const ctx = page.context();
       const tabPromise = ctx.waitForEvent('page', { timeout: 8000 }).catch(() => null);
       const navPromise = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 8000 }).catch(() => null);
-      await targetButton.click({ timeout: 3000 }).catch(() => targetButton.evaluate((n: HTMLElement) => n.click()));
+      await safeClick(
+        page,
+        targetButton,
+        { timeoutMs: 3000, allowForceFallback: true, actionName: 'modal_apply_click' },
+        logger
+      ).catch(() => targetButton.evaluate((n: HTMLElement) => n.click()));
       let newTab = await Promise.race([tabPromise, navPromise.then(() => null)]);
 
       if (!newTab) {

@@ -159,7 +159,27 @@ export function formatFailureExplanation(
     return 'We were unable to determine this application\'s destination from the job posting. Please open the job link to apply directly.';
   }
 
-  // 9. Timeout or Unexpected Layout
+  // 9. Modals and UI Obstructions
+  if (
+    reasonCode.includes('application_blocked_by_marketing_modal') ||
+    reasonCode.includes('application_blocked_by_modal') ||
+    reasonCode.includes('application_blocked_by_cookie_banner') ||
+    reasonCode.includes('application_blocked_by_unknown_ui') ||
+    reasonCode.includes('application_found_but_not_actionable') ||
+    reasonCode.includes('application_interaction_failed') ||
+    combined.includes('obstructed') ||
+    combined.includes('modal')
+  ) {
+    if (combined.includes('cookie')) {
+      return 'The application button was blocked by a cookie consent banner that could not be dismissed automatically.';
+    }
+    if (combined.includes('marketing') || combined.includes('newsletter') || combined.includes('alert')) {
+      return 'The application button was obscured by a marketing popup or modal overlay.';
+    }
+    return 'The application button exists on the page but was obscured or blocked by a website overlay.';
+  }
+
+  // 10. Timeout or Unexpected Layout
   if (
     reasonCode.includes('timeout') ||
     reasonCode.includes('unexpected_page') ||

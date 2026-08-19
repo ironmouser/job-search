@@ -52,6 +52,19 @@ export enum InterventionReason {
   REVIEW_GATE = 'review_gate',
   /** Job board modal/page did not yield a valid application destination URL. */
   APPLICATION_DESTINATION_NOT_FOUND = 'application_destination_not_found',
+  /** Obstruction & interaction failure reasons */
+  APPLICATION_NOT_FOUND = 'application_not_found',
+  APPLICATION_FOUND_BUT_NOT_ACTIONABLE = 'application_found_but_not_actionable',
+  APPLICATION_BLOCKED_BY_MODAL = 'application_blocked_by_modal',
+  APPLICATION_BLOCKED_BY_MARKETING_MODAL = 'application_blocked_by_marketing_modal',
+  APPLICATION_BLOCKED_BY_COOKIE_BANNER = 'application_blocked_by_cookie_banner',
+  APPLICATION_BLOCKED_BY_LOGIN = 'application_blocked_by_login',
+  APPLICATION_BLOCKED_BY_AUTHENTICATION = 'application_blocked_by_authentication',
+  APPLICATION_BLOCKED_BY_CAPTCHA = 'application_blocked_by_captcha',
+  APPLICATION_BLOCKED_BY_BOT_CHALLENGE = 'application_blocked_by_bot_challenge',
+  APPLICATION_BLOCKED_BY_SECURITY_CHALLENGE = 'application_blocked_by_security_challenge',
+  APPLICATION_BLOCKED_BY_UNKNOWN_UI = 'application_blocked_by_unknown_ui',
+  APPLICATION_INTERACTION_FAILED = 'application_interaction_failed',
 }
 
 export enum LogLevel {

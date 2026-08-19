@@ -1,0 +1,332 @@
+/**
+ * worker/src/obstruction/classifier.ts
+ *
+ * UI Obstruction Classifier — classifies detected obstruction elements
+ * using multi-signal inspection of text, attributes, ARIA tags, and structural DOM signals.
+ * Enforces safe vs unsafe dismissal policies.
+ */
+
+import {
+  ElementHitTestInfo,
+  ObstructionClassification,
+  ObstructionType,
+} from './types';
+
+export interface ClassifierInput {
+  blockingElement?: ElementHitTestInfo | null;
+  modalContainer?: ElementHitTestInfo | null;
+  pageText?: string;
+  hasIframes?: boolean;
+  iframeSources?: string[];
+}
+
+export class UIObstructionClassifier {
+  /**
+   * Classifies an obstruction into an ObstructionType and determines
+   * whether it is safe to dismiss automatically.
+   */
+  static classify(input: ClassifierInput): ObstructionClassification {
+    const { blockingElement, modalContainer, pageText = '', iframeSources = [] } = input;
+
+    if (!blockingElement && !modalContainer) {
+      return {
+        type: ObstructionType.NONE,
+        isSafeToDismiss: false,
+        confidence: 100,
+        reason: 'No obstruction element detected',
+        detectedKeywords: [],
+      };
+    }
+
+    const combinedText = [
+      blockingElement?.text || '',
+      modalContainer?.text || '',
+      blockingElement?.className || '',
+      modalContainer?.className || '',
+      blockingElement?.id || '',
+      modalContainer?.id || '',
+      blockingElement?.role || '',
+      modalContainer?.role || '',
+      pageText,
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    const iframeUrls = iframeSources.map((s) => s.toLowerCase()).join(' ');
+
+    // ─── 1. Security & Bot Challenge Patterns (UNSAFE - NEVER BYPASS) ────────
+    const captchaKeywords = [
+      'recaptcha',
+      'g-recaptcha',
+      'hcaptcha',
+      'cf-turnstile',
+      'turnstile',
+      'arkoselabs',
+      'funcaptcha',
+      'geetest',
+      'captcha',
+      'solve the puzzle',
+      'security check',
+      'security challenge',
+    ];
+    const matchedCaptcha = captchaKeywords.filter(
+      (kw) => combinedText.includes(kw) || iframeUrls.includes(kw)
+    );
+    if (matchedCaptcha.length > 0) {
+      return {
+        type: ObstructionType.CAPTCHA,
+        isSafeToDismiss: false,
+        confidence: 95,
+        reason: `Detected CAPTCHA or security verification: ${matchedCaptcha.join(', ')}`,
+        detectedKeywords: matchedCaptcha,
+      };
+    }
+
+    const botKeywords = [
+      'verify you are human',
+      'verifying you are human',
+      'checking your browser',
+      'just a moment...',
+      'ddos protection by cloudflare',
+      'cloudflare challenge',
+      'please enable cookies',
+      'bot detection',
+      'human verification',
+      'press and hold',
+    ];
+    const matchedBot = botKeywords.filter(
+      (kw) => combinedText.includes(kw) || iframeUrls.includes(kw)
+    );
+    if (matchedBot.length > 0) {
+      return {
+        type: ObstructionType.BOT_CHALLENGE,
+        isSafeToDismiss: false,
+        confidence: 95,
+        reason: `Detected bot challenge or Cloudflare verification: ${matchedBot.join(', ')}`,
+        detectedKeywords: matchedBot,
+      };
+    }
+
+    // ─── 2. Authentication & Login Gates (UNSAFE - DO NOT BYPASS) ───────────
+    const authKeywords = [
+      'sign in to apply',
+      'log in to apply',
+      'sign in to continue',
+      'log in to continue',
+      'create an account to continue',
+      'create an account to apply',
+      'login to your account',
+      'sign into your account',
+      'enter your password',
+      'password requirements',
+      'verify new password',
+      'forgot password',
+      'sign in with google',
+      'sign in with linkedin',
+      'sign in with apple',
+      'session expired',
+      'unauthorized',
+    ];
+    const matchedAuth = authKeywords.filter((kw) => combinedText.includes(kw));
+    if (matchedAuth.length > 0) {
+      return {
+        type: ObstructionType.LOGIN_MODAL,
+        isSafeToDismiss: false,
+        confidence: 90,
+        reason: `Detected candidate login or authentication requirement: ${matchedAuth.join(', ')}`,
+        detectedKeywords: matchedAuth,
+      };
+    }
+
+    // ─── 3. Cookie & Privacy Consent Banners (SAFE TO DISMISS) ───────────────
+    const cookieKeywords = [
+      'cookie',
+      'cookies',
+      'cookie policy',
+      'privacy preferences',
+      'consent preferences',
+      'we use cookies',
+      'accept all cookies',
+      'accept cookies',
+      'manage cookies',
+      'onetrust',
+      'usercentrics',
+      'didomi',
+      'quantcast',
+      'trustarc',
+      'cookiebot',
+    ];
+    const matchedCookie = cookieKeywords.filter((kw) => combinedText.includes(kw));
+    if (matchedCookie.length > 0) {
+      return {
+        type: ObstructionType.COOKIE_BANNER,
+        isSafeToDismiss: true,
+        confidence: 90,
+        reason: `Detected cookie consent banner: ${matchedCookie.join(', ')}`,
+        detectedKeywords: matchedCookie,
+      };
+    }
+
+    // ─── 4. Job Alert Prompts (SAFE TO DISMISS) ──────────────────────────────
+    const jobAlertKeywords = [
+      'job alert',
+      'job alerts',
+      'create a job alert',
+      'get job alerts',
+      'notify me of new jobs',
+      'get notified about similar jobs',
+      'subscribe to job alerts',
+      'set up job alerts',
+      'email me jobs like this',
+      'receive job alerts',
+    ];
+    const matchedJobAlert = jobAlertKeywords.filter((kw) => combinedText.includes(kw));
+    if (matchedJobAlert.length > 0) {
+      return {
+        type: ObstructionType.JOB_ALERT_MODAL,
+        isSafeToDismiss: true,
+        confidence: 90,
+        reason: `Detected job alert popup: ${matchedJobAlert.join(', ')}`,
+        detectedKeywords: matchedJobAlert,
+      };
+    }
+
+    // ─── 5. Newsletter & Marketing Popups (SAFE TO DISMISS) ──────────────────
+    const newsletterKeywords = [
+      'newsletter',
+      'subscribe to our newsletter',
+      'join our mailing list',
+      'join our email list',
+      'get our newsletter',
+      'sign up for updates',
+      'stay in the loop',
+      'stay up to date',
+      'weekly digest',
+      'receive updates',
+    ];
+    const matchedNewsletter = newsletterKeywords.filter((kw) => combinedText.includes(kw));
+    if (matchedNewsletter.length > 0) {
+      return {
+        type: ObstructionType.NEWSLETTER_MODAL,
+        isSafeToDismiss: true,
+        confidence: 85,
+        reason: `Detected newsletter subscription modal: ${matchedNewsletter.join(', ')}`,
+        detectedKeywords: matchedNewsletter,
+      };
+    }
+
+    const marketingKeywords = [
+      'join our talent community',
+      'talent community',
+      'join our community',
+      'join our network',
+      'stay connected',
+      'download our app',
+      'get the app',
+      'special offer',
+      'save this job',
+      'welcome to',
+      'don\'t miss out',
+      'before you go',
+      'exclusive access',
+    ];
+    const matchedMarketing = marketingKeywords.filter((kw) => combinedText.includes(kw));
+    if (matchedMarketing.length > 0) {
+      return {
+        type: ObstructionType.MARKETING_MODAL,
+        isSafeToDismiss: true,
+        confidence: 80,
+        reason: `Detected marketing/promotional modal: ${matchedMarketing.join(', ')}`,
+        detectedKeywords: matchedMarketing,
+      };
+    }
+
+    // ─── 6. Location / Region Selection (SAFE TO DISMISS) ────────────────────
+    const locationKeywords = [
+      'select your region',
+      'choose your location',
+      'select country',
+      'choose country',
+      'country selector',
+      'international site',
+      'language preference',
+    ];
+    const matchedLocation = locationKeywords.filter((kw) => combinedText.includes(kw));
+    if (matchedLocation.length > 0) {
+      return {
+        type: ObstructionType.LOCATION_PROMPT,
+        isSafeToDismiss: true,
+        confidence: 80,
+        reason: `Detected location/region selector prompt: ${matchedLocation.join(', ')}`,
+        detectedKeywords: matchedLocation,
+      };
+    }
+
+    // ─── 7. Non-Critical Dialogs vs Unknown Overlays ─────────────────────────
+    const isDialogStructure =
+      blockingElement?.isDialog ||
+      modalContainer?.isDialog ||
+      blockingElement?.ariaModal ||
+      modalContainer?.ariaModal ||
+      blockingElement?.role === 'dialog' ||
+      modalContainer?.role === 'dialog';
+
+    if (isDialogStructure) {
+      return {
+        type: ObstructionType.NON_CRITICAL_DIALOG,
+        isSafeToDismiss: true,
+        confidence: 70,
+        reason: 'Detected generic non-critical dialog with standard modal attributes',
+        detectedKeywords: ['dialog', 'aria-modal'],
+      };
+    }
+
+    const isFixedOverlay =
+      (blockingElement?.position === 'fixed' || blockingElement?.position === 'absolute') &&
+      blockingElement.zIndex >= 10;
+
+    if (isFixedOverlay) {
+      return {
+        type: ObstructionType.UNKNOWN_OVERLAY,
+        isSafeToDismiss: false,
+        confidence: 60,
+        reason: `Detected unknown fixed overlay (z-index: ${blockingElement?.zIndex}, position: ${blockingElement?.position})`,
+        detectedKeywords: ['position:fixed', `z-index:${blockingElement?.zIndex}`],
+      };
+    }
+
+    return {
+      type: ObstructionType.UNKNOWN_MODAL,
+      isSafeToDismiss: false,
+      confidence: 50,
+      reason: 'Detected unclassified modal obstruction',
+      detectedKeywords: [],
+    };
+  }
+
+  /**
+   * Helper to determine if an obstruction type is considered safe to dismiss.
+   */
+  static isSafe(type: ObstructionType): boolean {
+    switch (type) {
+      case ObstructionType.MARKETING_MODAL:
+      case ObstructionType.NEWSLETTER_MODAL:
+      case ObstructionType.JOB_ALERT_MODAL:
+      case ObstructionType.COOKIE_BANNER:
+      case ObstructionType.PRIVACY_BANNER:
+      case ObstructionType.LOCATION_PROMPT:
+      case ObstructionType.NON_CRITICAL_DIALOG:
+        return true;
+      case ObstructionType.LOGIN_MODAL:
+      case ObstructionType.AUTHENTICATION_REQUIRED:
+      case ObstructionType.CAPTCHA:
+      case ObstructionType.BOT_CHALLENGE:
+      case ObstructionType.SECURITY_CHALLENGE:
+      case ObstructionType.UNKNOWN_MODAL:
+      case ObstructionType.UNKNOWN_OVERLAY:
+      case ObstructionType.NONE:
+      default:
+        return false;
+    }
+  }
+}

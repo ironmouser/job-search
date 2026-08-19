@@ -32,28 +32,47 @@ interface InterventionPanelProps {
 }
 
 const REASON_LABELS: Record<string, string> = {
-  captcha:                           'CAPTCHA Verification Required',
-  mfa_required:                      'Two-Factor Authentication Required',
-  unknown_question:                  'Application Question Required',
-  unexpected_page:                   'Custom Portal or Unsupported Layout',
-  job_closed:                        'Job No Longer Accepting Applications',
-  resume_rejected:                   'Resume Format Rejected by ATS',
-  attachment_missing:                'Required Attachment Missing',
-  login_required:                    'Account Login Required',
-  assessment_required:               'Candidate Assessment Required',
-  application_destination_not_found: 'Application Destination Not Found',
+  captcha:                               'CAPTCHA Verification Required',
+  mfa_required:                          'Two-Factor Authentication Required',
+  unknown_question:                      'Application Question Required',
+  unexpected_page:                       'Custom Portal or Unsupported Layout',
+  job_closed:                            'Job No Longer Accepting Applications',
+  resume_rejected:                       'Resume Format Rejected by ATS',
+  attachment_missing:                    'Required Attachment Missing',
+  login_required:                        'Account Login Required',
+  assessment_required:                   'Candidate Assessment Required',
+  application_destination_not_found:     'Application Destination Not Found',
+  application_not_found:                 'Application Control Not Found',
+  application_found_but_not_actionable:  'Application Control Not Actionable',
+  application_blocked_by_modal:          'Application Blocked by Website Modal',
+  application_blocked_by_marketing_modal:'Application Blocked by Marketing Popup',
+  application_blocked_by_cookie_banner:  'Application Blocked by Cookie Consent',
+  application_blocked_by_login:          'Application Blocked by Login Requirement',
+  application_blocked_by_authentication: 'Application Blocked by Authentication',
+  application_blocked_by_captcha:        'Application Blocked by Security CAPTCHA',
+  application_blocked_by_bot_challenge:  'Application Blocked by Bot Verification',
+  application_blocked_by_security_challenge: 'Application Blocked by Security Check',
+  application_blocked_by_unknown_ui:     'Application Blocked by UI Overlay',
+  application_interaction_failed:        'Application Interaction Failed',
 };
 
 function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: boolean) {
   if (isClosed || reason === 'job_closed') return <ShieldAlert size={16} color="#ef4444" />;
   if (isUnsupportedOrFatal) return <AlertTriangle size={16} color="#f97316" />;
   switch (reason) {
-    case 'captcha': return <ShieldAlert size={16} color="#fbbf24" />;
+    case 'captcha':
+    case 'application_blocked_by_captcha':
+    case 'application_blocked_by_bot_challenge':
+    case 'application_blocked_by_security_challenge':
+      return <ShieldAlert size={16} color="#fbbf24" />;
     case 'mfa_required': return <Smartphone size={16} color="#fbbf24" />;
     case 'unknown_question': return <HelpCircle size={16} color="#fbbf24" />;
     case 'resume_rejected': return <FileText size={16} color="#fbbf24" />;
     case 'attachment_missing': return <Paperclip size={16} color="#fbbf24" />;
-    case 'login_required': return <Key size={16} color="#fbbf24" />;
+    case 'login_required':
+    case 'application_blocked_by_login':
+    case 'application_blocked_by_authentication':
+      return <Key size={16} color="#fbbf24" />;
     case 'assessment_required': return <ClipboardList size={16} color="#fbbf24" />;
     default: return <AlertTriangle size={16} color="#fbbf24" />;
   }
