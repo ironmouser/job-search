@@ -1371,33 +1371,16 @@ export default function DashboardClient({
           </div>
 
           {/* Unified Controls Toolbar Row */}
-          <div className="matches-header-bar" style={{ display: 'flex', alignItems: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div className="matches-header-bar">
             {/* Target Job Title / Role Search Field with Label */}
-            <div className="matches-search-field-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <div className="matches-search-field-group">
               <label 
                 htmlFor="dashboard-search-role"
                 className="matches-search-label"
-                style={{ 
-                  fontSize: '0.72rem', 
-                  fontWeight: 700, 
-                  textTransform: 'uppercase', 
-                  letterSpacing: '0.05em', 
-                  color: 'var(--text-secondary)' 
-                }}
               >
                 Job Title
               </label>
-              <div 
-                className="matches-search-input-wrapper"
-                style={{
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  minWidth: '190px',
-                  maxWidth: '250px',
-                  width: '100%'
-                }}
-              >
+              <div className="matches-search-input-wrapper">
                 <Search 
                   size={14} 
                   className="matches-search-icon"
@@ -1474,31 +1457,14 @@ export default function DashboardClient({
             </div>
 
             {/* Target Location Search Field with Label */}
-            <div className="matches-search-field-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <div className="matches-search-field-group">
               <label 
                 htmlFor="dashboard-search-location"
                 className="matches-search-label"
-                style={{ 
-                  fontSize: '0.72rem', 
-                  fontWeight: 700, 
-                  textTransform: 'uppercase', 
-                  letterSpacing: '0.05em', 
-                  color: 'var(--text-secondary)' 
-                }}
               >
                 Location
               </label>
-              <div 
-                className="matches-search-input-wrapper"
-                style={{
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  minWidth: '170px',
-                  maxWidth: '230px',
-                  width: '100%'
-                }}
-              >
+              <div className="matches-search-input-wrapper">
                 <MapPin 
                   size={14} 
                   className="matches-search-icon"
@@ -1575,7 +1541,7 @@ export default function DashboardClient({
             </div>
 
             {/* Search for Jobs (SyncButton) */}
-            <div className="matches-search-btn-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+            <div className="matches-search-btn-wrapper">
               <SyncButton
                 ref={syncButtonRef}
                 compact={true}
@@ -1598,7 +1564,7 @@ export default function DashboardClient({
             </div>
 
             {/* Action Controls: Filter | Sort | View Toggles */}
-            <div className="matches-action-controls" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div className="matches-action-controls">
               {/* Filter Toggle Button */}
               <div style={{ position: 'relative' }}>
                 <button
