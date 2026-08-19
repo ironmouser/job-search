@@ -27,6 +27,7 @@ import TrialStatusBanner from '@/components/TrialStatusBanner';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { AntiAbuseBanner } from '@/components/AntiAbuseBanner';
 import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
+import RoleSuggestionBanner from '@/components/RoleSuggestionBanner';
 import { useCommandBar } from '@/contexts/AutoApplyBarContext';
 
 
@@ -86,7 +87,29 @@ export default function DashboardClient({
 
   const [searchRole, setSearchRole] = useState(searchKeyword || '');
   const [searchLocationInput, setSearchLocationInput] = useState(searchLocation || '');
+  const [roleSuggestions, setRoleSuggestions] = useState<string[]>([]);
   const syncButtonRef = useRef<SyncButtonHandle>(null);
+
+  const handleSyncComplete = (newJobsCount: number, topRoleSuggestions?: string[]) => {
+    if (topRoleSuggestions && topRoleSuggestions.length > 0) {
+      setRoleSuggestions(topRoleSuggestions);
+    }
+  };
+
+  const handleSelectSuggestedRole = (newRole: string) => {
+    setSearchRole(newRole);
+    try {
+      localStorage.setItem('dashboard_search_role', newRole);
+    } catch (e) {}
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ searchKeyword: newRole }),
+    }).catch(() => {});
+    setTimeout(() => {
+      syncButtonRef.current?.triggerSync();
+    }, 50);
+  };
 
   useEffect(() => {
     if (!isLoaded) {
@@ -1574,28 +1597,45 @@ export default function DashboardClient({
               onClick={handleEmailSync}
               disabled={isEmailSyncing || isSyncing}
               className="action-control-btn btn-scan-inbox"
-              title="Scan email inbox for job alert notifications"
+              title={hasEmailCredentials ? 'Scan your synced email inbox for new job alerts' : 'Connect an email to scan for jobs'}
               style={{
+                background: isEmailSyncing ? 'rgba(56, 189, 248, 0.2)' : 'rgba(56, 189, 248, 0.1)',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+                color: '#38bdf8',
                 opacity: isEmailSyncing || isSyncing ? 0.6 : 1,
                 cursor: isEmailSyncing || isSyncing ? 'not-allowed' : 'pointer'
               }}
             >
-              {isEmailSyncing ? (
-                <Loader2 size={15} className="animate-spin" style={{ color: '#2563eb' }} />
-              ) : (
-                <Mail size={15} style={{ color: '#2563eb' }} />
-              )}
-              <span>{isEmailSyncing ? 'Scanning...' : 'Scan Inbox'}</span>
+              <Mail size={15} className={isEmailSyncing ? 'animate-spin' : ''} />
+              <span>{isEmailSyncing ? 'Scanning Inbox...' : 'Scan Inbox'}</span>
             </button>
 
-            {/* Filter & Sort Grid Row */}
-            <div className="matches-filter-sort-row">
-              {/* Filter Button */}
+            {/* Global Search Button */}
+            <button
+              onClick={() => setIsSearchModalOpen(true)}
+              className="action-control-btn btn-search-trigger"
+              style={{
+                background: 'rgba(0, 112, 243, 0.1)',
+                border: '1px solid rgba(0, 112, 243, 0.25)',
+                color: '#0070f3',
+              }}
+              title="Search and aggregate across 20+ live job platforms"
+            >
+              <Search size={15} />
+              <span>Search Online</span>
+            </button>
+
+            {/* Filter Toggle Button */}
+            <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setIsFilterModalOpen(true)}
-                className="action-control-btn btn-filter"
-                title="Filter & Sort Job Feed"
-                style={{ position: 'relative' }}
+                className={`action-control-btn btn-filter ${hasActiveFilters ? 'active-filter' : ''}`}
+                style={{
+                  position: 'relative',
+                  background: hasActiveFilters ? 'rgba(0, 112, 243, 0.15)' : undefined,
+                  borderColor: hasActiveFilters ? '#0070f3' : undefined,
+                  color: hasActiveFilters ? '#0070f3' : undefined,
+                }}
               >
                 <SlidersHorizontal size={15} />
                 <span>Filter</span>
@@ -1614,38 +1654,38 @@ export default function DashboardClient({
                   />
                 )}
               </button>
+            </div>
 
-              {/* Sort Selector Dropdown */}
-              <div
-                className="action-control-btn btn-sort"
-                title="Sort Job Feed"
+            {/* Sort Selector Dropdown */}
+            <div
+              className="action-control-btn btn-sort"
+              title="Sort Job Feed"
+            >
+              <ArrowUpDown size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as any)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'inherit',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  outline: 'none',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  width: '100%'
+                }}
               >
-                <ArrowUpDown size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
-                <select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value as any)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'inherit',
-                    fontSize: '0.85rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    outline: 'none',
-                    appearance: 'none',
-                    WebkitAppearance: 'none',
-                    width: '100%'
-                  }}
-                >
-                  <option value="role_match" style={{ background: '#ffffff', color: '#0f172a' }}>Role Match</option>
-                  <option value="newest" style={{ background: '#ffffff', color: '#0f172a' }}>Newest First</option>
-                  <option value="score_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (High-Low)</option>
-                  <option value="score_asc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (Low-High)</option>
-                  <option value="company" style={{ background: '#ffffff', color: '#0f172a' }}>Company (A-Z)</option>
-                  <option value="salary_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Salary (High-Low)</option>
-                  <option value="remote" style={{ background: '#ffffff', color: '#0f172a' }}>Remote First</option>
-                </select>
-              </div>
+                <option value="role_match" style={{ background: '#ffffff', color: '#0f172a' }}>Role Match</option>
+                <option value="newest" style={{ background: '#ffffff', color: '#0f172a' }}>Newest First</option>
+                <option value="score_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (High-Low)</option>
+                <option value="score_asc" style={{ background: '#ffffff', color: '#0f172a' }}>Match Score (Low-High)</option>
+                <option value="company" style={{ background: '#ffffff', color: '#0f172a' }}>Company (A-Z)</option>
+                <option value="salary_desc" style={{ background: '#ffffff', color: '#0f172a' }}>Salary (High-Low)</option>
+                <option value="remote" style={{ background: '#ffffff', color: '#0f172a' }}>Remote First</option>
+              </select>
             </div>
 
             <div className="dashboard-view-toggles">
@@ -1666,6 +1706,15 @@ export default function DashboardClient({
             </div>
           </div>
         </div>
+      
+      {roleSuggestions.length > 0 && (
+        <RoleSuggestionBanner
+          suggestions={roleSuggestions}
+          currentKeyword={searchRole}
+          onSelectRole={handleSelectSuggestedRole}
+          onDismiss={() => setRoleSuggestions([])}
+        />
+      )}
       
       {viewMode === 'table' ? (
         <div data-tour="recent-jobs" style={{ overflowX: 'auto', background: 'var(--bg-glass)', borderRadius: '12px', border: '1px solid var(--border-glass)', marginBottom: '2rem' }}>
@@ -2077,7 +2126,7 @@ export default function DashboardClient({
                         setIsRefiningJobs(false);
                       }
                     }}
-                    onSyncComplete={() => {}}
+                    onSyncComplete={handleSyncComplete}
                   />
                 </div>
               )}

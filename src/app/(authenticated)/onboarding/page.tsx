@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import CloudResumePicker from '@/components/common/CloudResumePicker';
+import JobTitleTypeahead from '@/components/common/JobTitleTypeahead';
 import { trackOnboardingStep, trackOnboardingResumeSkip, trackOnboardingComplete } from '@/lib/analytics';
 
 export default function OnboardingPage() {
@@ -275,14 +276,13 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                 <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                     Target Job Title / Keyword <span style={{ color: '#ef4444', fontWeight: 'bold' }}>*</span>
                                 </label>
-                                <input 
-                                    ref={keywordInputRef}
-                                    type="text"
+                                <JobTitleTypeahead 
+                                    inputRef={keywordInputRef}
                                     required
                                     value={formData.searchKeyword}
-                                    onChange={(e) => {
-                                        handleChange('searchKeyword', e.target.value);
-                                        if (titleError && e.target.value.trim()) setTitleError(false);
+                                    onChange={(val) => {
+                                        handleChange('searchKeyword', val);
+                                        if (titleError && val.trim()) setTitleError(false);
                                     }}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
@@ -291,7 +291,8 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                         }
                                     }}
                                     placeholder="e.g. Account Manager, Full Stack Engineer"
-                                    style={{ 
+                                    hasError={titleError}
+                                    inputStyle={{ 
                                         width: '100%', 
                                         boxSizing: 'border-box', 
                                         background: 'rgba(0,0,0,0.2)', 

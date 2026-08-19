@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, MapPin, X } from 'lucide-react';
+import JobTitleTypeahead from '@/components/common/JobTitleTypeahead';
 
 interface DashboardSearchModalProps {
   isOpen: boolean;
@@ -166,14 +167,13 @@ export default function DashboardSearchModal({
                     pointerEvents: 'none',
                   }}
                 />
-                <input
+                <JobTitleTypeahead
                   id="search-modal-title"
-                  type="text"
                   value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
+                  onChange={setKeyword}
                   placeholder={defaultKeyword || 'e.g. Product Manager, Frontend Engineer'}
                   autoFocus
-                  style={{
+                  inputStyle={{
                     width: '100%',
                     padding: '0.65rem 2.2rem 0.65rem 2.4rem',
                     fontSize: '0.9rem',

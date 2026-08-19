@@ -10,6 +10,7 @@ import { getEffectiveTier } from '@/lib/tier';
 
 import { isUsLocation, isRemoteLocation, extractStateAbbr, isOutsideUsLocation } from '@/lib/locationUtils';
 import { expandSearchKeywords, expandSearchKeywordsWithAI } from '@/lib/keywordExpansion';
+import { extractTopTitlesFromResults } from '@/lib/serpapi';
 
 export async function POST(request: Request) {
     try {
@@ -175,6 +176,9 @@ export async function POST(request: Request) {
 
                     // Step 1: Instant Static DB matching (0ms wait)
                     const initialKeywords = expandSearchKeywords(keyword);
+                    // Launch AI semantic expansion in parallel immediately
+                    const aiExpansionPromise = expandSearchKeywordsWithAI(keyword, userId);
+
                     try {
                         const orConditions = initialKeywords.flatMap(kw => [
                             { title: { contains: kw, mode: 'insensitive' as const } },
@@ -191,6 +195,30 @@ export async function POST(request: Request) {
                         });
                         if (dbFirstJobs.length > 0) {
                             registerJobs('Database Pool', dbFirstJobs);
+                        }
+
+                        // Step 1b: Second DB pass with AI-expanded synonyms (up to 1.5s timeout race)
+                        const aiTerms = await Promise.race([
+                            aiExpansionPromise,
+                            new Promise<string[]>(resolve => setTimeout(() => resolve([]), 1500))
+                        ]);
+                        const novelAiTerms = aiTerms.filter(t => !initialKeywords.some(ik => ik.toLowerCase() === t.toLowerCase()));
+                        if (novelAiTerms.length > 0) {
+                            const aiOrConditions = novelAiTerms.flatMap(kw => [
+                                { title: { contains: kw, mode: 'insensitive' as const } },
+                                { description: { contains: kw, mode: 'insensitive' as const } }
+                            ]);
+                            const dbAiJobs = await prisma.job.findMany({
+                                where: {
+                                    createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
+                                    OR: aiOrConditions
+                                },
+                                take: 150,
+                                orderBy: { createdAt: 'desc' }
+                            });
+                            if (dbAiJobs.length > 0) {
+                                registerJobs('Database Pool (Expanded)', dbAiJobs);
+                            }
                         }
                     } catch (dbErr: any) {
                         console.warn(`[DB-First Pre-Check Warning]: ${dbErr.message}`);
@@ -329,8 +357,8 @@ export async function POST(request: Request) {
                     }
 
                     // Background AI keyword expansion: discover additional synonyms in parallel without delaying initial scrapers
-                    const aiExpansionPromise = expandSearchKeywordsWithAI(keyword, userId).then(aiTerms => {
-                        const novelTerms = aiTerms.filter(t => !initialKeywords.some(ik => ik.toLowerCase() === t.toLowerCase())).slice(0, 2);
+                    const backgroundAiScraperTask = aiExpansionPromise.then(aiTerms => {
+                        const novelTerms = (aiTerms || []).filter(t => !initialKeywords.some(ik => ik.toLowerCase() === t.toLowerCase())).slice(0, 2);
                         if (novelTerms.length > 0) {
                             const additionalTasks: Promise<void>[] = [];
                             for (const kw of novelTerms) {
@@ -351,7 +379,7 @@ export async function POST(request: Request) {
                         console.warn(`[AI Expansion Background Notice]: ${err.message}`);
                     });
 
-                    tasks.push(aiExpansionPromise as any);
+                    tasks.push(backgroundAiScraperTask as any);
 
                     await Promise.allSettled(tasks);
 
@@ -385,12 +413,16 @@ export async function POST(request: Request) {
                         ? (savedJobs as any).newSavedCount
                         : (savedJobs?.length || 0);
 
+                    // Extract top distinct discovered role titles for user search refinement suggestions
+                    const topRoleSuggestions = extractTopTitlesFromResults(allRawJobs, keyword, 5);
+
                     sendEvent({
                         type: 'complete',
                         foundCount: totalRawJobsFound,
                         raw_jobs_found: totalRawJobsFound,
                         new_jobs_saved: newJobsSaved,
                         jobs: savedJobs,
+                        topRoleSuggestions,
                         message: `Scraping complete! Added ${newJobsSaved} new jobs.`
                     });
                 } catch (err: any) {

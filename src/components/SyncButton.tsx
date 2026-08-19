@@ -11,7 +11,7 @@ export interface SyncButtonHandle {
 
 interface SyncButtonProps {
   onSyncStateChange?: (isLoading: boolean, statusText: string, jobsFoundCount?: number, isRefining?: boolean) => void;
-  onSyncComplete?: (newJobsCount: number) => void;
+  onSyncComplete?: (newJobsCount: number, topRoleSuggestions?: string[]) => void;
   compact?: boolean;
   autoTrigger?: boolean;
   searchKeywordOverride?: string;
@@ -127,8 +127,9 @@ const SyncButton = forwardRef<SyncButtonHandle, SyncButtonProps>(function SyncBu
       } catch (e) {}
 
       const newJobsCount = data.new_jobs_saved || 0;
+      const topRoleSuggestions = Array.isArray(data.topRoleSuggestions) ? data.topRoleSuggestions : undefined;
       trackJobSyncSuccess(runningCount, newJobsCount);
-      onSyncComplete?.(newJobsCount);
+      onSyncComplete?.(newJobsCount, topRoleSuggestions);
 
       if (newJobsCount === 0) {
         setStatusText('0 New Jobs Found');

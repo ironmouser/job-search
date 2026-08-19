@@ -206,3 +206,40 @@ export async function scrapeSerpApiGoogleJobs(
 
   return jobs;
 }
+
+/**
+ * Extracts the top distinct job titles discovered from search results, sorted by frequency.
+ * Used to suggest related roles to users (especially cold-start users without resumes).
+ */
+export function extractTopTitlesFromResults(
+  jobs: Array<{ title?: string }>,
+  targetKeyword?: string,
+  limit = 5
+): string[] {
+  if (!jobs || jobs.length === 0) return [];
+  const cleanTarget = (targetKeyword || '').trim().toLowerCase();
+  const freq = new Map<string, { count: number; canonical: string }>();
+
+  for (const j of jobs) {
+    if (!j?.title) continue;
+    const title = j.title.trim();
+    if (title.length < 3 || title.length > 75) continue;
+    const lower = title.toLowerCase();
+
+    // Skip if identical to the search keyword
+    if (cleanTarget && lower === cleanTarget) continue;
+
+    const existing = freq.get(lower);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      freq.set(lower, { count: 1, canonical: title });
+    }
+  }
+
+  return Array.from(freq.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map(item => item.canonical);
+}
+

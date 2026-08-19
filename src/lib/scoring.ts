@@ -2,6 +2,7 @@ import { prisma } from './prisma';
 import { getUserSettings } from './settings';
 import { callAI } from './ai';
 import { isDescriptionAdequate } from './jobFetcher';
+import { inferSkillsFromTitle } from './keywordExpansion';
 
 // Helper to parse weights from the profile markdown
 function parseWeights(profile: string) {
@@ -98,24 +99,43 @@ export async function scoreJob(
 
     let settings: any;
     let feedbackData: any[];
+    let viewedJobsData: any[] = [];
 
     if (prefetchedData) {
         settings = prefetchedData.settings;
         feedbackData = prefetchedData.feedbackData;
     } else {
-        [settings, feedbackData] = await Promise.all([
+        [settings, feedbackData, viewedJobsData] = await Promise.all([
             getUserSettings(userId),
             prisma.jobFeedback.findMany({
                 where: { userId },
                 select: { feedbackType: true, reasons: true, job: { select: { title: true, company: true } } },
                 orderBy: { createdAt: 'desc' },
                 take: 10
-            })
+            }),
+            prisma.userJob.findMany({
+                where: { userId, viewedAt: { not: null } },
+                select: { job: { select: { title: true, company: true } } },
+                orderBy: { viewedAt: 'desc' },
+                take: 8
+            }).catch(() => [])
         ]);
     }
 
-    const profileText = settings.profile || "Default Scoring Profile";
+    let profileText = settings.profile || "Default Scoring Profile";
     const weights = parseWeights(profileText);
+
+    // Inferred Skills Injection for cold-start / resume-less users
+    const hasExplicitResume = Boolean(settings.resumeMarkdown && settings.resumeMarkdown.trim().length > 100);
+    const hasDefaultProfile = !profileText || profileText.includes("Default Scoring Profile") || profileText.includes("Seeking high-growth");
+
+    if (!hasExplicitResume && hasDefaultProfile) {
+        const targetTitle = settings.searchKeyword || jobTitle;
+        const inferredSkills = await inferSkillsFromTitle(targetTitle, userId);
+        if (inferredSkills.length > 0) {
+            profileText += `\n\n# Inferred Skill Competencies (Based on Target Role "${targetTitle}"):\n${inferredSkills.map(s => `- ${s}`).join('\n')}\n(Weight these competencies when scoring Tech Stack and Product Fit.)`;
+        }
+    }
 
     let feedbackContext = "";
     if (feedbackData && feedbackData.length > 0) {
@@ -132,6 +152,20 @@ export async function scoreJob(
                 feedbackContext += `- LIKED: ${title} at ${company}\n`;
             }
         });
+    }
+
+    // Soft positive signal from viewed listings
+    const dislikedTitles = new Set(
+        (feedbackData || []).filter(f => f.feedbackType === 'dislike').map(f => f.job?.title?.toLowerCase())
+    );
+    const novelViewed = (viewedJobsData || []).filter(v => v.job?.title && !dislikedTitles.has(v.job.title.toLowerCase()));
+    if (novelViewed.length > 0) {
+        if (!feedbackContext) feedbackContext = "CANDIDATE ENGAGEMENT HISTORY:\n";
+        feedbackContext += "Recently opened/explored job postings (soft positive signal of interest):\n";
+        novelViewed.slice(0, 5).forEach(v => {
+            feedbackContext += `- VIEWED: ${v.job?.title || 'Role'} at ${v.job?.company || 'Company'}\n`;
+        });
+        feedbackContext += "\n";
     }
 
     // Truncate description to 4,000 characters to eliminate legal boilerplate/EEO waste and optimize speed/cost
@@ -243,24 +277,43 @@ export async function scoreJobsBatch(
 
     let settings: any;
     let feedbackData: any[];
+    let viewedJobsData: any[] = [];
 
     if (prefetchedData) {
         settings = prefetchedData.settings;
         feedbackData = prefetchedData.feedbackData;
     } else {
-        [settings, feedbackData] = await Promise.all([
+        [settings, feedbackData, viewedJobsData] = await Promise.all([
             getUserSettings(userId),
             prisma.jobFeedback.findMany({
                 where: { userId },
                 select: { feedbackType: true, reasons: true, job: { select: { title: true, company: true } } },
                 orderBy: { createdAt: 'desc' },
                 take: 10
-            })
+            }),
+            prisma.userJob.findMany({
+                where: { userId, viewedAt: { not: null } },
+                select: { job: { select: { title: true, company: true } } },
+                orderBy: { viewedAt: 'desc' },
+                take: 8
+            }).catch(() => [])
         ]);
     }
 
-    const profileText = settings.profile || "Default Scoring Profile";
+    let profileText = settings.profile || "Default Scoring Profile";
     const weights = parseWeights(profileText);
+
+    // Inferred Skills Injection for cold-start / resume-less users
+    const hasExplicitResume = Boolean(settings.resumeMarkdown && settings.resumeMarkdown.trim().length > 100);
+    const hasDefaultProfile = !profileText || profileText.includes("Default Scoring Profile") || profileText.includes("Seeking high-growth");
+
+    if (!hasExplicitResume && hasDefaultProfile) {
+        const targetTitle = settings.searchKeyword || (jobs[0]?.title || 'Professional');
+        const inferredSkills = await inferSkillsFromTitle(targetTitle, userId);
+        if (inferredSkills.length > 0) {
+            profileText += `\n\n# Inferred Skill Competencies (Based on Target Role "${targetTitle}"):\n${inferredSkills.map(s => `- ${s}`).join('\n')}\n(Weight these competencies when scoring Tech Stack and Product Fit.)`;
+        }
+    }
 
     let feedbackContext = "";
     if (feedbackData && feedbackData.length > 0) {
@@ -275,6 +328,20 @@ export async function scoreJobsBatch(
                 feedbackContext += `- LIKED: ${title} at ${company}\n`;
             }
         });
+    }
+
+    // Soft positive signal from viewed listings
+    const dislikedTitles = new Set(
+        (feedbackData || []).filter(f => f.feedbackType === 'dislike').map(f => f.job?.title?.toLowerCase())
+    );
+    const novelViewed = (viewedJobsData || []).filter(v => v.job?.title && !dislikedTitles.has(v.job.title.toLowerCase()));
+    if (novelViewed.length > 0) {
+        if (!feedbackContext) feedbackContext = "CANDIDATE ENGAGEMENT HISTORY:\n";
+        feedbackContext += "Recently opened/explored job postings (soft positive signal of interest):\n";
+        novelViewed.slice(0, 5).forEach(v => {
+            feedbackContext += `- VIEWED: ${v.job?.title || 'Role'} at ${v.job?.company || 'Company'}\n`;
+        });
+        feedbackContext += "\n";
     }
 
     const jobsPayload = jobs.map((j, idx) => ({
