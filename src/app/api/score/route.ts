@@ -68,14 +68,10 @@ async function ensureAndScoreJob(
     }
 
     const description = await ensureJobDescription(job);
-
-    if (!description) {
-        console.warn(`Skipping score for job ${job.id} - description cannot be downloaded or is inadequate.`);
-        return { jobId: job.id, skipped: true, reason: 'Description could not be downloaded.' };
-    }
+    const effectiveDesc = description || job.description || '';
 
     const score = await withTimeout(
-      scoreJob(userId, job.id, job.title, description, prefetchedData),
+      scoreJob(userId, job.id, job.title, effectiveDesc, prefetchedData, { allowPartialDescription: true }),
       25000,
       null
     );

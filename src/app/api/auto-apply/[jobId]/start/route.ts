@@ -147,9 +147,14 @@ export async function POST(
     if (needsResolution) {
       console.info(`[auto-apply/start] Pre-flight: resolving aggregator URL for job ${jobId}: ${jobUrl}`);
       try {
-        const html = await fetchWithScraperAPI(jobUrl);
+        let html = await fetchWithScraperAPI(jobUrl, false);
+        let resolvedUrl = html ? extractATSUrlFromHtml(html) : null;
+        if (!resolvedUrl) {
+          html = await fetchWithScraperAPI(jobUrl, true);
+          resolvedUrl = html ? extractATSUrlFromHtml(html) : null;
+        }
+
         if (html) {
-          const resolvedUrl = extractATSUrlFromHtml(html);
           if (resolvedUrl) {
             console.info(`[auto-apply/start] Resolved direct ATS URL: ${resolvedUrl}`);
             await prisma.job.update({

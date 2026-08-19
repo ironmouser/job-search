@@ -134,14 +134,15 @@ export async function POST(request: Request) {
         console.warn(`Direct fetch failed for custom URL ${cleanUrl}: ${e.message}`);
       }
 
-      // Tier 2: ScraperAPI (residential proxy + JS rendering + CAPTCHA solving)
-      // Universal — works for any site, not just known aggregators.
+      // Tier 2: ScraperAPI (raw HTML 1-credit fast path first, JS rendering fallback)
       if (!fetchSuccess) {
-        const scraperHtml = await fetchWithScraperAPI(cleanUrl);
+        let scraperHtml = await fetchWithScraperAPI(cleanUrl, false);
+        if (!scraperHtml) {
+          scraperHtml = await fetchWithScraperAPI(cleanUrl, true);
+        }
         if (scraperHtml) {
           rawHtml = scraperHtml;
           fetchSuccess = true;
-          // Attempt to extract direct ATS URL from the rendered page
           resolvedApplicationUrl = extractATSUrlFromHtml(scraperHtml);
           if (resolvedApplicationUrl) {
             console.info(`[add-by-url] Extracted direct ATS URL: ${resolvedApplicationUrl}`);

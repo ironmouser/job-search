@@ -217,17 +217,25 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
         console.warn(`Direct fetch failed for ${url}: ${e.message}`);
     }
 
-    // ── Tier 2: ScraperAPI (residential proxy + JS rendering + CAPTCHA solving) ─
-    // Universal — works for any site, not just known aggregators.
-    const scraperHtml = await fetchWithScraperAPI(url);
-    if (scraperHtml) {
-        // Also attempt to extract a direct ATS URL while we have the rendered HTML
-        const resolvedApplicationUrl = extractATSUrlFromHtml(scraperHtml);
-        const extracted = await extractContent(scraperHtml);
+    // ── Tier 2: ScraperAPI ───────────────────────────────────────────────────
+    // Fast path: try raw HTML first (render=false, 1 credit)
+    const rawScraperHtml = await fetchWithScraperAPI(url, false);
+    if (rawScraperHtml) {
+        const resolvedApplicationUrl = extractATSUrlFromHtml(rawScraperHtml);
+        const extracted = await extractContent(rawScraperHtml);
         if (extracted) {
             return { description: extracted, finalUrl: url, resolvedApplicationUrl };
         }
-        // Even if description extraction failed, return the ATS URL if we found one
+    }
+
+    // Heavy path: escalate to JS rendering only if raw HTML yielded no description
+    const renderedScraperHtml = await fetchWithScraperAPI(url, true);
+    if (renderedScraperHtml) {
+        const resolvedApplicationUrl = extractATSUrlFromHtml(renderedScraperHtml);
+        const extracted = await extractContent(renderedScraperHtml);
+        if (extracted) {
+            return { description: extracted, finalUrl: url, resolvedApplicationUrl };
+        }
         if (resolvedApplicationUrl) {
             console.info(`[JobFetcher] ScraperAPI found ATS URL but no description for ${url}: ${resolvedApplicationUrl}`);
         }

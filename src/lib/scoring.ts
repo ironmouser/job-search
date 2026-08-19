@@ -87,13 +87,14 @@ export async function scoreJob(
     jobId: string,
     jobTitle: string,
     jobDescription: string,
-    prefetchedData?: { settings: any; feedbackData: any[] }
+    prefetchedData?: { settings: any; feedbackData: any[] },
+    options?: { allowPartialDescription?: boolean }
 ) {
     if (!process.env.OPENAI_API_KEY && !process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY) {
         throw new Error('No AI API key configured (OPENAI_API_KEY or DEEPSEEK_API_KEY is missing).');
     }
 
-    if (!isDescriptionAdequate(jobDescription)) {
+    if (!isDescriptionAdequate(jobDescription) && !options?.allowPartialDescription) {
         throw new Error('Cannot score job: Job description is inadequate or has not been downloaded.');
     }
 
@@ -169,7 +170,9 @@ export async function scoreJob(
     }
 
     // Truncate description to 4,000 characters to eliminate legal boilerplate/EEO waste and optimize speed/cost
-    const truncatedDescription = jobDescription.slice(0, 4000);
+    const effectiveDescription = (jobDescription && jobDescription.trim().length > 30)
+        ? jobDescription.slice(0, 4000)
+        : `Role: ${jobTitle}. (Detailed job description was not publicly available; evaluate based on role title, standard market requirements, and candidate preferences).`;
 
     const prompt = `You are an expert career coach AI evaluating a job opportunity for a candidate.
 Evaluate the following Job Description based on these specific criteria and provide a score out of 100 for each category based on how well it aligns with the candidate's preferences.
@@ -186,7 +189,7 @@ ${jobTitle}
 </job_title>
 
 <job_description>
-${truncatedDescription}
+${effectiveDescription}
 </job_description>
 
 Return a JSON object strictly matching this schema:

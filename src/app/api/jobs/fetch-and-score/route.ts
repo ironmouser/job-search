@@ -123,14 +123,11 @@ export async function POST(request: Request) {
             }
           }
 
-          // 3. Skip scoring if description remains inadequate
-          if (!isDescriptionAdequate(description)) {
-            return { jobId: job.id, status: 'fetch_failed', reason: 'Description could not be downloaded.' };
-          }
+          const isAdequate = isDescriptionAdequate(description);
 
-          // 4. Score job (wrap scoring in 25s timeout)
+          // 3. Score job (wrap scoring in 25s timeout)
           const score = await withTimeout(
-            scoreJob(userId, job.id, job.title, description, prefetchedData),
+            scoreJob(userId, job.id, job.title, description, prefetchedData, { allowPartialDescription: true }),
             25000,
             null
           );
@@ -139,7 +136,7 @@ export async function POST(request: Request) {
             return { jobId: job.id, status: 'skipped', reason: 'Scoring timed out.' };
           }
 
-          return { jobId: job.id, status: 'scored', score: score.total_score };
+          return { jobId: job.id, status: 'scored', score: score.total_score, isPartial: !isAdequate };
         } catch (e: any) {
           console.error(`Error in fetch-and-score for job ${job.id}:`, e.message);
           return { jobId: job.id, status: 'skipped', error: e.message };

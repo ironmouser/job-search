@@ -3,21 +3,48 @@ export { KNOWN_ATS_DOMAINS, isKnownATSUrl, isAggregatorUrl };
 
 const SCRAPERAPI_BASE = 'https://api.scraperapi.com';
 
+const BLOCKED_DOMAINS = [
+  'indeed.com',
+  'account.ycombinator.com',
+  'builtin.com',
+];
+
 /**
- * Fetches a URL through ScraperAPI with full JavaScript rendering.
- * Returns the rendered HTML string, or null if ScraperAPI is not configured or the request fails.
+ * Returns true if a domain is known to fail or heavily block ScraperAPI,
+ * preventing wasted credit consumption.
+ */
+export function isScraperApiBlockedDomain(url: string): boolean {
+  if (!url) return false;
+  try {
+    const parsedUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
+    const hostname = new URL(parsedUrl).hostname.toLowerCase();
+    return BLOCKED_DOMAINS.some(d => hostname === d || hostname.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetches a URL through ScraperAPI.
+ * Default is raw HTML (renderJs = false, 1 credit).
+ * Set renderJs = true only when client-side SPA rendering is required (costs 10-25x credits).
  *
  * @param url - The target URL to scrape
- * @param renderJs - Whether to enable JS rendering (default: true, needed for SPAs)
+ * @param renderJs - Whether to enable JS rendering (default: false to conserve credits)
  * @param timeoutMs - Request timeout in ms (default: 35 seconds)
  */
 export async function fetchWithScraperAPI(
   url: string,
-  renderJs = true,
+  renderJs = false,
   timeoutMs = 35_000
 ): Promise<string | null> {
   const apiKey = process.env.SCRAPERAPI_KEY;
   if (!apiKey) {
+    return null;
+  }
+
+  if (isScraperApiBlockedDomain(url)) {
+    console.info(`[ScraperAPI] Skipped blocked/low-yield domain: ${url}`);
     return null;
   }
 
@@ -46,7 +73,7 @@ export async function fetchWithScraperAPI(
         console.warn(`[ScraperAPI] API-level error for ${url}: ${body.slice(0, 200)}`);
         return null;
       }
-      console.info(`[ScraperAPI] Success for ${url} — body length: ${body.length}`);
+      console.info(`[ScraperAPI] Success for ${url} (js_render=${renderJs}) — body length: ${body.length}`);
       return body;
     }
 
