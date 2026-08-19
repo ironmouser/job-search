@@ -29,7 +29,7 @@
   --secondary: #1a1a1a;
   --secondary-foreground: #ededed;
   --muted: #1a1a1a;
-  --muted-foreground: #737373;
+  --muted-foreground: #a3a3a3;
   --accent: #1a1a1a;
   --accent-foreground: #ededed;
   --destructive: #ef4444;
@@ -55,7 +55,7 @@
   --border-glass: rgba(255, 255, 255, 0.08);
   --border-color: rgba(255, 255, 255, 0.12);
   --text-primary: #ededed;
-  --text-secondary: #737373;
+  --text-secondary: #a3a3a3;
   --accent-primary: #0070f3;
   --accent-secondary: #0060df;
   --accent-glow: rgba(0, 112, 243, 0.15);
@@ -318,7 +318,7 @@ details[open] summary .accordion-chevron {
 /* ─── Dashboard Top Section Banner (Mockup Spec) ─────────────────────────── */
 
 .dashboard-top-section {
-  border-bottom: 1px solid #0000000f;
+  border-bottom: 1px solid #cccccc26;
   padding: 2rem 2.5rem 1.5rem;
   background: #110c08 url(/hero-dark.jpg) 100% 0 / 70% no-repeat !important;
   margin: -2rem -2.5rem 50px !important;
@@ -459,47 +459,77 @@ body.light-theme .dashboard-top-section .add-job-url-btn:hover {
   }
 }
 
+/* Default Dark Mode Stat Cards (10% background opacity) */
 .dashboard-top-section .top-stat-card {
   border-radius: 12px !important;
-  background-color: #ffffff !important;
-  border: 1px solid rgba(226, 232, 240, 0.9) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
   transition: all 0.15s ease-in-out !important;
 }
 
 .dashboard-top-section .top-stat-card.active,
 .dashboard-top-section .top-stat-card.stat-card-found.active,
-body.light-theme .dashboard-top-section .top-stat-card.active,
 body:not(.light-theme) .dashboard-top-section .top-stat-card.active {
-  background-color: #bfdbfe !important;
+  background-color: rgba(59, 130, 246, 0.25) !important;
   border: 1px solid #3b82f6 !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
 }
 
 .stat-card-label {
   font-size: 0.85rem !important;
-  color: #475569 !important;
+  color: #e2e8f0 !important;
   font-weight: 500 !important;
   margin: 0 0 0.35rem 0 !important;
 }
 
 .stat-card-number {
   font-size: 2.25rem !important;
-  color: #0f172a !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
   margin: 0 !important;
   line-height: 1.1 !important;
 }
 
 .stat-card-number.number-blue {
-  color: #2563eb !important;
+  color: #60a5fa !important;
 }
 
 .stat-card-subtext-red {
-  color: #dc2626 !important;
+  color: #f87171 !important;
   font-size: 0.78rem !important;
   font-weight: 600 !important;
   margin-top: 0.25rem !important;
+}
+
+/* Light Theme Overrides for Stat Cards */
+body.light-theme .dashboard-top-section .top-stat-card {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-theme .dashboard-top-section .top-stat-card.active,
+body.light-theme .dashboard-top-section .top-stat-card.stat-card-found.active {
+  background-color: #bfdbfe !important;
+  border: 1px solid #3b82f6 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+}
+
+body.light-theme .stat-card-label {
+  color: #475569 !important;
+}
+
+body.light-theme .stat-card-number {
+  color: #0f172a !important;
+}
+
+body.light-theme .stat-card-number.number-blue {
+  color: #2563eb !important;
+}
+
+body.light-theme .stat-card-subtext-red {
+  color: #dc2626 !important;
 }
 
 /* ─── Scrape & Add Accordion Card (Dark & Light Mode) ─────────────────── */
@@ -1155,6 +1185,23 @@ body.light-theme .sidebar {
 body.light-theme .job-card:hover {
   border-color: rgba(0, 0, 0, 0.12);
   box-shadow: var(--shadow-md);
+}
+
+/* Visited Job Cards Border */
+.job-card.job-card-viewed {
+  border: 1px solid rgb(38 99 235 / 40%) !important;
+}
+
+body.light-theme .job-card.job-card-viewed {
+  border: 1px solid rgb(38, 99, 235) !important;
+}
+
+.job-row-viewed {
+  border-left: 4px solid rgb(38 99 235 / 40%) !important;
+}
+
+body.light-theme .job-row-viewed {
+  border-left: 4px solid rgb(38, 99, 235) !important;
 }
 
 /* Table view row hover */
@@ -2216,13 +2263,27 @@ footer {
   }
 }
 
-/* ─── Job Description Rendered Markdown ─────────────────────────────── */
+/* ─── Job Description Rendered Markdown & Job Details Typography ─────── */
+
+.job-meta {
+  color: #cbd5e1 !important;
+}
+
+body.light-theme .job-meta {
+  color: #475569 !important;
+}
+
+.job-description-content {
+  color: #e2e8f0 !important;
+}
 
 .job-description-content h1,
 .job-description-content h2,
 .job-description-content h3,
-.job-description-content h4 {
-  color: var(--foreground);
+.job-description-content h4,
+.job-description-content h5,
+.job-description-content h6 {
+  color: #ffffff !important;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
   font-weight: 600;
@@ -2233,24 +2294,28 @@ footer {
 .job-description-content h3 { font-size: 1rem; }
 
 .job-description-content p {
+  color: #e2e8f0 !important;
   margin-bottom: 0.85rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .job-description-content ul,
 .job-description-content ol {
+  color: #e2e8f0 !important;
   margin-top: 0.4rem;
   margin-bottom: 0.85rem;
   padding-left: 1.5rem;
 }
 
 .job-description-content li {
+  color: #e2e8f0 !important;
   margin-bottom: 0.35rem;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
-.job-description-content strong {
-  color: var(--foreground);
+.job-description-content strong,
+.job-description-content b {
+  color: #ffffff !important;
   font-weight: 600;
 }
 
@@ -2264,6 +2329,42 @@ footer {
 .job-description-content a:hover {
   color: inherit;
   text-decoration: none;
+}
+
+body.light-theme .job-description-content {
+  color: #1f2937 !important;
+}
+
+body.light-theme .job-description-content p,
+body.light-theme .job-description-content ul,
+body.light-theme .job-description-content ol,
+body.light-theme .job-description-content li {
+  color: #1f2937 !important;
+}
+
+body.light-theme .job-description-content h1,
+body.light-theme .job-description-content h2,
+body.light-theme .job-description-content h3,
+body.light-theme .job-description-content h4,
+body.light-theme .job-description-content h5,
+body.light-theme .job-description-content h6,
+body.light-theme .job-description-content strong,
+body.light-theme .job-description-content b {
+  color: #111827 !important;
+}
+
+.job-detail-sidebar {
+  color: #f1f5f9;
+}
+
+.job-detail-sidebar span,
+.job-detail-sidebar p {
+  color: #cbd5e1;
+}
+
+body.light-theme .job-detail-sidebar span,
+body.light-theme .job-detail-sidebar p {
+  color: #475569;
 }
 
 

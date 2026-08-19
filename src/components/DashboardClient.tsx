@@ -1786,7 +1786,7 @@ export default function DashboardClient({
                   
                   return (
                     <tr key={job.id} id={`job-item-${job.id}`} style={rowStyle}>
-                      <td style={{ padding: '1rem', borderLeft: isViewed ? '4px solid #2663EB' : '4px solid transparent' }}>
+                      <td className={isViewed ? 'job-row-viewed' : ''} style={{ padding: '1rem', borderLeft: isViewed ? undefined : '4px solid transparent' }}>
                         <input 
                           type="checkbox" 
                           checked={checkedJobs.has(job.id)} 
@@ -1914,17 +1914,9 @@ export default function DashboardClient({
             const isDisliked = feedbackObj?.feedback_type === 'dislike';
             const isViewed = !!(job.is_viewed || job.isViewed);
             
-            let cardBorder: string | undefined = undefined;
-            if (isViewed) {
-              cardBorder = '1px solid #2663EB';
-            } else if (isUserAdded) {
-              cardBorder = '1px solid rgba(168, 85, 247, 0.35)';
-            }
-
             const cardStyle: any = {
               opacity: isDisliked ? 0.5 : 1,
               boxShadow: isDisliked ? 'none' : undefined,
-              ...(cardBorder ? { border: cardBorder } : {}),
               ...(isUserAdded ? {
                 '--accent-primary': '#a855f7',
                 '--accent-secondary': '#9333ea',
@@ -1938,7 +1930,7 @@ export default function DashboardClient({
             };
             
             return (
-              <div key={job.id} id={`job-item-${job.id}`} className={`glass-card job-card${confettiJobId === job.id ? ' confetti' : ''}`} style={cardStyle}>
+              <div key={job.id} id={`job-item-${job.id}`} className={`glass-card job-card${isViewed ? ' job-card-viewed' : ''}${confettiJobId === job.id ? ' confetti' : ''}`} style={cardStyle}>
                 {/* Top Header: Company Name, Badges & Score */}
                 <div className="job-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.5rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

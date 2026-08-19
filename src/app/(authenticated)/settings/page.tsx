@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Database, Key, Bot, Search, Layout, FileText, Save, Mail, Target, PlayCircle, ExternalLink, Loader2, Bookmark, ChevronLeft, ChevronRight, CheckCircle2, Zap, HelpCircle, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
 import { useCommandBar } from '@/contexts/AutoApplyBarContext';
@@ -68,6 +68,8 @@ export default function SettingsPage() {
     const router = useRouter();
     const { setPageActions } = useCommandBar();
     const [settings, setSettings] = useState<any>({});
+    const settingsRef = useRef<any>({});
+    settingsRef.current = settings;
     const [initialSettings, setInitialSettings] = useState<any>(null);
     const [isDirty, setIsDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -215,8 +217,19 @@ export default function SettingsPage() {
     }, [isDirty]);
 
     const handleChange = useCallback((key: string, value: any) => {
-        setSettings((prev: any) => ({ ...prev, [key]: value }));
+        setSettings((prev: any) => {
+            const next = { ...prev, [key]: value };
+            settingsRef.current = next;
+            return next;
+        });
         setIsDirty(true);
+        if (key === 'theme') {
+            if (value === 'dark') {
+                document.body.classList.remove('light-theme');
+            } else {
+                document.body.classList.add('light-theme');
+            }
+        }
     }, []);
 
     const handleProviderChange = (provider: string) => {
@@ -246,6 +259,7 @@ export default function SettingsPage() {
         fetch('/api/settings', { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
+                settingsRef.current = data;
                 setSettings(data);
                 setInitialSettings(JSON.parse(JSON.stringify(data)));
                 setIsDirty(false);
@@ -261,7 +275,8 @@ export default function SettingsPage() {
         setSaving(true);
         try {
             const isOverride = settingsOverride && typeof settingsOverride === 'object' && !('nativeEvent' in settingsOverride) && !('target' in settingsOverride);
-            const settingsToSave = isOverride ? { ...settingsOverride } : { ...settings };
+            const currentSettings = settingsRef.current && Object.keys(settingsRef.current).length > 0 ? settingsRef.current : settings;
+            const settingsToSave = isOverride ? { ...settingsOverride } : { ...currentSettings };
             if (settingsToSave.customCareerPages) {
                 settingsToSave.customCareerPages = settingsToSave.customCareerPages.filter((u: string) => u.trim() !== '');
             }
@@ -277,6 +292,7 @@ export default function SettingsPage() {
             if (savedState.emailAppPassword && savedState.emailAppPassword !== '********') {
                 savedState.emailAppPassword = '********';
             }
+            settingsRef.current = savedState;
             setSettings(savedState);
             setInitialSettings(JSON.parse(JSON.stringify(savedState)));
             setIsDirty(false);
