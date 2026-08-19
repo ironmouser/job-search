@@ -3279,10 +3279,7 @@ body.light-theme .command-bar-btn:not(.command-bar-btn-primary):not(.command-bar
 
 /* ─── Step 3 Apply Popover Menu ───────────────────────────────────────── */
 .job-apply-popover {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   background: #0d1117;
   border: 1px solid rgba(59, 130, 246, 0.4);
   border-radius: 12px;
@@ -3292,7 +3289,7 @@ body.light-theme .command-bar-btn:not(.command-bar-btn-primary):not(.command-bar
   gap: 0.35rem;
   min-width: 195px;
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(59, 130, 246, 0.2);
-  z-index: 9970;
+  z-index: 9999;
   animation: popoverFadeIn 0.15s ease-out;
 }
 
@@ -3300,6 +3297,14 @@ body.light-theme .job-apply-popover {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .job-apply-popover .command-bar-btn {
+  color: #0f172a !important;
+}
+
+body.light-theme .job-apply-popover .command-bar-btn:hover {
+  background: #f1f5f9 !important;
 }
 
 @keyframes popoverFadeIn {
@@ -3756,57 +3761,6 @@ body:not(.light-theme) .job-step-btn:hover {
   color: #0f172a;
   font-size: 0.75rem;
   font-weight: 700;
-}
-
-@keyframes popoverUp {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 8px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-.job-apply-popover {
-  position: absolute;
-  bottom: 3.25rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
-  padding: 0.5rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 190px;
-  z-index: 1010;
-  animation: popoverUp 0.18s ease-out forwards;
-}
-
-.job-apply-option-btn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: #0f172a;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.12s ease;
-  width: 100%;
-  text-align: left;
-}
-
-.job-apply-option-btn:hover {
-  background: #f1f5f9;
 }
 
 /* ─── Workspace Setup Checklist in Sidebar ─────────────────────────────────── */

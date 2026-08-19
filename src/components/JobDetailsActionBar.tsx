@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
@@ -48,12 +49,19 @@ export default function JobDetailsActionBar({
 
   const [sequence, setSequence] = useState<any[]>([]);
   const [loadingSeq, setLoadingSeq] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [showApplyPopover, setShowApplyPopover] = useState(false);
+  const [popoverCoords, setPopoverCoords] = useState<{ bottom: number; left: number } | null>(null);
+  const applyBtnRef = useRef<HTMLButtonElement | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAutoApplying, setIsAutoApplying] = useState(false);
   const [isJitResumeOpen, setIsJitResumeOpen] = useState(false);
   const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
   const prefetchedJobs = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setLocalHasAssets(hasAssets);
@@ -273,6 +281,41 @@ export default function JobDetailsActionBar({
     }
   };
 
+  const updatePopoverCoords = useCallback(() => {
+    if (applyBtnRef.current) {
+      const rect = applyBtnRef.current.getBoundingClientRect();
+      setPopoverCoords({
+        bottom: window.innerHeight - rect.top + 8,
+        left: rect.left + rect.width / 2,
+      });
+    }
+  }, []);
+
+  const toggleApplyPopover = useCallback(() => {
+    if (status === 'applied') {
+      const element = document.getElementById('step-3-apply');
+      if (element) element.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+    if (!showApplyPopover) {
+      updatePopoverCoords();
+      setShowApplyPopover(true);
+    } else {
+      setShowApplyPopover(false);
+    }
+  }, [status, showApplyPopover, updatePopoverCoords]);
+
+  useEffect(() => {
+    if (!showApplyPopover) return;
+    updatePopoverCoords();
+    window.addEventListener('resize', updatePopoverCoords);
+    window.addEventListener('scroll', updatePopoverCoords, true);
+    return () => {
+      window.removeEventListener('resize', updatePopoverCoords);
+      window.removeEventListener('scroll', updatePopoverCoords, true);
+    };
+  }, [showApplyPopover, updatePopoverCoords]);
+
   const handleStep4QA = () => {
     trackDockAction('step4_qa', currentJobId);
     const element = document.getElementById('step-4-qa');
@@ -356,90 +399,10 @@ export default function JobDetailsActionBar({
 
         {/* Step 3: Apply (with Dropup Options) */}
         <div style={{ position: 'relative' }}>
-          {showApplyPopover && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 9960,
-              }}
-              onClick={() => setShowApplyPopover(false)}
-            />
-          )}
-
-          {showApplyPopover && (
-            <div className="job-apply-popover">
-              <button
-                type="button"
-                onClick={handleStep3AutoApply}
-                disabled={isAutoApplying}
-                className="command-bar-btn"
-                style={{
-                  width: '100%',
-                  justifyContent: 'space-between',
-                  padding: '0.45rem 0.65rem',
-                  borderRadius: '8px',
-                  background: 'rgba(99, 102, 241, 0.14)',
-                  border: '1px solid rgba(99, 102, 241, 0.35)',
-                  color: '#ffffff',
-                }}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
-                  <Zap size={14} style={{ color: '#fbbf24' }} /> Auto Apply
-                </span>
-                <span style={{
-                  fontSize: '0.68rem',
-                  background: 'rgba(251, 191, 36, 0.2)',
-                  color: '#fbbf24',
-                  padding: '0.1rem 0.45rem',
-                  borderRadius: '9999px',
-                  fontWeight: 700,
-                }}>
-                  1-Click
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleStep3ApplyDirectly}
-                className="command-bar-btn"
-                style={{
-                  width: '100%',
-                  justifyContent: 'space-between',
-                  padding: '0.45rem 0.65rem',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: 'var(--text-primary, #ffffff)',
-                }}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
-                  <ExternalLink size={14} style={{ color: '#38bdf8' }} /> Apply Directly
-                </span>
-                <span style={{
-                  fontSize: '0.68rem',
-                  background: 'rgba(56, 189, 248, 0.15)',
-                  color: '#38bdf8',
-                  padding: '0.1rem 0.45rem',
-                  borderRadius: '9999px',
-                  fontWeight: 700,
-                }}>
-                  Direct
-                </span>
-              </button>
-            </div>
-          )}
-
           <button
+            ref={applyBtnRef}
             type="button"
-            onClick={() => {
-              if (status === 'applied') {
-                const element = document.getElementById('step-3-apply');
-                if (element) element.scrollIntoView({ behavior: 'smooth' });
-              } else {
-                setShowApplyPopover(prev => !prev);
-              }
-            }}
+            onClick={toggleApplyPopover}
             disabled={isAutoApplying}
             className={`command-bar-btn ${status === 'applied' ? '' : 'command-bar-btn-primary'}`}
             style={status === 'applied' ? { background: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981', color: '#34d399' } : {}}
@@ -533,6 +496,7 @@ export default function JobDetailsActionBar({
     prevJob,
     nextJob,
     setPageActions,
+    toggleApplyPopover,
   ]);
 
 
@@ -556,6 +520,93 @@ export default function JobDetailsActionBar({
           handleStep2Generate();
         }}
       />
+
+      {/* Apply Dropup Popover rendered via Portal into document.body to prevent parent overflow clipping */}
+      {mounted && showApplyPopover && popoverCoords && typeof document !== 'undefined' && createPortal(
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9998,
+              background: 'transparent',
+            }}
+            onClick={() => setShowApplyPopover(false)}
+          />
+          <div
+            className="job-apply-popover"
+            style={{
+              position: 'fixed',
+              bottom: `${popoverCoords.bottom}px`,
+              left: `${popoverCoords.left}px`,
+              transform: 'translateX(-50%)',
+              zIndex: 9999,
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleStep3AutoApply}
+              disabled={isAutoApplying}
+              className="command-bar-btn"
+              style={{
+                width: '100%',
+                justifyContent: 'space-between',
+                padding: '0.45rem 0.65rem',
+                borderRadius: '8px',
+                background: 'rgba(99, 102, 241, 0.14)',
+                border: '1px solid rgba(99, 102, 241, 0.35)',
+                color: '#ffffff',
+                cursor: isAutoApplying ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
+                <Zap size={14} style={{ color: '#fbbf24' }} /> Auto Apply
+              </span>
+              <span style={{
+                fontSize: '0.68rem',
+                background: 'rgba(251, 191, 36, 0.2)',
+                color: '#fbbf24',
+                padding: '0.1rem 0.45rem',
+                borderRadius: '9999px',
+                fontWeight: 700,
+              }}>
+                1-Click
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleStep3ApplyDirectly}
+              className="command-bar-btn"
+              style={{
+                width: '100%',
+                justifyContent: 'space-between',
+                padding: '0.45rem 0.65rem',
+                borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: 'var(--text-primary, #ffffff)',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
+                <ExternalLink size={14} style={{ color: '#38bdf8' }} /> Apply Directly
+              </span>
+              <span style={{
+                fontSize: '0.68rem',
+                background: 'rgba(56, 189, 248, 0.15)',
+                color: '#38bdf8',
+                padding: '0.1rem 0.45rem',
+                borderRadius: '9999px',
+                fontWeight: 700,
+              }}>
+                Direct
+              </span>
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }

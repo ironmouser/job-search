@@ -27,17 +27,29 @@ export class TaleoPlugin extends ATSPlugin {
     for (const u of allUrls) {
       try {
         const hostname = new URL(u).hostname.toLowerCase();
-        if (hostname.endsWith('.taleo.net') || hostname.endsWith('.taleo.com')) {
+        if (
+          hostname.endsWith('.taleo.net') ||
+          hostname.endsWith('.taleo.com') ||
+          hostname.includes('oraclecloud.com') ||
+          hostname.includes('oracle.com')
+        ) {
           confidence += 85;
-          detectedFeatures.push('hostname:taleo.net');
+          detectedFeatures.push('hostname:oracle/taleo');
           break;
         }
       } catch {}
     }
 
-    if (html.includes('class="taleo"') || html.includes('data-taleo') || html.includes('taleo.min.js')) {
+    if (
+      html.includes('class="taleo"') ||
+      html.includes('data-taleo') ||
+      html.includes('taleo.min.js') ||
+      html.includes('oraclecloud') ||
+      html.includes('oracle-fusion') ||
+      html.includes('hcmUI/CandidateExperience')
+    ) {
       confidence += 15;
-      detectedFeatures.push('html:taleo');
+      detectedFeatures.push('html:oracle/taleo');
     }
 
     return {

@@ -33,6 +33,8 @@ export interface CandidateInfo {
   className: string;
   tagName: string;
   role: string;
+  dataUrl?: string;
+  onclick?: string;
 }
 
 export interface ClassificationResult {
@@ -55,6 +57,8 @@ const KNOWN_ATS_DOMAINS = [
   'smartrecruiters.com',
   'icims.com',
   'taleo.net',
+  'taleo.com',
+  'oraclecloud.com',
   'recruitee.com',
   'bamboohr.com',
   'workforcenow.adp.com',
@@ -213,6 +217,20 @@ function isSocialDomain(url: string): boolean {
   return SOCIAL_DOMAINS.some(d => href.includes(d));
 }
 
+/**
+ * Extracts destination URL from an inline onclick handler string.
+ * Supports window.open('...'), location.href = '...', etc.
+ */
+export function extractUrlFromOnclick(onclick: string): string | null {
+  if (!onclick) return null;
+  const match = onclick.match(/(?:window\.open|location\.href|location\.assign|window\.location)\s*\(\s*['"]([^'"]+)['"]/i)
+    || onclick.match(/(?:location\.href|window\.location)\s*=\s*['"]([^'"]+)['"]/i);
+  if (match && match[1] && (match[1].startsWith('http://') || match[1].startsWith('https://') || match[1].startsWith('/'))) {
+    return match[1];
+  }
+  return null;
+}
+
 // ─── Candidate Classifier ─────────────────────────────────────────────────────
 
 /**
@@ -220,13 +238,22 @@ function isSocialDomain(url: string): boolean {
  * Returns the classification, whether it's accepted, the reason, and the resolved href.
  */
 export function classifyCandidate(
-  info: Pick<CandidateInfo, 'text' | 'href' | 'ariaLabel' | 'title' | 'dataTracking' | 'className' | 'id' | 'tagName' | 'role'>,
+  info: Pick<CandidateInfo, 'text' | 'href' | 'ariaLabel' | 'title' | 'dataTracking' | 'className' | 'id' | 'tagName' | 'role'> & Partial<Pick<CandidateInfo, 'dataUrl' | 'onclick'>>,
   sourceBoardUrl: string
 ): ClassificationResult {
-  const rawHref = info.href.trim();
-  const text = info.text.trim();
-  const allText = `${text} ${info.ariaLabel} ${info.title}`.trim();
-  const allAttrs = `${info.dataTracking} ${info.className} ${info.id}`.toLowerCase();
+  let rawHref = (info.href || '').trim();
+  if (!rawHref || rawHref === '#' || rawHref.startsWith('javascript:')) {
+    if (info.dataUrl && info.dataUrl.trim()) {
+      rawHref = info.dataUrl.trim();
+    } else if (info.onclick) {
+      const onclickUrl = extractUrlFromOnclick(info.onclick);
+      if (onclickUrl) rawHref = onclickUrl;
+    }
+  }
+
+  const text = (info.text || '').trim();
+  const allText = `${text} ${info.ariaLabel || ''} ${info.title || ''}`.trim();
+  const allAttrs = `${info.dataTracking || ''} ${info.className || ''} ${info.id || ''}`.toLowerCase();
 
   // Attempt to resolve redirect params first
   const redirectDest = rawHref ? extractRedirectDestination(rawHref) : null;
@@ -263,19 +290,26 @@ export function classifyCandidate(
     return { classification: CandidateClassification.NAV_LINK, accepted: false, reason: 'Matches navigation page path or text', resolvedHref };
   }
 
-  // ── 7. Application action buttons (no href needed, text-driven) ───────────
+  // ── 7. Application action buttons (with or without extractable URL) ──────
   if (APPLY_TEXT_REGEX.test(allText) || /apply/i.test(allAttrs)) {
     // If it has an external href pointing away from the job board, it's an APPLICATION_LINK
     if (resolvedHref && !isAggregatorDomain(resolvedHref) && resolvedHref.startsWith('http')) {
       return { classification: CandidateClassification.APPLICATION_LINK, accepted: true, reason: 'External link with apply-context text', resolvedHref };
     }
-    // Otherwise it's an action button (e.g. triggers navigation on click)
-    return { classification: CandidateClassification.APPLICATION_ACTION_BUTTON, accepted: true, reason: 'Apply-context button — will click to trigger navigation', resolvedHref };
+    // If it has an aggregator redirect URL
+    if (resolvedHref && AGGREGATOR_REDIRECT_URL_REGEX.test(resolvedHref)) {
+      return { classification: CandidateClassification.AGGREGATOR_REDIRECT, accepted: true, reason: 'Apply action with redirect URL', resolvedHref };
+    }
+    // Otherwise it's an action button (will click to trigger navigation if no direct URL exists)
+    return { classification: CandidateClassification.APPLICATION_ACTION_BUTTON, accepted: true, reason: 'Apply-context button — will click to trigger navigation if direct URL not found', resolvedHref };
   }
 
   // ── 8. Continue to application buttons ───────────────────────────────────
   const continueApplyRegex = /\b(continue to (application|employer|company|apply)|proceed to application|go to application|take me to application)\b/i;
   if (continueApplyRegex.test(allText)) {
+    if (resolvedHref && !isAggregatorDomain(resolvedHref) && resolvedHref.startsWith('http')) {
+      return { classification: CandidateClassification.APPLICATION_LINK, accepted: true, reason: 'Continue link with external application URL', resolvedHref };
+    }
     return { classification: CandidateClassification.MODAL_CONTINUE_BUTTON, accepted: true, reason: 'Application-context continue/proceed button', resolvedHref };
   }
 

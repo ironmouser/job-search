@@ -34,7 +34,22 @@ interface CommandBarContextType {
   triggerRefresh: () => void;
 }
 
-const CommandBarContext = createContext<CommandBarContextType | undefined>(undefined);
+const defaultContextValue: CommandBarContextType = {
+  selectionState: null,
+  setSelectionState: () => {},
+  pageActions: null,
+  setPageActions: () => {},
+  isExpanded: false,
+  setIsExpanded: () => {},
+  activeDrawerTab: null,
+  setActiveDrawerTab: () => {},
+  drawerContent: null,
+  setDrawerContent: () => {},
+  refreshTrigger: 0,
+  triggerRefresh: () => {},
+};
+
+const CommandBarContext = createContext<CommandBarContextType>(defaultContextValue);
 
 export function AutoApplyBarProvider({ children }: { children: React.ReactNode }) {
   const [selectionState, _setSelectionState] = useState<AutoApplySelectionState | null>(null);
@@ -102,12 +117,9 @@ export function AutoApplyBarProvider({ children }: { children: React.ReactNode }
   );
 }
 
-export function useCommandBar() {
+export function useCommandBar(): CommandBarContextType {
   const context = useContext(CommandBarContext);
-  if (!context) {
-    throw new Error('useCommandBar must be used within an AutoApplyBarProvider');
-  }
-  return context;
+  return context ?? defaultContextValue;
 }
 
 // Backward compatibility alias

@@ -30,22 +30,26 @@ interface ClickThroughResult {
   candidateReports: CandidateReport[];
 }
 
+interface DomDiscoveryResult {
+  directUrl: string | null;
+  bestClickTarget: any | null;
+  inPageAnchorTarget: any | null;
+}
+
 /**
  * AggregatorHandler
  *
- * Inspects pages when the initial job URL is an aggregator (LinkedIn, Indeed, ZipRecruiter,
- * BuiltIn, etc.) or a custom company careers portal.
+ * Implements a deterministic 4-phase destination discovery and application navigation flow
+ * when the initial job URL is an aggregator (LinkedIn, Indeed, ZipRecruiter, BuiltIn, etc.)
+ * or a custom company careers portal.
  *
- * Features:
- *  1. Candidate classification — every link/button is classified before following.
- *  2. Destination validation — validates the URL before handing off to ATS detection.
- *  3. Network response interception — catches dynamically generated apply URLs from XHR/fetch.
- *  4. Proper modal wait strategy — waits for modal to render rather than using fixed timeouts.
- *  5. Multi-step modal handling — dismisses auth gates and re-scans.
- *  6. Redirect URL extraction — resolves ?url= / ?redirect_url= params in tracking links.
- *  7. Structured diagnostics logging — every candidate logged with acceptance verdict.
- *  8. Failure-only screenshots — captures modal state only when no accepted candidate found.
- *  9. Embedded iframe inspection — Greenhouse, Lever, Ashby, etc.
+ * Phases:
+ *  Phase 1 — Destination Discovery: Scans links, buttons with data-url, and metadata for candidates.
+ *  Phase 2 — Destination Validation: Filters out non-application targets and validates external destinations.
+ *  Phase 3 — Application Navigation:
+ *            - Strategy A (Priority 1): Direct navigation via page.goto(url) if a validated destination URL exists.
+ *            - Strategy B (Priority 2): Click + Observe fallback if candidate is a pure button with no extractable URL.
+ *  Phase 4 — ATS Detection: Landed page inspection (handled by WorkflowEngine / Registry).
  */
 export class AggregatorHandler {
   /**
@@ -64,7 +68,7 @@ export class AggregatorHandler {
         const frameHtml = await frame.content().catch(() => '');
         const match = pluginRegistry.detect(frameUrl, frameHtml, []);
         if (match && match.plugin.platform !== ATSPlatform.UNKNOWN && match.result.confidence >= 50) {
-          await logger.info('aggregator_handler', `Detected embedded ATS in iframe: ${match.plugin.displayName} (${frameUrl})`);
+          await logger.info('ats_detection', `Detected embedded ATS in iframe: ${match.plugin.displayName} (${frameUrl})`);
           return match;
         }
       }
@@ -75,7 +79,7 @@ export class AggregatorHandler {
   }
 
   /**
-   * Attempts to find and follow the Apply button or link on the page.
+   * Discovers and navigates to the application destination on the page.
    * Returns a ClickThroughResult with navigation status and per-candidate diagnostic reports.
    */
   static async attemptClickThrough(
@@ -99,12 +103,12 @@ export class AggregatorHandler {
 
     const bodyLen = await page.evaluate(() => (document.body?.innerText ?? '').length).catch(() => 0);
     if (bodyLen < 300) {
-      await logger.warn('aggregator_handler', `Page body too short (${bodyLen} chars) — may be bot-blocked. Proceeding with available content.`);
+      await logger.warn('destination_discovery', `Page body too short (${bodyLen} chars) — may be bot-blocked. Proceeding with available content.`);
     }
 
-    await logger.info('aggregator_handler', `Scanning page for Apply actions at ${page.url()}...`);
+    await logger.info('destination_discovery', `Phase 1: Scanning page for application destinations at ${page.url()}...`);
 
-    // ── Pre-click: Neutralize invisible backdrop overlays ─────────────────────
+    // ── Neutralize invisible backdrop overlays ────────────────────────────────
     await page.evaluate(() => {
       document.querySelectorAll('.modal__overlay, .top-level-modal-container').forEach((el) => {
         const style = window.getComputedStyle(el);
@@ -119,7 +123,7 @@ export class AggregatorHandler {
       });
     }).catch(() => {});
 
-    // ─── 1. Check JSON-LD directApply URL ──────────────────────────────────
+    // ─── 1. Check JSON-LD directApply / JobPosting metadata ───────────────────
     try {
       const jsonLdUrls: string[] = await page.$$eval('script[type="application/ld+json"]', (scripts) => {
         const found: string[] = [];
@@ -139,78 +143,51 @@ export class AggregatorHandler {
         if (!rawUrl || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) continue;
         const validation = isLegitimateApplicationDestination(rawUrl, currentUrl);
         if (validation.valid) {
-          await logger.info('aggregator_handler', `Found valid application URL in JSON-LD metadata: ${rawUrl} (${validation.reason})`);
+          await logger.info('destination_discovery', `Found valid application destination in JSON-LD metadata: ${rawUrl} (${validation.reason})`);
+          await logger.info('application_navigation', `Phase 3: Direct navigation to JSON-LD destination: ${rawUrl}`);
           await page.goto(rawUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
           return { navigated: true, candidateReports: [] };
         } else {
-          await logger.info('aggregator_handler', `JSON-LD URL rejected: ${rawUrl} — ${validation.reason}`);
+          await logger.info('destination_validation', `JSON-LD URL rejected: ${rawUrl} — ${validation.reason}`);
         }
       }
     } catch {}
 
-    // ─── 2. Scan pre-click DOM candidates ──────────────────────────────────
-    const preClickResult = await AggregatorHandler._scanDomCandidates(browser, logger, currentUrl, allCandidateReports);
-    if (preClickResult) {
-      return { navigated: true, candidateReports: allCandidateReports };
+    // ─── 2. Phase 1 & 2: Discover and validate DOM candidates ─────────────────
+    const discovery = await AggregatorHandler._discoverDomCandidates(browser, logger, currentUrl, allCandidateReports);
+
+    // ─── 3. Phase 3 Strategy A: Direct Navigation (Priority 1) ────────────────
+    if (discovery.directUrl) {
+      await logger.info('application_navigation', `Phase 3: Direct navigation to accepted destination URL: ${discovery.directUrl}`);
+      try {
+        await page.goto(discovery.directUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+        return { navigated: true, candidateReports: allCandidateReports };
+      } catch (err: any) {
+        await logger.warn('application_navigation', `Direct navigation failed: ${err.message}. Falling back to click/observe...`);
+      }
     }
 
-    // ─── 3. Find best Apply button to click ────────────────────────────────
-    const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|start application|submit application|easy apply|quick apply|apply with resume|apply online)\b/i;
-    const BUTTON_BLOCKLIST_REGEX = /\b(next|back|previous|save|cancel|skip|draft|login|sign in|create alert|share|report|follow|bookmark|return to search|back to search)\b/i;
-
-    const candidateSelector = 'a, button, [role="button"], [role="link"], input[type="button"], input[type="submit"], [data-automation-id*="apply" i], [data-tracking-control-name*="apply" i], [id*="apply" i], [class*="apply" i]';
-    const candidates = await page.$$(candidateSelector).catch(() => []);
-
-    let bestClickTarget: any = null;
-    let inPageAnchorTarget: any = null;
-
-    for (const el of candidates) {
+    // ─── 4. In-page anchor scroll ──────────────────────────────────────────────
+    if (discovery.inPageAnchorTarget) {
       try {
-        const isVisible = await el.isVisible().catch(() => false);
-        if (!isVisible) continue;
-
-        const text = ((await el.textContent().catch(() => null)) ?? '').trim();
-        const ariaLabel = (await el.getAttribute('aria-label').catch(() => null)) ?? '';
-        const href = (await el.getAttribute('href').catch(() => null)) ?? '';
-        const id = (await el.getAttribute('id').catch(() => null)) ?? '';
-        const className = (await el.getAttribute('class').catch(() => null)) ?? '';
-
-        if (BUTTON_BLOCKLIST_REGEX.test(text) && !APPLY_TEXT_REGEX.test(text)) continue;
-
-        // In-page anchor
-        if (href && (href.startsWith('#') || href.includes('#apply') || href.includes('#grnhse') || href.includes('#application'))) {
-          inPageAnchorTarget = el;
-          continue;
-        }
-
-        const hasApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
-        const hasApplyAttr = /apply/i.test(`${id} ${className}`);
-        if ((hasApplyText || hasApplyAttr) && !bestClickTarget) {
-          bestClickTarget = el;
-        }
-      } catch {}
-    }
-
-    // ─── 4. In-page anchor scroll ──────────────────────────────────────────
-    if (inPageAnchorTarget) {
-      try {
-        await logger.info('aggregator_handler', 'Clicking in-page Apply anchor...');
-        await inPageAnchorTarget.scrollIntoViewIfNeeded().catch(() => {});
-        await inPageAnchorTarget.click().catch(() => inPageAnchorTarget.evaluate((n: HTMLElement) => n.click()));
+        await logger.info('application_navigation', 'Phase 3: Clicking in-page Apply anchor...');
+        await discovery.inPageAnchorTarget.scrollIntoViewIfNeeded().catch(() => {});
+        await discovery.inPageAnchorTarget.click().catch(() => discovery.inPageAnchorTarget.evaluate((n: HTMLElement) => n.click()));
         await page.waitForTimeout(1500);
         return { navigated: true, candidateReports: allCandidateReports };
       } catch {}
     }
 
-    // ─── 5. Click Apply button + capture network responses + modal scan ────
-    if (bestClickTarget) {
+    // ─── 5. Phase 3 Strategy B: Click + Observe Fallback (Priority 2) ──────────
+    // Only used if no usable destination URL was extracted from any candidate element
+    if (discovery.bestClickTarget) {
       try {
-        await logger.info('aggregator_handler', 'Clicking candidate Apply button...');
-        await bestClickTarget.scrollIntoViewIfNeeded().catch(() => {});
+        await logger.info('application_navigation', 'Phase 3: No direct destination URL exposed. Executing Click + Observe fallback...');
+        await discovery.bestClickTarget.scrollIntoViewIfNeeded().catch(() => {});
 
         const context = page.context();
 
-        // ── Network interception: capture XHR/fetch responses for apply URLs ──
+        // Network interception: catch dynamically generated apply URLs from API responses
         let networkApplyUrl: string | null = null;
         const responseHandler = async (response: any) => {
           try {
@@ -218,7 +195,6 @@ export class AggregatorHandler {
             const ct = response.headers()['content-type'] ?? '';
             if (!ct.includes('application/json')) return;
             const url = response.url() as string;
-            // Only inspect API responses, not static assets
             if (!url.includes('/api/') && !url.includes('/graphql') && !url.includes('/jobs/') && !url.includes('/apply')) return;
             const body = await response.text().catch(() => '');
             const extracted = extractApplicationUrlFromJson(body);
@@ -226,23 +202,23 @@ export class AggregatorHandler {
               const validation = isLegitimateApplicationDestination(extracted, currentUrl);
               if (validation.valid) {
                 networkApplyUrl = extracted;
-                await logger.info('aggregator_handler', `Network interception: captured application URL from API response: ${extracted}`);
+                await logger.info('destination_discovery', `Network interception: captured application destination URL: ${extracted}`);
               }
             }
           } catch {}
         };
         page.on('response', responseHandler);
 
-        // Click helper: normal → force → DOM eval
+        // Click helper: standard → force → native DOM eval
         const performClick = async (target: any) => {
           try {
             await target.click({ timeout: 3000 });
           } catch {
-            await logger.info('aggregator_handler', 'Standard click blocked. Retrying with force click...');
+            await logger.info('application_navigation', 'Standard click blocked. Retrying with force click...');
             try {
               await target.click({ force: true, timeout: 3000 });
             } catch {
-              await logger.info('aggregator_handler', 'Force click intercepted. Falling back to native DOM click...');
+              await logger.info('application_navigation', 'Force click intercepted. Falling back to native DOM click...');
               await target.evaluate((node: HTMLElement) => {
                 node.scrollIntoView({ block: 'center' });
                 node.click();
@@ -254,9 +230,9 @@ export class AggregatorHandler {
         const pagePromise = context.waitForEvent('page', { timeout: 10000 }).catch(() => null);
         const navPromise = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => null);
 
-        await performClick(bestClickTarget);
+        await performClick(discovery.bestClickTarget);
 
-        // Check for new tab
+        // Check for new popup tab
         let newPage = await Promise.race([pagePromise, navPromise.then(() => null)]);
         if (!newPage) {
           const allPages = context.pages();
@@ -266,28 +242,25 @@ export class AggregatorHandler {
           }
         }
 
-        // Tear down network listener
         page.off('response', responseHandler);
 
         if (newPage) {
-          await logger.info('aggregator_handler', 'Apply button opened a new tab. Switching to new tab...');
+          await logger.info('application_navigation', 'Apply action opened a new browser tab. Switching to new tab...');
           await newPage.waitForLoadState('domcontentloaded').catch(() => {});
           (browser as any)._page = newPage;
           await page.close().catch(() => {});
           return { navigated: true, candidateReports: allCandidateReports };
         }
 
-        // Network-intercepted URL takes priority
         if (networkApplyUrl) {
-          await logger.info('aggregator_handler', `Navigating to network-intercepted application URL: ${networkApplyUrl}`);
+          await logger.info('application_navigation', `Phase 3: Direct navigation to network-intercepted URL: ${networkApplyUrl}`);
           await page.goto(networkApplyUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
           return { navigated: true, candidateReports: allCandidateReports };
         }
 
-        // ── Modal scan: wait for modal to appear (replaces fixed waitForTimeout) ──
+        // Modal scan: wait for modal dialog to render
         const modalAppeared = await Promise.race([
           page.waitForSelector('[role="dialog"], [aria-modal="true"], .modal, .sign-up-modal, [class*="modal"]', { timeout: 5000 }).then(() => true),
-          // Also resolve quickly if URL already changed (direct navigation)
           page.waitForFunction((initial: string) => window.location.href !== initial, currentUrl, { timeout: 1000 }).then(() => false).catch(() => false),
         ]).catch(() => false);
 
@@ -297,14 +270,13 @@ export class AggregatorHandler {
           );
           if (modalResult) return { navigated: true, candidateReports: allCandidateReports };
 
-          // Multi-step modal: if only auth/signup links found, try dismissing and re-scanning
+          // Multi-step modal: if only auth gates encountered, dismiss and re-scan
           const onlyAuthCandidates = allCandidateReports.length > 0 &&
             allCandidateReports.every(r => !r.accepted && (r.classification === CandidateClassification.AUTH_LINK || r.classification === CandidateClassification.NAV_LINK));
 
           if (onlyAuthCandidates) {
-            await logger.info('aggregator_handler', 'Modal appears to be an auth gate. Attempting to dismiss and re-scan...');
+            await logger.info('application_navigation', 'Modal appears to be an auth gate. Attempting dismiss and re-scan...');
             await AggregatorHandler._dismissModal(page);
-            // Brief stabilization wait after dismiss
             await page.waitForTimeout(800);
             const secondModalAppeared = await page.waitForSelector(
               '[role="dialog"], [aria-modal="true"], .modal, [class*="modal"]',
@@ -320,122 +292,156 @@ export class AggregatorHandler {
           }
         }
 
-        // Check if URL changed (non-modal navigation)
+        // Check if URL changed on current page
         const newUrl = browser.page.url();
         if (newUrl !== currentUrl) {
-          await logger.info('aggregator_handler', `Navigation complete. Current URL: ${newUrl}`);
+          await logger.info('application_navigation', `Navigation complete. Landed URL: ${newUrl}`);
           return { navigated: true, candidateReports: allCandidateReports };
         }
 
       } catch (err: any) {
-        page.off('response', () => {}); // ensure cleanup
-        await logger.warn('aggregator_handler', `Failed to click Apply button: ${err.message}`);
+        page.off('response', () => {});
+        await logger.warn('application_navigation', `Click + Observe fallback encountered error: ${err.message}`);
       }
     }
 
-    // ─── 6. No navigation succeeded — capture failure screenshot ───────────
+    // ─── 6. No navigation succeeded — capture diagnostic screenshot ───────────
     if (sessionId) {
       try {
-        const screenshotKey = `screenshots/diagnostics/${sessionId}_modal_failure.png`;
+        const screenshotKey = `screenshots/diagnostics/${sessionId}_destination_failure.png`;
         const url = await uploadBrowserScreenshot(browser, screenshotKey);
         if (url) {
-          await logger.info('aggregator_handler', `Diagnostic screenshot captured (no accepted candidates): ${url}`, { screenshotUrl: url });
+          await logger.info('aggregator_handler', `Diagnostic screenshot captured: ${url}`, { screenshotUrl: url });
         }
-      } catch {
-        // Non-fatal, best effort
-      }
+      } catch {}
     }
 
-    await logger.warn('aggregator_handler', 'No valid application destination found on this page.');
+    await logger.warn('aggregator_handler', 'Phase 1 & 2: No valid application destination found on this page.');
     return { navigated: false, candidateReports: allCandidateReports };
   }
 
   // ─── Private Helpers ──────────────────────────────────────────────────────
 
   /**
-   * Scans DOM links (pre-click) for direct ATS or redirect URLs.
-   * Returns true if navigation was triggered.
+   * Phase 1 & 2: Discovers and validates all DOM candidate links, buttons, and data-url attributes.
+   * Resolves the best direct navigation destination or click target.
    */
-  private static async _scanDomCandidates(
+  private static async _discoverDomCandidates(
     browser: BrowserSession,
     logger: ExecutionLogger,
     sourceBoardUrl: string,
     reports: CandidateReport[]
-  ): Promise<boolean> {
+  ): Promise<DomDiscoveryResult> {
     const page = browser.page;
-    const KNOWN_ATS_REGEX = /(greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|workday\.com|workable\.com|smartrecruiters\.com|icims\.com|taleo\.net|recruitee\.com|bamboohr\.com)/i;
-    const AGGREGATOR_REDIRECT_REGEX = /(externalApply|\/apply-redirect|\/rc\/clk|\/job\/apply|\/apply\?|apply-link-offsite)/i;
+    const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|submit application|easy apply|quick apply|apply with resume|apply online|continue to application)\b/i;
+    const BUTTON_BLOCKLIST_REGEX = /\b(next|back|previous|save|cancel|skip|draft|login|sign in|create alert|share|report|follow|bookmark|return to search|back to search)\b/i;
 
-    const allLinks = await page.$$('a[href]').catch(() => []);
-    let directAtsLink: string | null = null;
-    let redirectLink: string | null = null;
-    let candidateIndex = 0;
+    const candidateSelector = 'a, button, [role="button"], [role="link"], input[type="button"], input[type="submit"], [data-automation-id*="apply" i], [data-tracking-control-name*="apply" i], [id*="apply" i], [class*="apply" i], [data-url], [data-href], [data-apply-url], [data-job-url]';
+    const elements = await page.$$(candidateSelector).catch(() => []);
 
-    for (const el of allLinks) {
+    let directUrl: string | null = null;
+    let directUrlPriority = 0; // 3: DIRECT_ATS_LINK, 2: APPLICATION_LINK, 1: AGGREGATOR_REDIRECT
+    let bestClickTarget: any = null;
+    let inPageAnchorTarget: any = null;
+    let candidateIndex = reports.length;
+
+    for (const el of elements) {
       try {
         const isVisible = await el.isVisible().catch(() => false);
         if (!isVisible) continue;
 
-        const href = (await el.getAttribute('href').catch(() => null)) ?? '';
-        if (!href || href.startsWith('#')) continue;
-
         const text = ((await el.textContent().catch(() => null)) ?? '').trim();
         const ariaLabel = (await el.getAttribute('aria-label').catch(() => null)) ?? '';
         const title = (await el.getAttribute('title').catch(() => null)) ?? '';
+        const href = (await el.getAttribute('href').catch(() => null)) ?? '';
+        const dataUrlAttr = (await el.getAttribute('data-url').catch(() => null))
+          || (await el.getAttribute('data-href').catch(() => null))
+          || (await el.getAttribute('data-apply-url').catch(() => null))
+          || (await el.getAttribute('data-job-url').catch(() => null))
+          || (await el.getAttribute('data-target-url').catch(() => null))
+          || (await el.getAttribute('data-target').catch(() => null))
+          || '';
+        const onclick = (await el.getAttribute('onclick').catch(() => null)) ?? '';
         const dataTracking = (await el.getAttribute('data-tracking-control-name').catch(() => null)) ?? '';
         const id = (await el.getAttribute('id').catch(() => null)) ?? '';
         const className = (await el.getAttribute('class').catch(() => null)) ?? '';
+        const tagName = (await el.evaluate((n: Element) => n.tagName.toLowerCase()).catch(() => '')) as string;
+        const role = (await el.getAttribute('role').catch(() => null)) ?? '';
+
+        if (BUTTON_BLOCKLIST_REGEX.test(text) && !APPLY_TEXT_REGEX.test(text)) continue;
+
+        // In-page anchor check
+        if (href && (href.startsWith('#') || href.includes('#apply') || href.includes('#grnhse') || href.includes('#application'))) {
+          if (!inPageAnchorTarget) inPageAnchorTarget = el;
+          continue;
+        }
 
         let absoluteHref = href;
-        try { absoluteHref = new URL(href, page.url()).href; } catch {}
+        if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+          try { absoluteHref = new URL(href, page.url()).href; } catch {}
+        }
+
+        let absoluteDataUrl = dataUrlAttr;
+        if (dataUrlAttr && !dataUrlAttr.startsWith('#') && !dataUrlAttr.startsWith('javascript:')) {
+          try { absoluteDataUrl = new URL(dataUrlAttr, page.url()).href; } catch {}
+        }
 
         const result = classifyCandidate({
-          text, href: absoluteHref, ariaLabel, title, dataTracking, id, className, tagName: 'a', role: ''
+          text,
+          href: absoluteHref,
+          ariaLabel,
+          title,
+          dataTracking,
+          id,
+          className,
+          tagName,
+          role,
+          dataUrl: absoluteDataUrl,
+          onclick,
         }, sourceBoardUrl);
 
-        reports.push({
+        const report: CandidateReport = {
           index: ++candidateIndex,
           text: text.slice(0, 80),
-          href: absoluteHref,
+          href: absoluteHref || absoluteDataUrl,
           resolvedHref: result.resolvedHref,
           ariaLabel: ariaLabel.slice(0, 80),
           classification: result.classification,
           accepted: result.accepted,
           reason: result.reason,
-        });
+        };
+        reports.push(report);
 
-        if (result.accepted && result.resolvedHref) {
-          if (result.classification === CandidateClassification.DIRECT_ATS_LINK || KNOWN_ATS_REGEX.test(result.resolvedHref)) {
-            directAtsLink = result.resolvedHref;
-            break;
-          }
-          if (!redirectLink && (result.classification === CandidateClassification.AGGREGATOR_REDIRECT || AGGREGATOR_REDIRECT_REGEX.test(result.resolvedHref))) {
-            redirectLink = result.resolvedHref;
+        if (result.accepted) {
+          // If the candidate exposes a usable external destination URL
+          if (result.resolvedHref && result.resolvedHref.startsWith('http')) {
+            const validation = isLegitimateApplicationDestination(result.resolvedHref, sourceBoardUrl);
+            if (validation.valid) {
+              let priority = 1;
+              if (result.classification === CandidateClassification.DIRECT_ATS_LINK) priority = 3;
+              else if (result.classification === CandidateClassification.APPLICATION_LINK) priority = 2;
+
+              if (priority > directUrlPriority) {
+                directUrl = result.resolvedHref;
+                directUrlPriority = priority;
+              }
+            }
+          } else {
+            // Candidate has no extractable URL — save for Click + Observe fallback
+            const hasApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
+            const hasApplyAttr = /apply/i.test(`${id} ${className} ${dataTracking}`);
+            if ((hasApplyText || hasApplyAttr) && !bestClickTarget) {
+              bestClickTarget = el;
+            }
           }
         }
       } catch {}
     }
 
-    // Log all candidates
-    await AggregatorHandler._logCandidateReports(logger, reports, 'pre_click_dom_scan');
+    // Log all candidate evaluations in Phase 1 / Phase 2
+    await AggregatorHandler._logCandidateReports(logger, reports, 'destination_discovery');
 
-    if (directAtsLink) {
-      await logger.info('aggregator_handler', `Navigating directly to ATS URL: ${directAtsLink}`);
-      await page.goto(directAtsLink, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      return true;
-    }
-
-    if (redirectLink) {
-      await logger.info('aggregator_handler', `Following aggregator redirect URL: ${redirectLink}`);
-      try {
-        await page.goto(redirectLink, { waitUntil: 'domcontentloaded', timeout: 25000 });
-        return true;
-      } catch (err: any) {
-        await logger.warn('aggregator_handler', `Redirect navigation failed: ${err.message}`);
-      }
-    }
-
-    return false;
+    return { directUrl, bestClickTarget, inPageAnchorTarget };
   }
 
   /**
@@ -453,24 +459,24 @@ export class AggregatorHandler {
     const passLabel = isSecondPass ? 'modal_scan_pass_2' : 'modal_scan_pass_1';
     const modalReports: CandidateReport[] = [];
 
-    await logger.info('aggregator_handler', `${passLabel}: Scanning modal for application links and buttons...`);
+    await logger.info('destination_discovery', `${passLabel}: Scanning modal for application destinations...`);
 
     const modalSelector = 'div[role="dialog"], [aria-modal="true"], .sign-up-modal, [class*="modal"], .popup, [class*="dialog"]';
     const modalElements = await page.$$(modalSelector).catch(() => []);
 
-    // Collect all links and buttons inside modals
     const elementsToCheck: any[] = [];
     for (const modal of modalElements) {
-      const links = await modal.$$('a[href], button, [role="button"]').catch(() => []);
+      const links = await modal.$$('a, button, [role="button"], [role="link"], input[type="button"], input[type="submit"]').catch(() => []);
       elementsToCheck.push(...links);
     }
 
-    // Also check tracking-attribute links outside modals (LinkedIn pattern)
+    // Check tracking-attribute links (e.g. LinkedIn offsite apply buttons)
     const trackingLinks = await page.$$('a[data-tracking-control-name*="apply"], a[data-tracking-control-name*="offsite"]').catch(() => []);
     elementsToCheck.push(...trackingLinks);
 
     let candidateIndex = reports.length;
     let targetUrl: string | null = null;
+    let targetUrlPriority = 0;
     let targetButton: any = null;
 
     for (const el of elementsToCheck) {
@@ -480,26 +486,47 @@ export class AggregatorHandler {
 
         const text = ((await el.textContent().catch(() => null)) ?? '').trim();
         const href = (await el.getAttribute('href').catch(() => null)) ?? '';
+        const dataUrlAttr = (await el.getAttribute('data-url').catch(() => null))
+          || (await el.getAttribute('data-href').catch(() => null))
+          || (await el.getAttribute('data-apply-url').catch(() => null))
+          || '';
+        const onclick = (await el.getAttribute('onclick').catch(() => null)) ?? '';
         const ariaLabel = (await el.getAttribute('aria-label').catch(() => null)) ?? '';
         const title = (await el.getAttribute('title').catch(() => null)) ?? '';
         const dataTracking = (await el.getAttribute('data-tracking-control-name').catch(() => null)) ?? '';
         const id = (await el.getAttribute('id').catch(() => null)) ?? '';
         const className = (await el.getAttribute('class').catch(() => null)) ?? '';
         const tagName = (await el.evaluate((n: Element) => n.tagName.toLowerCase()).catch(() => '')) as string;
+        const role = (await el.getAttribute('role').catch(() => null)) ?? '';
 
         let absoluteHref = href;
-        if (href && !href.startsWith('#')) {
+        if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
           try { absoluteHref = new URL(href, page.url()).href; } catch {}
         }
 
+        let absoluteDataUrl = dataUrlAttr;
+        if (dataUrlAttr && !dataUrlAttr.startsWith('#')) {
+          try { absoluteDataUrl = new URL(dataUrlAttr, page.url()).href; } catch {}
+        }
+
         const result = classifyCandidate({
-          text, href: absoluteHref, ariaLabel, title, dataTracking, id, className, tagName, role: ''
+          text,
+          href: absoluteHref,
+          ariaLabel,
+          title,
+          dataTracking,
+          id,
+          className,
+          tagName,
+          role,
+          dataUrl: absoluteDataUrl,
+          onclick,
         }, sourceBoardUrl);
 
         const report: CandidateReport = {
           index: ++candidateIndex,
           text: text.slice(0, 80),
-          href: absoluteHref,
+          href: absoluteHref || absoluteDataUrl,
           resolvedHref: result.resolvedHref,
           ariaLabel: ariaLabel.slice(0, 80),
           classification: result.classification,
@@ -512,16 +539,17 @@ export class AggregatorHandler {
         if (result.accepted) {
           if (result.resolvedHref && result.resolvedHref.startsWith('http')) {
             const validation = isLegitimateApplicationDestination(result.resolvedHref, sourceBoardUrl);
-            if (validation.valid && !targetUrl) {
-              // Prioritize direct ATS links
-              if (result.classification === CandidateClassification.DIRECT_ATS_LINK) {
+            if (validation.valid) {
+              let priority = 1;
+              if (result.classification === CandidateClassification.DIRECT_ATS_LINK) priority = 3;
+              else if (result.classification === CandidateClassification.APPLICATION_LINK) priority = 2;
+
+              if (priority > targetUrlPriority) {
                 targetUrl = result.resolvedHref;
-                break;
+                targetUrlPriority = priority;
               }
-              if (!targetUrl) targetUrl = result.resolvedHref;
             }
           } else if (tagName === 'button' || !result.resolvedHref) {
-            // Button that triggers navigation — capture for click
             if (!targetButton) targetButton = el;
           }
         }
@@ -530,16 +558,16 @@ export class AggregatorHandler {
 
     await AggregatorHandler._logCandidateReports(logger, modalReports, passLabel);
 
-    // Navigate to URL if found
+    // Direct Navigation from modal if destination URL found
     if (targetUrl) {
-      await logger.info('aggregator_handler', `${passLabel}: Found valid application link in modal: ${targetUrl}`);
+      await logger.info('application_navigation', `${passLabel}: Found valid destination link in modal. Navigating directly: ${targetUrl}`);
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
       return true;
     }
 
-    // Click button if found (e.g. "Apply on company site" button with no href)
+    // Fallback: Click button in modal if no direct URL exists
     if (targetButton) {
-      await logger.info('aggregator_handler', `${passLabel}: Clicking application action button in modal...`);
+      await logger.info('application_navigation', `${passLabel}: Clicking application action button in modal...`);
       const ctx = page.context();
       const tabPromise = ctx.waitForEvent('page', { timeout: 8000 }).catch(() => null);
       const navPromise = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 8000 }).catch(() => null);
@@ -571,7 +599,6 @@ export class AggregatorHandler {
    * Attempts to dismiss an active modal (close button → Escape → backdrop click).
    */
   private static async _dismissModal(page: any): Promise<void> {
-    // Try close button
     const closeSelectors = [
       '[aria-label="Dismiss"]', '[aria-label="Close"]', '[aria-label="close"]',
       'button.close', 'button[class*="close"]', 'button[class*="dismiss"]',
@@ -587,12 +614,11 @@ export class AggregatorHandler {
         }
       }
     }
-    // Try Escape key
     await page.keyboard.press('Escape').catch(() => {});
   }
 
   /**
-   * Emits structured diagnostics log entries for a set of candidate reports.
+   * Emits structured diagnostics log entries for candidate reports.
    */
   private static async _logCandidateReports(
     logger: ExecutionLogger,
@@ -608,7 +634,7 @@ export class AggregatorHandler {
         `  Candidate #${r.index}: [${verdict}] [${r.classification}]`,
         `    text: "${r.text || '(none)'}"`,
         `    href: ${r.href || '(none)'}`,
-        r.resolvedHref !== r.href ? `    resolved: ${r.resolvedHref}` : '',
+        r.resolvedHref && r.resolvedHref !== r.href ? `    resolved: ${r.resolvedHref}` : '',
         `    reason: ${r.reason}`,
       );
     }
