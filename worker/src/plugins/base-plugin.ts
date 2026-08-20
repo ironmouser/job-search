@@ -489,7 +489,7 @@ export abstract class ATSPlugin {
 
     if (typeof target === 'string') {
       locator = ctx.locator(target).first();
-    } else if ('click' in target && 'fill' in target && typeof (target as any).pressSequentially === 'function') {
+    } else if ('click' in target && 'fill' in target && 'pressSequentially' in target) {
       locator = target as import('playwright').Locator;
     } else {
       handle = target as import('playwright').ElementHandle;

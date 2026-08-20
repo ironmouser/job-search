@@ -6,7 +6,7 @@
  * processes multi-step wizards, and validates form readiness.
  */
 
-import { Frame, Locator, Page } from 'playwright';
+import { Frame, Page } from 'playwright';
 import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import {
