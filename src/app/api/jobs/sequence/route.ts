@@ -125,7 +125,13 @@ export async function GET(request: Request) {
     if (activeFilter === 'archived') {
       result = result.filter(j => j.is_archived);
     } else {
-      result = result.filter(j => !j.is_archived);
+      result = result.filter(j => {
+        if (j.is_archived) return false;
+        const score = j.opportunity_scores?.[0]?.totalScore;
+        // Auto-filter out low-match jobs (score < 25) from active feed
+        if (score !== undefined && score !== null && score < 25) return false;
+        return true;
+      });
       if (activeFilter === 'scored') {
         result = result.filter(j => j.isScored);
       } else if (activeFilter === 'high_fit') {

@@ -198,6 +198,7 @@ export default function DashboardClient({
 
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
+  const [minScoreFilter, setMinScoreFilter] = useState<number>(25);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
   const [sortOption, setSortOption] = useState<SortOptionType>('role_match');
@@ -339,7 +340,8 @@ export default function DashboardClient({
     startDate ||
     endDate ||
     locationFilter.length > 0 ||
-    sortOption !== 'role_match'
+    sortOption !== 'role_match' ||
+    minScoreFilter !== 25
   );
 
   const searchParams = useSearchParams();
@@ -455,6 +457,7 @@ export default function DashboardClient({
         if (stateFromStorage.endDate !== undefined) setEndDate(stateFromStorage.endDate);
         if (stateFromStorage.keywordFilter !== undefined) setKeywordFilter(stateFromStorage.keywordFilter);
         if (stateFromStorage.searchRole !== undefined) setSearchRole(stateFromStorage.searchRole);
+        if (stateFromStorage.minScoreFilter !== undefined) setMinScoreFilter(stateFromStorage.minScoreFilter);
       } catch (e) {
         console.error('Failed to parse dashboard state from local storage', e);
       }
@@ -560,6 +563,7 @@ export default function DashboardClient({
     if (!isLoaded) return;
     localStorage.setItem('jobAgentDashboardState', JSON.stringify({
       activeFilter,
+      minScoreFilter,
       viewMode,
       sortOption,
       locationFilter,
@@ -583,7 +587,7 @@ export default function DashboardClient({
       params.set('limit', itemsPerPage.toString());
       window.history.replaceState(null, '', `?${params.toString()}`);
     }
-  }, [activeFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, itemsPerPage, currentPage, isLoaded]);
+  }, [activeFilter, minScoreFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, itemsPerPage, currentPage, isLoaded]);
 
 
   const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
@@ -657,7 +661,14 @@ export default function DashboardClient({
     return job.status || 'discovered';
   };
 
-  const unarchivedJobs = jobList?.filter(j => !j.is_archived) || [];
+  const unarchivedJobs = jobList?.filter(j => {
+    if (j.is_archived) return false;
+    const scoreVal = j.opportunity_scores?.[0]?.total_score;
+    if (minScoreFilter > 0 && scoreVal !== undefined && scoreVal !== null && scoreVal < minScoreFilter) {
+      return false;
+    }
+    return true;
+  }) || [];
   const totalDiscovered = unarchivedJobs.length;
   const totalScored = unarchivedJobs.filter(j => hasJobScore(j)).length;
   const highlyScored = unarchivedJobs.filter(j => j.opportunity_scores?.[0]?.total_score >= 80).length;
@@ -954,11 +965,19 @@ export default function DashboardClient({
       result = result.filter(j => new Date(j.created_at) <= end);
     }
 
-    // 1. Apply Status Filter
+    // 1. Apply Status Filter & Minimum Score Threshold
     if (activeFilter === 'archived') {
       result = result.filter(j => j.is_archived);
     } else {
-      result = result.filter(j => !j.is_archived);
+      result = result.filter(j => {
+        if (j.is_archived) return false;
+        const scoreVal = j.opportunity_scores?.[0]?.total_score;
+        // Auto-hide low-match jobs (score < minScoreFilter, default 25)
+        if (minScoreFilter > 0 && scoreVal !== undefined && scoreVal !== null && scoreVal < minScoreFilter) {
+          return false;
+        }
+        return true;
+      });
       
       if (activeFilter === 'scored') {
         result = result.filter(j => hasJobScore(j));
@@ -1066,7 +1085,7 @@ export default function DashboardClient({
     });
 
     return result;
-  }, [jobList, activeFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter, searchRole, searchKeyword]);
+  }, [jobList, activeFilter, minScoreFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter, searchRole, searchKeyword]);
 
   const isInitialMount = useRef(true);
 
@@ -1076,7 +1095,7 @@ export default function DashboardClient({
       return;
     }
     changePage(1);
-  }, [activeFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole]);
+  }, [activeFilter, minScoreFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / itemsPerPage));
   
@@ -2350,6 +2369,8 @@ export default function DashboardClient({
         setSortOption={setSortOption}
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}
+        minScore={minScoreFilter}
+        setMinScore={setMinScoreFilter}
       />
 
       {/* Dashboard Search Jobs Modal (from Bottom Command Bar) */}

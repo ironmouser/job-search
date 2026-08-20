@@ -10,10 +10,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { disliked, viewed, applied, archived, checked, checkedJobIds, olderThanDays, shortDescription } = await request.json();
+    const { disliked, viewed, applied, archived, checked, checkedJobIds, olderThanDays, shortDescription, lowScore } = await request.json();
     const userId = session.user.id;
 
-    // Protection rule: General cleanup filters (olderThanDays, viewed, disliked, shortDescription)
+    // Protection rule: General cleanup filters (olderThanDays, viewed, disliked, shortDescription, lowScore)
     // MUST NOT touch active pipeline jobs or saved/archived jobs.
     const protectedExclusion = {
       isArchived: false,
@@ -22,6 +22,13 @@ export async function POST(request: Request) {
     };
 
     const conditions: any[] = [];
+
+    if (lowScore) {
+      conditions.push({
+        ...protectedExclusion,
+        job: { opportunityScores: { some: { userId, totalScore: { lt: 25 } } } }
+      });
+    }
 
     if (shortDescription) {
       const allUserJobs = await prisma.userJob.findMany({

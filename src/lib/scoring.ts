@@ -245,10 +245,19 @@ Return a JSON object strictly matching this schema:
             create: { jobId: jobId, userId: userId, ...scorePayload }
         });
 
-        // Update the user's specific job relation to 'scored'
+        // Update the user's specific job relation to 'scored', auto-archiving if totalScore < 25 (unless applied/interviewing)
+        const existingUj = await prisma.userJob.findUnique({
+            where: { userId_jobId: { userId: userId, jobId: jobId } },
+            select: { status: true, isArchived: true }
+        });
+        const shouldAutoArchive = totalScore < 25 && existingUj && existingUj.status !== 'applied' && existingUj.status !== 'interviewing';
+
         await prisma.userJob.update({
             where: { userId_jobId: { userId: userId, jobId: jobId } },
-            data: { status: 'scored' }
+            data: { 
+                status: 'scored',
+                ...(shouldAutoArchive ? { isArchived: true } : {})
+            }
         });
 
         // If salary was extracted, update the global job record
@@ -415,9 +424,17 @@ Return ONLY a JSON object strictly matching this schema:
                 create: { jobId: matchingJob.id, userId, ...scorePayload }
             });
 
-            await prisma.userJob.update({
-                where: { userId_jobId: { userId, jobId: matchingJob.id } },
-                data: { status: 'scored' }
+            const isBatchAutoArchived = totalScore < 25;
+            await prisma.userJob.updateMany({
+                where: { 
+                    userId, 
+                    jobId: matchingJob.id,
+                    status: { notIn: ['applied', 'interviewing'] }
+                },
+                data: { 
+                    status: 'scored',
+                    ...(isBatchAutoArchived ? { isArchived: true } : {})
+                }
             }).catch(() => {});
 
             if (item.extracted_salary) {

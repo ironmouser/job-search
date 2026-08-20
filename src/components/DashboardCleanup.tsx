@@ -38,6 +38,7 @@ export default function DashboardCleanup({
   }, []);
   
   const [filters, setFilters] = useState({
+    lowScore: false,
     disliked: false,
     viewed: false,
     applied: false,
@@ -47,7 +48,7 @@ export default function DashboardCleanup({
   });
 
   const handleCleanup = async () => {
-    if (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays) {
+    if (!filters.lowScore && !filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays) {
       alert("Please select at least one criteria for cleanup.");
       return;
     }
@@ -56,6 +57,7 @@ export default function DashboardCleanup({
       setIsCleaning(true);
       try {
         const payload = {
+          lowScore: filters.lowScore,
           disliked: filters.disliked,
           viewed: filters.viewed,
           applied: filters.applied,
@@ -75,7 +77,7 @@ export default function DashboardCleanup({
           const data = await res.json();
           alert(`Successfully deleted ${data.count} jobs.`);
           handleClose();
-          setFilters({ disliked: false, viewed: false, applied: false, archived: false, checked: false, olderThanDays: '' });
+          setFilters({ lowScore: false, disliked: false, viewed: false, applied: false, archived: false, checked: false, olderThanDays: '' });
           onCleanupComplete();
         } else {
           const error = await res.json();
@@ -122,11 +124,21 @@ export default function DashboardCleanup({
             <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '8px', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <AlertCircle size={20} color="var(--danger)" style={{ flexShrink: 0, marginTop: '2px' }} />
               <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                Warning: Jobs matching the selected criteria will be hidden from your dashboard.
+                Warning: Jobs matching the selected criteria will be permanently deleted.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={filters.lowScore}
+                  onChange={(e) => setFilters(prev => ({ ...prev, lowScore: e.target.checked }))}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                <span>Remove jobs with <strong>low match score (&lt; 25)</strong></span>
+              </label>
+
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
                 <input 
                   type="checkbox" 

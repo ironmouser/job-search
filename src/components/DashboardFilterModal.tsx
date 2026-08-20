@@ -24,6 +24,8 @@ interface DashboardFilterModalProps {
   setSortOption?: (val: SortOptionType) => void;
   activeFilter?: 'all' | 'scored' | 'high_fit' | 'archived';
   setActiveFilter?: (val: 'all' | 'scored' | 'high_fit' | 'archived') => void;
+  minScore?: number;
+  setMinScore?: (val: number) => void;
 }
 
 export default function DashboardFilterModal({
@@ -44,7 +46,9 @@ export default function DashboardFilterModal({
   sortOption = 'role_match',
   setSortOption,
   activeFilter = 'all',
-  setActiveFilter
+  setActiveFilter,
+  minScore = 25,
+  setMinScore
 }: DashboardFilterModalProps) {
   const setPresetDateRange = (preset: 'all' | 'today' | 7 | 30) => {
     if (preset === 'all') {
@@ -70,6 +74,7 @@ export default function DashboardFilterModal({
     setLocationFilter([]);
     if (setSortOption) setSortOption('role_match');
     if (setActiveFilter) setActiveFilter('all');
+    if (setMinScore) setMinScore(25);
   };
 
   return (
@@ -155,6 +160,49 @@ export default function DashboardFilterModal({
                         style={{
                           padding: '0.4rem 0.75rem',
                           fontSize: '0.825rem',
+                          borderRadius: '20px',
+                          border: isSelected ? '1px solid #0070f3' : '1px solid var(--border)',
+                          background: isSelected ? 'rgba(0, 112, 243, 0.1)' : 'var(--background)',
+                          color: isSelected ? '#0070f3' : 'var(--foreground)',
+                          fontWeight: isSelected ? 600 : 400,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {isSelected && <Check size={14} />}
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Minimum Match Score Filter */}
+            {setMinScore && (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                  Minimum Match Score
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  {[
+                    { val: 25, label: 'Hide < 25 (Default)' },
+                    { val: 0, label: 'Show All (0+)' },
+                    { val: 50, label: '50%+' },
+                    { val: 80, label: '80%+ (High Fit)' }
+                  ].map(opt => {
+                    const isSelected = (minScore ?? 25) === opt.val;
+                    return (
+                      <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() => setMinScore(opt.val)}
+                        style={{
+                          padding: '0.35rem 0.7rem',
+                          fontSize: '0.8rem',
                           borderRadius: '20px',
                           border: isSelected ? '1px solid #0070f3' : '1px solid var(--border)',
                           background: isSelected ? 'rgba(0, 112, 243, 0.1)' : 'var(--background)',
