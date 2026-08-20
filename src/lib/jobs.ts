@@ -148,6 +148,7 @@ export async function normalizeAndSaveJobs(
         if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} international listing${dropped === 1 ? '' : 's'} based on your location preferences`);
     }
 
+    const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const excludeTerms = excludeKeywordsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
     const includeTerms = includeKeywordsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
@@ -155,7 +156,14 @@ export async function normalizeAndSaveJobs(
         const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => {
             const contentLower = `${j.title} ${j.company} ${j.description || ''}`.toLowerCase();
-            const hit = excludeTerms.find(term => contentLower.includes(term));
+            const hit = excludeTerms.find(term => {
+                try {
+                    const regex = new RegExp(`\\b${escapeRegex(term)}\\b`, 'i');
+                    return regex.test(contentLower);
+                } catch {
+                    return contentLower.includes(term);
+                }
+            });
             if (hit) {
                 console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to excluded keyword: "${hit}"`);
                 return false;
@@ -170,12 +178,20 @@ export async function normalizeAndSaveJobs(
         const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => {
             const desc = j.description || '';
-            const isStubOnly = /^found via email link:\s*https?:/i.test(desc.trim());
+            const isStubOrShortEmail = isEmailSync && (desc.length < 500 || /^found via email link:\s*https?:/i.test(desc.trim()));
+            if (isStubOrShortEmail) return true;
+
             const contentLower = `${j.title} ${desc}`.toLowerCase();
-            const match = includeTerms.some(term => contentLower.includes(term));
+            const match = includeTerms.some(term => {
+                try {
+                    const regex = new RegExp(`\\b${escapeRegex(term)}\\b`, 'i');
+                    return regex.test(contentLower);
+                } catch {
+                    return contentLower.includes(term);
+                }
+            });
 
             if (match) return true;
-            if (isEmailSync && isStubOnly) return true;
 
             console.log(`[Pre-Filter] Discarding "${j.title}" at "${j.company}" due to missing required keywords.`);
             return false;

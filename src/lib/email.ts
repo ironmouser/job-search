@@ -52,27 +52,59 @@ const KNOWN_JOB_SENDERS = [
 
 const JOB_KEYWORDS = [
   'job',
+  'jobs',
   'role',
+  'roles',
   'opportunity',
+  'opportunities',
   'career',
+  'careers',
   'hiring',
-  'engineer',
-  'developer',
+  'hire',
   'position',
-  'application',
-  'interview',
+  'positions',
   'opening',
-  'alert',
-  'match',
-  'matches',
-  'recommended',
+  'openings',
+  'posting',
+  'postings',
+  'application',
   'applied',
   'applicant',
   'candidate',
+  'interview',
   'recruiter',
+  'recruiting',
   'employment',
   'talent',
   'offer',
+  'alert',
+  'alerts',
+  'match',
+  'matches',
+  'recommended',
+  'recommendations',
+  'digest',
+  'engineer',
+  'engineering',
+  'developer',
+  'development',
+  'manager',
+  'management',
+  'lead',
+  'head',
+  'director',
+  'vp',
+  'designer',
+  'design',
+  'analyst',
+  'analytics',
+  'scientist',
+  'architect',
+  'specialist',
+  'consultant',
+  'intern',
+  'associate',
+  'remote',
 ];
 
 const PERSONAL_DOMAINS = [
@@ -164,7 +196,14 @@ export async function fetchEmailsAndExtractJobs(
         const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
         const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
 
-        if (isFromSelf || isKnownJobSender || hasJobKeyword) {
+        // Dynamically check against the candidate's target job titles / search keywords
+        const userKeywords = [prefs.searchKeyword]
+          .filter(Boolean)
+          .flatMap(s => String(s).toLowerCase().split(/[\s,]+/))
+          .filter(t => t.length > 2);
+        const matchesUserKeyword = userKeywords.some(kw => combinedHeader.includes(kw));
+
+        if (isFromSelf || isKnownJobSender || hasJobKeyword || matchesUserKeyword) {
           candidateHeaders.push({
             uid: message.uid,
             subject,
@@ -232,8 +271,8 @@ export async function fetchEmailsAndExtractJobs(
 
           if (!effectiveText && allUrls.length === 0) continue;
 
-          // Focus snippet for AI processing (first 4,000 chars is sufficient for job titles/snippets)
-          const textSnippet = effectiveText.slice(0, 4000);
+          // Focus snippet for AI processing (12,000 chars captures complete job alert digests)
+          const textSnippet = effectiveText.slice(0, 12000);
 
           candidatePayloads.push({
             subject,
@@ -245,7 +284,7 @@ EMAIL TEXT:
 ${textSnippet}
 
 LINKS FOUND IN EMAIL:
-${allUrls.slice(0, 30).join('\n')}
+${allUrls.slice(0, 60).join('\n')}
             `.trim(),
           });
         } catch (msgErr) {
@@ -328,10 +367,14 @@ ${allUrls.slice(0, 30).join('\n')}
         }
       }
 
-      // Stage 5: Save & Normalize
+      // Stage 5: Save & Normalize (skip redundant AI triage pass since email extraction already triaged)
       let newJobsSaved = 0;
       if (rawJobs.length > 0) {
-        const result: any = await normalizeAndSaveJobs(rawJobs, userId, { isEmailSync: true, onProgress });
+        const result: any = await normalizeAndSaveJobs(rawJobs, userId, {
+          isEmailSync: true,
+          skipAiTriage: true,
+          onProgress,
+        });
         newJobsSaved = typeof result?.newSavedCount === 'number' ? result.newSavedCount : (result?.length || rawJobs.length);
       }
 

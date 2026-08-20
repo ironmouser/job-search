@@ -34,6 +34,20 @@ export const extractStateAbbr = (loc: string): string | null => {
   return null;
 };
 
+export const MAJOR_US_CITIES = [
+  'new york', 'new york city', 'nyc', 'los angeles', 'chicago', 'houston', 'phoenix', 'philadelphia',
+  'san antonio', 'san diego', 'dallas', 'austin', 'san jose', 'fort worth', 'jacksonville',
+  'columbus', 'charlotte', 'indianapolis', 'san francisco', 'seattle', 'denver', 'oklahoma city',
+  'nashville', 'el paso', 'washington dc', 'washington d.c.', 'boston', 'las vegas', 'portland',
+  'detroit', 'louisville', 'memphis', 'baltimore', 'milwaukee', 'albuquerque', 'fresno',
+  'tucson', 'sacramento', 'mesa', 'kansas city', 'atlanta', 'omaha', 'colorado springs',
+  'raleigh', 'long beach', 'virginia beach', 'miami', 'oakland', 'minneapolis', 'tulsa',
+  'tampa', 'arlington', 'new orleans', 'wichita', 'cleveland', 'bakersfield', 'honolulu',
+  'pittsburgh', 'st louis', 'st. louis', 'cincinnati', 'orlando', 'salt lake city',
+  'palo alto', 'sunnyvale', 'mountain view', 'cupertino', 'redwood city', 'santa clara',
+  'irvine', 'bellevue', 'boulder', 'cambridge'
+];
+
 // Returns true if a location string looks like it's in the United States
 export const isUsLocation = (loc: string): boolean => {
   if (!loc) return false;
@@ -41,6 +55,7 @@ export const isUsLocation = (loc: string): boolean => {
   if (l.includes('united states') || l === 'us' || l === 'usa') return true;
   if (/\bus\b/.test(l)) return true;
   if (extractStateAbbr(loc) !== null) return true;
+  if (MAJOR_US_CITIES.some(city => new RegExp(`\\b${city.replace(/\./g, '\\.')}\\b`, 'i').test(l))) return true;
   return false;
 };
 

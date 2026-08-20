@@ -493,20 +493,22 @@ export async function extractJobsFromEmailText(
         criteriaPrompt += `\nCANDIDATE PRIMARY CRITERIA:\n`;
         criteriaPrompt += `Target Job Title / Field: ${options.searchKeyword}\n`;
         if (options.jobLevel) criteriaPrompt += `Preferred Level: ${options.jobLevel}\n`;
-        if (options.includeKeywords) criteriaPrompt += `Must Include Keywords: ${options.includeKeywords}\n`;
-        if (options.excludeKeywords) criteriaPrompt += `Must Exclude Keywords: ${options.excludeKeywords}\n`;
-        criteriaPrompt += `\nCRITICAL FILTERING INSTRUCTION: Only extract job postings that closely align with the candidate's target job title and field. STRICTLY IGNORE job postings for unrelated career tracks or industries (for example, if target is Software Engineer, IGNORE warehouse worker, store associate, driver, or administrative roles).\n`;
+        if (options.includeKeywords) criteriaPrompt += `Target Keywords: ${options.includeKeywords}\n`;
+        if (options.excludeKeywords) criteriaPrompt += `Exclude Keywords: ${options.excludeKeywords}\n`;
+        criteriaPrompt += `\nEXTRACTION GUIDELINES: Extract job postings that are relevant, adjacent, or in the same general career field as the target job title (for example, if target is Software Engineer, include Frontend, Backend, Full Stack, Platform, or Tech Lead roles). Exclude completely unrelated industries/fields (e.g. retail, warehouse, or driving jobs if candidate is in tech).\n`;
     }
 
-    const prompt = `You are a highly accurate data extraction AI.
-Extract job postings mentioned in the following email text that align with the candidate's criteria.
+    const prompt = `You are an expert data extraction assistant.
+Extract all legitimate job postings mentioned in the following email text that could be relevant to the candidate.
 ${criteriaPrompt}
+For each job listing found, associate it with its corresponding job link from the text or the LINKS FOUND IN EMAIL section.
+
 Return a JSON array of objects strictly matching this schema:
 [{
   "title": "Job Title (e.g. Senior Product Manager)",
   "company": "Company Name",
-  "location": "Location (e.g. Remote, or city)",
-  "url": "The link to the job posting",
+  "location": "Location (e.g. Remote, or city/state)",
+  "url": "The specific direct link to the job posting from the email or links list",
   "description": "Any job description, summary text, skill tags, or key topics provided in the email text for this role. Extract as much detail as possible.",
   "requirements": "A detailed list of requirements, skills, or qualifications mentioned in the email, if any.",
   "salary_range": "Salary range if mentioned in the email (e.g. $150k - $175k yearly), otherwise null"
@@ -515,7 +517,7 @@ Return a JSON array of objects strictly matching this schema:
 If there are no matching jobs, return an empty array [].
 
 EMAIL TEXT:
-${emailText.substring(0, 30000)}`;
+${emailText.substring(0, 35000)}`;
 
     try {
         const responseText = await callAI({
