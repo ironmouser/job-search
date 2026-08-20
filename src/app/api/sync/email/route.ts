@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 
 import { getEffectiveTier } from '@/lib/tier';
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export async function POST() {
   try {

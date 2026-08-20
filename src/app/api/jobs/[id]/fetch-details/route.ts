@@ -6,6 +6,7 @@ import { scoreJob } from '@/lib/scoring';
 
 import { fetchJobDescriptionDetailed, extractUrlFromStubDescription, FetchJobDescriptionResult } from '@/lib/jobFetcher';
 import { cleanJobUrl } from '@/lib/urlUtils';
+import { searchJobDescriptionFromSerpApi } from '@/lib/serpapi';
 
 export async function POST(
     request: Request,
@@ -36,12 +37,9 @@ export async function POST(
         const stubUrl = extractUrlFromStubDescription(job.description);
         const urlsToTry = [...new Set([stubUrl, job.url].map(u => u ? cleanJobUrl(u) : '').filter(Boolean))];
 
-        if (urlsToTry.length === 0) {
-            return NextResponse.json({ error: 'Job has no URL to fetch from' }, { status: 400 });
-        }
-
         let fetchResult: FetchJobDescriptionResult | null = null;
-        let usedUrl: string = urlsToTry[0];
+        let usedUrl: string = urlsToTry[0] || '';
+
         for (const tryUrl of urlsToTry) {
             fetchResult = await fetchJobDescriptionDetailed(tryUrl);
             if (fetchResult?.description) { 
@@ -50,8 +48,26 @@ export async function POST(
             }
         }
 
+        // 2. Fallback: If URL scraping failed, search Google Jobs (SerpAPI) by Title + Company
+        if (!fetchResult?.description && job.title && job.company && !job.company.toLowerCase().includes('unknown')) {
+            console.log(`[FetchDetails] Direct URL scrape returned no content for job ${jobId}. Attempting SerpAPI Google Jobs fallback for "${job.title}" at "${job.company}"...`);
+            const serpFallback = await searchJobDescriptionFromSerpApi(job.title, job.company);
+            if (serpFallback?.description) {
+                fetchResult = {
+                    description: serpFallback.description,
+                    company: job.company,
+                    title: job.title,
+                    finalUrl: serpFallback.finalUrl || usedUrl || job.url,
+                    resolvedApplicationUrl: serpFallback.applicationUrl || null
+                };
+                if (serpFallback.finalUrl) {
+                    usedUrl = serpFallback.finalUrl;
+                }
+            }
+        }
+
         if (!fetchResult?.description) {
-            return NextResponse.json({ error: 'Failed to scrape full job details. The site may be blocking automated access.' }, { status: 502 });
+            return NextResponse.json({ error: 'Could not automatically extract full job details. The site may be blocking automated access.' }, { status: 502 });
         }
 
         // Prefer the direct ATS URL extracted during scraping (e.g. from ZipRecruiter JSON-LD),

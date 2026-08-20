@@ -243,3 +243,71 @@ export function extractTopTitlesFromResults(
     .map(item => item.canonical);
 }
 
+/**
+ * Fast lookup on Google Jobs via SerpAPI to find full job description for a specific title + company.
+ * Used as a high-reliability fallback when direct URL scraping fails or hits bot protection.
+ */
+export async function searchJobDescriptionFromSerpApi(
+  title: string,
+  company: string
+): Promise<{ description: string; applicationUrl?: string | null; finalUrl?: string } | null> {
+  const apiKey = process.env.SERPAPI_API_KEY;
+  if (!apiKey || !title || !company) return null;
+
+  try {
+    const cleanTitle = title.trim();
+    const cleanCompany = company.trim();
+    const query = `"${cleanTitle}" "${cleanCompany}"`;
+
+    console.info(`[SerpAPI Fallback] Searching Google Jobs for: ${query}`);
+
+    const params = new URLSearchParams({
+      engine: 'google_jobs',
+      q: query,
+      hl: 'en',
+      gl: 'us',
+      api_key: apiKey,
+    });
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+
+    const res = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      const jobResults = Array.isArray(data?.jobs_results) ? data.jobs_results : [];
+
+      if (jobResults.length > 0) {
+        for (const item of jobResults) {
+          const desc = (item.description || '').trim();
+          if (desc && desc.length > 200) {
+            const applyOptions: Array<{ title?: string; link?: string }> = Array.isArray(item.apply_options)
+              ? item.apply_options
+              : [];
+            let directAtsUrl: string | null = null;
+            for (const opt of applyOptions) {
+              if (opt.link && isKnownATSUrl(opt.link)) {
+                directAtsUrl = cleanJobUrl(opt.link);
+                break;
+              }
+            }
+            const primaryUrl = applyOptions.length > 0 && applyOptions[0].link ? cleanJobUrl(applyOptions[0].link) : item.share_link;
+            return {
+              description: desc,
+              applicationUrl: directAtsUrl || primaryUrl || null,
+              finalUrl: primaryUrl || item.share_link || undefined
+            };
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[SerpAPI Fallback Notice]: ${err.message}`);
+  }
+  return null;
+}
+

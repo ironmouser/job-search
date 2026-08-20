@@ -524,7 +524,7 @@ ${emailText.substring(0, 35000)}`;
             task: 'extract',
             jsonMode: true,
             messages: [{ role: 'user', content: prompt }],
-            maxTokens: 6000
+            maxTokens: 3000
         });
         const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
         const parsed = JSON.parse(cleaned);

@@ -120,7 +120,7 @@ const PERSONAL_DOMAINS = [
   '@zoho.com',
 ];
 
-const MAX_CANDIDATE_EMAILS = 75;
+const MAX_CANDIDATE_EMAILS = 50;
 
 export async function fetchEmailsAndExtractJobs(
   userId: string,
@@ -156,13 +156,13 @@ export async function fetchEmailsAndExtractJobs(
     await client.connect();
     onProgress?.(0, 'Connected to mail server. Checking inbox...');
 
-    // 1. Calculate sync window (look back 21 days so recent alerts and forwarded jobs are never missed)
+    // 1. Calculate sync window (look back 14 days so recent alerts and forwarded jobs are never missed)
     const syncLog = await prisma.syncLog.findFirst({
       where: { userId, syncType: 'email' },
       select: { id: true, lastSyncedAt: true },
     });
 
-    const sinceDate = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000); // 21 days ago
+    const sinceDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // 14 days ago
 
     console.log(`[Email Sync] Fetching candidate emails since ${sinceDate.toISOString()}...`);
 
@@ -209,7 +209,7 @@ export async function fetchEmailsAndExtractJobs(
 
       // Fallback: If date-based search returned 0 headers but inbox has messages, scan recent message sequence
       if (candidateHeaders.length === 0 && totalInBox > 0) {
-        const fallbackCount = Math.min(totalInBox, 225);
+        const fallbackCount = Math.min(totalInBox, 150);
         console.log(`[Email Sync] Date search returned 0 headers. Scanning most recent ${fallbackCount} emails as fallback...`);
         const fetchRange = `${Math.max(1, totalInBox - fallbackCount + 1)}:*`;
 
@@ -266,7 +266,7 @@ export async function fetchEmailsAndExtractJobs(
         return 0;
       }
 
-      // Stage 2: Cap candidate emails at 75 (most recent first)
+      // Stage 2: Cap candidate emails at 50 (most recent first)
       const selectedCandidates = candidateHeaders.slice(-MAX_CANDIDATE_EMAILS).reverse();
       onProgress?.(0, `Found ${selectedCandidates.length} candidate job alert email${selectedCandidates.length === 1 ? '' : 's'}. Downloading content...`);
 
@@ -315,7 +315,7 @@ export async function fetchEmailsAndExtractJobs(
             .replace(/(you are receiving this email because|unsubscribe from this email|preferences & notifications|privacy policy|terms of use|all rights reserved)[\s\S]*$/i, '')
             .trim();
 
-          const textSnippet = (cleanedText.length > 50 ? cleanedText : effectiveText).slice(0, 12000);
+          const textSnippet = (cleanedText.length > 50 ? cleanedText : effectiveText).slice(0, 8000);
           if (!textSnippet && allUrls.length === 0) continue;
 
           candidatePayloads.push({
@@ -338,10 +338,10 @@ ${allUrls.slice(0, 40).join('\n')}
 
       onProgress?.(0, `Processing ${candidatePayloads.length} email message${candidatePayloads.length === 1 ? '' : 's'} for job postings...`);
 
-      // Stage 3: AI Job Extraction in concurrent batches of 20 (doubled capacity)
+      // Stage 3: AI Job Extraction in concurrent batches of 10
       let runningFoundCount = 0;
       const extractedJobBatches: any[][] = [];
-      const batchSize = 20;
+      const batchSize = 10;
 
       for (let i = 0; i < candidatePayloads.length; i += batchSize) {
         const chunk = candidatePayloads.slice(i, i + batchSize);
