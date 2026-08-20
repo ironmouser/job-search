@@ -250,8 +250,10 @@ export class LeverPlugin extends ATSPlugin {
       await page.waitForTimeout(1000);
     }
 
-    // ── Custom questions ─────────────────────────────────────────────────────
+    // ── Custom questions & Demographics ─────────────────────────────────────
     await this.answerCustomQuestions(browser, context, logger);
+    await this.handleConsentCheckboxes(page, logger);
+    await this.handleEEOCDemographics(page, profile, logger);
   }
 
   // ─── Validate ─────────────────────────────────────────────────────────────

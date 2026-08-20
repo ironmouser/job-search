@@ -119,6 +119,12 @@ export class SmartRecruitersPlugin extends ATSPlugin {
       await logger.info('file_uploaded', 'Uploaded PDF resume to SmartRecruiters');
     }
 
+    // 5. Consent & Privacy Checkboxes
+    await this.handleConsentCheckboxes(targetContext, logger);
+
+    // 6. Work Authorization & EEOC Demographics
+    await this.handleEEOCDemographics(targetContext, profile, logger);
+
     await logger.info('form_filling_complete', 'Completed filling SmartRecruiters form fields');
   }
 

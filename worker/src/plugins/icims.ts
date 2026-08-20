@@ -113,6 +113,12 @@ export class ICIMSPlugin extends ATSPlugin {
           await logger.info('file_uploaded', 'Uploaded PDF resume to iCIMS form');
         }
 
+        // 3. Consent & Talent Community Checkboxes
+        await this.handleConsentCheckboxes(targetContext, logger);
+
+        // 4. Work Authorization & EEOC Demographics
+        await this.handleEEOCDemographics(targetContext, profile, logger);
+
         await logger.info('form_filling_complete', `Completed filling iCIMS wizard step ${step}`);
       },
       ['button:has-text("Continue")', 'input[value*="Continue" i]', 'a:has-text("Next")']

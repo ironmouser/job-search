@@ -153,6 +153,12 @@ export class DiceApplyPlugin extends ATSPlugin {
       }
     }
 
+    // 4. Consent & Talent Community Checkboxes
+    await this.handleConsentCheckboxes(page, logger);
+
+    // 5. EEOC Demographics
+    await this.handleEEOCDemographics(page, context.userProfile, logger);
+
     // 4. Advance through multi-step drawer (Next / Review)
     const nextBtn = await page.$('button:has-text("Next"), button:has-text("Review")').catch(() => null);
     if (nextBtn && (await nextBtn.isVisible().catch(() => false))) {

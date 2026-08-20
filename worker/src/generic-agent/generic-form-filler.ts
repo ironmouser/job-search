@@ -270,38 +270,138 @@ export class GenericFormFiller {
   }
 
   /**
-   * Answers common questions (work authorization, terms and conditions, sponsorship).
+   * Answers common questions (work authorization, terms and conditions, sponsorship, consent, EEOC demographics).
    */
   private async answerStandardQuestions(
     ctx: Page | Frame,
     profile: UserProfile,
     logger: ExecutionLogger
   ): Promise<void> {
-    // 1. Terms and conditions checkbox
-    const termsCheckboxes = ctx.locator('input[type="checkbox"][name*="term" i], input[type="checkbox"][name*="agree" i], input[type="checkbox"][name*="consent" i], input[type="checkbox"][name*="privacy" i]');
-    const count = await termsCheckboxes.count().catch(() => 0);
-    for (let i = 0; i < count; i++) {
-      try {
-        const cb = termsCheckboxes.nth(i);
-        if (!(await cb.isChecked().catch(() => false))) {
-          await cb.check({ force: true }).catch(() => {});
-          await logger.info('terms_accepted', 'Agreed to terms/consent checkbox');
-        }
-      } catch {}
-    }
+    // 1. Terms, Privacy, and Future Opportunity Consent Checkboxes
+    try {
+      const checkboxes = await ctx.$$('input[type="checkbox"]');
+      for (const cb of checkboxes) {
+        const isVisible = await cb.isVisible().catch(() => false);
+        if (!isVisible) continue;
 
-    // 2. US Work Authorization Radio / Select
-    if (profile.usWorkAuthorization) {
-      try {
-        const authRadios = ctx.locator('input[type="radio"][name*="auth" i], input[type="radio"][name*="legally" i]');
-        if ((await authRadios.count().catch(() => 0)) > 0) {
-          const yesRadio = ctx.locator('input[type="radio"][value*="yes" i], input[type="radio"][value="1"]').first();
-          if ((await yesRadio.count().catch(() => 0)) > 0) {
-            await yesRadio.check({ force: true }).catch(() => {});
+        const isChecked = await cb.isChecked().catch(() => false);
+        if (isChecked) continue;
+
+        const labelText = await cb.evaluate((el) => {
+          const parentLabel = el.closest('label') || el.parentElement;
+          const surroundingDiv = el.closest('div');
+          const fieldset = el.closest('fieldset');
+          return `${parentLabel?.textContent || ''} ${surroundingDiv?.textContent || ''} ${fieldset?.textContent || ''}`;
+        }).catch(() => '');
+
+        const lower = labelText.toLowerCase();
+        if (
+          lower.includes('agree') ||
+          lower.includes('accept') ||
+          lower.includes('consent') ||
+          lower.includes('contact you') ||
+          lower.includes('contact me') ||
+          lower.includes('future opportunit') ||
+          lower.includes('talent pool') ||
+          lower.includes('talent community') ||
+          lower.includes('privacy policy') ||
+          lower.includes('terms') ||
+          lower.includes('data processing') ||
+          lower.includes('acknowledge')
+        ) {
+          await cb.check({ force: true }).catch(() => {});
+          await logger.info('terms_accepted', 'Agreed to terms/consent/future opportunity checkbox');
+        }
+      }
+    } catch {}
+
+    // 2. US Work Authorization & Sponsorship & EEOC Radios
+    try {
+      const radios = await ctx.$$('input[type="radio"]');
+      for (const radio of radios) {
+        const isVisible = await radio.isVisible().catch(() => false);
+        if (!isVisible) continue;
+
+        const labelText = await radio.evaluate((el) => {
+          const parent = el.closest('label') || el.parentElement;
+          const section = el.closest('fieldset') || el.closest('[role="group"]') || el.closest('div');
+          return `${section?.textContent || ''} :: ${parent?.textContent || ''}`;
+        }).catch(() => '');
+        const lower = labelText.toLowerCase();
+
+        // Work Auth / Sponsorship
+        if (/legally authorized|eligible to work/i.test(lower) && /yes/i.test(lower)) {
+          await radio.check({ force: true }).catch(() => {});
+        } else if (/require sponsorship|sponsorship now or in the future/i.test(lower) && /no/i.test(lower)) {
+          await radio.check({ force: true }).catch(() => {});
+        }
+        // Veteran Status
+        else if (/veteran/i.test(lower)) {
+          if (profile.eeocVeteran && lower.includes(profile.eeocVeteran.toLowerCase())) {
+            await radio.check({ force: true }).catch(() => {});
+          } else if (/not a protected veteran|not a veteran|decline|prefer not/i.test(lower)) {
+            await radio.check({ force: true }).catch(() => {});
           }
         }
-      } catch {}
-    }
+        // Disability Status
+        else if (/disability/i.test(lower)) {
+          if (profile.eeocDisability && lower.includes(profile.eeocDisability.toLowerCase())) {
+            await radio.check({ force: true }).catch(() => {});
+          } else if (/no, i (do not|don't) have a disability|do not have a disability|decline|do not wish to answer|prefer not/i.test(lower)) {
+            await radio.check({ force: true }).catch(() => {});
+          }
+        }
+        // Gender
+        else if (/gender|sex\b/i.test(lower)) {
+          if (profile.eeocGender && lower.includes(profile.eeocGender.toLowerCase())) {
+            await radio.check({ force: true }).catch(() => {});
+          } else if (/decline|prefer not/i.test(lower)) {
+            await radio.check({ force: true }).catch(() => {});
+          }
+        }
+        // Race / Ethnicity
+        else if (/race|ethnicity|hispanic|latino/i.test(lower)) {
+          if (profile.eeocRace && lower.includes(profile.eeocRace.toLowerCase())) {
+            await radio.check({ force: true }).catch(() => {});
+          } else if (/decline|prefer not/i.test(lower)) {
+            await radio.check({ force: true }).catch(() => {});
+          }
+        }
+      }
+    } catch {}
+
+    // 3. EEOC & Standard Select Dropdowns
+    try {
+      const selects = await ctx.$$('select');
+      for (const sel of selects) {
+        const isVisible = await sel.isVisible().catch(() => false);
+        if (!isVisible) continue;
+
+        const labelText = await sel.evaluate((el) => {
+          const parent = el.closest('label') || el.closest('div');
+          return parent?.textContent || '';
+        }).catch(() => '');
+        const lower = labelText.toLowerCase();
+
+        if (/veteran/i.test(lower)) {
+          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
+          const match = options.find((o) => (profile.eeocVeteran && new RegExp(profile.eeocVeteran, 'i').test(o.text)) || /not a protected veteran|decline/i.test(o.text));
+          if (match) await sel.selectOption(match.value).catch(() => {});
+        } else if (/disability/i.test(lower)) {
+          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
+          const match = options.find((o) => (profile.eeocDisability && new RegExp(profile.eeocDisability, 'i').test(o.text)) || /no|decline|do not wish/i.test(o.text));
+          if (match) await sel.selectOption(match.value).catch(() => {});
+        } else if (/gender|sex\b/i.test(lower)) {
+          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
+          const match = options.find((o) => (profile.eeocGender && new RegExp(profile.eeocGender, 'i').test(o.text)) || /decline|prefer not/i.test(o.text));
+          if (match) await sel.selectOption(match.value).catch(() => {});
+        } else if (/race|ethnicity|hispanic/i.test(lower)) {
+          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
+          const match = options.find((o) => (profile.eeocRace && new RegExp(profile.eeocRace, 'i').test(o.text)) || /decline|prefer not/i.test(o.text));
+          if (match) await sel.selectOption(match.value).catch(() => {});
+        }
+      }
+    } catch {}
   }
 
   /**

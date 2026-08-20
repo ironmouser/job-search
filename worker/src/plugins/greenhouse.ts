@@ -247,8 +247,10 @@ export class GreenhousePlugin extends ATSPlugin {
       }
     }
 
-    // ── Custom questions ─────────────────────────────────────────────────────
+    // ── Custom questions & Demographics ─────────────────────────────────────
     await this.answerCustomQuestions(browser, context, logger);
+    await this.handleConsentCheckboxes(page, logger);
+    await this.handleEEOCDemographics(page, profile, logger);
   }
 
   // ─── Validate ─────────────────────────────────────────────────────────────

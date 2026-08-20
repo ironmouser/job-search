@@ -136,6 +136,12 @@ export class WorkablePlugin extends ATSPlugin {
       await logger.info('file_uploaded', 'Uploaded PDF resume to Workable form');
     }
 
+    // 6. Consent & Talent Community Checkboxes
+    await this.handleConsentCheckboxes(targetContext, logger);
+
+    // 7. Work Authorization & EEOC Demographics
+    await this.handleEEOCDemographics(targetContext, profile, logger);
+
     await logger.info('form_filling_complete', 'Workable form fields filled');
   }
 

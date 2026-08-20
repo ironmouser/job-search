@@ -185,6 +185,8 @@ export class WorkdayPlugin extends ATSPlugin {
 
       // Step 3: Handle dynamic questions (Radio groups, Dropdowns, EEOC)
       await this.answerDynamicQuestions(browser, context, logger);
+      await this.handleConsentCheckboxes(page, logger);
+      await this.handleEEOCDemographics(page, context.userProfile, logger);
 
       // Step 4: Upload cover letter if second upload field exists
       const clInputs = page.locator('[data-automation-id="file-upload-input-ref"]');

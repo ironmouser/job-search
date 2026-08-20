@@ -129,6 +129,12 @@ export class TaleoPlugin extends ATSPlugin {
           await logger.info('file_uploaded', 'Uploaded PDF resume to Oracle Taleo');
         }
 
+        // 3. Consent & Talent Community Checkboxes
+        await this.handleConsentCheckboxes(targetContext, logger);
+
+        // 4. Work Authorization & EEOC Demographics
+        await this.handleEEOCDemographics(targetContext, profile, logger);
+
         await logger.info('form_filling_complete', `Completed filling Taleo wizard step ${step}`);
       },
       ['button:has-text("Save and Continue")', 'input[value*="Save and Continue" i]', 'a:has-text("Next")']

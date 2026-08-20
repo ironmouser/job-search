@@ -159,97 +159,10 @@ export class AshbyPlugin extends ATSPlugin {
     }
 
     // 6. Consent & Future Opportunity Checkboxes (e.g. "Do you agree to allow Mural to contact you...")
-    try {
-      const checkboxes = await targetContext.$$('input[type="checkbox"]');
-      for (const cb of checkboxes) {
-        const labelText = await cb.evaluate((el) => {
-          const parentLabel = el.closest('label') || el.parentElement;
-          const surroundingDiv = el.closest('div');
-          return `${parentLabel?.textContent || ''} ${surroundingDiv?.textContent || ''}`;
-        });
-        if (/agree|accept|consent|contact you|future opportunities|privacy policy|terms/i.test(labelText)) {
-          await cb.check({ force: true }).catch(() => {});
-          await logger.info('checkbox_checked', 'Accepted opportunity contact / privacy consent checkbox');
-        }
-      }
-    } catch {}
+    await this.handleConsentCheckboxes(targetContext, logger);
 
     // 7. Work Authorization, Sponsorship, and EEOC Demographics (Veteran, Disability, Gender, Race)
-    try {
-      const radios = await targetContext.$$('input[type="radio"]');
-      for (const radio of radios) {
-        const labelText = await radio.evaluate((el) => {
-          const parent = el.closest('label') || el.parentElement;
-          const section = el.closest('fieldset') || el.closest('[role="group"]') || el.closest('div');
-          return `${section?.textContent || ''} :: ${parent?.textContent || ''}`;
-        });
-        const lower = labelText.toLowerCase();
-
-        // Work Authorization
-        if (/legally authorized|eligible to work/i.test(lower) && /yes/i.test(lower)) {
-          await radio.check({ force: true }).catch(() => {});
-        } else if (/require sponsorship|sponsorship now or in the future/i.test(lower) && /no/i.test(lower)) {
-          await radio.check({ force: true }).catch(() => {});
-        }
-        // Veteran Status
-        else if (/veteran/i.test(lower)) {
-          if (profile.eeocVeteran && lower.includes(profile.eeocVeteran.toLowerCase())) {
-            await radio.check({ force: true }).catch(() => {});
-          } else if (/not a protected veteran|not a veteran|decline/i.test(lower)) {
-            await radio.check({ force: true }).catch(() => {});
-          }
-        }
-        // Disability Status
-        else if (/disability/i.test(lower)) {
-          if (profile.eeocDisability && lower.includes(profile.eeocDisability.toLowerCase())) {
-            await radio.check({ force: true }).catch(() => {});
-          } else if (/no, i (do not|don't) have a disability|do not have a disability|decline|do not wish to answer/i.test(lower)) {
-            await radio.check({ force: true }).catch(() => {});
-          }
-        }
-        // Gender
-        else if (/gender/i.test(lower)) {
-          if (profile.eeocGender && lower.includes(profile.eeocGender.toLowerCase())) {
-            await radio.check({ force: true }).catch(() => {});
-          } else if (/decline|prefer not/i.test(lower)) {
-            await radio.check({ force: true }).catch(() => {});
-          }
-        }
-        // Race / Ethnicity
-        else if (/race|ethnicity|hispanic|latino/i.test(lower)) {
-          if (profile.eeocRace && lower.includes(profile.eeocRace.toLowerCase())) {
-            await radio.check({ force: true }).catch(() => {});
-          } else if (/decline|prefer not/i.test(lower)) {
-            await radio.check({ force: true }).catch(() => {});
-          }
-        }
-      }
-    } catch {}
-
-    // 8. Select dropdowns for EEOC / standard questions
-    try {
-      const selects = await targetContext.$$('select');
-      for (const sel of selects) {
-        const labelText = await sel.evaluate((el) => {
-          const parent = el.closest('label') || el.closest('div');
-          return parent?.textContent || '';
-        });
-        const lower = labelText.toLowerCase();
-        if (/veteran/i.test(lower)) {
-          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocVeteran && new RegExp(profile.eeocVeteran, 'i').test(o.text)) || /not a protected veteran|decline/i.test(o.text));
-          if (match) await sel.selectOption(match.value).catch(() => {});
-        } else if (/disability/i.test(lower)) {
-          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocDisability && new RegExp(profile.eeocDisability, 'i').test(o.text)) || /no|decline|do not wish/i.test(o.text));
-          if (match) await sel.selectOption(match.value).catch(() => {});
-        } else if (/gender/i.test(lower)) {
-          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocGender && new RegExp(profile.eeocGender, 'i').test(o.text)) || /decline/i.test(o.text));
-          if (match) await sel.selectOption(match.value).catch(() => {});
-        }
-      }
-    } catch {}
+    await this.handleEEOCDemographics(targetContext, profile, logger);
 
     await logger.info('form_filling_complete', 'Completed filling Ashby application fields');
   }

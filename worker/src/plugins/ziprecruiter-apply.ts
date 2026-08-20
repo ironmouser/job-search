@@ -166,6 +166,12 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
       }
     }
 
+    // 4. Consent & Talent Community Checkboxes
+    await this.handleConsentCheckboxes(page, logger);
+
+    // 5. EEOC Demographics
+    await this.handleEEOCDemographics(page, context.userProfile, logger);
+
     await page.waitForTimeout(1000);
   }
 
