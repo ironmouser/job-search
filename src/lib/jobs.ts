@@ -274,7 +274,7 @@ export async function normalizeAndSaveJobs(
         console.log(`[AI Triage] Running rapid pre-screening on ${brandNewCandidates.length} new candidate jobs in parallel for keyword "${searchKeyword}"...`);
         onProgress?.(brandNewCandidates.length, `Running AI quality check on ${brandNewCandidates.length} new listing${brandNewCandidates.length === 1 ? '' : 's'}...`);
         
-        const chunkSize = 25;
+        const chunkSize = 38;
         const chunks: any[][] = [];
         for (let i = 0; i < brandNewCandidates.length; i += chunkSize) {
             chunks.push(brandNewCandidates.slice(i, i + chunkSize));
@@ -348,8 +348,8 @@ export async function normalizeAndSaveJobs(
     }
 
     // Tier 3: Persistence (Bulk Optimized)
-    // Save existing roles and cap NEW UserJob feed allocations to top 100 brand-new candidate matches per sync
-    const newAllocatedCandidates = approvedCandidates.slice(0, 100);
+    // Save existing roles and cap NEW UserJob feed allocations to top 150 brand-new candidate matches per sync
+    const newAllocatedCandidates = approvedCandidates.slice(0, 150);
     const finalJobsToSave = [...knownGoodJobs, ...newAllocatedCandidates];
     const userAllocationUrls = new Set(finalJobsToSave.map(j => j.url));
     let newSavedCount = 0;
