@@ -602,25 +602,29 @@ export abstract class ATSPlugin {
       }
 
       // ─── 2. Check Security Challenges / CAPTCHA ───────────────────────────
-      const securityKeywords = [
+      const activeChallengePhrases = [
         'verify you are human',
         'verifying you are human',
         'cloudflare challenge',
-        'cf-turnstile',
-        'recaptcha',
-        'hcaptcha',
-        'arkoselabs',
-        'security check',
+        'please complete the security check to continue',
+        'solve the puzzle to prove you are human',
+        'press and hold to confirm',
+        'confirm you are not a robot',
+        'complete the captcha to submit',
       ];
-      for (const kw of securityKeywords) {
-        if (combinedText.includes(kw)) {
-          await logger.warn('submission_security_challenge', `Security challenge / CAPTCHA detected on ${platform}`);
-          throw new InterventionError(
-            InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
-            `Security challenge or CAPTCHA detected on ${platform} after submission. Please complete the verification in the portal.`,
-            page.url()
-          );
-        }
+      const hasChallengePhrase = activeChallengePhrases.some((phrase) => combinedText.includes(phrase));
+
+      const hasVisibleChallengeElement = (await page.locator(
+        'iframe[src*="recaptcha"]:visible, iframe[src*="hcaptcha"]:visible, iframe[src*="turnstile"]:visible, iframe[src*="cloudflare"]:visible, .g-recaptcha:visible, .cf-turnstile:visible'
+      ).count().catch(() => 0)) > 0;
+
+      if (hasChallengePhrase || hasVisibleChallengeElement) {
+        await logger.warn('submission_security_challenge', `Security challenge / CAPTCHA detected on ${platform}`);
+        throw new InterventionError(
+          InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
+          `Security challenge or CAPTCHA detected on ${platform} after submission. Please complete the verification in the portal.`,
+          page.url()
+        );
       }
 
       // ─── 3. Check Employer Application Limits ─────────────────────────────
