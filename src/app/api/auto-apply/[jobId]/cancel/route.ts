@@ -13,14 +13,14 @@ import { AutoApplyStatus } from '@/lib/auto-apply/types';
  */
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ jobId: string }> }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { jobId } = await context.params;
+  const { jobId } = await params;
   const userId = session.user.id;
 
   try {

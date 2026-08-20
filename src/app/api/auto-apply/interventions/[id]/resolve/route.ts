@@ -13,14 +13,14 @@ import { prisma } from '@/lib/prisma';
  */
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id: interventionId } = await context.params;
+  const { id: interventionId } = await params;
   const userId = session.user.id;
 
   let body: { resolution: 'completed' | 'skipped' | 'cancelled' };

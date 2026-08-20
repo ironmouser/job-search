@@ -29,14 +29,18 @@ import { getAutoApplyQuota } from '@/lib/auto-apply/quota';
  */
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ jobId: string }> }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { jobId } = await context.params;
+  const resolvedParams = await params;
+  const jobId = resolvedParams?.jobId;
+  if (!jobId) {
+    return NextResponse.json({ error: 'Missing jobId parameter' }, { status: 400 });
+  }
   const userId = session.user.id;
 
   let body: { simulationMode?: boolean; applicationUrl?: string } = {};

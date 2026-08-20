@@ -8,7 +8,10 @@ import { scoreJob } from '@/lib/scoring';
 import { logSuspiciousActivity } from '@/lib/security';
 import { isDescriptionAdequate, extractUrlFromStubDescription } from '@/lib/jobFetcher';
 
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
@@ -16,8 +19,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         }
         
         const userId = session.user.id;
-        const { id } = await context.params;
-        const { status, applied_at, applicationUrl, description } = await request.json();
+        const resolvedParams = await params;
+        const id = resolvedParams?.id;
+        if (!id) {
+          return NextResponse.json({ error: 'Missing job ID parameter' }, { status: 400 });
+        }
+
+        const body = await request.json().catch(() => ({}));
+        const { status, applied_at, applicationUrl, description } = body;
 
         const job = await prisma.job.findUnique({
             where: { id }
@@ -127,7 +136,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 }
 
-export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
@@ -135,7 +147,11 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
         }
         
         const userId = session.user.id;
-        const { id } = await context.params;
+        const resolvedParams = await params;
+        const id = resolvedParams?.id;
+        if (!id) {
+            return NextResponse.json({ error: 'Missing job ID parameter' }, { status: 400 });
+        }
 
         const data = await prisma.userJob.update({
             where: { userId_jobId: { userId, jobId: id } },

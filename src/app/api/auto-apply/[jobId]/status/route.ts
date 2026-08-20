@@ -15,14 +15,14 @@ import { getAutoApplyQuota } from '@/lib/auto-apply/quota';
  */
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ jobId: string }> }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { jobId } = await context.params;
+  const { jobId } = await params;
   const userId = session.user.id;
 
   try {
