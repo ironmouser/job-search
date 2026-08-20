@@ -10,7 +10,7 @@ import { evaluateAccountCollision } from "@/lib/anti-abuse/detector"
 
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
-  debug: true,
+  debug: process.env.NODE_ENV === "development",
   session: {
     strategy: "jwt"
   },
