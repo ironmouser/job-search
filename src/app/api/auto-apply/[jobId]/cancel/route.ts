@@ -7,9 +7,9 @@ import { AutoApplyStatus } from '@/lib/auto-apply/types';
 /**
  * POST /api/auto-apply/[jobId]/cancel
  *
- * Cancels an active Auto Apply session.
- * Only works on sessions in a cancellable state (queued, processing, needs_intervention).
- * The worker detects the status change on its next poll and terminates gracefully.
+ * Cancels or clears an Auto Apply session for a job.
+ * Works on active sessions (queued, processing, needs_intervention) as well as
+ * failed/stopped sessions that the user wants to dismiss/clear from the UI.
  */
 export async function POST(
   request: NextRequest,
@@ -23,36 +23,42 @@ export async function POST(
   const { jobId } = await context.params;
   const userId = session.user.id;
 
-  const CANCELLABLE_STATUSES = [
-    AutoApplyStatus.QUEUED,
-    AutoApplyStatus.PROCESSING,
-    AutoApplyStatus.DETECTING_ATS,
-    AutoApplyStatus.PREPARING,
-    AutoApplyStatus.APPLYING,
-    AutoApplyStatus.VALIDATING,
-    AutoApplyStatus.NEEDS_INTERVENTION,
-  ];
-
   try {
     const applySession = await prisma.autoApplySession.findFirst({
       where: {
         userId,
         jobId,
-        status: { in: CANCELLABLE_STATUSES },
+        status: { notIn: [AutoApplyStatus.APPLIED, 'applied', AutoApplyStatus.SIMULATED, 'simulated'] },
       },
       orderBy: { createdAt: 'desc' },
     });
 
     if (!applySession) {
-      return NextResponse.json({ error: 'No active session found to cancel' }, { status: 404 });
+      return NextResponse.json({ error: 'No cancellable session found' }, { status: 404 });
     }
 
+    const now = new Date();
+
+    // Mark session as cancelled
     await prisma.autoApplySession.update({
       where: { id: applySession.id },
       data: {
         status: AutoApplyStatus.CANCELLED,
-        completedAt: new Date(),
+        completedAt: now,
         failureReason: 'user_cancelled',
+        failureDetails: null,
+      },
+    });
+
+    // Resolve any open intervention requests for this session
+    await prisma.interventionRequest.updateMany({
+      where: {
+        sessionId: applySession.id,
+        resolvedAt: null,
+      },
+      data: {
+        resolvedAt: now,
+        resolution: 'cancelled',
       },
     });
 
@@ -62,3 +68,4 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to cancel session' }, { status: 500 });
   }
 }
+

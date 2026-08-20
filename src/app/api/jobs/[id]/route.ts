@@ -46,6 +46,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
         if (applicationUrl) {
             updateJobData.applicationUrl = applicationUrl.trim();
+            updateJobData.consecutiveAutoFailures = 0;
         }
 
         if (description) {

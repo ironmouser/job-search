@@ -264,35 +264,35 @@ export function InterventionPanel({
     resolve('skipped');
   }
 
-  const badgeColor = isClosed ? '#f87171' : isUnsupportedOrFatal ? '#fbbf24' : '#818cf8';
+  const badgeColor = isClosed ? '#f87171' : isUnsupportedOrFatal ? '#fbbf24' : 'var(--accent-primary, #3b82f6)';
   const borderColor = isClosed
     ? 'rgba(239, 68, 68, 0.35)'
     : isUnsupportedOrFatal
     ? 'rgba(245, 158, 11, 0.35)'
-    : 'rgba(99, 102, 241, 0.35)';
+    : 'var(--border-glass, rgba(255, 255, 255, 0.12))';
   const bgCard = isClosed
     ? 'rgba(239, 68, 68, 0.06)'
     : isUnsupportedOrFatal
     ? 'rgba(245, 158, 11, 0.06)'
-    : 'rgba(99, 102, 241, 0.06)';
+    : 'rgba(255, 255, 255, 0.03)';
 
   return (
     <div
       style={{
         background: bgCard,
-        border: `1.5px solid ${borderColor}`,
+        border: `1px solid ${borderColor}`,
         borderRadius: '12px',
         padding: '1.25rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '1rem',
+        gap: '1.15rem',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
       }}
       id={`intervention-panel-${interventionId}`}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         {getReasonIcon(reason, isClosed, isUnsupportedOrFatal)}
-        <span style={{ fontWeight: 700, color: badgeColor, fontSize: '0.95rem', letterSpacing: '-0.01em' }}>
+        <span style={{ fontWeight: 600, color: badgeColor, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
           {isClosed ? REASON_LABELS.job_closed : (REASON_LABELS[reason] ?? reason)}
         </span>
       </div>
@@ -577,87 +577,83 @@ export function InterventionPanel({
           {isAuthReason && (
             <div
               style={{
-                background: 'var(--background-card, rgba(255, 255, 255, 0.03))',
-                border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
-                borderRadius: '10px',
-                padding: '1rem 1.1rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.75rem',
+                gap: '1rem',
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid var(--border-glass)',
+                borderRadius: '10px',
+                padding: '1.1rem 1.25rem',
               }}
             >
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                <Key size={15} color="#818cf8" /> Do you already have a candidate account?
-              </span>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-                {/* Option 1: Yes, sign me in */}
-                <div
-                  onClick={() => setAccountMode('sign_in')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.65rem',
-                    padding: '0.85rem 1rem',
-                    borderRadius: '8px',
-                    border: accountMode === 'sign_in' ? '1.5px solid #6366f1' : '1px solid var(--border-glass, rgba(255,255,255,0.12))',
-                    background: accountMode === 'sign_in' ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-primary, rgba(0,0,0,0.2))',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  id={`intervention-choice-signin-${interventionId}`}
-                >
-                  <input
-                    type="radio"
-                    id={`account-mode-signin-${interventionId}`}
-                    name={`account-mode-${interventionId}`}
-                    checked={accountMode === 'sign_in'}
-                    onChange={() => setAccountMode('sign_in')}
-                    style={{ marginTop: '0.2rem', accentColor: '#6366f1', cursor: 'pointer' }}
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: accountMode === 'sign_in' ? '#ffffff' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <LogIn size={14} color={accountMode === 'sign_in' ? '#818cf8' : 'var(--text-secondary)'} /> Yes, sign me in
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      Enter credentials for your existing account
-                    </span>
-                  </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <Key size={16} color="var(--accent-primary, #3b82f6)" /> Candidate Account Option
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setAccountMode('sign_in')}
+                    className={accountMode === 'sign_in' ? 'btn-primary' : 'btn-outline'}
+                    style={{
+                      padding: '0.55rem 1rem',
+                      flex: 1,
+                      minWidth: '130px',
+                      textAlign: 'center',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.45rem',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                    }}
+                    id={`intervention-choice-signin-${interventionId}`}
+                  >
+                    <LogIn size={15} /> Yes, Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAccountMode('create_account')}
+                    className={accountMode === 'create_account' ? 'btn-primary' : 'btn-outline'}
+                    style={{
+                      padding: '0.55rem 1rem',
+                      flex: 1,
+                      minWidth: '130px',
+                      textAlign: 'center',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.45rem',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                    }}
+                    id={`intervention-choice-create-${interventionId}`}
+                  >
+                    <UserPlus size={15} /> No, Create Account
+                  </button>
                 </div>
+              </div>
 
-                {/* Option 2: No, create an account */}
-                <div
-                  onClick={() => setAccountMode('create_account')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.65rem',
-                    padding: '0.85rem 1rem',
-                    borderRadius: '8px',
-                    border: accountMode === 'create_account' ? '1.5px solid #6366f1' : '1px solid var(--border-glass, rgba(255,255,255,0.12))',
-                    background: accountMode === 'create_account' ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-primary, rgba(0,0,0,0.2))',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  id={`intervention-choice-create-${interventionId}`}
-                >
-                  <input
-                    type="radio"
-                    id={`account-mode-create-${interventionId}`}
-                    name={`account-mode-${interventionId}`}
-                    checked={accountMode === 'create_account'}
-                    onChange={() => setAccountMode('create_account')}
-                    style={{ marginTop: '0.2rem', accentColor: '#6366f1', cursor: 'pointer' }}
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: accountMode === 'create_account' ? '#ffffff' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <UserPlus size={14} color={accountMode === 'create_account' ? '#818cf8' : 'var(--text-secondary)'} /> No, create an account
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      Jahq will register an account with these credentials
-                    </span>
-                  </div>
-                </div>
+              {/* Instructions Box */}
+              <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
+                <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontWeight: 600 }}>
+                  Instructions
+                </h4>
+                <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  {accountMode === 'sign_in' ? (
+                    <>
+                      <li>Enter the email and password for your existing candidate account on {portalDisplayName}.</li>
+                      <li>Jahq will sign in securely to complete and submit your job application.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>{portalDisplayName} requires a candidate account before continuing.</li>
+                      <li>Enter your email and desired password. Jahq will register the account and resume automation.</li>
+                      <li>Passwords typically require 8+ characters including an uppercase letter, lowercase letter, number, and special character.</li>
+                    </>
+                  )}
+                  <li>Credentials are stored securely in your profile for future applications on {portalDisplayName}.</li>
+                </ul>
               </div>
             </div>
           )}
@@ -667,8 +663,8 @@ export function InterventionPanel({
             style={{
               fontSize: '0.85rem',
               color: 'var(--text-primary)',
-              background: 'rgba(99, 102, 241, 0.08)',
-              border: '1px solid rgba(99, 102, 241, 0.25)',
+              background: 'rgba(59, 130, 246, 0.08)',
+              border: '1px solid rgba(59, 130, 246, 0.25)',
               borderRadius: '8px',
               padding: '0.9rem 1.1rem',
               display: 'flex',
@@ -678,14 +674,14 @@ export function InterventionPanel({
             }}
           >
             <div>
-              <strong style={{ color: '#818cf8', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem', marginBottom: '0.15rem' }}>
+              <strong style={{ color: 'var(--accent-primary, #3b82f6)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem', marginBottom: '0.15rem' }}>
                 <ArrowRight size={16} /> What to do next
               </strong>
               <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>
                 {isAuthReason
                   ? (accountMode === 'sign_in'
-                      ? 'Enter the credentials for your existing account so the AI agent can sign in and continue your application.'
-                      : `${portalDisplayName} requires a candidate account before you can continue. The AI agent will create the account using the credentials you provide, then resume your application.`)
+                      ? 'Enter the credentials for your existing account so Jahq can sign in and continue your application.'
+                      : `${portalDisplayName} requires a candidate account before you can continue. Jahq will create the account using the credentials you provide, then resume your application.`)
                   : showAuthForm 
                   ? 'Fill out your missing authorization details below or complete verification directly on the company site.' 
                   : 'Complete the verification or login directly on the job application page.'}
@@ -694,7 +690,7 @@ export function InterventionPanel({
 
             <div>
               <strong style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem', marginBottom: '0.15rem' }}>
-                <Zap size={16} color="#818cf8" /> What will happen next
+                <Zap size={16} color="var(--accent-primary, #3b82f6)" /> What will happen next
               </strong>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                 {isAuthReason
@@ -707,52 +703,79 @@ export function InterventionPanel({
           </div>
 
           {(isAuthReason || showAuthForm) && !loadingSettings && (
-            <div style={{ background: 'var(--background-card)', borderRadius: '8px', padding: '1rem', border: '1px solid var(--border-glass)', marginTop: '0.25rem' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.92rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Key size={16} color="#818cf8" />
-                {isAuthReason
-                  ? (accountMode === 'sign_in' ? 'Sign in to your candidate account' : 'Create your candidate account')
-                  : 'Complete Authorization Settings'}
-              </h4>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                {isAuthReason
-                  ? (accountMode === 'sign_in'
-                      ? 'Enter the credentials for your existing account so the AI agent can sign in and continue your application.'
-                      : `${portalDisplayName} requires a candidate account before you can continue. The AI agent will create the account using the credentials you provide, then resume your application.`)
-                  : 'You are missing required authorization and demographic data. Please fill this out so the AI can answer related application questions. This will be saved to your profile for future applications.'}
-              </p>
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '10px',
+                padding: '1.25rem',
+                border: '1px solid var(--border-glass)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+              }}
+            >
+              <div>
+                <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
+                  <Key size={17} color="var(--accent-primary, #3b82f6)" />
+                  {isAuthReason
+                    ? (accountMode === 'sign_in' ? 'Sign in to Candidate Account' : 'Create Candidate Account')
+                    : 'Complete Application Settings'}
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                  {isAuthReason
+                    ? (accountMode === 'sign_in'
+                        ? 'Enter the credentials for your existing account so Jahq can sign in and continue your application.'
+                        : `${portalDisplayName} requires a candidate account before you can continue. Jahq will create the account using these credentials, then resume your application.`)
+                    : 'Please provide missing authorization and demographic details so Jahq can answer required application questions. These will be saved to your profile for future applications.'}
+                </p>
+              </div>
               
               {isAuthReason && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: showAuthForm ? '1rem' : '0.25rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Email</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Email Address</label>
                       <input
                         type="email"
                         value={settings?.emailAddress || ''}
                         onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
-                        placeholder="e.g. user@example.com"
-                        style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                        placeholder="user@example.com"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
                       />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {accountMode === 'sign_in' ? 'Password' : 'Account Password'}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {accountMode === 'sign_in' ? 'Account Password' : 'New Account Password'}
                       </label>
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <input
                           type={showPassword ? 'text' : 'password'}
                           value={settings?.defaultAccountPassword || ''}
                           onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
-                          placeholder={accountMode === 'sign_in' ? 'Enter your existing account password' : 'Enter desired password for account creation'}
-                          style={{ width: '100%', padding: '0.5rem 2.25rem 0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                          placeholder={accountMode === 'sign_in' ? 'Enter existing account password' : 'Enter desired password'}
+                          style={{
+                            width: '100%',
+                            background: 'rgba(0,0,0,0.2)',
+                            border: '1px solid var(--border-glass)',
+                            color: 'var(--text-primary)',
+                            padding: '0.75rem 2.5rem 0.75rem 0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                          }}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           style={{
                             position: 'absolute',
-                            right: '0.5rem',
+                            right: '0.75rem',
                             background: 'none',
                             border: 'none',
                             padding: '0.25rem',
@@ -765,63 +788,133 @@ export function InterventionPanel({
                           title={showPassword ? 'Hide password' : 'Show password'}
                           aria-label={showPassword ? 'Hide password' : 'Show password'}
                         >
-                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {accountMode === 'create_account' && (
-                    <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', background: 'rgba(99, 102, 241, 0.08)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                      💡 <strong>Password Requirements:</strong> {portalDisplayName.includes('portal') ? 'Candidate portals typically require' : `${portalDisplayName} requires`} 8+ characters including an uppercase letter, lowercase letter, number, and special character (e.g. <code>!</code>, <code>@</code>, <code>#</code>, <code>$</code>, <code>%</code>).
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
-                    <Lock size={13} color="#10b981" />
-                    <span>Your credentials are used only to complete this application.</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    <Lock size={14} color="#10b981" />
+                    <span>Credentials are protected and used only to submit your application.</span>
                   </div>
                 </div>
               )}
 
               {showAuthForm && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: isAuthReason ? '1rem' : '0', marginBottom: '1rem', borderTop: isAuthReason ? '1px solid var(--border-glass)' : 'none', paddingTop: isAuthReason ? '1rem' : '0' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
-                    <select value={settings?.usWorkAuthorization || ''} onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)} style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: isAuthReason ? '1px solid var(--border-glass)' : 'none', paddingTop: isAuthReason ? '1.25rem' : '0' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
+                      <select
+                        value={settings?.usWorkAuthorization || ''}
+                        onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)}
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      >
                         <option value="">Select...</option>
                         <option value="Yes">Yes, I am authorized to work in the US</option>
                         <option value="No">No, I am not authorized</option>
-                    </select>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Visa Sponsorship</label>
-                    <select value={settings?.visaSponsorship || ''} onChange={(e) => handleSettingsChange('visaSponsorship', e.target.value)} style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Visa Sponsorship</label>
+                      <select
+                        value={settings?.visaSponsorship || ''}
+                        onChange={(e) => handleSettingsChange('visaSponsorship', e.target.value)}
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      >
                         <option value="">Select...</option>
                         <option value="Yes">Yes, I require sponsorship</option>
                         <option value="No">No, I do not require sponsorship</option>
-                    </select>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Working Remotely From</label>
-                    <input type="text" value={settings?.workingRemotelyFrom || ''} onChange={(e) => handleSettingsChange('workingRemotelyFrom', e.target.value)} placeholder="e.g. New York, NY" style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Country</label>
-                    <input type="text" value={settings?.country || ''} onChange={(e) => handleSettingsChange('country', e.target.value)} placeholder="e.g. United States" style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Gender</label>
-                    <select value={settings?.eeocGender || ''} onChange={(e) => handleSettingsChange('eeocGender', e.target.value)} style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Working Remotely From</label>
+                      <input
+                        type="text"
+                        value={settings?.workingRemotelyFrom || ''}
+                        onChange={(e) => handleSettingsChange('workingRemotelyFrom', e.target.value)}
+                        placeholder="e.g. New York, NY"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Country</label>
+                      <input
+                        type="text"
+                        value={settings?.country || ''}
+                        onChange={(e) => handleSettingsChange('country', e.target.value)}
+                        placeholder="e.g. United States"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Gender</label>
+                      <select
+                        value={settings?.eeocGender || ''}
+                        onChange={(e) => handleSettingsChange('eeocGender', e.target.value)}
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      >
                         <option value="">Select...</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                         <option value="Decline">Decline</option>
-                    </select>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Race/Ethnicity</label>
-                    <select value={settings?.eeocRace || ''} onChange={(e) => handleSettingsChange('eeocRace', e.target.value)} style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Race / Ethnicity</label>
+                      <select
+                        value={settings?.eeocRace || ''}
+                        onChange={(e) => handleSettingsChange('eeocRace', e.target.value)}
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      >
                         <option value="">Select...</option>
                         <option value="Hispanic or Latino">Hispanic or Latino</option>
                         <option value="White">White</option>
@@ -831,61 +924,170 @@ export function InterventionPanel({
                         <option value="American Indian or Alaska Native">American Indian or Alaska Native</option>
                         <option value="Two or More Races">Two or More Races</option>
                         <option value="Decline">Decline</option>
-                    </select>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Veteran Status</label>
-                    <select value={settings?.eeocVeteran || ''} onChange={(e) => handleSettingsChange('eeocVeteran', e.target.value)} style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Veteran Status</label>
+                      <select
+                        value={settings?.eeocVeteran || ''}
+                        onChange={(e) => handleSettingsChange('eeocVeteran', e.target.value)}
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      >
                         <option value="">Select...</option>
                         <option value="Yes">Yes, protected veteran</option>
                         <option value="No">No, not a veteran</option>
                         <option value="Decline">Decline</option>
-                    </select>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Disability Status</label>
-                    <select value={settings?.eeocDisability || ''} onChange={(e) => handleSettingsChange('eeocDisability', e.target.value)} style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Disability Status</label>
+                      <select
+                        value={settings?.eeocDisability || ''}
+                        onChange={(e) => handleSettingsChange('eeocDisability', e.target.value)}
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      >
                         <option value="">Select...</option>
                         <option value="Yes">Yes</option>
                         <option value="No">No</option>
                         <option value="Decline">Decline</option>
-                    </select>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Phone Number</label>
+                      <input
+                        type="tel"
+                        value={settings?.phone || ''}
+                        onChange={(e) => handleSettingsChange('phone', e.target.value)}
+                        placeholder="e.g. +1 (555) 000-0000"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Street Address</label>
+                      <input
+                        type="text"
+                        value={settings?.streetAddress || ''}
+                        onChange={(e) => handleSettingsChange('streetAddress', e.target.value)}
+                        placeholder="e.g. 123 Main St, Apt 4B"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>City</label>
+                      <input
+                        type="text"
+                        value={settings?.city || ''}
+                        onChange={(e) => {
+                          const newCity = e.target.value;
+                          handleSettingsChange('city', newCity);
+                          const st = settings?.state || '';
+                          if (newCity || st) handleSettingsChange('location', [newCity, st].filter(Boolean).join(', '));
+                        }}
+                        placeholder="e.g. San Francisco"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>State / Province</label>
+                      <input
+                        type="text"
+                        value={settings?.state || ''}
+                        onChange={(e) => {
+                          const newSt = e.target.value;
+                          handleSettingsChange('state', newSt);
+                          const ct = settings?.city || '';
+                          if (ct || newSt) handleSettingsChange('location', [ct, newSt].filter(Boolean).join(', '));
+                        }}
+                        placeholder="e.g. CA"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>ZIP / Postal Code</label>
+                      <input
+                        type="text"
+                        value={settings?.postalCode || ''}
+                        onChange={(e) => handleSettingsChange('postalCode', e.target.value)}
+                        placeholder="e.g. 94105"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>LinkedIn URL</label>
+                      <input
+                        type="url"
+                        value={settings?.linkedinUrl || ''}
+                        onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)}
+                        placeholder="e.g. https://linkedin.com/in/username"
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Phone Number</label>
-                    <input type="tel" value={settings?.phone || ''} onChange={(e) => handleSettingsChange('phone', e.target.value)} placeholder="e.g. +1 (555) 000-0000" style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Street Address</label>
-                    <input type="text" value={settings?.streetAddress || ''} onChange={(e) => handleSettingsChange('streetAddress', e.target.value)} placeholder="e.g. 123 Main St, Apt 4B" style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>City</label>
-                    <input type="text" value={settings?.city || ''} onChange={(e) => {
-                      const newCity = e.target.value;
-                      handleSettingsChange('city', newCity);
-                      const st = settings?.state || '';
-                      if (newCity || st) handleSettingsChange('location', [newCity, st].filter(Boolean).join(', '));
-                    }} placeholder="e.g. San Francisco" style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>State / Province</label>
-                    <input type="text" value={settings?.state || ''} onChange={(e) => {
-                      const newSt = e.target.value;
-                      handleSettingsChange('state', newSt);
-                      const ct = settings?.city || '';
-                      if (ct || newSt) handleSettingsChange('location', [ct, newSt].filter(Boolean).join(', '));
-                    }} placeholder="e.g. CA" style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>ZIP / Postal Code</label>
-                    <input type="text" value={settings?.postalCode || ''} onChange={(e) => handleSettingsChange('postalCode', e.target.value)} placeholder="e.g. 94105" style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>LinkedIn URL</label>
-                    <input type="url" value={settings?.linkedinUrl || ''} onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)} placeholder="e.g. https://linkedin.com/in/username" style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-              </div>
               )}
             </div>
           )}
@@ -902,13 +1104,10 @@ export function InterventionPanel({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.4rem',
-                padding: '0.65rem 1.25rem',
+                padding: '0.7rem 1.35rem',
                 fontSize: '0.88rem',
                 fontWeight: 600,
-                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                color: '#ffffff',
-                border: 'none',
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                borderRadius: '8px',
               }}
               id={`intervention-resolve-${interventionId}`}
             >
@@ -930,17 +1129,15 @@ export function InterventionPanel({
                 disabled={resolving}
                 style={{
                   flex: 1,
-                  minWidth: '150px',
-                  padding: '0.65rem 1rem',
+                  minWidth: '140px',
+                  padding: '0.7rem 1rem',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '0.35rem',
-                  fontSize: '0.85rem',
+                  fontSize: '0.86rem',
                   fontWeight: 600,
-                  border: '1px solid var(--border-glass)',
-                  color: 'var(--text-primary)',
-                  background: 'var(--background-card)',
+                  borderRadius: '8px',
                 }}
                 title="Stop automated execution and apply directly in your browser"
                 id={`intervention-switch-manual-${interventionId}`}
@@ -955,18 +1152,20 @@ export function InterventionPanel({
               style={{
                 flex: 1,
                 minWidth: '100px',
-                padding: '0.65rem 1rem',
+                padding: '0.7rem 1rem',
                 border: '1px solid rgba(239, 68, 68, 0.35)',
                 color: '#f87171',
                 background: 'rgba(239, 68, 68, 0.08)',
-                fontSize: '0.85rem',
+                fontSize: '0.86rem',
                 fontWeight: 600,
+                borderRadius: '8px',
               }}
               id={`intervention-cancel-${interventionId}`}
             >
               {resolving && resolution === 'cancelled' ? '…' : 'Cancel'}
             </button>
           </div>
+
         </>
       )}
       {/* Screenshot Focus Modal Portal */}

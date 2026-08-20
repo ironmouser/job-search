@@ -131,20 +131,13 @@ export default function AdminDashboard() {
   const [dailyCost, setDailyCost] = useState<number>(0);
   const [aiCostToday, setAiCostToday] = useState<{ total: number; byProvider: { provider: string; cost: number; calls: number }[] } | null>(null);
   const [aiCostMonth, setAiCostMonth] = useState<{ total: number; byProvider: { provider: string; cost: number; calls: number }[] } | null>(null);
-  const [scrapeDoCredits, setScrapeDoCredits] = useState<{
-    remaining: number | null;
-    total: number | null;
-    plan: string | null;
-    periodStart?: string | null;
-    periodEnd?: string | null;
-    daysRemaining?: number | null;
-    error?: string;
-  } | null>(null);
   const [scraperApiStats, setScraperApiStats] = useState<{
     requestCount: number | null;
     requestLimit: number | null;
     concurrentRequests: number | null;
     concurrentRequestsLimit: number | null;
+    planName?: string | null;
+    monthlyCostUsd?: number | null;
     error?: string;
   } | null>(null);
   const [serpApiStats, setSerpApiStats] = useState<{
@@ -152,6 +145,7 @@ export default function AdminDashboard() {
     searchesLeft: number | null;
     searchesPerMonth: number | null;
     thisMonthUsage: number | null;
+    monthlyCostUsd?: number | null;
     error?: string;
   } | null>(null);
   const [s3Stats, setS3Stats] = useState<{ objectCount: number | null; totalSizeBytes: number | null; estimatedMonthlyCostUsd: number | null; error?: string } | null>(null);
@@ -243,7 +237,6 @@ export default function AdminDashboard() {
             setDailyCost(data.dailyCost || 0);
             setAiCostToday(data.aiCostToday || null);
             setAiCostMonth(data.aiCostMonth || null);
-            setScrapeDoCredits(data.scrapeDoCredits || null);
             setScraperApiStats(data.scraperApiStats || null);
             setSerpApiStats(data.serpApiStats || null);
             setS3Stats(data.s3Stats || null);
@@ -855,12 +848,22 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <Shield size={16} style={{ color: '#34d399' }} />
                     <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>ScraperAPI</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#34d399', background: 'rgba(16,185,129,0.12)', padding: '1px 8px', borderRadius: '99px' }}>pay-per-request</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#34d399', background: 'rgba(16,185,129,0.12)', padding: '1px 8px', borderRadius: '99px' }}>
+                      {scraperApiStats?.planName ?? 'Hobby'} • ${(scraperApiStats?.monthlyCostUsd ?? 49).toFixed(2)}/mo
+                    </span>
                   </div>
                   {scraperApiStats?.error ? (
                     <div style={{ fontSize: '0.82rem', color: 'var(--danger)' }}>{scraperApiStats.error}</div>
                   ) : (
                     <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.65rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)', padding: '0.45rem 0.65rem', borderRadius: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Subscription Plan</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#34d399' }}>
+                          ${(scraperApiStats?.monthlyCostUsd ?? 49).toFixed(2)}
+                          <span style={{ fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '2px' }}>/mo</span>
+                        </span>
+                      </div>
+
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem 0.75rem', marginBottom: '0.65rem' }}>
                         <div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Used This Month</div>
@@ -904,14 +907,22 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <Search size={16} style={{ color: '#fbbf24' }} />
                     <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>SerpAPI</span>
-                    {serpApiStats?.planName && (
-                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#fbbf24', background: 'rgba(251,191,36,0.12)', padding: '1px 8px', borderRadius: '99px' }}>{serpApiStats.planName}</span>
-                    )}
+                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#fbbf24', background: 'rgba(251,191,36,0.12)', padding: '1px 8px', borderRadius: '99px' }}>
+                      {serpApiStats?.planName ?? 'Developer'} • ${(serpApiStats?.monthlyCostUsd ?? 50).toFixed(2)}/mo
+                    </span>
                   </div>
                   {serpApiStats?.error ? (
                     <div style={{ fontSize: '0.82rem', color: 'var(--danger)' }}>{serpApiStats.error}</div>
                   ) : (
                     <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.65rem', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', padding: '0.45rem 0.65rem', borderRadius: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Subscription Plan</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fbbf24' }}>
+                          ${(serpApiStats?.monthlyCostUsd ?? 50).toFixed(2)}
+                          <span style={{ fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-secondary)', marginLeft: '2px' }}>/mo</span>
+                        </span>
+                      </div>
+
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem 0.75rem', marginBottom: '0.65rem' }}>
                         <div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>Searches Left</div>

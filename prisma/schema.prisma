@@ -20,6 +20,7 @@ model Job {
   requirements     String?
   url              String    @unique
   applicationUrl   String?   @map("application_url")
+  consecutiveAutoFailures Int @default(0) @map("consecutive_auto_failures")
   source           String?
   status           String    @default("discovered")
   appliedAt        DateTime? @map("applied_at") @db.Timestamptz(6)

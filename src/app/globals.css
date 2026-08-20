@@ -504,14 +504,14 @@ body:not(.light-theme) .dashboard-top-section .top-stat-card.active {
 
 /* Light Theme Overrides for Stat Cards */
 body.light-theme .dashboard-top-section .top-stat-card {
-  background-color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.85) !important;
   border: 1px solid rgba(226, 232, 240, 0.9) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
 body.light-theme .dashboard-top-section .top-stat-card.active,
 body.light-theme .dashboard-top-section .top-stat-card.stat-card-found.active {
-  background-color: #bfdbfe !important;
+  background-color: rgba(191, 219, 254, 0.85) !important;
   border: 1px solid #3b82f6 !important;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
 }

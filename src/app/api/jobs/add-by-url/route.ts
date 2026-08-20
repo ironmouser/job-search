@@ -321,6 +321,7 @@ export async function POST(request: Request) {
       applied_at: userJob.appliedAt,
       opportunity_scores: scoreObj ? [{ total_score: scoreObj.totalScore }] : [],
       job_feedback: [],
+      consecutive_auto_failures: 0,
       automation_confidence: atsInfo.confidence,
       unlockedBySubmission: true,
       isPrivate: userJob.isPrivate,

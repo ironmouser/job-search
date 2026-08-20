@@ -106,6 +106,8 @@ export async function GET() {
             requestLimit: number | null;
             concurrentRequests: number | null;
             concurrentRequestsLimit: number | null;
+            planName?: string | null;
+            monthlyCostUsd?: number | null;
             error?: string;
         }
 
@@ -114,6 +116,8 @@ export async function GET() {
             requestLimit: null,
             concurrentRequests: null,
             concurrentRequestsLimit: null,
+            planName: null,
+            monthlyCostUsd: null,
         };
 
         if (scraperApiKey) {
@@ -123,11 +127,38 @@ export async function GET() {
                 });
                 if (saRes.ok) {
                     const saData = await saRes.json();
+                    const reqLimit = saData.requestLimit ?? null;
+                    const concLimit = saData.concurrentRequestsLimit ?? null;
+
+                    let planName = 'Hobby';
+                    let monthlyCostUsd = 49;
+                    if (process.env.SCRAPERAPI_MONTHLY_COST) {
+                        monthlyCostUsd = parseFloat(process.env.SCRAPERAPI_MONTHLY_COST) || 49;
+                        planName = process.env.SCRAPERAPI_PLAN_NAME || 'Custom';
+                    } else if (reqLimit && reqLimit <= 5000) {
+                        planName = 'Free Trial';
+                        monthlyCostUsd = 0;
+                    } else if (reqLimit && reqLimit <= 100000) {
+                        planName = 'Hobby';
+                        monthlyCostUsd = 49;
+                    } else if (reqLimit && reqLimit <= 1000000) {
+                        planName = 'Startup';
+                        monthlyCostUsd = 149;
+                    } else if (reqLimit && reqLimit <= 3000000) {
+                        planName = 'Business';
+                        monthlyCostUsd = 299;
+                    } else if (reqLimit && reqLimit > 3000000) {
+                        planName = 'Enterprise';
+                        monthlyCostUsd = 999;
+                    }
+
                     scraperApiStats = {
                         requestCount:             saData.requestCount            ?? null,
-                        requestLimit:             saData.requestLimit            ?? null,
+                        requestLimit:             reqLimit,
                         concurrentRequests:       saData.concurrentRequests       ?? null,
-                        concurrentRequestsLimit:  saData.concurrentRequestsLimit  ?? null,
+                        concurrentRequestsLimit:  concLimit,
+                        planName,
+                        monthlyCostUsd,
                     };
                 } else {
                     scraperApiStats.error = `HTTP ${saRes.status}`;
@@ -145,6 +176,7 @@ export async function GET() {
             searchesLeft: number | null;
             searchesPerMonth: number | null;
             thisMonthUsage: number | null;
+            monthlyCostUsd?: number | null;
             error?: string;
         }
 
@@ -153,6 +185,7 @@ export async function GET() {
             searchesLeft: null,
             searchesPerMonth: null,
             thisMonthUsage: null,
+            monthlyCostUsd: null,
         };
 
         if (serpApiKey) {
@@ -162,11 +195,31 @@ export async function GET() {
                 });
                 if (serpRes.ok) {
                     const serpData = await serpRes.json();
+                    const rawPlanName = serpData.plan_name ?? null;
+                    const monthlySearches = serpData.searches_per_month ?? null;
+
+                    let monthlyCostUsd = 50;
+                    if (process.env.SERPAPI_MONTHLY_COST) {
+                        monthlyCostUsd = parseFloat(process.env.SERPAPI_MONTHLY_COST) || 50;
+                    } else {
+                        const name = (rawPlanName || '').toLowerCase();
+                        if (name.includes('free') || (monthlySearches != null && monthlySearches <= 250)) {
+                            monthlyCostUsd = 0;
+                        } else if (name.includes('dev') || (monthlySearches != null && monthlySearches <= 5000)) {
+                            monthlyCostUsd = 50;
+                        } else if (name.includes('prod') || (monthlySearches != null && monthlySearches <= 15000)) {
+                            monthlyCostUsd = 150;
+                        } else if (name.includes('big') || (monthlySearches != null && monthlySearches <= 30000)) {
+                            monthlyCostUsd = 300;
+                        }
+                    }
+
                     serpApiStats = {
-                        planName:        serpData.plan_name              ?? null,
+                        planName:        rawPlanName,
                         searchesLeft:    serpData.plan_searches_left     ?? null,
-                        searchesPerMonth: serpData.searches_per_month    ?? null,
+                        searchesPerMonth: monthlySearches,
                         thisMonthUsage:  serpData.this_month_usage       ?? null,
+                        monthlyCostUsd,
                     };
                 } else {
                     serpApiStats.error = `HTTP ${serpRes.status}`;

@@ -239,67 +239,78 @@ export async function normalizeAndSaveJobs(
         onProgress?.(brandNewCandidates.length, `Skipped ${totalAlreadyHave} role${totalAlreadyHave === 1 ? '' : 's'} already in your list`);
     }
 
-    // Tier 2: Batched Rapid Triage via DeepSeek (Lite Pass)
+    // Tier 2: Batched Rapid Triage via DeepSeek (Lite Pass) - Parallelized
     const approvedCandidates: any[] = [];
 
     if (brandNewCandidates.length > 0 && searchKeyword && !skipAiTriage) {
-        console.log(`[AI Triage] Running DeepSeek rapid pre-screening on ${brandNewCandidates.length} new candidate jobs for keyword "${searchKeyword}"...`);
+        console.log(`[AI Triage] Running rapid pre-screening on ${brandNewCandidates.length} new candidate jobs in parallel for keyword "${searchKeyword}"...`);
         onProgress?.(brandNewCandidates.length, `Running AI quality check on ${brandNewCandidates.length} new listing${brandNewCandidates.length === 1 ? '' : 's'}...`);
         
-        const chunkSize = 20;
+        const chunkSize = 25;
+        const chunks: any[][] = [];
         for (let i = 0; i < brandNewCandidates.length; i += chunkSize) {
-            const chunk = brandNewCandidates.slice(i, i + chunkSize);
-            const candidatesPayload = chunk.map((c, index) => {
-                const rawSnippet = (c.description || '').slice(0, 200);
-                // For email stubs ("Found via email link: ..."), send an empty snippet
-                // rather than a URL string — the AI should judge by title+company only.
-                const isStub = /^found via email link:/i.test(rawSnippet) || rawSnippet.trim() === '';
-                return {
-                    index,
-                    title: c.title,
-                    company: c.company,
-                    snippet: isStub ? '' : rawSnippet
-                };
-            });
+            chunks.push(brandNewCandidates.slice(i, i + chunkSize));
+        }
 
-            try {
-                const triageResponse = await callAI({
-                    task: 'triage',
-                    jsonMode: true,
-                    maxTokens: 1000,
-                    userId,
-                    messages: [
-                        {
-                            role: 'system',
-                            content: 'You are an AI recruitment triage filter. Review candidate job listings against the candidate search criteria and background. Discard obvious spam, completely unrelated fields, and severe seniority mismatches. Allow adjacent and relevant career track titles (e.g., Account Executive or Client Success for Account Manager; Software Engineer or Full Stack for Developer). Return ONLY valid JSON matching: {"results": [{"index": 0, "pass": true, "reason": "Relevant role"}]}'
-                        },
-                        {
-                            role: 'user',
-                            content: JSON.stringify({
-                                candidateSearchKeyword: searchKeyword,
-                                candidateBackgroundSnippet: profileText,
-                                candidateJobs: candidatesPayload
-                            })
-                        }
-                    ]
+        const triageResults = await Promise.all(
+            chunks.map(async (chunk) => {
+                const candidatesPayload = chunk.map((c, index) => {
+                    const rawSnippet = (c.description || '').slice(0, 200);
+                    const isStub = /^found via email link:/i.test(rawSnippet) || rawSnippet.trim() === '';
+                    return {
+                        index,
+                        title: c.title,
+                        company: c.company,
+                        snippet: isStub ? '' : rawSnippet
+                    };
                 });
 
-                const parsed = JSON.parse(triageResponse);
-                const results: any[] = parsed?.results || [];
+                try {
+                    const triageResponse = await callAI({
+                        task: 'triage',
+                        jsonMode: true,
+                        maxTokens: 1000,
+                        userId,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'You are an AI recruitment triage filter. Review candidate job listings against the candidate search criteria and background. Discard obvious spam, completely unrelated fields, and severe seniority mismatches. Allow adjacent and relevant career track titles (e.g., Account Executive or Client Success for Account Manager; Software Engineer or Full Stack for Developer). Return ONLY valid JSON matching: {"results": [{"index": 0, "pass": true, "reason": "Relevant role"}]}'
+                            },
+                            {
+                                role: 'user',
+                                content: JSON.stringify({
+                                    candidateSearchKeyword: searchKeyword,
+                                    candidateBackgroundSnippet: profileText,
+                                    candidateJobs: candidatesPayload
+                                })
+                            }
+                        ]
+                    });
 
-                for (let idx = 0; idx < chunk.length; idx++) {
-                    const res = results.find((r: any) => r.index === idx);
-                    if (res && res.pass === false) {
-                        console.log(`[AI Triage Rejected] Discarding "${chunk[idx].title}" at "${chunk[idx].company}": ${res.reason || 'Not a fit'}`);
-                    } else {
-                        approvedCandidates.push(chunk[idx]);
+                    const parsed = JSON.parse(triageResponse);
+                    const results: any[] = parsed?.results || [];
+                    const approved: any[] = [];
+
+                    for (let idx = 0; idx < chunk.length; idx++) {
+                        const res = results.find((r: any) => r.index === idx);
+                        if (res && res.pass === false) {
+                            console.log(`[AI Triage Rejected] Discarding "${chunk[idx].title}" at "${chunk[idx].company}": ${res.reason || 'Not a fit'}`);
+                        } else {
+                            approved.push(chunk[idx]);
+                        }
                     }
+                    return approved;
+                } catch (err: any) {
+                    console.warn(`[AI Triage Error] Failing open for chunk due to error: ${err.message}`);
+                    return chunk;
                 }
-            } catch (err: any) {
-                console.warn(`[AI Triage Error] Failing open for chunk due to error: ${err.message}`);
-                approvedCandidates.push(...chunk);
-            }
+            })
+        );
+
+        for (const approvedChunk of triageResults) {
+            approvedCandidates.push(...approvedChunk);
         }
+
         const droppedByAI = brandNewCandidates.length - approvedCandidates.length;
         if (droppedByAI > 0) {
             onProgress?.(approvedCandidates.length, `AI filtered out ${droppedByAI} poor match${droppedByAI === 1 ? '' : 'es'} based on your profile`);
@@ -308,7 +319,7 @@ export async function normalizeAndSaveJobs(
         approvedCandidates.push(...brandNewCandidates);
     }
 
-    // Tier 3: Persistence
+    // Tier 3: Persistence (Bulk Optimized)
     // Save existing roles and cap NEW UserJob feed allocations to top 100 brand-new candidate matches per sync
     const newAllocatedCandidates = approvedCandidates.slice(0, 100);
     const finalJobsToSave = [...knownGoodJobs, ...newAllocatedCandidates];
@@ -321,99 +332,130 @@ export async function normalizeAndSaveJobs(
     } else {
         onProgress?.(newCandidatesCount, `Finalizing ${newCandidatesCount} new qualified job${newCandidatesCount === 1 ? '' : 's'} for your list...`);
     }
-    const processedUrls: string[] = [];
 
+    // Prepare distinct jobs for bulk insertion
+    const uniqueJobsMap = new Map<string, any>();
     for (const jobData of finalJobsToSave) {
-      try {
         const cleanedUrl = cleanJobUrl(jobData.url);
-        if (!cleanedUrl || processedUrls.includes(cleanedUrl)) continue;
-        processedUrls.push(cleanedUrl);
+        if (!cleanedUrl || uniqueJobsMap.has(cleanedUrl)) continue;
 
-        const safeTitle = cleanNullBytes(jobData.title) || 'Untitled Position';
-        const safeCompany = cleanNullBytes(jobData.company) || 'Unknown Company';
-        const safeLocation = cleanNullBytes(jobData.location) || 'Remote';
-        const safeSalaryRange = cleanNullBytes(jobData.salaryRange);
-        const safeDescription = cleanNullBytes(jobData.description) || `Found via job search: ${cleanedUrl}`;
-        const safeSource = cleanNullBytes(jobData.source) || 'Direct';
-
-        let job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
-        if (!job) {
-            try {
-                job = await prisma.job.create({
-                    data: {
-                        title: safeTitle,
-                        company: safeCompany,
-                        location: safeLocation,
-                        salaryRange: safeSalaryRange || null,
-                        description: safeDescription,
-                        url: cleanedUrl,
-                        applicationUrl: jobData.applicationUrl || null,
-                        source: safeSource,
-                        isEasyApply: !!jobData.isEasyApply,
-                    }
-                });
-            } catch (e: any) {
-                if (e.code === 'P2002') {
-                    job = await prisma.job.findUnique({ where: { url: cleanedUrl } });
-                }
-                if (!job) {
-                    console.error(`[Job Save Error] Could not create job "${safeTitle}" at "${safeCompany}":`, e);
-                    continue;
-                }
-            }
-        } else {
-            const updates: any = {};
-            if (!job.description || job.description.trim().length === 0) {
-                updates.description = safeDescription;
-            }
-            if (!job.applicationUrl && jobData.applicationUrl) {
-                updates.applicationUrl = jobData.applicationUrl;
-            }
-            if (!job.isEasyApply && jobData.isEasyApply) {
-                updates.isEasyApply = true;
-            }
-            if (Object.keys(updates).length > 0) {
-                try {
-                    await prisma.job.update({
-                        where: { id: job.id },
-                        data: updates
-                    });
-                } catch (e) {
-                    console.warn(`[Job Update Error] Failed to update job ${job.id}:`, e);
-                }
-            }
-        }
-
-        // Link to UserJob for top 100 allocated matches for this sync run
-        if (userAllocationUrls.has(cleanedUrl) || userAllocationUrls.has(jobData.url)) {
-          const existingUj = await prisma.userJob.findUnique({
-              where: { userId_jobId: { userId, jobId: job.id } },
-              select: { id: true, status: true }
-          });
-          if (!existingUj) {
-              newSavedCount++;
-          }
-          await prisma.userJob.upsert({
-              where: { userId_jobId: { userId, jobId: job.id } },
-              update: {
-                  ...(existingUj?.status === 'deleted' ? {} : { status: 'discovered' })
-              },
-              create: {
-                  userId,
-                  jobId: job.id,
-                  status: 'discovered'
-              }
-          });
-        }
-      } catch (itemErr: any) {
-        console.error(`[Job Persistence Error] Error processing listing:`, itemErr);
-      }
+        uniqueJobsMap.set(cleanedUrl, {
+            title: cleanNullBytes(jobData.title) || 'Untitled Position',
+            company: cleanNullBytes(jobData.company) || 'Unknown Company',
+            location: cleanNullBytes(jobData.location) || 'Remote',
+            salaryRange: cleanNullBytes(jobData.salaryRange) || null,
+            description: cleanNullBytes(jobData.description) || `Found via job search: ${cleanedUrl}`,
+            url: cleanedUrl,
+            applicationUrl: jobData.applicationUrl || null,
+            source: cleanNullBytes(jobData.source) || 'Direct',
+            isEasyApply: !!jobData.isEasyApply
+        });
     }
-    
+
+    const preparedJobs = Array.from(uniqueJobsMap.values());
+    const processedUrls = preparedJobs.map(j => j.url);
+
+    if (preparedJobs.length > 0) {
+        // Bulk insert all new jobs in a single query
+        try {
+            await prisma.job.createMany({
+                data: preparedJobs.map(j => ({
+                    title: j.title,
+                    company: j.company,
+                    location: j.location,
+                    salaryRange: j.salaryRange,
+                    description: j.description,
+                    url: j.url,
+                    applicationUrl: j.applicationUrl,
+                    source: j.source,
+                    isEasyApply: j.isEasyApply
+                })),
+                skipDuplicates: true
+            });
+        } catch (bulkErr: any) {
+            console.warn(`[Bulk Job Create Notice]: ${bulkErr.message}`);
+        }
+    }
+
+    // Bulk fetch all relevant Job records by URL
+    const dbJobs = await prisma.job.findMany({
+        where: { url: { in: processedUrls } },
+        select: { id: true, url: true, description: true, applicationUrl: true, isEasyApply: true }
+    });
+    const dbJobByUrl = new Map(dbJobs.map(j => [j.url, j]));
+
+    // Batch enrich any existing jobs that lacked description or applicationUrl
+    const updatePromises: Promise<any>[] = [];
+    for (const prep of preparedJobs) {
+        const existing = dbJobByUrl.get(prep.url);
+        if (!existing) continue;
+
+        const updates: any = {};
+        if ((!existing.description || existing.description.trim().length === 0) && prep.description) {
+            updates.description = prep.description;
+        }
+        if (!existing.applicationUrl && prep.applicationUrl) {
+            updates.applicationUrl = prep.applicationUrl;
+        }
+        if (!existing.isEasyApply && prep.isEasyApply) {
+            updates.isEasyApply = true;
+        }
+        if (Object.keys(updates).length > 0) {
+            updatePromises.push(
+                prisma.job.update({ where: { id: existing.id }, data: updates }).catch(e => {
+                    console.warn(`[Job Update Notice]:`, e.message);
+                })
+            );
+        }
+    }
+    if (updatePromises.length > 0) {
+        await Promise.all(updatePromises);
+    }
+
+    // Bulk link candidate jobs to UserJob
+    const candidateDbJobsToLink = dbJobs.filter(j => userAllocationUrls.has(j.url));
+    const candidateJobIds = candidateDbJobsToLink.map(j => j.id);
+
+    if (candidateJobIds.length > 0) {
+        const existingUserJobs = await prisma.userJob.findMany({
+            where: {
+                userId,
+                jobId: { in: candidateJobIds }
+            },
+            select: { jobId: true, status: true }
+        });
+        const existingUserJobMap = new Map(existingUserJobs.map(uj => [uj.jobId, uj.status]));
+
+        const newUserJobsToCreate: { userId: string; jobId: string; status: string }[] = [];
+
+        for (const job of candidateDbJobsToLink) {
+            const currentStatus = existingUserJobMap.get(job.id);
+            if (currentStatus === undefined) {
+                newUserJobsToCreate.push({
+                    userId,
+                    jobId: job.id,
+                    status: 'discovered'
+                });
+                newSavedCount++;
+            }
+        }
+
+        if (newUserJobsToCreate.length > 0) {
+            try {
+                await prisma.userJob.createMany({
+                    data: newUserJobsToCreate,
+                    skipDuplicates: true
+                });
+            } catch (ujErr: any) {
+                console.warn(`[Bulk UserJob Create Notice]: ${ujErr.message}`);
+            }
+        }
+    }
+
     const data = await prisma.job.findMany({
         where: { url: { in: processedUrls } }
     });
-    
+
     console.log(`Successfully processed ${data?.length || 0} jobs (${newSavedCount} new) for user ${userId}.`);
     const resultArr: any = data || [];
     resultArr.newSavedCount = newSavedCount;

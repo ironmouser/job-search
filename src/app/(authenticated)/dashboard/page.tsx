@@ -78,7 +78,8 @@ export default async function Dashboard() {
 
       opportunity_scores: j.opportunityScores.map((s: any) => ({ total_score: s.totalScore })),
       job_feedback: j.jobFeedbacks.map((f: any) => ({ feedback_type: f.feedbackType })),
-      automation_confidence: isAutoApplied ? 100 : detectATSFromUrl(j.url).confidence
+      consecutive_auto_failures: j.consecutiveAutoFailures || 0,
+      automation_confidence: isAutoApplied ? 100 : detectATSFromUrl(j.applicationUrl || j.url).confidence
     };
   }).filter(j => {
     if (j.is_archived) return true;

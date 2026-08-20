@@ -55,18 +55,20 @@ export async function GET(
         confirmationNumber: true,
         submittedAnswersSummary: true,
         interventions: {
-          where: { resolvedAt: null },
           select: {
             id: true,
             reason: true,
             description: true,
             screenshotUrl: true,
             pageUrl: true,
+            resolvedAt: true,
+            resolution: true,
             createdAt: true,
           },
           take: 1,
           orderBy: { createdAt: 'desc' },
         },
+
       },
     });
 

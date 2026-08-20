@@ -5,13 +5,33 @@ import { createPortal } from 'react-dom';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
-import { formatFailureExplanation } from '@/lib/auto-apply/failure-helpers';
+import {
+  formatFailureExplanation,
+  getFailureTitle,
+  getFailureNextSteps,
+} from '@/lib/auto-apply/failure-helpers';
 import { AutoApplyButton } from './AutoApplyButton';
 import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
-import { Bot, Building2, Clock, CheckCircle2, AlertCircle, Loader2, Check, Eye, X, ExternalLink, Image as ImageIcon, Zap } from 'lucide-react';
+import {
+  Bot,
+  Building2,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Check,
+  Eye,
+  X,
+  ExternalLink,
+  Image as ImageIcon,
+  Zap,
+  Maximize2,
+  ArrowRight,
+  ShieldAlert,
+} from 'lucide-react';
 import { trackAutoApplyAction } from '@/lib/analytics';
 import { isAggregatorUrl } from '@/lib/urlUtils';
 
@@ -60,6 +80,8 @@ interface SessionData {
     description: string;
     screenshotUrl?: string | null;
     pageUrl?: string | null;
+    resolvedAt?: string | null;
+    resolution?: string | null;
     createdAt: string;
   }>;
 }
@@ -108,6 +130,8 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
   const [isStarting, setIsStarting] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
+  const [activeModalScreenshotUrl, setActiveModalScreenshotUrl] = useState<string | null>(null);
+  const [isDismissingFailure, setIsDismissingFailure] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -174,6 +198,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
     const timer = setTimeout(() => {
       const issueElement =
         document.querySelector('[id^="intervention-panel-"]') ||
+        document.getElementById('auto-apply-failure-card') ||
         document.getElementById('auto-apply-failure-banner') ||
         document.getElementById('auto-apply-low-confidence-warning') ||
         document.getElementById('step-3-apply');
@@ -186,23 +211,53 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
     return () => clearTimeout(timer);
   }, [session?.status, session?.interventions]);
 
-  const hasIntervention = !!(session?.interventions && session.interventions.length > 0);
-  const isInterventionStatus =
-    hasIntervention ||
-    session?.status === AutoApplyStatus.NEEDS_INTERVENTION ||
-    session?.status === 'needs_intervention' ||
-    session?.status === AutoApplyStatus.NEEDS_REVIEW ||
-    session?.status === 'needs_review' ||
-    ((session?.status === AutoApplyStatus.FAILED || session?.status === 'failed') && !!session?.failureReason);
+  // Live intervention check (worker is paused and actively awaiting human help)
+  const isLiveIntervention =
+    (session?.status === AutoApplyStatus.NEEDS_INTERVENTION ||
+      session?.status === 'needs_intervention' ||
+      session?.status === AutoApplyStatus.NEEDS_REVIEW ||
+      session?.status === 'needs_review') &&
+    !!(session?.interventions && session.interventions.length > 0 && !session.interventions[0].resolvedAt);
 
-  const pendingIntervention = session?.interventions?.[0] ?? (isInterventionStatus && session ? {
-    id: session.id,
-    reason: session.failureReason || 'unknown_question',
-    description: session.failureDetails || (session.failureReason ? formatFailureExplanation(session.failureReason, session.failureDetails) : 'Your action or confirmation is required to proceed with this application.'),
-    screenshotUrl: (session as any).screenshotUrl || (session as any).confirmationScreenshotUrl || null,
-    pageUrl: jobUrl || null,
-    createdAt: new Date().toISOString(),
-  } : null);
+  const pendingIntervention = isLiveIntervention ? session?.interventions?.[0] : null;
+
+  // Failed or stopped state (worker has completed/aborted without applying)
+  const isFailedOrStopped =
+    !isLiveIntervention &&
+    (session?.status === AutoApplyStatus.FAILED ||
+      session?.status === 'failed' ||
+      session?.status === AutoApplyStatus.SKIPPED ||
+      session?.status === 'skipped');
+
+  const failureScreenshotUrl =
+    session?.interventions?.[0]?.screenshotUrl ||
+    (session as any)?.screenshotUrl ||
+    (session as any)?.confirmationScreenshotUrl ||
+    null;
+
+  async function handleDismissFailure() {
+    setIsDismissingFailure(true);
+    try {
+      await fetch(`/api/auto-apply/${jobId}/cancel`, { method: 'POST' });
+      setSession((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: AutoApplyStatus.CANCELLED,
+              failureReason: null,
+              failureDetails: null,
+              interventions: [],
+            }
+          : null
+      );
+      await fetchStatus();
+    } catch (e) {
+      console.error('Failed to dismiss failure:', e);
+    } finally {
+      setIsDismissingFailure(false);
+    }
+  }
+
 
   // Determine active step index (1 to 5) and progressive fill percentage (0% to 100%)
   const getProgressState = () => {
@@ -628,7 +683,10 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
               {screenshotProofUrl ? (
                 <button
                   type="button"
-                  onClick={() => setIsScreenshotModalOpen(true)}
+                  onClick={() => {
+                    setActiveModalScreenshotUrl(screenshotProofUrl);
+                    setIsScreenshotModalOpen(true);
+                  }}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -664,7 +722,10 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
                   </span>
                   <button
                     type="button"
-                    onClick={() => setIsScreenshotModalOpen(true)}
+                    onClick={() => {
+                      setActiveModalScreenshotUrl(screenshotProofUrl);
+                      setIsScreenshotModalOpen(true);
+                    }}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -685,7 +746,10 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
                 </div>
 
                 <div
-                  onClick={() => setIsScreenshotModalOpen(true)}
+                  onClick={() => {
+                    setActiveModalScreenshotUrl(screenshotProofUrl);
+                    setIsScreenshotModalOpen(true);
+                  }}
                   title="Click to view full screenshot proof"
                   style={{
                     cursor: 'pointer',
@@ -730,8 +794,8 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         );
       })()}
 
-      {/* Confirmation Screenshot Fullscreen Modal Portal */}
-      {mounted && isScreenshotModalOpen && ((session as any)?.confirmationScreenshotUrl || (session as any)?.screenshotUrl) && createPortal(
+      {/* Screenshot Focus Fullscreen Modal Portal */}
+      {mounted && isScreenshotModalOpen && activeModalScreenshotUrl && createPortal(
         <div
           style={{
             position: 'fixed',
@@ -772,8 +836,8 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <CheckCircle2 size={18} color="#10b981" />
-                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Application Submission Confirmation</span>
+                <ImageIcon size={18} color="#2563eb" />
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Bot Screen Capture</span>
                 {session?.completedAt && (
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #64748b)' }}>
                     • {new Date(session.completedAt).toLocaleString()}
@@ -782,7 +846,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <a
-                  href={(session as any)?.confirmationScreenshotUrl || (session as any)?.screenshotUrl}
+                  href={activeModalScreenshotUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -799,7 +863,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
                 </a>
                 <button
                   onClick={() => setIsScreenshotModalOpen(false)}
-                  aria-label="Close confirmation screenshot modal"
+                  aria-label="Close screenshot modal"
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -831,8 +895,8 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
               }}
             >
               <img
-                src={(session as any)?.confirmationScreenshotUrl || (session as any)?.screenshotUrl}
-                alt="Submission confirmation screenshot proof full resolution"
+                src={activeModalScreenshotUrl}
+                alt="Bot screenshot capture full resolution"
                 style={{
                   maxWidth: '100%',
                   maxHeight: 'calc(90vh - 100px)',
@@ -848,32 +912,228 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         document.body
       )}
 
-      {/* Failure Banner with Human Explanation (only when no intervention panel is active) */}
-      {(session?.status === AutoApplyStatus.FAILED || session?.status === 'failed') && !isInterventionStatus && (
+      {/* Auto Apply Did Not Finish Card (Failure, Incomplete, & Intervention Timeout) */}
+      {isFailedOrStopped && (
         <div
-          id="auto-apply-failure-banner"
+          id="auto-apply-failure-card"
           style={{
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
-            borderRadius: '8px',
-            padding: '0.85rem 1rem',
+            background: 'rgba(239, 68, 68, 0.05)',
+            border: '1.5px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '12px',
+            padding: '1.25rem',
             display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.65rem',
-            fontSize: '0.85rem',
-            color: 'var(--text-primary)',
+            flexDirection: 'column',
+            gap: '1rem',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
           }}
         >
-          <AlertCircle size={18} style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-            <strong style={{ color: '#ef4444' }}>Auto Apply Could Not Complete</strong>
-            <span>{formatFailureExplanation(session.failureReason, session.failureDetails)}</span>
+          {/* Header Row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <AlertCircle size={19} color="#ef4444" style={{ flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, color: '#ef4444', fontSize: '0.95rem' }}>
+                Auto Apply Did Not Finish
+              </span>
+            </div>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#f87171',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+              }}
+            >
+              {getFailureTitle(session?.failureReason, session?.failureDetails)}
+            </span>
+          </div>
+
+          {/* Explanation Text */}
+          <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-primary)', lineHeight: 1.5, fontWeight: 500 }}>
+            {formatFailureExplanation(session?.failureReason, session?.failureDetails)}
+          </p>
+
+          {/* Screenshot Preview (if captured) */}
+          {failureScreenshotUrl && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <ImageIcon size={14} /> Bot Captured Screen
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveModalScreenshotUrl(failureScreenshotUrl);
+                    setIsScreenshotModalOpen(true);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    padding: '0.3rem 0.65rem',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-glass)',
+                    background: 'var(--bg-primary)',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="View larger screenshot in focus modal"
+                >
+                  <Maximize2 size={13} />
+                  <span>View Larger Screenshot</span>
+                </button>
+              </div>
+
+              <div
+                onClick={() => {
+                  setActiveModalScreenshotUrl(failureScreenshotUrl);
+                  setIsScreenshotModalOpen(true);
+                }}
+                style={{
+                  position: 'relative',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  border: '1px solid var(--border-glass)',
+                  background: '#090d16',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  maxHeight: '200px',
+                }}
+                title="Click to enlarge screenshot"
+              >
+                <img
+                  src={failureScreenshotUrl}
+                  alt="Application screen captured when auto apply stopped"
+                  style={{ maxHeight: '200px', width: '100%', objectFit: 'contain', display: 'block' }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '8px',
+                    right: '8px',
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    color: '#ffffff',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '0.72rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 500,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <Maximize2 size={12} />
+                  <span>Click to enlarge</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* What is Required If Trying Again Box */}
+          <div
+            style={{
+              background: 'var(--bg-primary, #ffffff)',
+              border: '1px solid var(--border-glass, #e2e8f0)',
+              borderRadius: '8px',
+              padding: '0.85rem 1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              fontSize: '0.84rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <ArrowRight size={15} color="#2563eb" />
+              <span>What is required if you decide to try again</span>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.3rem', lineHeight: 1.45 }}>
+              {getFailureNextSteps(session?.failureReason, session?.failureDetails).map((step, idx) => (
+                <li key={idx}>{step}</li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Action Buttons: Try Again, Finish Manually, Cancel Auto Apply */}
+          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ flex: '2 1 200px' }}>
+              <AutoApplyButton
+                jobId={jobId}
+                jobUrl={jobUrl}
+                hasAssets={hasAssets}
+                hasResume={hasResume}
+                currentStatus={null}
+                isAggregatorJob={isAggregatorJob}
+                quota={quota}
+                onSessionStarted={() => fetchStatus()}
+                onStartingChange={(starting) => setIsStarting(starting)}
+              />
+            </div>
+
+            {jobUrl && (
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => window.open(jobUrl, '_blank', 'noopener,noreferrer')}
+                style={{
+                  flex: '1 1 140px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem',
+                  padding: '0.7rem 1rem',
+                  fontSize: '0.86rem',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-glass)',
+                  color: 'var(--text-primary)',
+                  background: 'var(--bg-primary)',
+                  cursor: 'pointer',
+                }}
+                title="Open job posting in browser to finish manually"
+              >
+                <ExternalLink size={15} /> Finish Manually
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={handleDismissFailure}
+              disabled={isDismissingFailure}
+              style={{
+                flex: '1 1 120px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.35rem',
+                padding: '0.7rem 1rem',
+                fontSize: '0.86rem',
+                fontWeight: 600,
+                borderRadius: '8px',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#f87171',
+                background: 'rgba(239, 68, 68, 0.06)',
+                cursor: isDismissingFailure ? 'not-allowed' : 'pointer',
+              }}
+              title="Cancel and remove this failure message"
+            >
+              {isDismissingFailure ? <Loader2 size={14} className="animate-spin" /> : <X size={15} />}
+              <span>Cancel Auto Apply</span>
+            </button>
           </div>
         </div>
       )}
 
-      {/* Inline User Interaction / Intervention Panel */}
-      {isInterventionStatus && pendingIntervention && (
+      {/* Active Live Intervention Panel (when worker is running and waiting for user input) */}
+      {isLiveIntervention && pendingIntervention && (
         <div style={{ margin: '0.25rem 0' }}>
           <InterventionPanel
             interventionId={pendingIntervention.id}
@@ -967,8 +1227,8 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         </div>
       )}
 
-      {/* Auto Apply button (start / cancel) - hidden when intervention controls take over */}
-      {!(isInterventionStatus && pendingIntervention) && (
+      {/* Default Auto Apply button (start / cancel) - only shown when neither active intervention nor failure card is taking over */}
+      {!isLiveIntervention && !isFailedOrStopped && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
           <AutoApplyButton
             jobId={jobId}
@@ -983,6 +1243,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
           />
         </div>
       )}
+
 
       {/* Log viewer toggle — ONLY for admins */}
       {isAdmin && session && (

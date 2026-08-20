@@ -66,7 +66,7 @@ export async function PATCH(
       data: updateData,
     });
 
-    // When a real application is submitted, update the UserJob status
+    // When a real application is submitted, update the UserJob status and reset failure counter
     if (body.status === AutoApplyStatus.APPLIED) {
       await prisma.userJob.update({
         where: {
@@ -76,6 +76,10 @@ export async function PATCH(
           status: 'applied',
           appliedAt: new Date(),
         },
+      });
+      await prisma.job.update({
+        where: { id: session.jobId },
+        data: { consecutiveAutoFailures: 0 },
       });
     } else if (body.failureReason === 'job_closed' || body.failureDetails?.toLowerCase().includes('no longer accepting')) {
       await prisma.userJob.updateMany({
@@ -95,6 +99,15 @@ export async function PATCH(
           status: 'closed',
         },
       });
+    } else if (body.status === AutoApplyStatus.FAILED) {
+      // For technical / automation failures, increment consecutive failure counter
+      const nonTechnicalReasons = ['user_cancelled', 'missing_assets'];
+      if (!body.failureReason || !nonTechnicalReasons.includes(body.failureReason)) {
+        await prisma.job.update({
+          where: { id: session.jobId },
+          data: { consecutiveAutoFailures: { increment: 1 } },
+        });
+      }
     }
 
     return NextResponse.json({ success: true, sessionId });

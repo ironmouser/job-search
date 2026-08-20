@@ -82,7 +82,8 @@ export async function GET(request: Request) {
         is_archived: uj.isArchived,
         is_auto_applied: isAutoApplied,
         created_at: uj.createdAt,
-        automation_confidence: isAutoApplied ? 100 : detectATSFromUrl(j.url).confidence,
+        consecutive_auto_failures: j.consecutiveAutoFailures || 0,
+        automation_confidence: isAutoApplied ? 100 : detectATSFromUrl(j.applicationUrl || j.url).confidence,
         source: j.source,
         description: j.description,
         opportunity_scores: j.opportunityScores,
@@ -215,8 +216,8 @@ export async function GET(request: Request) {
         const isRemoteB = isRemoteLocation(b.location || '') ? 1 : 0;
         if (isRemoteB !== isRemoteA) return isRemoteB - isRemoteA;
       } else if (sortOption === 'auto_apply') {
-        const confA = a.automation_confidence || 0;
-        const confB = b.automation_confidence || 0;
+        const confA = (a.consecutive_auto_failures >= 3) ? -1 : (a.automation_confidence || 0);
+        const confB = (b.consecutive_auto_failures >= 3) ? -1 : (b.automation_confidence || 0);
         if (confB !== confA) return confB - confA;
       }
 
