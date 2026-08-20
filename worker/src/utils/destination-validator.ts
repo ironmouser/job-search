@@ -405,27 +405,154 @@ export function isLegitimateApplicationDestination(
   return { valid: false, reason: `Could not confirm this URL is a legitimate application destination` };
 }
 
+const APPLICATION_JSON_KEYS = [
+  'howToApply', 'how_to_apply', 'howToApplyUrl', 'how_to_apply_url',
+  'applyUrl', 'apply_url', 'applicationUrl', 'application_url',
+  'externalUrl', 'external_url', 'redirectUrl', 'redirect_url',
+  'externalApplyUrl', 'external_apply_url', 'companyApplyUrl', 'company_apply_url',
+  'jobApplyUrl', 'job_apply_url', 'jobApplicationUrl', 'job_application_url',
+  'targetUrl', 'target_url', 'destUrl', 'dest_url', 'applyLink', 'apply_link',
+];
+
 /**
- * Attempts to extract an application URL from a network response body.
- * Checks common JSON payload keys that job boards use to pass external apply URLs.
+ * Attempts to extract an application URL from a JSON string or parsed object.
+ * Performs deep recursive scanning across nested objects and schema graphs (e.g. JobPosting).
  */
-export function extractApplicationUrlFromJson(body: string): string | null {
-  const APPLICATION_JSON_KEYS = [
-    'applyUrl', 'apply_url', 'applicationUrl', 'application_url',
-    'externalUrl', 'external_url', 'redirectUrl', 'redirect_url',
-    'externalApplyUrl', 'external_apply_url', 'companyApplyUrl',
-    'jobApplyUrl', 'jobApplicationUrl',
-  ];
+export function extractApplicationUrlFromJson(bodyOrObj: string | any): string | null {
   try {
-    const data = JSON.parse(body);
-    for (const key of APPLICATION_JSON_KEYS) {
-      const val = data?.[key] || data?.data?.[key] || data?.job?.[key] || data?.result?.[key];
-      if (val && typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
-        return val;
+    const data = typeof bodyOrObj === 'string' ? JSON.parse(bodyOrObj) : bodyOrObj;
+    if (!data || typeof data !== 'object') return null;
+
+    const searchObj = (obj: any, depth = 0): string | null => {
+      if (!obj || typeof obj !== 'object' || depth > 5) return null;
+
+      // 1. Check known application keys
+      for (const key of APPLICATION_JSON_KEYS) {
+        const val = obj[key];
+        if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
+          return unescapeUrl(val);
+        }
       }
-    }
+
+      // 2. Check schema.org JobPosting entities
+      if (obj['@type'] === 'JobPosting') {
+        if (typeof obj.url === 'string' && (obj.url.startsWith('http://') || obj.url.startsWith('https://')) && !isAggregatorDomain(obj.url)) {
+          return unescapeUrl(obj.url);
+        }
+        if (typeof obj.sameAs === 'string' && (obj.sameAs.startsWith('http://') || obj.sameAs.startsWith('https://')) && !isAggregatorDomain(obj.sameAs)) {
+          return unescapeUrl(obj.sameAs);
+        }
+        if (typeof obj.isBasedOn === 'string' && (obj.isBasedOn.startsWith('http://') || obj.isBasedOn.startsWith('https://'))) {
+          return unescapeUrl(obj.isBasedOn);
+        }
+      }
+
+      // 3. Search children
+      if (Array.isArray(obj)) {
+        for (const item of obj) {
+          const res = searchObj(item, depth + 1);
+          if (res) return res;
+        }
+      } else {
+        for (const k of Object.keys(obj)) {
+          if (typeof obj[k] === 'object' && obj[k] !== null) {
+            const res = searchObj(obj[k], depth + 1);
+            if (res) return res;
+          }
+        }
+      }
+      return null;
+    };
+
+    return searchObj(data);
   } catch {
     // Not valid JSON
   }
   return null;
 }
+
+export function unescapeUrl(rawUrl: string): string {
+  return rawUrl
+    .replace(/\\u0026/g, '&')
+    .replace(/\\u002F/g, '/')
+    .replace(/\\u003A/g, ':')
+    .replace(/\\u003F/g, '?')
+    .replace(/\\u003D/g, '=')
+    .replace(/\\/g, '')
+    .trim();
+}
+
+/**
+ * Extracts candidate application destination URLs embedded inside <script> tags or raw HTML,
+ * including BuiltIn jobPostInit, Next.js / Nuxt data payloads, and common job board variables.
+ */
+export function extractEmbeddedScriptUrls(scriptContents: string[]): string[] {
+  const foundUrls: string[] = [];
+
+  const SCRIPT_URL_PATTERNS = [
+    /["']howToApply["']\s*:\s*["']([^"']+)["']/gi,
+    /["']how_to_apply["']\s*:\s*["']([^"']+)["']/gi,
+    /["']applyUrl["']\s*:\s*["']([^"']+)["']/gi,
+    /["']apply_url["']\s*:\s*["']([^"']+)["']/gi,
+    /["']applicationUrl["']\s*:\s*["']([^"']+)["']/gi,
+    /["']externalApplyUrl["']\s*:\s*["']([^"']+)["']/gi,
+    /["']external_apply_url["']\s*:\s*["']([^"']+)["']/gi,
+    /["']companyApplyUrl["']\s*:\s*["']([^"']+)["']/gi,
+    /["']jobApplyUrl["']\s*:\s*["']([^"']+)["']/gi,
+    /Builtin\.jobPostInit\s*\(\s*({[\s\S]*?})\s*\)/gi,
+  ];
+
+  for (const script of scriptContents) {
+    if (!script) continue;
+
+    // 1. Check for JSON parseable scripts (e.g. Next.js / JSON-LD / Nuxt data)
+    try {
+      const parsed = JSON.parse(script);
+      const urlFromJson = extractApplicationUrlFromJson(parsed);
+      if (urlFromJson && !foundUrls.includes(urlFromJson)) {
+        foundUrls.push(urlFromJson);
+      }
+    } catch {
+      // Not pure JSON, proceed to regex scanning
+    }
+
+    // 2. Specific regex patterns
+    for (const pattern of SCRIPT_URL_PATTERNS) {
+      pattern.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(script)) !== null) {
+        const raw = match[1];
+        if (!raw) continue;
+
+        // If match was the BuiltIn init object
+        if (raw.startsWith('{')) {
+          try {
+            const parsedObj = JSON.parse(raw);
+            const extracted = extractApplicationUrlFromJson(parsedObj);
+            if (extracted && !foundUrls.includes(extracted)) {
+              foundUrls.push(extracted);
+            }
+          } catch {
+            // Regex inside the object
+            const innerMatch = raw.match(/["']howToApply["']\s*:\s*["']([^"']+)["']/i);
+            if (innerMatch && innerMatch[1]) {
+              const unescaped = unescapeUrl(innerMatch[1]);
+              if (unescaped.startsWith('http') && !foundUrls.includes(unescaped)) {
+                foundUrls.push(unescaped);
+              }
+            }
+          }
+          continue;
+        }
+
+        const unescaped = unescapeUrl(raw);
+        if ((unescaped.startsWith('http://') || unescaped.startsWith('https://')) && !foundUrls.includes(unescaped)) {
+          foundUrls.push(unescaped);
+        }
+      }
+    }
+  }
+
+  return foundUrls;
+}
+

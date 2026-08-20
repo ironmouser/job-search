@@ -16,6 +16,7 @@ import {
   classifyCandidate,
   isLegitimateApplicationDestination,
   extractApplicationUrlFromJson,
+  extractEmbeddedScriptUrls,
   normalizeUrl,
   CandidateInfo,
   ClassificationResult,
@@ -167,50 +168,62 @@ export class AggregatorHandler {
       });
     }).catch(() => {});
 
-    // ─── 1. Check JSON-LD directApply / JobPosting metadata ───────────────────
+    // ─── 1. Check JSON-LD and page script metadata for application URLs ───────
     try {
-      const jsonLdUrls: string[] = await page.$$eval('script[type="application/ld+json"]', (scripts) => {
+      const scriptContents: string[] = await page.$$eval('script', (scripts) => {
         const found: string[] = [];
         for (const s of scripts) {
-          try {
-            const data = JSON.parse(s.textContent || '{}');
-            if (data.directApply && data.url) found.push(data.url);
-            if (data['@type'] === 'JobPosting' && data.url && !data.url.includes('linkedin.com')) {
-              found.push(data.url);
-            }
-          } catch {}
+          const content = s.textContent || s.innerHTML || '';
+          if (content && (
+            content.includes('howToApply') ||
+            content.includes('how_to_apply') ||
+            content.includes('applyUrl') ||
+            content.includes('applicationUrl') ||
+            content.includes('JobPosting') ||
+            content.includes('jobPostInit') ||
+            content.includes('directApply') ||
+            content.includes('externalApplyUrl') ||
+            s.type === 'application/ld+json' ||
+            s.type === 'application/json'
+          )) {
+            found.push(content);
+          }
         }
         return found;
       }).catch(() => []);
 
-      for (const rawUrl of jsonLdUrls) {
+      const candidateUrls = extractEmbeddedScriptUrls(scriptContents);
+
+      for (const rawUrl of candidateUrls) {
         if (!rawUrl || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) continue;
-        const normalizedJsonUrl = normalizeUrl(rawUrl);
+        const normalizedCandidateUrl = normalizeUrl(rawUrl);
 
         // Convergence check: if destination URL matches current URL, do not navigate again
-        if (normalizedJsonUrl === normalizedCurrentUrl) {
-          await logger.info('destination_discovery', `JSON-LD canonical destination matches current page (${rawUrl}) — destination convergence reached.`);
+        if (normalizedCandidateUrl === normalizedCurrentUrl) {
+          await logger.info('destination_discovery', `Script metadata canonical destination matches current page (${rawUrl}) — destination convergence reached.`);
           continue;
         }
 
         // Loop prevention check: if already visited in hop chain
-        if (visitedUrls && visitedUrls.has(normalizedJsonUrl)) {
-          await logger.info('destination_discovery', `JSON-LD URL (${rawUrl}) was already visited in this session — skipping redundant navigation.`);
+        if (visitedUrls && visitedUrls.has(normalizedCandidateUrl)) {
+          await logger.info('destination_discovery', `Script metadata URL (${rawUrl}) was already visited in this session — skipping redundant navigation.`);
           continue;
         }
 
         const validation = isLegitimateApplicationDestination(rawUrl, currentUrl);
         if (validation.valid) {
-          await logger.info('destination_discovery', `Found valid application destination in JSON-LD metadata: ${rawUrl} (${validation.reason})`);
-          await logger.info('application_navigation', `Phase 3: Direct navigation to JSON-LD destination: ${rawUrl}`);
-          visitedUrls?.add(normalizedJsonUrl);
+          await logger.info('destination_discovery', `Found valid application destination in page script metadata: ${rawUrl} (${validation.reason})`);
+          await logger.info('application_navigation', `Phase 3: Direct navigation to script metadata destination: ${rawUrl}`);
+          visitedUrls?.add(normalizedCandidateUrl);
           await page.goto(rawUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
           return { navigated: true, candidateReports: [] };
         } else {
-          await logger.info('destination_validation', `JSON-LD URL rejected: ${rawUrl} — ${validation.reason}`);
+          await logger.info('destination_validation', `Script metadata URL rejected: ${rawUrl} — ${validation.reason}`);
         }
       }
-    } catch {}
+    } catch (err: any) {
+      await logger.warn('destination_discovery', `Error evaluating script metadata: ${err?.message}`);
+    }
 
     // ─── 2. Phase 1 & 2: Discover and validate DOM candidates ─────────────────
     const discovery = await AggregatorHandler._discoverDomCandidates(browser, logger, currentUrl, allCandidateReports);

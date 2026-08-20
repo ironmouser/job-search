@@ -2053,6 +2053,20 @@ export async function scrapeBuiltIn(keyword: string, location: string = 'Remote'
                             }
                         } catch {}
                     });
+
+                    // Extract direct application URL if embedded in BuiltIn job config
+                    const htmlText = dRes.body.toString();
+                    const match = htmlText.match(/["']howToApply["']\s*:\s*["']([^"']+)["']/i);
+                    if (match && match[1]) {
+                        const rawHowToApply = match[1]
+                            .replace(/\\u0026/g, '&')
+                            .replace(/\\u002F/g, '/')
+                            .replace(/\\/g, '')
+                            .trim();
+                        if (rawHowToApply.startsWith('http')) {
+                            job.applyUrl = rawHowToApply;
+                        }
+                    }
                 }
             } catch {}
         }));
