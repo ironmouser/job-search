@@ -1789,6 +1789,7 @@ export default function DashboardClient({
                 </th>
                 <th style={{ padding: '1rem' }}>Company</th>
                 <th style={{ padding: '1rem' }}>Role</th>
+                <th style={{ padding: '1rem' }}>Salary</th>
                 <th style={{ padding: '1rem' }}>Location</th>
                 <th style={{ padding: '1rem' }}>Score</th>
                 <th style={{ padding: '1rem' }}>Status</th>
@@ -1858,6 +1859,7 @@ export default function DashboardClient({
                           {job.title}
                         </Link>
                       </td>
+                      <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.salary_range || 'Not Listed'}</td>
                       <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.location || 'Remote'}</td>
                       <td style={{ padding: '1rem' }}>
                         {score ? (
@@ -1934,7 +1936,7 @@ export default function DashboardClient({
               })}
               {currentJobs.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan={9} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No jobs match your current filters.
                   </td>
                 </tr>
