@@ -171,6 +171,8 @@ export async function fetchEmailsAndExtractJobs(
       // Stage 1: Fast Envelope Scan & Pre-filter without downloading full bodies
       onProgress?.(0, 'Scanning email headers for job alerts...');
       const candidateHeaders: Array<{ uid: number; subject: string; from: string }> = [];
+      const totalInBox = client.mailbox ? (client.mailbox as any).exists || 0 : 0;
+      console.log(`[Email Sync] Mailbox INBOX opened. Total messages in INBOX: ${totalInBox}`);
 
       for await (const message of client.fetch({ since: sinceDate }, { envelope: true, uid: true })) {
         const subject = message.envelope?.subject || '';
@@ -205,7 +207,48 @@ export async function fetchEmailsAndExtractJobs(
         }
       }
 
+      // Fallback: If date-based search returned 0 headers but inbox has messages, scan recent message sequence
+      if (candidateHeaders.length === 0 && totalInBox > 0) {
+        const fallbackCount = Math.min(totalInBox, 150);
+        console.log(`[Email Sync] Date search returned 0 headers. Scanning most recent ${fallbackCount} emails as fallback...`);
+        const fetchRange = `${Math.max(1, totalInBox - fallbackCount + 1)}:*`;
+
+        for await (const message of client.fetch(fetchRange, { envelope: true, uid: true })) {
+          const subject = message.envelope?.subject || '';
+          const fromAddress = message.envelope?.from?.[0]?.address?.toLowerCase() || '';
+          const fromName = message.envelope?.from?.[0]?.name?.toLowerCase() || '';
+
+          const isFromSelf = Boolean(userEmail && fromAddress === userEmail);
+          const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
+
+          if (!isFromSelf && isPersonalSender) {
+            continue;
+          }
+
+          const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
+          const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
+          const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
+
+          const userKeywords = [prefs.searchKeyword]
+            .filter(Boolean)
+            .flatMap(s => String(s).toLowerCase().split(/[\s,]+/))
+            .filter(t => t.length > 2);
+          const matchesUserKeyword = userKeywords.some(kw => combinedHeader.includes(kw));
+
+          if (isFromSelf || isKnownJobSender || hasJobKeyword || matchesUserKeyword) {
+            candidateHeaders.push({
+              uid: message.uid,
+              subject,
+              from: fromAddress,
+            });
+          }
+        }
+      }
+
       console.log(`[Email Sync] Discovered ${candidateHeaders.length} matching job email headers.`);
+      if (candidateHeaders.length > 0) {
+        console.log(`[Email Sync] Matched subjects sample:`, candidateHeaders.slice(-5).map(h => `[${h.from}] ${h.subject}`));
+      }
 
       if (candidateHeaders.length === 0) {
         onProgress?.(0, 'No new job alert emails found since last sync.');
@@ -241,7 +284,7 @@ export async function fetchEmailsAndExtractJobs(
           const html = parsed.html || '';
           const subject = parsed.subject || item.subject || '';
 
-          // Clean HTML to text if plain text is minimal
+          // Clean HTML to text if plain text is minimal or html has more structure
           const htmlText = html
             .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -249,7 +292,8 @@ export async function fetchEmailsAndExtractJobs(
             .replace(/\s+/g, ' ')
             .trim();
 
-          const effectiveText = text || htmlText;
+          // Prefer the richer representation (HTML text usually contains all job cards in email digests)
+          const effectiveText = (htmlText.length > text.length ? htmlText : text) || text || htmlText;
 
           // Extract job links from HTML and text
           const urlRegex = /(https?:\/\/[^\s<"']+)/g;
@@ -355,7 +399,7 @@ ${allUrls.slice(0, 60).join('\n')}
 
           rawJobs.push({
             title: jobTitle,
-            company: cleanCompanyName(job.company) || 'Unknown Company',
+            company: companyName,
             location: job.location || 'Remote/Unknown',
             salary_range: job.salary_range || null,
             description: finalDesc,
@@ -366,6 +410,8 @@ ${allUrls.slice(0, 60).join('\n')}
         }
       }
 
+      console.log(`[Email Sync] Formatted ${rawJobs.length} raw jobs for saving.`);
+
       // Stage 5: Save & Normalize (skip redundant AI triage pass since email extraction already triaged)
       let newJobsSaved = 0;
       if (rawJobs.length > 0) {
@@ -375,6 +421,7 @@ ${allUrls.slice(0, 60).join('\n')}
           onProgress,
         });
         newJobsSaved = typeof result?.newSavedCount === 'number' ? result.newSavedCount : (result?.length || rawJobs.length);
+        console.log(`[Email Sync] normalizeAndSaveJobs completed. New jobs saved: ${newJobsSaved}`);
       }
 
       // Update SyncLog timestamp
