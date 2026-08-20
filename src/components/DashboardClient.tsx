@@ -1971,7 +1971,25 @@ export default function DashboardClient({
             };
             
             return (
-              <div key={job.id} id={`job-item-${job.id}`} className={`glass-card job-card${isViewed ? ' job-card-viewed' : ''}${confettiJobId === job.id ? ' confetti' : ''}`} style={cardStyle}>
+              <div 
+                key={job.id} 
+                id={`job-item-${job.id}`} 
+                className={`glass-card job-card${isViewed ? ' job-card-viewed' : ''}${confettiJobId === job.id ? ' confetti' : ''}`} 
+                onClick={(e) => {
+                  if (!isExpanded) {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('input, button, a, [role="button"]')) {
+                      return;
+                    }
+                    handleMarkViewed(job.id);
+                    router.push(`/job/${job.id}`);
+                  }
+                }}
+                style={{
+                  ...cardStyle,
+                  cursor: !isExpanded ? 'pointer' : undefined
+                }}
+              >
                 {/* Top Header: Company Name, Badges, Score & Checkbox */}
                 <div className="job-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.5rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, minWidth: 0 }}>
@@ -2017,7 +2035,10 @@ export default function DashboardClient({
                       </div>
                     ) : scoresExhausted ? (
                       <div 
-                        onClick={() => setShowUpgradeModal(true)} 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowUpgradeModal(true);
+                        }} 
                         title="Weekly score allowance reached. Click to upgrade to Pro!" 
                         className="score-badge" 
                         style={{ 
@@ -2043,6 +2064,7 @@ export default function DashboardClient({
                     <input 
                       type="checkbox" 
                       checked={checkedJobs.has(job.id)} 
+                      onClick={(e) => e.stopPropagation()}
                       onChange={() => toggleJobCheck(job.id)}
                       style={{ 
                         cursor: 'pointer', 
@@ -2088,7 +2110,10 @@ export default function DashboardClient({
 
                   <button 
                     type="button"
-                    onClick={() => toggleCardExpand(job.id)} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleCardExpand(job.id);
+                    }} 
                     className="card-more-btn"
                     style={{
                       opacity: isExpanded ? 0 : 1,
@@ -2163,7 +2188,10 @@ export default function DashboardClient({
                       {/* Collapse button */}
                       <button 
                         type="button"
-                        onClick={() => toggleCardExpand(job.id)} 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCardExpand(job.id);
+                        }} 
                         className="card-more-btn"
                         title="Less actions"
                       >
