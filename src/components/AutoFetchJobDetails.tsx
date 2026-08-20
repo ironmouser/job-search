@@ -52,13 +52,22 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
 
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 15000); // 15-second timeout ceiling
     
     const fetchAndScore = async () => {
       setStatus('fetching');
       setErrorMessage(null);
       try {
-        // Fetch Details
-        const fetchRes = await fetch(`/api/jobs/${jobId}/fetch-details`, { method: 'POST' });
+        // Fetch Details with timeout abort signal
+        const fetchRes = await fetch(`/api/jobs/${jobId}/fetch-details`, { 
+          method: 'POST',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
         if (!fetchRes.ok) {
           const errData = await fetchRes.json().catch(() => ({}));
           const errMsg = errData.error || 'Failed to scrape full job details';
@@ -71,28 +80,19 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
 
         if (!isMounted) return;
         setStatus('scoring');
-
-        // Score Job
-        try {
-          await fetch('/api/score', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jobId }) 
-          });
-        } catch (scoreErr) {
-          console.warn('Auto-score warning:', scoreErr);
-        }
-
-        if (!isMounted) return;
         
-        // Reload page to show new data
+        // Reload page to show the newly updated and scored data
         router.refresh();
       } catch (err: any) {
-        console.warn('Error auto-fetching job details:', err?.message || err);
-        if (isMounted) {
+        if (!isMounted) return;
+        if (err?.name === 'AbortError') {
+          console.warn('Job details fetch timed out after 15s');
+          setErrorMessage('Fetching details took too long. The job board may be blocking automated scrapers.');
+        } else {
+          console.warn('Error auto-fetching job details:', err?.message || err);
           setErrorMessage(err?.message || 'Failed to fetch details');
-          setStatus('error');
         }
+        setStatus('error');
       }
     };
 
@@ -100,6 +100,8 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
 
     return () => {
       isMounted = false;
+      controller.abort();
+      clearTimeout(timeoutId);
     };
   }, [jobId, router, retryCount]);
 
@@ -271,7 +273,29 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
         isSyncing={true} 
         syncMessage={syncMessage} 
         title="Fetching Details"
-        subtext={`We are currently extracting the full job description.\nThis usually takes about 10-15 seconds.`}
+        subtext={
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem' }}>
+            <span>We are currently extracting the full job description. This usually takes about 10-15 seconds.</span>
+            <button
+              type="button"
+              onClick={() => {
+                setShowManual(true);
+              }}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: 'var(--text-secondary)',
+                borderRadius: '6px',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Skip wait & paste description manually
+            </button>
+          </div>
+        }
       />
     </>
   );

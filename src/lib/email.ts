@@ -3,7 +3,7 @@ import { simpleParser } from 'mailparser';
 import { prisma } from './prisma';
 import { normalizeAndSaveJobs } from './jobs';
 import { cleanCompanyName } from './cleaners';
-import { isNonJobUrl } from './urlUtils';
+import { isNonJobUrl, cleanJobUrl } from './urlUtils';
 import { extractJobsFromEmailText } from './scoring';
 import { decrypt } from './encryption';
 
@@ -403,10 +403,11 @@ ${allUrls.slice(0, 40).join('\n')}
             .map(s => String(s).trim())
             .filter(s => s.length > 0);
           const extractedDesc = shortDescParts.join('\n\n');
+          const cleanedUrl = cleanJobUrl(job.url);
           const finalDesc =
             extractedDesc.length > 15
-              ? `${extractedDesc}\n\nFound via email link: ${job.url}`
-              : `Found via email link: ${job.url}`;
+              ? `${extractedDesc}\n\nFound via email link: ${cleanedUrl}`
+              : `Found via email link: ${cleanedUrl}`;
 
           rawJobs.push({
             title: jobTitle,
@@ -415,7 +416,7 @@ ${allUrls.slice(0, 40).join('\n')}
             salary_range: job.salary_range || null,
             description: finalDesc,
             requirements: job.requirements || null,
-            url: job.url,
+            url: cleanedUrl,
             source: sourceCategory,
           });
         }

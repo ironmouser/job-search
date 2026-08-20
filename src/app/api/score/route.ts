@@ -147,11 +147,8 @@ export async function POST(request: Request) {
             await Promise.all(
                 userJobs.map(async (uj) => {
                     const desc = await ensureJobDescription(uj.job);
-                    if (desc) {
-                        jobsWithDesc.push({ id: uj.job.id, title: uj.job.title, description: desc });
-                    } else {
-                        skippedResults.push({ jobId: uj.job.id, skipped: true, reason: 'Description inadequate.' });
-                    }
+                    const effectiveDesc = desc || uj.job.description || '';
+                    jobsWithDesc.push({ id: uj.job.id, title: uj.job.title, description: effectiveDesc });
                 })
             );
 
@@ -206,11 +203,8 @@ export async function POST(request: Request) {
             await Promise.all(
                 userJobs.map(async (uj) => {
                     const desc = await ensureJobDescription(uj.job);
-                    if (desc) {
-                        jobsWithDesc.push({ id: uj.job.id, title: uj.job.title, description: desc });
-                    } else {
-                        skippedResults.push({ jobId: uj.job.id, skipped: true, reason: 'Description inadequate.' });
-                    }
+                    const effectiveDesc = desc || uj.job.description || '';
+                    jobsWithDesc.push({ id: uj.job.id, title: uj.job.title, description: effectiveDesc });
                 })
             );
 

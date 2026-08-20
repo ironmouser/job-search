@@ -36,7 +36,7 @@ export function isScraperApiBlockedDomain(url: string): boolean {
 export async function fetchWithScraperAPI(
   url: string,
   renderJs = false,
-  timeoutMs = 35_000
+  timeoutMs = 8_000
 ): Promise<string | null> {
   const apiKey = process.env.SCRAPERAPI_KEY;
   if (!apiKey) {

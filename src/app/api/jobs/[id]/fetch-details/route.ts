@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { scoreJob } from '@/lib/scoring';
 
 import { fetchJobDescriptionDetailed, extractUrlFromStubDescription, FetchJobDescriptionResult } from '@/lib/jobFetcher';
+import { cleanJobUrl } from '@/lib/urlUtils';
 
 export async function POST(
     request: Request,
@@ -33,7 +34,7 @@ export async function POST(
 
         // Try URLs in priority order: embedded URL in stub description, then job.url
         const stubUrl = extractUrlFromStubDescription(job.description);
-        const urlsToTry = [...new Set([stubUrl, job.url].filter(Boolean))] as string[];
+        const urlsToTry = [...new Set([stubUrl, job.url].map(u => u ? cleanJobUrl(u) : '').filter(Boolean))];
 
         if (urlsToTry.length === 0) {
             return NextResponse.json({ error: 'Job has no URL to fetch from' }, { status: 400 });

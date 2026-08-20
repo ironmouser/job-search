@@ -38,7 +38,7 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
     // Content that is almost entirely a single URL
     if (/^https?:\/\/\S+$/.test(clean)) return false;
 
-    // Detect auth checkpoint / login wall content
+    // Detect auth checkpoint / login wall content & promotional recruiter marketing landers
     if (
       lower.includes("we're signing you in") ||
       lower.includes("signing you in") ||
@@ -47,7 +47,16 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
       lower.includes("remain on this page, you'll be signed in") ||
       lower.includes("sign in to view") ||
       lower.includes("login to view") ||
-      lower.includes("account.ycombinator.com/authenticate")
+      lower.includes("account.ycombinator.com/authenticate") ||
+      lower.includes("glassdoor recruiter") ||
+      lower.includes("yes, the jobsearch sucks") ||
+      lower.includes("the numbers game is a dead end") ||
+      lower.includes("now the jobs find you") ||
+      lower.includes("now the jobsfind you") ||
+      lower.includes("try glassdoor recruiter") ||
+      lower.includes("in a 2-minute chat") ||
+      lower.includes("chat. match. apply.") ||
+      lower.includes("we filter out the noise to serve you only the opportunities")
     ) {
       return false;
     }
@@ -289,7 +298,7 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
     try {
         const res = await gotScraping({
             url,
-            timeout: { request: 15000 },
+            timeout: { request: 5000 },
             retry: { limit: 0 },
             throwHttpErrors: false,
         });
@@ -313,8 +322,8 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
     }
 
     // ── Tier 2: ScraperAPI ───────────────────────────────────────────────────
-    // Fast path: try raw HTML first (render=false, 1 credit)
-    const rawScraperHtml = await fetchWithScraperAPI(url, false);
+    // Fast path: try raw HTML first (render=false, 1 credit, 5s timeout)
+    const rawScraperHtml = await fetchWithScraperAPI(url, false, 5000);
     if (rawScraperHtml) {
         const resolvedApplicationUrl = extractATSUrlFromHtml(rawScraperHtml);
         const extracted = await extractContent(rawScraperHtml);
@@ -329,8 +338,8 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
         }
     }
 
-    // Heavy path: escalate to JS rendering only if raw HTML yielded no description
-    const renderedScraperHtml = await fetchWithScraperAPI(url, true);
+    // Heavy path: escalate to JS rendering only if raw HTML yielded no description (7s timeout)
+    const renderedScraperHtml = await fetchWithScraperAPI(url, true, 7000);
     if (renderedScraperHtml) {
         const resolvedApplicationUrl = extractATSUrlFromHtml(renderedScraperHtml);
         const extracted = await extractContent(renderedScraperHtml);
@@ -362,7 +371,7 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
                     'Content-Type': 'application/json'
                 },
                 json: { url },
-                timeout: { request: 40000 },
+                timeout: { request: 8000 },
                 retry: { limit: 0 },
                 throwHttpErrors: false,
                 responseType: 'json'

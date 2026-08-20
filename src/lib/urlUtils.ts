@@ -27,7 +27,31 @@ export function cleanJobUrl(rawUrl: string): string {
       parsed.pathname = parsed.pathname.replace('/comm/jobs/view/', '/jobs/view/');
     }
 
-    // 3. General redirect unwrapper (e.g. email tracking links with dest/target)
+    // 3. Unwrap Glassdoor email tracking / match links to canonical job listing URLs
+    if (parsed.hostname.includes('glassdoor.com')) {
+      const jlId = parsed.searchParams.get('jobListingId') || parsed.searchParams.get('jl');
+      if (jlId) {
+        return `https://glassdoor.com/job-listing/?jl=${jlId}`;
+      }
+    }
+
+    // 4. Unwrap Indeed email tracking / redirect links to canonical job URLs
+    if (parsed.hostname.includes('indeed.com')) {
+      const jk = parsed.searchParams.get('jk');
+      if (jk) {
+        return `https://indeed.com/viewjob?jk=${jk}`;
+      }
+    }
+
+    // 5. Unwrap ZipRecruiter email tracking links to canonical job URLs
+    if (parsed.hostname.includes('ziprecruiter.com')) {
+      const jid = parsed.searchParams.get('jid') || parsed.searchParams.get('job_id');
+      if (jid) {
+        return `https://ziprecruiter.com/jobs/${jid}`;
+      }
+    }
+
+    // 6. General redirect unwrapper (e.g. email tracking links with dest/target/redirect_url)
     if (parsed.searchParams.has('redirect_url') || parsed.searchParams.has('target_url') || parsed.searchParams.has('continue')) {
       const target = parsed.searchParams.get('redirect_url') || parsed.searchParams.get('target_url') || parsed.searchParams.get('continue');
       if (target && target.startsWith('http')) {
