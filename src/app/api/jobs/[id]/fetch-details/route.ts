@@ -61,6 +61,13 @@ export async function POST(
             applicationUrl: directATSUrl || usedUrl,
         };
 
+        if (fetchResult.company && (!job.company || job.company.toLowerCase().includes('unknown'))) {
+            updatePayload.company = fetchResult.company;
+        }
+        if (fetchResult.title && (!job.title || job.title.toLowerCase().includes('unknown'))) {
+            updatePayload.title = fetchResult.title;
+        }
+
         // 3. Update the job
         await prisma.job.update({
             where: { id: jobId },

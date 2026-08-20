@@ -241,3 +241,54 @@ export function isAggregatorUrl(url?: string | null): boolean {
   }
 }
 
+/**
+ * Detects whether a URL is a non-job listing (e.g. company profile, recruiter overview,
+ * school page, or generic company directory) rather than an individual job opening.
+ */
+export function isNonJobUrl(url?: string | null): boolean {
+  if (!url) return true;
+  try {
+    const parsed = new URL(url.trim());
+    const path = parsed.pathname.toLowerCase();
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+
+    // Dice company profiles & recruiter directory pages
+    if (host.includes('dice.com') && (path.includes('/company-profile') || path.startsWith('/company/') || path.startsWith('/employers/'))) {
+      return true;
+    }
+    // LinkedIn company/school/member pages
+    if (host.includes('linkedin.com') && (path.startsWith('/company/') || path.startsWith('/school/') || path.startsWith('/in/'))) {
+      return true;
+    }
+    // Indeed company review / overview pages
+    if (host.includes('indeed.com') && (path.startsWith('/cmp/') || path.startsWith('/companies/'))) {
+      return true;
+    }
+    // ZipRecruiter company overview pages (note: /c/{Company}/Job/{Title} with jid is a valid job)
+    if (host.includes('ziprecruiter.com')) {
+      if (path.startsWith('/companies/')) return true;
+      if (path.startsWith('/c/') && !path.includes('/job/') && !parsed.searchParams.has('jid')) return true;
+    }
+    // Glassdoor company overview / reviews / salaries
+    if (host.includes('glassdoor.com') && (path.includes('/overview/') || path.includes('/reviews/') || path.includes('/benefits/') || path.includes('/salary/') || path.includes('/interviews/'))) {
+      return true;
+    }
+    // Built In company profile pages
+    if (host.includes('builtin') && (path.startsWith('/company/') || path.startsWith('/companies/'))) {
+      return true;
+    }
+    // Levels.fyi company directory pages
+    if (host.includes('levels.fyi') && path.startsWith('/companies/')) {
+      return true;
+    }
+    // Wellfound company profile pages
+    if (host.includes('wellfound.com') && path.startsWith('/company/')) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+

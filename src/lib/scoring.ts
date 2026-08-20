@@ -499,9 +499,14 @@ export async function extractJobsFromEmailText(
     }
 
     const prompt = `You are an expert data extraction assistant.
-Extract all legitimate job postings mentioned in the following email text that could be relevant to the candidate.
+Extract all legitimate individual job postings mentioned in the following email text that could be relevant to the candidate.
 ${criteriaPrompt}
 For each job listing found, associate it with its corresponding job link from the text or the LINKS FOUND IN EMAIL section.
+
+CRITICAL EXTRACTION RULES:
+- ONLY extract actual specific open positions/roles.
+- NEVER extract company profile/overview pages, agency directory links (e.g. dice.com/company-profile/..., linkedin.com/company/..., indeed.com/cmp/...), or email sponsor/branding headers as job postings.
+- The job title must be an actual position title (e.g. "Senior Product Manager", "Data Analyst"), NOT a company name or "Overview".
 
 Return a JSON array of objects strictly matching this schema:
 [{

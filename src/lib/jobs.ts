@@ -1,7 +1,7 @@
 import { prisma } from './prisma';
 import { getUserSettings } from './settings';
 import { reformatJobDescriptionWithGemini } from './formatter';
-import { cleanJobUrl } from './urlUtils';
+import { cleanJobUrl, isNonJobUrl } from './urlUtils';
 import { callAI } from './ai';
 import { isInternationalLocation, isRemoteLocation } from './locationUtils';
 import { cleanCompanyName } from './cleaners';
@@ -21,11 +21,14 @@ export async function bulkIngestRawJobsToGlobalDb(rawJobs: any[]) {
             const rawUrl = j.url || j.link;
             if (!rawUrl || !j.title) continue;
             const cleanedUrl = cleanJobUrl(rawUrl);
-            if (!cleanedUrl || seenUrls.has(cleanedUrl)) continue;
+            if (!cleanedUrl || isNonJobUrl(cleanedUrl) || seenUrls.has(cleanedUrl)) continue;
             seenUrls.add(cleanedUrl);
 
             const safeTitle = cleanNullBytes(j.title?.trim()) || 'Untitled Position';
             const safeCompany = cleanNullBytes(cleanCompanyName(j.company)) || 'Unknown Company';
+            if (safeTitle.toLowerCase() === 'unknown' || safeTitle.toLowerCase() === 'unknown company') continue;
+            if (safeTitle.toLowerCase() === safeCompany.toLowerCase() && (safeCompany.toLowerCase() === 'unknown company' || safeCompany.toLowerCase() === 'unknown')) continue;
+
             const safeLocation = cleanNullBytes(j.location) || 'Remote';
             const safeSalaryRange = cleanNullBytes(j.salary_range || j.salary);
             const safeDescription = cleanNullBytes(j.description) || `Found via job search: ${cleanedUrl}`;
@@ -92,9 +95,18 @@ export async function normalizeAndSaveJobs(
         if (!rawUrl || !title) continue;
 
         const cleanedUrl = cleanJobUrl(rawUrl);
-        if (seenUrls.has(cleanedUrl)) continue;
+        if (!cleanedUrl || isNonJobUrl(cleanedUrl) || seenUrls.has(cleanedUrl)) continue;
+
+        const lowerTitle = title.toLowerCase();
+        if (lowerTitle === 'unknown' || lowerTitle === 'unknown company' || lowerTitle === 'unknown title' || lowerTitle === 'overview') {
+            continue;
+        }
 
         const company = cleanCompanyName(job.company) || 'Unknown Company';
+        if (lowerTitle === company.toLowerCase() && (company.toLowerCase() === 'unknown company' || company.toLowerCase() === 'unknown')) {
+            continue;
+        }
+
         const titleCompanyKey = `${title.toLowerCase().trim()}|${company.toLowerCase().trim()}`;
         if (seenTitleCompany.has(titleCompanyKey)) {
             console.log(`[Early Dedup] Skipping duplicate title+company: "${title}" at "${company}"`);

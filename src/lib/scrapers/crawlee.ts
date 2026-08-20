@@ -10,7 +10,7 @@ import got from 'got';
 import { prisma } from '../prisma';
 import { reformatJobDescriptionWithGemini, convertHtmlToMarkdown } from '../formatter';
 import { cleanCompanyName } from '../cleaners';
-import { isSafePublicUrl } from '../urlUtils';
+import { isSafePublicUrl, isNonJobUrl } from '../urlUtils';
 import { scrapeSerpApiGoogleJobs } from '../serpapi';
 
 async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
@@ -1277,7 +1277,7 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
     try {
         let html = '';
 
-        // Direct fetch (Dice uses SSR Next.js with embedded JSON)
+        // Direct fetch (Dice uses SSR Next.js with embedded RSC/JSON)
         try {
             const res = await fetch(searchUrl, {
                 signal: AbortSignal.timeout(15000),
@@ -1293,50 +1293,98 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
         if (html) {
             const $ = cheerio.load(html);
 
-            // === PRIMARY: __NEXT_DATA__ (Dice is Next.js) ===
-            const nextDataRaw = $('script#__NEXT_DATA__').html();
-            if (nextDataRaw) {
+            // === PRIMARY: Next.js App Router RSC Streaming Chunks (self.__next_f) ===
+            const rscRegex = /self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g;
+            let rscMatch: RegExpExecArray | null;
+            while ((rscMatch = rscRegex.exec(html)) !== null) {
                 try {
-                    const nextData = JSON.parse(nextDataRaw);
-                    // Dice stores results at multiple possible paths
-                    const payload =
-                        nextData?.props?.pageProps?.initialState?.jobs?.payload ||
-                        nextData?.props?.pageProps?.searchResult ||
-                        nextData?.props?.pageProps?.jobs ||
-                        null;
+                    const raw = JSON.parse(`"${rscMatch[1]}"`);
+                    const colonIdx = raw.indexOf(':');
+                    if (colonIdx > -1) {
+                        const jsonPart = raw.slice(colonIdx + 1);
+                        try {
+                            const parsed = JSON.parse(jsonPart);
+                            const findJobList = (obj: any): any[] | null => {
+                                if (!obj || typeof obj !== 'object') return null;
+                                if (obj.jobList?.data && Array.isArray(obj.jobList.data)) return obj.jobList.data;
+                                for (const val of Object.values(obj)) {
+                                    const found = findJobList(val);
+                                    if (found) return found;
+                                }
+                                return null;
+                            };
+                            const jobListData = findJobList(parsed);
+                            if (Array.isArray(jobListData)) {
+                                for (const item of jobListData) {
+                                    const title = item.title || item.jobTitle || item.positionTitle || '';
+                                    const company = item.companyName || item.hiringOrganization?.name || '';
+                                    const loc = item.location || item.workplaceTypes?.join(', ') || location;
+                                    const jobUrl = item.detailsPageUrl || (item.guid ? `https://www.dice.com/job-detail/${item.guid}` : (item.id ? `https://www.dice.com/job-detail/${item.id}` : ''));
+                                    const summary = item.summary || item.snippet || item.description || '';
+                                    const salary = item.salary || null;
 
-                    const results: any[] = payload?.data || payload?.results || payload || [];
-                    if (Array.isArray(results)) {
-                        for (const job of results) {
-                            const title: string = job?.title || job?.jobTitle || job?.positionTitle || '';
-                            const company: string = job?.hiringOrganization?.name || job?.companyName || job?.employerName || job?.company?.name || '';
-                            const loc: string = job?.jobLocation?.[0]?.address?.addressLocality || job?.location || job?.workplaceType || location;
-                            const id: string = job?.id || job?.jobId || job?.adId || '';
-                            const slug: string = job?.slug || '';
-                            // Inline description (occasionally present in listing JSON)
-                            const inlineDesc: string = job?.description || job?.jobDescription || job?.summary || '';
-                            let jobUrl = '';
-                            if (id) {
-                                jobUrl = `https://www.dice.com/job-detail/${id}`;
-                            } else if (slug) {
-                                jobUrl = `https://www.dice.com/jobs/${slug}`;
+                                    if (title && jobUrl && !isNonJobUrl(jobUrl) && jobUrl.includes('/job-detail/')) {
+                                        jobs.push({
+                                            title: title.trim(),
+                                            company: cleanCompanyName(company) || 'Unknown Company',
+                                            location: loc,
+                                            url: jobUrl,
+                                            salary_range: salary,
+                                            description: summary ? convertHtmlToMarkdown(summary) : '',
+                                            source: 'dice'
+                                        });
+                                    }
+                                }
                             }
-                            if (title && jobUrl) {
-                                jobs.push({
-                                    title,
-                                    company: cleanCompanyName(company) || 'Unknown Company',
-                                    location: loc,
-                                    url: jobUrl,
-                                    description: inlineDesc ? convertHtmlToMarkdown(inlineDesc) : '',
-                                    source: 'dice'
-                                });
-                            }
-                        }
+                        } catch {}
                     }
-                } catch { /* fall through to JSON-LD */ }
+                } catch {}
             }
 
-            // === FALLBACK 1: JSON-LD ItemList ===
+            // === FALLBACK 1: __NEXT_DATA__ (Legacy Next.js Pages) ===
+            if (jobs.length === 0) {
+                const nextDataRaw = $('script#__NEXT_DATA__').html();
+                if (nextDataRaw) {
+                    try {
+                        const nextData = JSON.parse(nextDataRaw);
+                        const payload =
+                            nextData?.props?.pageProps?.initialState?.jobs?.payload ||
+                            nextData?.props?.pageProps?.searchResult ||
+                            nextData?.props?.pageProps?.jobs ||
+                            null;
+
+                        const results: any[] = payload?.data || payload?.results || payload || [];
+                        if (Array.isArray(results)) {
+                            for (const job of results) {
+                                const title: string = job?.title || job?.jobTitle || job?.positionTitle || '';
+                                const company: string = job?.hiringOrganization?.name || job?.companyName || job?.employerName || job?.company?.name || '';
+                                const loc: string = job?.jobLocation?.[0]?.address?.addressLocality || job?.location || job?.workplaceType || location;
+                                const id: string = job?.id || job?.jobId || job?.adId || '';
+                                const slug: string = job?.slug || '';
+                                const inlineDesc: string = job?.description || job?.jobDescription || job?.summary || '';
+                                let jobUrl = '';
+                                if (id) {
+                                    jobUrl = `https://www.dice.com/job-detail/${id}`;
+                                } else if (slug) {
+                                    jobUrl = `https://www.dice.com/jobs/${slug}`;
+                                }
+                                if (title && jobUrl && !isNonJobUrl(jobUrl) && jobUrl.includes('/job-detail/')) {
+                                    jobs.push({
+                                        title: title.trim(),
+                                        company: cleanCompanyName(company) || 'Unknown Company',
+                                        location: loc,
+                                        url: jobUrl,
+                                        description: inlineDesc ? convertHtmlToMarkdown(inlineDesc) : '',
+                                        source: 'dice'
+                                    });
+                                }
+                            }
+                        }
+                    } catch { /* fall through */ }
+                }
+            }
+
+            // === FALLBACK 2: JSON-LD ItemList / JobPosting ===
             if (jobs.length === 0) {
                 $('script[type="application/ld+json"]').each((_, el) => {
                     try {
@@ -1350,9 +1398,9 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                                     const company: string = job?.hiringOrganization?.name || '';
                                     const loc: string = job?.jobLocation?.[0]?.address?.addressLocality || location;
                                     const url: string = job?.url || entry?.url || '';
-                                    if (title && url) {
+                                    if (title && url && !isNonJobUrl(url) && url.includes('/job-detail/')) {
                                         jobs.push({
-                                            title,
+                                            title: title.trim(),
                                             company: cleanCompanyName(company) || 'Unknown Company',
                                             location: loc,
                                             url,
@@ -1365,9 +1413,9 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                                 const company: string = item?.hiringOrganization?.name || '';
                                 const loc: string = item?.jobLocation?.[0]?.address?.addressLocality || location;
                                 const url: string = item?.url || '';
-                                if (title && url) {
+                                if (title && url && !isNonJobUrl(url) && url.includes('/job-detail/')) {
                                     jobs.push({
-                                        title,
+                                        title: title.trim(),
                                         company: cleanCompanyName(company) || 'Unknown Company',
                                         location: loc,
                                         url,
@@ -1380,18 +1428,33 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                 });
             }
 
-            // === FALLBACK 2: CSS selectors ===
+            // === FALLBACK 3: Targeted DOM Job Card Selectors ===
             if (jobs.length === 0) {
-                $('a[data-cy="card-title-link"], a[class*="card-title"], [data-testid="job-card"] a, article.card a').each((_, el) => {
-                    const title = $(el).text().trim();
-                    let jobUrl = $(el).attr('href') || '';
+                $('div[data-testid="job-card"], article[data-testid="job-card"], div[class*="job-card"], article.card').each((_, cardEl) => {
+                    const card = $(cardEl);
+                    const titleLink = card.find('a[href*="/job-detail/"]').first();
+                    const title = titleLink.text().trim();
+                    let jobUrl = titleLink.attr('href') || '';
                     if (!jobUrl || !title) return;
-                    if (jobUrl && !jobUrl.startsWith('http')) jobUrl = 'https://www.dice.com' + jobUrl;
-                    const card = $(el).closest('article, div[data-testid], li');
-                    const company = card.find('[data-cy="search-result-company-name"], [class*="company"]').first().text().trim() || 'Unknown Company';
+                    if (!jobUrl.startsWith('http')) jobUrl = 'https://www.dice.com' + jobUrl;
+                    if (isNonJobUrl(jobUrl)) return;
+
+                    // Extract company link or text
+                    const companyLink = card.find('a[href*="/company-profile/"], [data-cy="search-result-company-name"]').first();
+                    let company = companyLink.text().trim();
+                    if (!company && companyLink.attr('href')) {
+                        try {
+                            const parsedCompanyUrl = new URL(companyLink.attr('href')!, 'https://www.dice.com');
+                            company = parsedCompanyUrl.searchParams.get('companyname') || '';
+                        } catch {}
+                    }
+                    if (!company) {
+                        company = card.find('[class*="company"]').first().text().trim() || 'Unknown Company';
+                    }
+
                     const loc = card.find('[data-cy="search-result-location"], [class*="location"]').first().text().trim() || location;
                     jobs.push({
-                        title,
+                        title: title.trim(),
                         company: cleanCompanyName(company) || 'Unknown Company',
                         location: loc,
                         url: jobUrl,
@@ -1402,8 +1465,6 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
         }
 
         // === SECOND PASS: Fetch full descriptions for jobs missing them ===
-        // Dice loads full descriptions only on the /job-detail/{id} page.
-        // We batch-fetch up to 10 concurrently to stay within timeout budgets.
         const jobsMissingDesc = jobs.filter(j => !j.description || j.description.trim().length < 80);
         if (jobsMissingDesc.length > 0) {
             const BATCH_SIZE = 10;
@@ -1411,8 +1472,6 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                 try {
                     let detailHtml = '';
 
-                    // Direct fetch first — Dice detail pages are SSR'd by Next.js so no JS
-                    // rendering is needed and __NEXT_DATA__ is present in the raw HTML response.
                     try {
                         const res = await fetch(job.url, {
                             signal: AbortSignal.timeout(12000),
@@ -1428,14 +1487,36 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                                 detailHtml = text;
                             }
                         }
-                    } catch { /* fall through to proxy */ }
+                    } catch { /* ignore */ }
 
                     if (!detailHtml) return;
 
-
                     const $d = cheerio.load(detailHtml);
 
-                    // Priority 1: __NEXT_DATA__ embedded JSON (most reliable for Dice)
+                    // Priority 1: JSON-LD JobPosting (embedded in Dice detail page SSR)
+                    $d('script[type="application/ld+json"]').each((_, el) => {
+                        try {
+                            const data = JSON.parse($d(el).html() || '');
+                            const arr = Array.isArray(data) ? data : [data];
+                            for (const item of arr) {
+                                if (item['@type'] === 'JobPosting') {
+                                    if (item.description) {
+                                        const desc = convertHtmlToMarkdown(item.description);
+                                        if (desc.length > 80) job.description = desc;
+                                    }
+                                    if (item.hiringOrganization?.name && (!job.company || job.company === 'Unknown Company')) {
+                                        job.company = cleanCompanyName(item.hiringOrganization.name);
+                                    }
+                                    if (item.title && (!job.title || job.title.toLowerCase().includes('unknown'))) {
+                                        job.title = item.title.trim();
+                                    }
+                                }
+                            }
+                        } catch { /* ignore */ }
+                    });
+                    if (job.description && job.description.length > 80) return;
+
+                    // Priority 2: __NEXT_DATA__ embedded JSON
                     const nextDataRaw = $d('script#__NEXT_DATA__').html();
                     if (nextDataRaw) {
                         try {
@@ -1452,25 +1533,13 @@ export async function scrapeDice(keyword: string, location: string = 'Remote'): 
                                 '';
                             if (rawDesc && rawDesc.trim().length > 80) {
                                 job.description = convertHtmlToMarkdown(rawDesc);
+                                if (jobData?.companyName && (!job.company || job.company === 'Unknown Company')) {
+                                    job.company = cleanCompanyName(jobData.companyName);
+                                }
                                 return;
                             }
                         } catch { /* fall through */ }
                     }
-
-                    // Priority 2: JSON-LD JobPosting
-                    $d('script[type="application/ld+json"]').each((_, el) => {
-                        try {
-                            const data = JSON.parse($d(el).html() || '');
-                            const arr = Array.isArray(data) ? data : [data];
-                            for (const item of arr) {
-                                if (item['@type'] === 'JobPosting' && item.description) {
-                                    const desc = convertHtmlToMarkdown(item.description);
-                                    if (desc.length > 80) { job.description = desc; return; }
-                                }
-                            }
-                        } catch { /* ignore */ }
-                    });
-                    if (job.description && job.description.length > 80) return;
 
                     // Priority 3: CSS selectors for rendered description containers
                     const descEl = $d(

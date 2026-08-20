@@ -3,6 +3,7 @@ import { simpleParser } from 'mailparser';
 import { prisma } from './prisma';
 import { normalizeAndSaveJobs } from './jobs';
 import { cleanCompanyName } from './cleaners';
+import { isNonJobUrl } from './urlUtils';
 import { extractJobsFromEmailText } from './scoring';
 import { decrypt } from './encryption';
 
@@ -266,6 +267,7 @@ export async function fetchEmailsAndExtractJobs(
             const lower = u.toLowerCase();
             if (lower.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf|webp)$/i)) return false;
             if (lower.includes('unsubscribe') || lower.includes('preferences') || lower.includes('notifications') || lower.includes('privacy') || lower.includes('mailto:')) return false;
+            if (isNonJobUrl(u)) return false;
             return true;
           });
 
@@ -331,13 +333,18 @@ ${allUrls.slice(0, 60).join('\n')}
       const rawJobs: any[] = [];
       for (const extractedJobs of extractedJobBatches) {
         for (const job of extractedJobs) {
-          if (!job.url) continue;
+          if (!job.url || isNonJobUrl(job.url)) continue;
 
           // Ensure tracking pixels or images aren't included
           if (job.url.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf|webp)$/i)) continue;
 
           const jobTitle = job.title?.trim();
-          if (!jobTitle || jobTitle.toLowerCase().includes('unknown')) {
+          if (!jobTitle || jobTitle.toLowerCase().includes('unknown') || jobTitle.toLowerCase() === 'overview') {
+            continue;
+          }
+
+          const companyName = cleanCompanyName(job.company) || 'Unknown Company';
+          if (jobTitle.toLowerCase() === companyName.toLowerCase() && (companyName.toLowerCase() === 'unknown company' || companyName.toLowerCase() === 'unknown')) {
             continue;
           }
 

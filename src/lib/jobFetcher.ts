@@ -1,7 +1,8 @@
 import { gotScraping } from 'got-scraping';
 import * as cheerio from 'cheerio';
 import { reformatJobDescriptionWithGemini, preCleanHtml } from './formatter';
-import { cleanJobUrl } from './urlUtils';
+import { cleanJobUrl, isNonJobUrl } from './urlUtils';
+import { cleanCompanyName } from './cleaners';
 import { fetchWithScraperAPI, extractATSUrlFromHtml } from './scraperapi';
 
 /**
@@ -70,6 +71,10 @@ export interface FetchJobDescriptionResult {
     finalUrl?: string;
     /** Direct ATS application URL extracted during scraping, if found. Save as job.applicationUrl. */
     resolvedApplicationUrl?: string | null;
+    /** Company name extracted during detail fetch if available */
+    company?: string | null;
+    /** Job title extracted during detail fetch if available */
+    title?: string | null;
 }
 
 /**
@@ -87,9 +92,20 @@ export async function fetchJobDescriptionDetailed(rawUrl: string): Promise<Fetch
     if (!rawUrl) return null;
     const url = cleanJobUrl(rawUrl);
 
+    if (isNonJobUrl(url)) {
+        console.info(`[JobFetcher] Skipping fetch for known company profile / non-job URL: ${url}`);
+        return null;
+    }
+
     const simpleDesc = await _fetchJobDescription(url);
     if (simpleDesc) {
-        return { description: simpleDesc.description, finalUrl: simpleDesc.finalUrl, resolvedApplicationUrl: simpleDesc.resolvedApplicationUrl };
+        return { 
+            description: simpleDesc.description, 
+            finalUrl: simpleDesc.finalUrl, 
+            resolvedApplicationUrl: simpleDesc.resolvedApplicationUrl,
+            company: simpleDesc.company || null,
+            title: simpleDesc.title || null
+        };
     }
     return null;
 }
@@ -106,13 +122,20 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
 /**
  * Core fetch function. Returns the description, finalUrl, and any resolved ATS URL.
  */
-async function _fetchJobDescription(url: string): Promise<{ description: string; finalUrl: string; resolvedApplicationUrl: string | null } | null> {
+async function _fetchJobDescription(url: string): Promise<{ description: string; finalUrl: string; resolvedApplicationUrl: string | null; company?: string | null; title?: string | null } | null> {
     if (!url) return null;
 
-    const extractContent = async (rawHtml: string): Promise<string | null> => {
+    if (isNonJobUrl(url)) {
+        return null;
+    }
+
+    const extractContent = async (rawHtml: string): Promise<{ description: string; company?: string | null; title?: string | null } | null> => {
         const $ = cheerio.load(rawHtml);
 
         let jsonLdDesc = '';
+        let jsonLdCompany = '';
+        let jsonLdTitle = '';
+
         $('script[type="application/ld+json"]').each((_, el) => {
             try {
                 const raw = $(el).html() || '';
@@ -121,6 +144,8 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
                 for (const item of items) {
                     if (item && typeof item.description === 'string' && item.description.length > 50) {
                         jsonLdDesc = item.description;
+                        if (item.hiringOrganization?.name) jsonLdCompany = item.hiringOrganization.name;
+                        if (item.title) jsonLdTitle = item.title;
                         break;
                     }
                 }
@@ -146,9 +171,9 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
         const cleanDesc = jsonLdDesc.trim();
         if (cleanDesc.length > 100 && isDescriptionAdequate(cleanDesc)) {
             const preCleaned = preCleanHtml(cleanDesc);
-            if (isDescriptionAdequate(preCleaned)) return preCleaned;
+            if (isDescriptionAdequate(preCleaned)) return { description: preCleaned, company: cleanCompanyName(jsonLdCompany) || null, title: jsonLdTitle || null };
             const formatted = await reformatJobDescriptionWithGemini(cleanDesc);
-            if (isDescriptionAdequate(formatted)) return formatted;
+            if (isDescriptionAdequate(formatted)) return { description: formatted, company: cleanCompanyName(jsonLdCompany) || null, title: jsonLdTitle || null };
         }
 
         $('script, style, noscript, nav, header, footer, iframe, svg').remove();
@@ -158,7 +183,7 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
         let htmlStr = $(primarySelectors).first().html() || $(fallbackSelectors).first().html() || $('body').html() || '';
         if (htmlStr.trim().length > 100) {
             const formatted = await reformatJobDescriptionWithGemini(htmlStr.trim());
-            if (isDescriptionAdequate(formatted)) return formatted;
+            if (isDescriptionAdequate(formatted)) return { description: formatted, company: cleanCompanyName(jsonLdCompany) || null, title: jsonLdTitle || null };
         }
 
         return null;
@@ -170,31 +195,93 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
         return null;
     }
 
-    // --- Dice.com: use their public job-posting-service REST API ---
+    // --- Dice.com: fetch SSR HTML and parse JSON-LD / RSC streams ---
     const diceMatch = url.match(/dice\.com\/job-detail\/([a-f0-9-]{36})/i);
     if (diceMatch) {
         const jobUuid = diceMatch[1];
+        const diceDetailUrl = `https://www.dice.com/job-detail/${jobUuid}`;
         try {
-            const apiUrl = `https://job-posting-service.dice.com/jobProfile/${jobUuid}`;
-            const apiRes = await gotScraping({
-                url: apiUrl,
-                headers: { Accept: 'application/json' },
+            const res = await gotScraping({
+                url: diceDetailUrl,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                },
                 timeout: { request: 15000 },
                 retry: { limit: 0 },
                 throwHttpErrors: false,
             });
-            if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
-                const data = JSON.parse(apiRes.body.toString());
-                const rawDesc: string = data.descriptionHtml || data.description || '';
-                if (rawDesc.length > 100) {
-                    const cleanedDesc = preCleanHtml(rawDesc);
-                    if (isDescriptionAdequate(cleanedDesc)) return { description: cleanedDesc, finalUrl: url, resolvedApplicationUrl: null };
-                    const formatted = await reformatJobDescriptionWithGemini(rawDesc);
-                    if (isDescriptionAdequate(formatted)) return { description: formatted, finalUrl: url, resolvedApplicationUrl: null };
+
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+                const bodyStr = res.body.toString();
+                const $d = cheerio.load(bodyStr);
+
+                let diceTitle = '';
+                let diceCompany = '';
+                let diceDesc = '';
+
+                // Check JSON-LD JobPosting first
+                $d('script[type="application/ld+json"]').each((_, el) => {
+                    try {
+                        const data = JSON.parse($d(el).html() || '');
+                        const arr = Array.isArray(data) ? data : [data];
+                        for (const item of arr) {
+                            if (item['@type'] === 'JobPosting') {
+                                diceTitle = item.title || diceTitle;
+                                diceCompany = item.hiringOrganization?.name || diceCompany;
+                                diceDesc = item.description || diceDesc;
+                            }
+                        }
+                    } catch {}
+                });
+
+                // Fallback to Next.js App Router RSC stream if JSON-LD missing
+                if (!diceDesc) {
+                    const rscRegex = /self\.__next_f\.push\(\[1,"([\s\S]*?)"\]\)/g;
+                    let m: RegExpExecArray | null;
+                    while ((m = rscRegex.exec(bodyStr)) !== null) {
+                        try {
+                            const raw = JSON.parse(`"${m[1]}"`);
+                            if (raw.includes('jobDescription') || raw.includes('descriptionHtml') || raw.includes('jobSummary')) {
+                                const descMatch = raw.match(/"(?:jobDescription|descriptionHtml|description)"\s*:\s*("(?:[^"\\]|\\.)*")/);
+                                if (descMatch && descMatch[1]) {
+                                    diceDesc = JSON.parse(descMatch[1]);
+                                }
+                            }
+                            if (!diceCompany && raw.includes('companyName')) {
+                                const compMatch = raw.match(/"companyName"\s*:\s*"([^"]+)"/);
+                                if (compMatch && compMatch[1]) diceCompany = compMatch[1];
+                            }
+                        } catch {}
+                    }
+                }
+
+                if (diceDesc && diceDesc.length > 80) {
+                    const cleanedDesc = preCleanHtml(diceDesc);
+                    if (isDescriptionAdequate(cleanedDesc)) {
+                        return {
+                            description: cleanedDesc,
+                            finalUrl: diceDetailUrl,
+                            company: cleanCompanyName(diceCompany) || null,
+                            title: diceTitle || null,
+                            resolvedApplicationUrl: null,
+                        };
+                    }
+                    const formatted = await reformatJobDescriptionWithGemini(diceDesc);
+                    if (isDescriptionAdequate(formatted)) {
+                        return {
+                            description: formatted,
+                            finalUrl: diceDetailUrl,
+                            company: cleanCompanyName(diceCompany) || null,
+                            title: diceTitle || null,
+                            resolvedApplicationUrl: null,
+                        };
+                    }
                 }
             }
         } catch (e: any) {
-            console.warn(`Dice API fetch failed for ${url}: ${e.message}`);
+            console.warn(`[JobFetcher] Direct Dice fetch failed for ${url}: ${e.message}`);
         }
     }
 
@@ -210,7 +297,15 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
             const bodyStr = res.body.toString();
             if (!bodyStr.includes('Just a moment...') && !bodyStr.includes('cf-challenge-error-title')) {
                 const extracted = await extractContent(bodyStr);
-                if (extracted) return { description: extracted, finalUrl: url, resolvedApplicationUrl: null };
+                if (extracted) {
+                    return {
+                        description: extracted.description,
+                        company: extracted.company,
+                        title: extracted.title,
+                        finalUrl: url,
+                        resolvedApplicationUrl: null
+                    };
+                }
             }
         }
     } catch (e: any) {
@@ -224,7 +319,13 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
         const resolvedApplicationUrl = extractATSUrlFromHtml(rawScraperHtml);
         const extracted = await extractContent(rawScraperHtml);
         if (extracted) {
-            return { description: extracted, finalUrl: url, resolvedApplicationUrl };
+            return {
+                description: extracted.description,
+                company: extracted.company,
+                title: extracted.title,
+                finalUrl: url,
+                resolvedApplicationUrl
+            };
         }
     }
 
@@ -234,7 +335,13 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
         const resolvedApplicationUrl = extractATSUrlFromHtml(renderedScraperHtml);
         const extracted = await extractContent(renderedScraperHtml);
         if (extracted) {
-            return { description: extracted, finalUrl: url, resolvedApplicationUrl };
+            return {
+                description: extracted.description,
+                company: extracted.company,
+                title: extracted.title,
+                finalUrl: url,
+                resolvedApplicationUrl
+            };
         }
         if (resolvedApplicationUrl) {
             console.info(`[JobFetcher] ScraperAPI found ATS URL but no description for ${url}: ${resolvedApplicationUrl}`);
