@@ -120,7 +120,7 @@ const PERSONAL_DOMAINS = [
   '@zoho.com',
 ];
 
-const MAX_CANDIDATE_EMAILS = 50;
+const MAX_CANDIDATE_EMAILS = 30;
 
 export async function fetchEmailsAndExtractJobs(
   userId: string,
@@ -332,15 +332,19 @@ ${allUrls.slice(0, 60).join('\n')}
 
       onProgress?.(0, `Processing ${candidatePayloads.length} email message${candidatePayloads.length === 1 ? '' : 's'} for job postings...`);
 
-      // Stage 3: AI Job Extraction in concurrent batches of 5
+      // Stage 3: AI Job Extraction in concurrent batches of 8
       let runningFoundCount = 0;
       const extractedJobBatches: any[][] = [];
-      const batchSize = 5;
+      const batchSize = 8;
 
       for (let i = 0; i < candidatePayloads.length; i += batchSize) {
         const chunk = candidatePayloads.slice(i, i + batchSize);
+        const batchNum = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(candidatePayloads.length / batchSize);
+        console.log(`[Email Sync AI] Processing batch ${batchNum}/${totalBatches} (${chunk.length} emails)...`);
+
         const batchResults = await Promise.all(
-          chunk.map(async ({ emailContentForAI }) => {
+          chunk.map(async ({ emailContentForAI, subject }) => {
             try {
               const extracted = await extractJobsFromEmailText(emailContentForAI, {
                 searchKeyword: prefs.searchKeyword || undefined,
@@ -349,6 +353,7 @@ ${allUrls.slice(0, 60).join('\n')}
                 excludeKeywords: prefs.excludeKeywords || undefined,
               });
               if (Array.isArray(extracted) && extracted.length > 0) {
+                console.log(`[Email Sync AI] Extracted ${extracted.length} job(s) from "${subject}":`, extracted.map(j => `"${j.title}" at "${j.company}"`));
                 runningFoundCount += extracted.length;
                 onProgress?.(
                   runningFoundCount,

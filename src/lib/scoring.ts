@@ -499,18 +499,22 @@ CRITICAL EXTRACTION RULES:
 - NEVER extract company profile/overview pages, agency directory links (e.g. dice.com/company-profile/..., linkedin.com/company/..., indeed.com/cmp/...), or email sponsor/branding headers as job postings.
 - The job title must be an actual position title (e.g. "Senior Product Manager", "Data Analyst"), NOT a company name or "Overview".
 
-Return a JSON array of objects strictly matching this schema:
-[{
-  "title": "Job Title (e.g. Senior Product Manager)",
-  "company": "Company Name",
-  "location": "Location (e.g. Remote, or city/state)",
-  "url": "The specific direct link to the job posting from the email or links list",
-  "description": "Any job description, summary text, skill tags, or key topics provided in the email text for this role. Extract as much detail as possible.",
-  "requirements": "A detailed list of requirements, skills, or qualifications mentioned in the email, if any.",
-  "salary_range": "Salary range if mentioned in the email (e.g. $150k - $175k yearly), otherwise null"
-}]
+Return a JSON object strictly matching this schema:
+{
+  "jobs": [
+    {
+      "title": "Job Title (e.g. Senior Product Manager)",
+      "company": "Company Name",
+      "location": "Location (e.g. Remote, or city/state)",
+      "url": "The specific direct link to the job posting from the email or links list",
+      "description": "Any job description, summary text, skill tags, or key topics provided in the email text for this role. Extract as much detail as possible.",
+      "requirements": "A detailed list of requirements, skills, or qualifications mentioned in the email, if any.",
+      "salary_range": "Salary range if mentioned in the email (e.g. $150k - $175k yearly), otherwise null"
+    }
+  ]
+}
 
-If there are no matching jobs, return an empty array [].
+If there are no matching jobs, return {"jobs": []}.
 
 EMAIL TEXT:
 ${emailText.substring(0, 35000)}`;
@@ -523,8 +527,11 @@ ${emailText.substring(0, 35000)}`;
             maxTokens: 3000
         });
         const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
-        const jobs = JSON.parse(cleaned);
-        return Array.isArray(jobs) ? jobs : [];
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed?.jobs)) return parsed.jobs;
+        if (Array.isArray(parsed?.results)) return parsed.results;
+        return [];
     } catch (e) {
         console.error("AI job extraction failed:", e);
         return [];
