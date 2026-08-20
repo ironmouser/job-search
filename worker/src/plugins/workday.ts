@@ -310,20 +310,23 @@ export class WorkdayPlugin extends ATSPlugin {
 
     await submitBtn.click();
 
-    // Verify confirmation
-    await page.waitForTimeout(3000);
-    const confirmationFound = await page
-      .locator('[data-automation-id="confirmationMessage"], :has-text("successfully submitted")')
-      .count() > 0;
-
-    if (!confirmationFound) {
-      throw new InterventionError(
-        InterventionReason.UNEXPECTED_PAGE,
-        'No confirmation received after submit — please verify the application was submitted'
-      );
-    }
-
-    await logger.info('confirmation_received', 'Workday application submitted successfully');
+    // Verify post-submission status (checks for confirmation, anti-bot challenges, limits, and form error banners)
+    await this.verifyPostSubmission(browser, page, logger, {
+      platformDisplayName: 'Workday',
+      confirmationSelectors: [
+        '[data-automation-id="confirmationMessage"]',
+        ':has-text("successfully submitted")',
+        ':has-text("Thank you for applying")',
+      ],
+      confirmationKeywords: [
+        'successfully submitted',
+        'thank you for applying',
+        'application submitted',
+        'application received',
+      ],
+      errorSelectors: ['[data-automation-id*="error" i]', '[role="alert"]', '.error-msg'],
+      maxWaitMs: 8000,
+    });
 
     return {
       status: AutoApplyStatus.APPLIED,
@@ -352,15 +355,15 @@ export class WorkdayPlugin extends ATSPlugin {
     if (await nameField.count() > 0) {
       const firstName = profile.name.split(' ')[0] ?? '';
       const lastName = profile.name.split(' ').slice(1).join(' ') ?? '';
-      await nameField.fill(firstName);
-      await page.locator('[data-automation-id="legalNameSection_lastName"]').fill(lastName);
+      await this.typeHumanized(page, nameField, firstName);
+      await this.typeHumanized(page, page.locator('[data-automation-id="legalNameSection_lastName"]'), lastName);
       await logger.info('field_filled', 'Name fields populated', { hasName: true });
     }
 
     if (profile.phone) {
       const phoneField = page.locator('[data-automation-id="phone-number"]');
       if (await phoneField.count() > 0) {
-        await phoneField.fill(profile.phone);
+        await this.typeHumanized(page, phoneField, profile.phone);
         await logger.info('field_filled', 'Phone field populated');
       }
     }
@@ -369,7 +372,7 @@ export class WorkdayPlugin extends ATSPlugin {
     if (cityVal) {
       const locationField = page.locator('[data-automation-id="city"]');
       if (await locationField.count() > 0) {
-        await locationField.fill(cityVal);
+        await this.typeHumanized(page, locationField, cityVal);
         await logger.info('field_filled', 'City field populated');
       }
     }
@@ -377,7 +380,7 @@ export class WorkdayPlugin extends ATSPlugin {
     if (profile.streetAddress) {
       const addressField = page.locator('[data-automation-id="addressSection_addressLine1"]');
       if (await addressField.count() > 0) {
-        await addressField.fill(profile.streetAddress);
+        await this.typeHumanized(page, addressField, profile.streetAddress);
         await logger.info('field_filled', 'Street address field populated');
       }
     }
@@ -385,7 +388,7 @@ export class WorkdayPlugin extends ATSPlugin {
     if (profile.postalCode) {
       const postalField = page.locator('[data-automation-id="postalCode"]');
       if (await postalField.count() > 0) {
-        await postalField.fill(profile.postalCode);
+        await this.typeHumanized(page, postalField, profile.postalCode);
         await logger.info('field_filled', 'Postal code field populated');
       }
     }

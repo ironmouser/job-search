@@ -184,7 +184,7 @@ export class LeverPlugin extends ATSPlugin {
       for (const sel of linkedinSelectors) {
         const el = page.locator(sel).first();
         if (await el.count() > 0) {
-          await el.fill(profile.linkedinUrl);
+          await this.typeHumanized(page, el, profile.linkedinUrl);
           await logger.info('field_filled', 'LinkedIn URL populated');
           break;
         }
@@ -203,7 +203,7 @@ export class LeverPlugin extends ATSPlugin {
       for (const sel of websiteSelectors) {
         const el = page.locator(sel).first();
         if (await el.count() > 0) {
-          await el.fill(profile.websiteUrl);
+          await this.typeHumanized(page, el, profile.websiteUrl);
           await logger.info('field_filled', `Portfolio/website URL populated via: ${sel}`);
           break;
         }
@@ -329,26 +329,19 @@ export class LeverPlugin extends ATSPlugin {
 
     await submitBtn.click();
 
-    // Wait for confirmation — Lever redirects to a /thanks page or shows a success message
-    await page.waitForTimeout(4000);
-    const currentUrl = page.url();
-    const bodyText = (await page.textContent('body')) ?? '';
-    const confirmed =
-      currentUrl.includes('/thanks') ||
-      currentUrl.includes('/confirmation') ||
-      bodyText.toLowerCase().includes('application submitted') ||
-      bodyText.toLowerCase().includes('thank you for applying') ||
-      bodyText.toLowerCase().includes('successfully submitted');
-
-    if (!confirmed) {
-      throw new InterventionError(
-        InterventionReason.UNEXPECTED_PAGE,
-        'No confirmation received after submitting the Lever application. Please verify it was submitted.',
-        currentUrl
-      );
-    }
-
-    await logger.info('confirmation_received', 'Lever application submitted successfully');
+    // Verify post-submission status (checks for confirmation, anti-bot challenges, limits, and form error banners)
+    await this.verifyPostSubmission(browser, page, logger, {
+      platformDisplayName: 'Lever',
+      expectedUrlKeywords: ['/thanks', '/confirmation'],
+      confirmationKeywords: [
+        'application submitted',
+        'thank you for applying',
+        'successfully submitted',
+        'your application has been submitted',
+      ],
+      errorSelectors: ['[role="alert"]', '.application-error', '.error-message'],
+      maxWaitMs: 8000,
+    });
 
     return {
       status: AutoApplyStatus.APPLIED,
@@ -395,7 +388,7 @@ export class LeverPlugin extends ATSPlugin {
   ): Promise<void> {
     const el = page.locator(selector).first();
     if (await el.count() > 0 && value) {
-      await el.fill(value);
+      await this.typeHumanized(page, el, value);
       await logger.info('field_filled', `Field "${fieldName}" populated`);
     }
   }

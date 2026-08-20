@@ -148,7 +148,7 @@ export class DiceApplyPlugin extends ATSPlugin {
       const salaryInput = await page.$('input[name*="salary"], input[id*="compensation"]').catch(() => null);
       if (salaryInput && (await salaryInput.isVisible().catch(() => false))) {
         const cleanSalary = context.userProfile.expectedSalary.replace(/[^0-9]/g, '');
-        await salaryInput.fill(cleanSalary);
+        await this.typeHumanized(page, salaryInput, cleanSalary);
         await logger.info('dice_fill_salary', 'Filled expected salary');
       }
     }
@@ -204,8 +204,24 @@ export class DiceApplyPlugin extends ATSPlugin {
     // Live mode: Click final submit
     const submitBtn = await page.$('button:has-text("Submit Application"), button[data-cy="submit-application"]').catch(() => null);
     if (submitBtn && (await submitBtn.isVisible().catch(() => false))) {
+      await page.waitForTimeout(1500);
+      await submitBtn.hover().catch(() => {});
+      await page.waitForTimeout(300);
+
       await safeClick(page, 'button:has-text("Submit Application"), button[data-cy="submit-application"]');
-      await page.waitForTimeout(3000);
+
+      // Verify post-submission status
+      await this.verifyPostSubmission(browser, page, logger, {
+        platformDisplayName: 'Dice',
+        confirmationKeywords: [
+          'application submitted',
+          'successfully applied',
+          'application sent',
+          'thank you for applying',
+        ],
+        errorSelectors: ['[role="alert"]', '.error-feedback', '.d-inline-error'],
+        maxWaitMs: 8000,
+      });
     }
 
     await logger.info('dice_submitted', 'Dice Easy Apply application submitted');

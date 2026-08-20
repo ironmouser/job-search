@@ -88,9 +88,7 @@ export class AshbyPlugin extends ATSPlugin {
     // 1. Full Name
     const nameInput = await targetContext.$(BROAD_NAME_SELECTOR);
     if (nameInput && profile.name) {
-      await nameInput.fill(profile.name);
-      await nameInput.dispatchEvent('input').catch(() => {});
-      await nameInput.dispatchEvent('change').catch(() => {});
+      await this.typeHumanized(targetContext, nameInput, profile.name);
       await logger.info('field_filled', `Filled name: ${profile.name}`);
     }
 
@@ -98,9 +96,7 @@ export class AshbyPlugin extends ATSPlugin {
     try {
       const emailInput = await targetContext.$(BROAD_EMAIL_SELECTOR);
       if (emailInput && profile.email) {
-        await emailInput.fill(profile.email);
-        await emailInput.dispatchEvent('input').catch(() => {});
-        await emailInput.dispatchEvent('change').catch(() => {});
+        await this.typeHumanized(targetContext, emailInput, profile.email);
         await logger.info('field_filled', `Filled email: ${profile.email}`);
       } else if (!profile.email) {
         await logger.warn('field_skipped', 'No email in user profile — skipping email field');
@@ -116,7 +112,7 @@ export class AshbyPlugin extends ATSPlugin {
       'input[name="phone"], input[type="tel"], input[placeholder*="Phone" i]'
     );
     if (phoneInput && profile.phone) {
-      await phoneInput.fill(profile.phone);
+      await this.typeHumanized(targetContext, phoneInput, profile.phone);
       await logger.info('field_filled', `Filled phone: ${profile.phone}`);
     }
 
@@ -125,7 +121,7 @@ export class AshbyPlugin extends ATSPlugin {
       'input[name*="linkedin" i], input[placeholder*="LinkedIn" i], input[id*="linkedin" i]'
     );
     if (linkedinInput && profile.linkedinUrl) {
-      await linkedinInput.fill(profile.linkedinUrl);
+      await this.typeHumanized(targetContext, linkedinInput, profile.linkedinUrl);
       await logger.info('field_filled', `Filled LinkedIn URL`);
     }
 
@@ -133,7 +129,7 @@ export class AshbyPlugin extends ATSPlugin {
       'input[name*="website" i], input[name*="portfolio" i], input[placeholder*="Website" i]'
     );
     if (websiteInput && profile.websiteUrl) {
-      await websiteInput.fill(profile.websiteUrl);
+      await this.typeHumanized(targetContext, websiteInput, profile.websiteUrl);
       await logger.info('field_filled', `Filled Portfolio/Website URL`);
     }
 
@@ -191,9 +187,7 @@ export class AshbyPlugin extends ATSPlugin {
     if (!nameVal && profile.name) {
       const nameInput = await targetContext.$(BROAD_NAME_SELECTOR);
       if (nameInput) {
-        await nameInput.fill(profile.name);
-        await nameInput.dispatchEvent('input').catch(() => {});
-        await nameInput.dispatchEvent('change').catch(() => {});
+        await this.typeHumanized(targetContext, nameInput, profile.name);
         nameVal = profile.name;
       }
     }
@@ -205,9 +199,7 @@ export class AshbyPlugin extends ATSPlugin {
     if (!emailVal && profile.email) {
       const emailInput = await targetContext.$(BROAD_EMAIL_SELECTOR);
       if (emailInput) {
-        await emailInput.fill(profile.email);
-        await emailInput.dispatchEvent('input').catch(() => {});
-        await emailInput.dispatchEvent('change').catch(() => {});
+        await this.typeHumanized(targetContext, emailInput, profile.email);
         emailVal = profile.email;
       }
     }
@@ -257,8 +249,44 @@ export class AshbyPlugin extends ATSPlugin {
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Could not find submit button on Ashby application form', context.jobUrl);
     }
 
+    // Natural human deliberation delay before submitting (1.5 - 2s)
+    await browser.page.waitForTimeout(1800);
+    await submitBtn.hover().catch(() => {});
+    await browser.page.waitForTimeout(400);
+
     await submitBtn.click();
-    await browser.page.waitForTimeout(3000);
+
+    // Verify post-submission status (checks for spam filter flags, limits, validation errors, and confirms success)
+    await this.verifyPostSubmission(browser, targetContext, logger, {
+      platformDisplayName: 'Ashby',
+      confirmationSelectors: [
+        '[data-testid="application-submitted-page"]',
+        '.ashby-application-form-confirmation',
+        '[class*="Confirmation" i]',
+        '[class*="Submitted" i]',
+        'h1:has-text("Thank you")',
+        'h2:has-text("Thank you")',
+      ],
+      confirmationKeywords: [
+        'thank you for applying',
+        'thanks for applying',
+        'application submitted',
+        'application received',
+        'we have received your application',
+        'your application has been received',
+        'your application was submitted',
+        'we received your application',
+        'thanks for your interest',
+        'application submitted successfully',
+      ],
+      errorSelectors: [
+        '.ashby-application-form-error',
+        '[role="alert"]',
+        '[class*="errorBanner" i]',
+        '[class*="Banner" i]',
+      ],
+      maxWaitMs: 8000,
+    });
 
     const screenshotPath = await browser.screenshot('ashby-submitted.png');
     await logger.info('application_submitted', 'Submitted Ashby application live', { screenshotPath });

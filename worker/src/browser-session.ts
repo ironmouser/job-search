@@ -66,6 +66,95 @@ export class BrowserSession {
 
     this.context = await this.browser.newContext(contextOptions);
 
+    // Apply context-level anti-detection stealth evasions across all frames and new pages
+    await this.context.addInitScript(() => {
+      const g = globalThis as any;
+      if (g.navigator) {
+        // 1. Hide webdriver flag
+        Object.defineProperty(g.navigator, 'webdriver', {
+          get: () => undefined,
+          configurable: true,
+        });
+
+        // 2. Set realistic languages
+        Object.defineProperty(g.navigator, 'languages', {
+          get: () => ['en-US', 'en'],
+          configurable: true,
+        });
+
+        // 3. Set realistic platform and hardware concurrency
+        Object.defineProperty(g.navigator, 'platform', {
+          get: () => 'Win32',
+          configurable: true,
+        });
+
+        Object.defineProperty(g.navigator, 'hardwareConcurrency', {
+          get: () => 8,
+          configurable: true,
+        });
+
+        Object.defineProperty(g.navigator, 'deviceMemory', {
+          get: () => 8,
+          configurable: true,
+        });
+
+        // 4. Mock plugins & mimeTypes
+        const mockPlugins = [
+          { name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+          { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+          { name: 'Chromium PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+        ];
+        Object.defineProperty(g.navigator, 'plugins', {
+          get: () => mockPlugins,
+          configurable: true,
+        });
+      }
+
+      // 5. Mock window.chrome runtime object
+      g.chrome = {
+        runtime: {},
+        loadTimes: function () {},
+        csi: function () {},
+        app: {},
+      };
+
+      // 6. Fix broken window outer dimensions in headless mode
+      if (window.outerWidth === 0 && window.outerHeight === 0) {
+        Object.defineProperty(window, 'outerWidth', { get: () => window.innerWidth, configurable: true });
+        Object.defineProperty(window, 'outerHeight', { get: () => window.innerHeight, configurable: true });
+      }
+
+      // 7. Mock WebGL vendor and renderer strings
+      try {
+        const getParameterProto = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function (parameter: number) {
+          // UNMASKED_VENDOR_WEBGL
+          if (parameter === 37445) return 'Google Inc. (Intel)';
+          // UNMASKED_RENDERER_WEBGL
+          if (parameter === 37446) return 'ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)';
+          return getParameterProto.apply(this, [parameter]);
+        };
+
+        if (typeof WebGL2RenderingContext !== 'undefined') {
+          const getParameter2Proto = WebGL2RenderingContext.prototype.getParameter;
+          WebGL2RenderingContext.prototype.getParameter = function (parameter: number) {
+            if (parameter === 37445) return 'Google Inc. (Intel)';
+            if (parameter === 37446) return 'ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)';
+            return getParameter2Proto.apply(this, [parameter]);
+          };
+        }
+      } catch {}
+
+      // 8. Normalise permissions API
+      if (g.navigator?.permissions?.query) {
+        const originalQuery = g.navigator.permissions.query;
+        g.navigator.permissions.query = (parameters: any) =>
+          parameters.name === 'notifications'
+            ? Promise.resolve({ state: Notification.permission } as PermissionStatus)
+            : originalQuery(parameters);
+      }
+    });
+
     // Auto-track and switch to any new tab or popup opened during automation
     this.context.on('page', (newPage) => {
       this._page = newPage;

@@ -81,28 +81,28 @@ export class ICIMSPlugin extends ATSPlugin {
           'input[name*="first_name" i], input[name*="firstname" i], input[id*="first_name" i]'
         );
         if (fnInput && firstName) {
-          await fnInput.fill(firstName).catch(() => {});
+          await this.typeHumanized(targetContext, fnInput, firstName);
         }
 
         const lnInput = await targetContext.$(
           'input[name*="last_name" i], input[name*="lastname" i], input[id*="last_name" i]'
         );
         if (lnInput && lastName) {
-          await lnInput.fill(lastName).catch(() => {});
+          await this.typeHumanized(targetContext, lnInput, lastName);
         }
 
         const email = await targetContext.$(
           'input[name*="email" i], input[type="email"]'
         );
         if (email && profile.email) {
-          await email.fill(profile.email).catch(() => {});
+          await this.typeHumanized(targetContext, email, profile.email);
         }
 
         const phone = await targetContext.$(
           'input[name*="phone" i], input[type="tel"]'
         );
         if (phone && profile.phone) {
-          await phone.fill(profile.phone).catch(() => {});
+          await this.typeHumanized(targetContext, phone, profile.phone);
         }
 
         // 2. Resume File Upload
@@ -157,8 +157,24 @@ export class ICIMSPlugin extends ATSPlugin {
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Submit button not found on iCIMS form', context.jobUrl);
     }
 
+    await browser.page.waitForTimeout(1500);
+    await submitBtn.hover().catch(() => {});
+    await browser.page.waitForTimeout(300);
+
     await submitBtn.click();
-    await browser.page.waitForTimeout(3000);
+
+    // Verify post-submission status
+    await this.verifyPostSubmission(browser, targetContext, logger, {
+      platformDisplayName: 'iCIMS',
+      confirmationKeywords: [
+        'thank you for applying',
+        'application submitted',
+        'application received',
+        'successfully submitted',
+      ],
+      errorSelectors: ['[role="alert"]', '.iCIMS_errorMessage', '.errorMessage'],
+      maxWaitMs: 8000,
+    });
 
     const screenshotPath = await browser.screenshot('icims-submitted.png');
     await logger.info('application_submitted', 'Submitted iCIMS application live', { screenshotPath });

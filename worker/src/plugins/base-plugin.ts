@@ -175,18 +175,18 @@ export abstract class ATSPlugin {
           const passwordInputs = page.locator('input[type="password"], input[data-automation-id*="password" i], input[name*="password" i]');
 
           if (await emailInput.count() > 0 && await passwordInputs.count() > 0) {
-            await emailInput.fill(email);
+            await this.typeHumanized(page, emailInput, email);
             
             // Fill primary password
-            await passwordInputs.nth(0).fill(password);
+            await this.typeHumanized(page, passwordInputs.nth(0), password);
 
             // Fill verify password if a second password field exists (e.g. Workday Create Account)
             if (await passwordInputs.count() > 1) {
-              await passwordInputs.nth(1).fill(password);
+              await this.typeHumanized(page, passwordInputs.nth(1), password);
             } else {
               const confirmInput = page.locator('input[name*="confirm" i], input[name*="verify" i], [data-automation-id*="verifyPassword" i], [data-automation-id*="confirmPassword" i]').first();
               if (await confirmInput.count() > 0) {
-                await confirmInput.fill(password);
+                await this.typeHumanized(page, confirmInput, password);
               }
             }
 
@@ -470,6 +470,240 @@ export abstract class ATSPlugin {
     options?: SafeInteractOptions
   ): Promise<SafeInteractResult> {
     return safeInteract(ctx, target, action, options, logger);
+  }
+
+  /**
+   * Types text into a form input with randomized human-like character latency
+   * and dispatches necessary DOM events to avoid anti-bot velocity triggers.
+   */
+  protected async typeHumanized(
+    ctx: import('playwright').Frame | import('playwright').Page,
+    target: import('playwright').ElementHandle | import('playwright').Locator | string,
+    text: string,
+    options: { delayMin?: number; delayMax?: number; clearFirst?: boolean } = {}
+  ): Promise<void> {
+    const { delayMin = 15, delayMax = 40, clearFirst = true } = options;
+
+    let handle: import('playwright').ElementHandle | null = null;
+    let locator: import('playwright').Locator | null = null;
+
+    if (typeof target === 'string') {
+      locator = ctx.locator(target).first();
+    } else if ('click' in target && 'fill' in target && typeof (target as any).pressSequentially === 'function') {
+      locator = target as import('playwright').Locator;
+    } else {
+      handle = target as import('playwright').ElementHandle;
+    }
+
+    if (locator) {
+      if (clearFirst) {
+        await locator.fill('').catch(() => {});
+      }
+      await locator.focus().catch(() => {});
+      for (const char of text) {
+        const delay = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
+        await locator.pressSequentially(char, { delay }).catch(() => {});
+      }
+      await locator.dispatchEvent('input').catch(() => {});
+      await locator.dispatchEvent('change').catch(() => {});
+    } else if (handle) {
+      if (clearFirst) {
+        await handle.fill('').catch(() => {});
+      }
+      await handle.focus().catch(() => {});
+      for (const char of text) {
+        const delay = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
+        await handle.type(char, { delay }).catch(() => {});
+      }
+      await handle.dispatchEvent('input').catch(() => {});
+      await handle.dispatchEvent('change').catch(() => {});
+    }
+
+    // Small natural pause between fields (150-300ms)
+    await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 150) + 150));
+  }
+
+  /**
+   * Universal helper to verify application submission results across any ATS.
+   * Actively scans for anti-bot spam flags, employer limits, validation errors,
+   * and requires positive confirmation before allowing APPLIED status.
+   */
+  protected async verifyPostSubmission(
+    browser: BrowserSession,
+    ctx: import('playwright').Frame | import('playwright').Page,
+    logger: ExecutionLogger,
+    options: {
+      platformDisplayName: string;
+      confirmationSelectors?: string[];
+      confirmationKeywords?: string[];
+      expectedUrlKeywords?: string[];
+      errorSelectors?: string[];
+      maxWaitMs?: number;
+    }
+  ): Promise<void> {
+    const page = browser.page;
+    const maxWait = options.maxWaitMs ?? 8000;
+    const startTime = Date.now();
+    const platform = options.platformDisplayName;
+
+    const defaultConfirmationKeywords = [
+      'thank you for applying',
+      'thanks for applying',
+      'application submitted',
+      'application received',
+      'successfully submitted',
+      'successfully applied',
+      'we have received your application',
+      'your application has been received',
+      'your application was submitted',
+      'we received your application',
+      'thanks for your interest',
+    ];
+
+    const allConfirmKeywords = [
+      ...defaultConfirmationKeywords,
+      ...(options.confirmationKeywords || []).map((k) => k.toLowerCase()),
+    ];
+
+    const defaultUrlKeywords = ['thanks', 'confirmation', 'submitted', 'applied', 'success'];
+    const allUrlKeywords = [
+      ...defaultUrlKeywords,
+      ...(options.expectedUrlKeywords || []).map((k) => k.toLowerCase()),
+    ];
+
+    while (Date.now() - startTime < maxWait) {
+      await page.waitForTimeout(1000);
+
+      const currentUrl = (page.url() || '').toLowerCase();
+      const pageText = ((await page.textContent('body').catch(() => '')) || '').toLowerCase();
+      const frameText = (ctx !== page ? ((await ctx.textContent('body').catch(() => '')) || '').toLowerCase() : '');
+      const combinedText = `${pageText} ${frameText}`;
+
+      // ─── 1. Check Anti-Bot / Spam Flag Banners ────────────────────────────
+      const spamKeywords = [
+        'flagged as possible spam',
+        'flagged as spam',
+        'couldn\'t submit your application',
+        'could not submit your application',
+        'try these steps',
+        'turn off your vpn or proxy',
+        'turn off your vpn',
+        'legitimate applications are occasionally flagged',
+      ];
+      for (const kw of spamKeywords) {
+        if (combinedText.includes(kw)) {
+          await logger.warn('submission_spam_flagged', `Submission flagged by anti-bot/spam filter on ${platform}`);
+          throw new InterventionError(
+            InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
+            `Application submission was flagged as possible spam by ${platform} anti-bot detection. Please verify your network or submit manually.`,
+            page.url()
+          );
+        }
+      }
+
+      // ─── 2. Check Security Challenges / CAPTCHA ───────────────────────────
+      const securityKeywords = [
+        'verify you are human',
+        'verifying you are human',
+        'cloudflare challenge',
+        'cf-turnstile',
+        'recaptcha',
+        'hcaptcha',
+        'arkoselabs',
+        'security check',
+      ];
+      for (const kw of securityKeywords) {
+        if (combinedText.includes(kw)) {
+          await logger.warn('submission_security_challenge', `Security challenge / CAPTCHA detected on ${platform}`);
+          throw new InterventionError(
+            InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
+            `Security challenge or CAPTCHA detected on ${platform} after submission. Please complete the verification in the portal.`,
+            page.url()
+          );
+        }
+      }
+
+      // ─── 3. Check Employer Application Limits ─────────────────────────────
+      if (
+        (combinedText.includes('application limits') || combinedText.includes('limit of') || combinedText.includes('reached this limit')) &&
+        (combinedText.includes('limit of 2 applications') || combinedText.includes('limit of 3 applications') || combinedText.includes('set a limit') || combinedText.includes('maximum applications'))
+      ) {
+        await logger.warn('submission_limit_reached', `Employer application limit reached on ${platform}`);
+        throw new InterventionError(
+          InterventionReason.JOB_CLOSED,
+          `Employer application limit reached for this company on ${platform}.`,
+          page.url()
+        );
+      }
+
+      // ─── 4. Check Positive Confirmation Indicators ─────────────────────────
+      // URL pattern match
+      const urlConfirmed = allUrlKeywords.some((kw) => currentUrl.includes(kw));
+
+      // Custom or platform confirmation selectors
+      let selectorConfirmed = false;
+      if (options.confirmationSelectors && options.confirmationSelectors.length > 0) {
+        for (const sel of options.confirmationSelectors) {
+          const count = await ctx.locator(sel).count().catch(() => 0);
+          if (count > 0) {
+            selectorConfirmed = true;
+            break;
+          }
+          if (ctx !== page) {
+            const pageCount = await page.locator(sel).count().catch(() => 0);
+            if (pageCount > 0) {
+              selectorConfirmed = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Body text keyword match
+      const textConfirmed = allConfirmKeywords.some((kw) => combinedText.includes(kw));
+
+      if (urlConfirmed || selectorConfirmed || textConfirmed) {
+        await logger.info('confirmation_received', `${platform} application confirmed successfully`);
+        return;
+      }
+
+      // ─── 5. Check Explicit Form Error Banners ──────────────────────────────
+      const errorSelectors = [
+        '[role="alert"]',
+        '.error-message',
+        '.error-banner',
+        '.ashby-application-form-error',
+        '[class*="errorMessage" i]',
+        '[class*="errorBanner" i]',
+        ...(options.errorSelectors || []),
+      ];
+
+      for (const errSel of errorSelectors) {
+        const errorEl = ctx.locator(errSel).first();
+        if (await errorEl.isVisible().catch(() => false)) {
+          const errText = ((await errorEl.textContent().catch(() => '')) || '').trim();
+          if (errText.length > 0) {
+            // Ignore benign non-errors (e.g. cookie consent notices)
+            if (!/cookie|privacy/i.test(errText)) {
+              await logger.warn('submission_form_error', `Form error banner detected on ${platform}: ${errText.slice(0, 100)}`);
+              throw new InterventionError(
+                InterventionReason.UNEXPECTED_PAGE,
+                `${platform} reported a submission error: "${errText.slice(0, 150)}"`,
+                page.url()
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // If timeout is reached and no positive confirmation was found:
+    await logger.warn('confirmation_not_found', `No submission confirmation detected on ${platform} after ${maxWait}ms`);
+    throw new InterventionError(
+      InterventionReason.UNEXPECTED_PAGE,
+      `No confirmation received after submitting the ${platform} application. Please verify submission directly on the portal.`,
+      page.url()
+    );
   }
 }
 

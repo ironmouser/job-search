@@ -82,7 +82,7 @@ export class WorkablePlugin extends ATSPlugin {
       'input[name="firstname"], input[name="first_name"], input[id*="firstname" i], input[autocomplete="given-name"]'
     );
     if (firstNameInput && firstName) {
-      await firstNameInput.fill(firstName);
+      await this.typeHumanized(targetContext, firstNameInput, firstName);
       await logger.info('field_filled', `Filled first name: ${firstName}`);
     }
 
@@ -90,7 +90,7 @@ export class WorkablePlugin extends ATSPlugin {
       'input[name="lastname"], input[name="last_name"], input[id*="lastname" i], input[autocomplete="family-name"]'
     );
     if (lastNameInput && lastName) {
-      await lastNameInput.fill(lastName);
+      await this.typeHumanized(targetContext, lastNameInput, lastName);
       await logger.info('field_filled', `Filled last name: ${lastName}`);
     }
 
@@ -98,7 +98,7 @@ export class WorkablePlugin extends ATSPlugin {
     if (!firstNameInput && !lastNameInput) {
       const nameInput = await targetContext.$('input[name="name"], input[id*="name" i]');
       if (nameInput && profile.name) {
-        await nameInput.fill(profile.name);
+        await this.typeHumanized(targetContext, nameInput, profile.name);
       }
     }
 
@@ -107,7 +107,7 @@ export class WorkablePlugin extends ATSPlugin {
       'input[name="email"], input[type="email"], input[id*="email" i]'
     );
     if (emailInput && profile.email) {
-      await emailInput.fill(profile.email);
+      await this.typeHumanized(targetContext, emailInput, profile.email);
       await logger.info('field_filled', `Filled email: ${profile.email}`);
     }
 
@@ -116,7 +116,7 @@ export class WorkablePlugin extends ATSPlugin {
       'input[name="phone"], input[type="tel"], input[id*="phone" i]'
     );
     if (phoneInput && profile.phone) {
-      await phoneInput.fill(profile.phone);
+      await this.typeHumanized(targetContext, phoneInput, profile.phone);
       await logger.info('field_filled', `Filled phone: ${profile.phone}`);
     }
 
@@ -125,7 +125,7 @@ export class WorkablePlugin extends ATSPlugin {
       'input[name*="linkedin" i], input[id*="linkedin" i]'
     );
     if (linkedinInput && profile.linkedinUrl) {
-      await linkedinInput.fill(profile.linkedinUrl);
+      await this.typeHumanized(targetContext, linkedinInput, profile.linkedinUrl);
     }
 
     // 5. Resume File Upload
@@ -173,8 +173,24 @@ export class WorkablePlugin extends ATSPlugin {
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Could not find submit button on Workable form', context.jobUrl);
     }
 
+    await browser.page.waitForTimeout(1500);
+    await submitBtn.hover().catch(() => {});
+    await browser.page.waitForTimeout(300);
+
     await submitBtn.click();
-    await browser.page.waitForTimeout(3000);
+
+    // Verify post-submission status
+    await this.verifyPostSubmission(browser, targetContext, logger, {
+      platformDisplayName: 'Workable',
+      confirmationKeywords: [
+        'thank you for applying',
+        'application submitted',
+        'application received',
+        'successfully applied',
+      ],
+      errorSelectors: ['[role="alert"]', '.error-message', '[data-ui="error-message"]'],
+      maxWaitMs: 8000,
+    });
 
     const screenshotPath = await browser.screenshot('workable-submitted.png');
     await logger.info('application_submitted', 'Submitted Workable application live', { screenshotPath });

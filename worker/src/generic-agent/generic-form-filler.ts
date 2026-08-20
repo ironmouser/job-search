@@ -323,7 +323,7 @@ export class GenericFormFiller {
   }
 
   /**
-   * Helper to find first matching input from selector list and fill it.
+   * Helper to find first matching input from selector list and fill it with humanized typing.
    */
   private async tryFillInput(
     ctx: Page | Frame,
@@ -336,7 +336,14 @@ export class GenericFormFiller {
         if ((await el.count().catch(() => 0)) > 0 && (await el.isVisible().catch(() => false))) {
           const currentVal = await el.inputValue().catch(() => '');
           if (!currentVal) {
-            await el.fill(value);
+            await el.focus().catch(() => {});
+            for (const char of value) {
+              const delay = Math.floor(Math.random() * 25) + 15;
+              await el.pressSequentially(char, { delay }).catch(() => {});
+            }
+            await el.dispatchEvent('input').catch(() => {});
+            await el.dispatchEvent('change').catch(() => {});
+            await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 150) + 150));
             return true;
           }
         }
@@ -417,8 +424,75 @@ export class GenericFormFiller {
 
     if ((await submitBtn.count().catch(() => 0)) > 0 && (await submitBtn.isVisible().catch(() => false))) {
       await logger.info('application_submission', 'Clicking final application submit button');
+      await page.waitForTimeout(1500);
+      await submitBtn.hover().catch(() => {});
+      await page.waitForTimeout(300);
+
       await safeClick(page, submitBtn, { actionName: 'final_submit' }, logger);
-      await page.waitForTimeout(5000);
+
+      // Verify post-submission state across custom portal
+      const startTime = Date.now();
+      const maxWait = 8000;
+      let confirmed = false;
+
+      while (Date.now() - startTime < maxWait) {
+        await page.waitForTimeout(1000);
+        const currentUrl = (page.url() || '').toLowerCase();
+        const bodyText = ((await page.textContent('body').catch(() => '')) || '').toLowerCase();
+
+        // 1. Spam filter check
+        if (bodyText.includes('flagged as possible spam') || bodyText.includes('couldn\'t submit your application')) {
+          throw new InterventionError(
+            InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
+            'Application submission was flagged by anti-bot/spam filter on portal.',
+            page.url()
+          );
+        }
+
+        // 2. Security challenge check
+        if (bodyText.includes('verify you are human') || bodyText.includes('cloudflare challenge')) {
+          throw new InterventionError(
+            InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
+            'Security verification challenge detected on portal after submission.',
+            page.url()
+          );
+        }
+
+        // 3. Positive confirmation check
+        const urlMatch = currentUrl.includes('/thanks') || currentUrl.includes('/confirmation') || currentUrl.includes('/submitted');
+        const textMatch =
+          bodyText.includes('thank you for applying') ||
+          bodyText.includes('application submitted') ||
+          bodyText.includes('application received') ||
+          bodyText.includes('successfully submitted') ||
+          bodyText.includes('we have received your application');
+
+        if (urlMatch || textMatch) {
+          confirmed = true;
+          break;
+        }
+
+        // 4. Form error check
+        const errorEl = page.locator('[role="alert"], .error-message, [aria-invalid="true"]').first();
+        if (await errorEl.isVisible().catch(() => false)) {
+          const errText = (await errorEl.textContent().catch(() => ''))?.trim();
+          if (errText && !/cookie|privacy/i.test(errText)) {
+            throw new InterventionError(
+              InterventionReason.UNEXPECTED_PAGE,
+              `Portal reported submission error: "${errText.slice(0, 150)}"`,
+              page.url()
+            );
+          }
+        }
+      }
+
+      if (!confirmed) {
+        throw new InterventionError(
+          InterventionReason.UNEXPECTED_PAGE,
+          'No confirmation received after submitting on employer portal. Please verify submission.',
+          page.url()
+        );
+      }
 
       return {
         status: AutoApplyStatus.APPLIED,

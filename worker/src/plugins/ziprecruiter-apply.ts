@@ -129,7 +129,7 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
     if (phoneInput && (await phoneInput.isVisible().catch(() => false)) && context.userProfile.phone) {
       const currentVal = await phoneInput.inputValue().catch(() => '');
       if (!currentVal) {
-        await phoneInput.fill(context.userProfile.phone);
+        await this.typeHumanized(page, phoneInput, context.userProfile.phone);
         await logger.info('ziprecruiter_fill_phone', 'Filled phone number');
       }
     }
@@ -222,8 +222,24 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
     for (const selector of submitSelectors) {
       const btn = await page.$(selector).catch(() => null);
       if (btn && (await btn.isVisible().catch(() => false))) {
+        await page.waitForTimeout(1500);
+        await btn.hover().catch(() => {});
+        await page.waitForTimeout(300);
+
         await safeClick(page, selector);
-        await page.waitForTimeout(3000);
+
+        // Verify post-submission status
+        await this.verifyPostSubmission(browser, page, logger, {
+          platformDisplayName: 'ZipRecruiter',
+          confirmationKeywords: [
+            'application submitted',
+            'application sent',
+            'thank you for applying',
+            'successfully applied',
+          ],
+          errorSelectors: ['[role="alert"]', '.error_message', '.error-text'],
+          maxWaitMs: 8000,
+        });
         break;
       }
     }

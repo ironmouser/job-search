@@ -171,7 +171,7 @@ export class GreenhousePlugin extends ATSPlugin {
       for (const sel of linkedinSelectors) {
         const el = page.locator(sel);
         if (await el.count() > 0) {
-          await el.fill(profile.linkedinUrl);
+          await this.typeHumanized(page, el, profile.linkedinUrl);
           await logger.info('field_filled', 'LinkedIn URL populated');
           break;
         }
@@ -188,7 +188,7 @@ export class GreenhousePlugin extends ATSPlugin {
       for (const sel of websiteSelectors) {
         const el = page.locator(sel);
         if (await el.count() > 0) {
-          await el.fill(profile.websiteUrl);
+          await this.typeHumanized(page, el, profile.websiteUrl);
           await logger.info('field_filled', 'Website/portfolio URL populated');
           break;
         }
@@ -331,45 +331,30 @@ export class GreenhousePlugin extends ATSPlugin {
 
     await submitBtn.click();
 
-    // Wait for submission request to finish and confirmation page/DOM update to render
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => null);
-    } catch {}
-    await page.waitForTimeout(2000);
-
-    const currentUrl = page.url().toLowerCase();
-    const bodyText = ((await page.textContent('body')) ?? '').toLowerCase();
-
-    // Check for Greenhouse confirmation container elements
-    const thanksContainerCount = await page.locator('#thanks_container, .thanks-container, #application_confirmed, .application-confirmed, div#flash_notice').count().catch(() => 0);
-
-    // Check if the original form has been hidden or removed after submission
-    const formVisible = await page.locator('#application_form, form#application, #main_fields').isVisible().catch(() => false);
-
-    const confirmationFound =
-      thanksContainerCount > 0 ||
-      (!formVisible) ||
-      currentUrl.includes('thanks') ||
-      currentUrl.includes('confirmation') ||
-      bodyText.includes('application submitted') ||
-      bodyText.includes('thank you') ||
-      bodyText.includes('thanks for applying') ||
-      bodyText.includes('thanks for your interest') ||
-      bodyText.includes('successfully applied') ||
-      bodyText.includes('we have received your application') ||
-      bodyText.includes('your application has been received') ||
-      bodyText.includes('application received') ||
-      bodyText.includes('submitted successfully');
-
-    if (!confirmationFound) {
-      throw new InterventionError(
-        InterventionReason.UNEXPECTED_PAGE,
-        'No confirmation received after submitting the Greenhouse application. Please verify it was submitted.',
-        page.url()
-      );
-    }
-
-    await logger.info('confirmation_received', 'Greenhouse application submitted successfully');
+    // Verify post-submission status (checks for confirmation, anti-bot challenges, limits, and form error banners)
+    await this.verifyPostSubmission(browser, page, logger, {
+      platformDisplayName: 'Greenhouse',
+      confirmationSelectors: [
+        '#thanks_container',
+        '.thanks-container',
+        '#application_confirmed',
+        '.application-confirmed',
+        'div#flash_notice',
+      ],
+      confirmationKeywords: [
+        'application submitted',
+        'thank you',
+        'thanks for applying',
+        'thanks for your interest',
+        'successfully applied',
+        'we have received your application',
+        'your application has been received',
+        'application received',
+        'submitted successfully',
+      ],
+      errorSelectors: ['#error_explanation', '.field_with_errors', '[role="alert"]'],
+      maxWaitMs: 8000,
+    });
 
     return {
       status: AutoApplyStatus.APPLIED,
@@ -397,7 +382,7 @@ export class GreenhousePlugin extends ATSPlugin {
   ): Promise<void> {
     const el = page.locator(selector).first();
     if (await el.count() > 0 && value) {
-      await el.fill(value);
+      await this.typeHumanized(page, el, value);
       await logger.info('field_filled', `Field "${fieldName}" populated`);
     }
   }
@@ -447,7 +432,7 @@ export class GreenhousePlugin extends ATSPlugin {
         if (answer) {
           const currentVal = await textInput.inputValue().catch(() => '');
           if (!currentVal) {
-            await textInput.fill(answer).catch(() => null);
+            await this.typeHumanized(page, textInput, answer);
             await logger.info('question_answered', `Custom text field populated: "${label.substring(0, 50)}"`);
           }
         }

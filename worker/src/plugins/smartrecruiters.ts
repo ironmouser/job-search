@@ -85,14 +85,14 @@ export class SmartRecruitersPlugin extends ATSPlugin {
       '#first-name-input, input[name="firstName"], input[name="first-name"], input[autocomplete="given-name"]'
     );
     if (fnInput && firstName) {
-      await fnInput.fill(firstName);
+      await this.typeHumanized(targetContext, fnInput, firstName);
     }
 
     const lnInput = await targetContext.$(
       '#last-name-input, input[name="lastName"], input[name="last-name"], input[autocomplete="family-name"]'
     );
     if (lnInput && lastName) {
-      await lnInput.fill(lastName);
+      await this.typeHumanized(targetContext, lnInput, lastName);
     }
 
     // 2. Email
@@ -100,7 +100,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
       '#email-input, input[name="email"], input[type="email"]'
     );
     if (email && profile.email) {
-      await email.fill(profile.email);
+      await this.typeHumanized(targetContext, email, profile.email);
     }
 
     // 3. Phone
@@ -108,7 +108,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
       '#phone-number-input, input[name="phoneNumber"], input[type="tel"]'
     );
     if (phone && profile.phone) {
-      await phone.fill(profile.phone);
+      await this.typeHumanized(targetContext, phone, profile.phone);
     }
 
     // 4. Resume File Upload
@@ -160,8 +160,24 @@ export class SmartRecruitersPlugin extends ATSPlugin {
       throw new InterventionError(InterventionReason.UNEXPECTED_PAGE, 'Submit button not found on SmartRecruiters form', context.jobUrl);
     }
 
+    await browser.page.waitForTimeout(1500);
+    await submitBtn.hover().catch(() => {});
+    await browser.page.waitForTimeout(300);
+
     await submitBtn.click();
-    await browser.page.waitForTimeout(3000);
+
+    // Verify post-submission status
+    await this.verifyPostSubmission(browser, targetContext, logger, {
+      platformDisplayName: 'SmartRecruiters',
+      confirmationKeywords: [
+        'thank you for applying',
+        'application received',
+        'application submitted',
+        'successfully applied',
+      ],
+      errorSelectors: ['[role="alert"]', '.error-message', 'oc-error-message'],
+      maxWaitMs: 8000,
+    });
 
     const screenshotPath = await browser.screenshot('smartrecruiters-submitted.png');
     await logger.info('application_submitted', 'Submitted SmartRecruiters application live', { screenshotPath });
