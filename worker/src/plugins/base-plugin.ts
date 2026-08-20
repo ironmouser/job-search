@@ -2,7 +2,7 @@ import { ATSPlatform, ATSDetectionResult, WorkflowContext, WorkflowResult, Inter
 import { ExecutionLogger } from '../execution-logger';
 import { BrowserSession } from '../browser-session';
 import { detectJobClosed } from '../utils/job-status-detector';
-import { safeClick, safeInteract, SafeInteractOptions, SafeInteractResult, UIObstructionDetector } from '../obstruction';
+import { safeClick, safeInteract, SafeInteractOptions, SafeInteractResult, UIObstructionDetector, UIObstructionResolver } from '../obstruction';
 
 /**
  * ATSPlugin — Abstract base class for all ATS platform automation plugins.
@@ -470,6 +470,16 @@ export abstract class ATSPlugin {
     options?: SafeInteractOptions
   ): Promise<SafeInteractResult> {
     return safeInteract(ctx, target, action, options, logger);
+  }
+
+  /**
+   * Proactively scans and dismisses any visible cookie settings/banners on the page.
+   */
+  protected async dismissCookieBanners(
+    ctx: import('playwright').Frame | import('playwright').Page,
+    logger?: ExecutionLogger
+  ): Promise<boolean> {
+    return UIObstructionResolver.dismissCookieBannerIfPresent(ctx, logger);
   }
 
   /**

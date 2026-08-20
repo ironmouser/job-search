@@ -261,10 +261,20 @@ export class UIObstructionDetector {
           'dialog[open]',
           '.modal.show, .modal.in, .modal.open, .modal.is-active',
           '#onetrust-banner-sdk',
+          '#onetrust-consent-sdk',
+          '#onetrust-pc-sdk',
           '#usercentrics-root',
+          '#didomi-host',
+          '#cmp-container',
+          '#CybotCookiebotDialog',
+          '#cookie-law-info-bar',
+          '#osano-cm-window',
           '[id*="cookie" i]:not([aria-hidden="true"])',
-          '[class*="cookie-banner" i]',
-          '[class*="consent-banner" i]',
+          '[id*="consent" i]:not([aria-hidden="true"])',
+          '[class*="cookie" i]:not([aria-hidden="true"])',
+          '[class*="consent" i]:not([aria-hidden="true"])',
+          '[class*="privacy-banner" i]',
+          '[class*="privacy-modal" i]',
           'div[class*="newsletter-modal" i]',
           'div[class*="signup-modal" i]',
           'div[class*="marketing-modal" i]',
@@ -313,16 +323,16 @@ export class UIObstructionDetector {
           };
         };
 
-        // Check for close buttons in active modal
+        // Check for close/dismiss/reject buttons in active modal
         let hasClose = false;
         if (activeModalEl) {
           const closeBtns = activeModalEl.querySelectorAll(
-            'button, [role="button"], a[role="button"], input[type="button"], [aria-label*="close" i], [aria-label*="dismiss" i]'
+            'button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], [aria-label*="close" i], [aria-label*="dismiss" i], [aria-label*="reject" i], [aria-label*="decline" i]'
           );
           for (const btn of Array.from(closeBtns)) {
             const text = (btn.textContent || btn.getAttribute('aria-label') || '').toLowerCase();
             if (
-              /close|dismiss|no thanks|not now|maybe later|cancel|reject|accept|got it|agree|continue/i.test(
+              /close|dismiss|no thanks|not now|maybe later|cancel|reject|decline|necessary|functional|essential|save|confirm|accept|got it|agree|continue|allow/i.test(
                 text
               )
             ) {

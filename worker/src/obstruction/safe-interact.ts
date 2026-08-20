@@ -189,13 +189,18 @@ export async function safeInteract(
   }
 
   // ─── Phase 7: Controlled Force Interaction Fallback ───────────────────────
-  // Used only when target identity is high confidence, visible, no security blockers exist
-  if (allowForce) {
+  // Used when target identity is high confidence, visible, no security blockers exist
+  const isCookieOrBenign =
+    type === ObstructionType.COOKIE_BANNER ||
+    type === ObstructionType.PRIVACY_BANNER ||
+    type === ObstructionType.LOCATION_PROMPT;
+
+  if (allowForce || isCookieOrBenign) {
     try {
       const isVisible = await locator.isVisible().catch(() => false);
       if (isVisible) {
         if (logger) {
-          await logger.info('forced_interaction_fallback', 'Used forced interaction fallback after actionability failure.');
+          await logger.info('forced_interaction_fallback', 'Used forced interaction fallback after actionability recovery.');
         }
 
         if (actionName === 'click') {
@@ -231,8 +236,8 @@ export async function safeInteract(
       ? 'APPLICATION_BLOCKED_BY_UNKNOWN_UI'
       : type === ObstructionType.MARKETING_MODAL
       ? 'APPLICATION_BLOCKED_BY_MARKETING_MODAL'
-      : type === ObstructionType.COOKIE_BANNER
-      ? 'APPLICATION_BLOCKED_BY_COOKIE_BANNER'
+      : type === ObstructionType.COOKIE_BANNER || type === ObstructionType.PRIVACY_BANNER
+      ? 'APPLICATION_FOUND_BUT_NOT_ACTIONABLE'
       : type !== ObstructionType.NONE
       ? 'APPLICATION_BLOCKED_BY_MODAL'
       : 'APPLICATION_FOUND_BUT_NOT_ACTIONABLE';

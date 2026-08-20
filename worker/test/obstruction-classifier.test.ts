@@ -109,6 +109,29 @@ describe('UIObstructionClassifier', () => {
     assert.strictEqual(res.isSafeToDismiss, true);
   });
 
+  it('classifies cookie settings messages and preference overlays as safe to dismiss', () => {
+    const res = UIObstructionClassifier.classify({
+      blockingElement: {
+        tag: 'div',
+        role: 'dialog',
+        id: 'usercentrics-root',
+        className: 'consent-manager-overlay',
+        text: 'Cookie Settings & Privacy Choices: Select which functional or strictly necessary cookies you allow.',
+        zIndex: 99999,
+        position: 'fixed',
+        opacity: 1,
+        pointerEvents: 'auto',
+        ariaModal: true,
+        isDialog: true,
+        isInViewport: true,
+        boundingBox: { x: 50, y: 50, width: 500, height: 400 },
+      },
+    });
+
+    assert.strictEqual(res.type, ObstructionType.COOKIE_BANNER);
+    assert.strictEqual(res.isSafeToDismiss, true);
+  });
+
   it('classifies location/region selection prompts as safe to dismiss', () => {
     const res = UIObstructionClassifier.classify({
       blockingElement: {

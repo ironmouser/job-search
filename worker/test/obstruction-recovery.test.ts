@@ -416,4 +416,176 @@ describe('UI Obstruction Detection & Modal Recovery Integration Tests', () => {
       await page.close();
     }
   });
+
+  it('Test 11 — Cookie settings: Prioritizes Reject All when available', async () => {
+    page = await browser.newPage();
+    try {
+      await page.setContent(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            #cookie-modal {
+              position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+              display: flex; align-items: center; justify-content: center;
+            }
+            .box { background: white; padding: 20px; }
+          </style>
+        </head>
+        <body>
+          <button id="apply-btn" onclick="window.applied = true">Submit Application</button>
+
+          <div id="cookie-modal" role="dialog" aria-modal="true">
+            <div class="box">
+              <h3>Cookie Preferences & Privacy Settings</h3>
+              <p>We use cookies to enhance navigation.</p>
+              <button id="reject-btn" onclick="window.action = 'rejected'; document.getElementById('cookie-modal').style.display = 'none';">Reject All Cookies</button>
+              <button id="accept-btn" onclick="window.action = 'accepted'; document.getElementById('cookie-modal').style.display = 'none';">Accept All Cookies</button>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+
+      const target = page.locator('#apply-btn');
+      const result = await safeClick(page, target);
+
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.recoveryPerformed, true);
+      assert.strictEqual(result.recoveryAction, ObstructionDismissalAction.REJECT_ALL);
+
+      const action = await page.evaluate(() => (window as any).action);
+      assert.strictEqual(action, 'rejected');
+
+      const isApplied = await page.evaluate(() => (window as any).applied);
+      assert.strictEqual(isApplied, true);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('Test 12 — Cookie settings: Chooses Necessary only / Functional only when Reject is not present', async () => {
+    page = await browser.newPage();
+    try {
+      await page.setContent(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            #consent-dialog {
+              position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+              display: flex; align-items: center; justify-content: center;
+            }
+            .box { background: white; padding: 20px; }
+          </style>
+        </head>
+        <body>
+          <button id="apply-btn" onclick="window.applied = true">Apply Now</button>
+
+          <div id="consent-dialog" role="dialog" aria-modal="true">
+            <div class="box">
+              <h3>Manage Consent & Cookie Settings</h3>
+              <button id="nec-btn" onclick="window.choice = 'necessary'; document.getElementById('consent-dialog').style.display = 'none';">Only Necessary Cookies</button>
+              <button id="all-btn" onclick="window.choice = 'all'; document.getElementById('consent-dialog').style.display = 'none';">Accept All</button>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+
+      const target = page.locator('#apply-btn');
+      const result = await safeClick(page, target);
+
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.recoveryPerformed, true);
+      assert.strictEqual(result.recoveryAction, ObstructionDismissalAction.NECESSARY_ONLY);
+
+      const choice = await page.evaluate(() => (window as any).choice);
+      assert.strictEqual(choice, 'necessary');
+
+      const isApplied = await page.evaluate(() => (window as any).applied);
+      assert.strictEqual(isApplied, true);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('Test 13 — Cookie settings: Ignores non-blocking cookie notice and proceeds', async () => {
+    page = await browser.newPage();
+    try {
+      await page.setContent(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            #cookie-bar {
+              position: fixed; bottom: 0; left: 0; right: 0; height: 50px;
+              background: #333; color: white; z-index: 100;
+            }
+            #apply-box {
+              margin-top: 50px;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="apply-box">
+            <button id="apply-btn" onclick="window.applied = true">Apply</button>
+          </div>
+
+          <div id="cookie-bar" class="cookie-banner">
+            <span>We use cookies on this site.</span>
+          </div>
+        </body>
+        </html>
+      `);
+
+      const target = page.locator('#apply-btn');
+      const result = await safeClick(page, target);
+
+      assert.strictEqual(result.success, true);
+      const isApplied = await page.evaluate(() => (window as any).applied);
+      assert.strictEqual(isApplied, true);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('Test 14 — Cookie settings: Never a blocker (DOM neutralization & fallback unblock)', async () => {
+    page = await browser.newPage();
+    try {
+      await page.setContent(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            #stubborn-cookie-overlay {
+              position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 99999;
+            }
+            .content { padding: 40px; background: white; margin: 50px; }
+          </style>
+        </head>
+        <body>
+          <button id="apply-btn" onclick="window.applied = true">Submit</button>
+
+          <!-- A stubborn cookie overlay with no buttons -->
+          <div id="stubborn-cookie-overlay" class="cookie-banner" role="dialog" aria-modal="true">
+            <div class="content">
+              <h3>Cookie Settings Notice</h3>
+              <p>This site stores cookies in your browser.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+
+      const target = page.locator('#apply-btn');
+      const result = await safeClick(page, target);
+
+      assert.strictEqual(result.success, true);
+      const isApplied = await page.evaluate(() => (window as any).applied);
+      assert.strictEqual(isApplied, true);
+    } finally {
+      await page.close();
+    }
+  });
 });

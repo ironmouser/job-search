@@ -138,23 +138,49 @@ export class UIObstructionClassifier {
       };
     }
 
-    // ─── 3. Cookie & Privacy Consent Banners (SAFE TO DISMISS) ───────────────
+    // ─── 3. Cookie & Privacy Consent Banners & Settings (SAFE TO DISMISS) ───
     const cookieKeywords = [
       'cookie',
       'cookies',
       'cookie policy',
+      'cookie settings',
+      'cookie preferences',
+      'cookie notice',
+      'cookie banner',
+      'cookie consent',
+      'cookie dialog',
+      'cookies policy',
       'privacy preferences',
+      'privacy settings',
       'consent preferences',
+      'consent settings',
+      'consent manager',
+      'manage cookies',
+      'manage preferences',
+      'manage consent',
+      'your privacy choices',
       'we use cookies',
       'accept all cookies',
       'accept cookies',
-      'manage cookies',
+      'reject all cookies',
+      'strictly necessary',
+      'necessary cookies',
+      'functional cookies',
+      'essential cookies',
       'onetrust',
       'usercentrics',
       'didomi',
       'quantcast',
       'trustarc',
       'cookiebot',
+      'cookie-law-info',
+      'osano',
+      'ketch',
+      'iubenda',
+      'termly',
+      'complianz',
+      'civic',
+      'clarip',
     ];
     const matchedCookie = cookieKeywords.filter((kw) => combinedText.includes(kw));
     if (matchedCookie.length > 0) {
@@ -162,7 +188,7 @@ export class UIObstructionClassifier {
         type: ObstructionType.COOKIE_BANNER,
         isSafeToDismiss: true,
         confidence: 90,
-        reason: `Detected cookie consent banner: ${matchedCookie.join(', ')}`,
+        reason: `Detected cookie consent or settings banner: ${matchedCookie.join(', ')}`,
         detectedKeywords: matchedCookie,
       };
     }

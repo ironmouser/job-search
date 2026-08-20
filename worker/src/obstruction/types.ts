@@ -33,14 +33,18 @@ export enum ObstructionType {
   UNKNOWN_OVERLAY = 'UNKNOWN_OVERLAY',
 }
 
-// ─── Recovery Dismissal Actions ─────────────────────────────────────────────
-
 export enum ObstructionDismissalAction {
   NONE = 'NONE',
   ESCAPE = 'ESCAPE',
   CLOSE_BUTTON = 'CLOSE_BUTTON',
   BACKDROP_CLICK = 'BACKDROP_CLICK',
   FORCE_INTERACTION = 'FORCE_INTERACTION',
+  REJECT_ALL = 'REJECT_ALL',
+  IGNORE = 'IGNORE',
+  NECESSARY_ONLY = 'NECESSARY_ONLY',
+  FUNCTIONAL_ONLY = 'FUNCTIONAL_ONLY',
+  ACCEPT_FALLBACK = 'ACCEPT_FALLBACK',
+  DOM_NEUTRALIZED = 'DOM_NEUTRALIZED',
 }
 
 // ─── Hit Test & Actionability Information ───────────────────────────────────
