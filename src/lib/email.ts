@@ -120,7 +120,7 @@ const PERSONAL_DOMAINS = [
   '@zoho.com',
 ];
 
-const MAX_CANDIDATE_EMAILS = 30;
+const MAX_CANDIDATE_EMAILS = 50;
 
 export async function fetchEmailsAndExtractJobs(
   userId: string,
@@ -332,10 +332,10 @@ ${allUrls.slice(0, 60).join('\n')}
 
       onProgress?.(0, `Processing ${candidatePayloads.length} email message${candidatePayloads.length === 1 ? '' : 's'} for job postings...`);
 
-      // Stage 3: AI Job Extraction in concurrent batches of 8
+      // Stage 3: AI Job Extraction in concurrent batches of 5
       let runningFoundCount = 0;
       const extractedJobBatches: any[][] = [];
-      const batchSize = 8;
+      const batchSize = 5;
 
       for (let i = 0; i < candidatePayloads.length; i += batchSize) {
         const chunk = candidatePayloads.slice(i, i + batchSize);
