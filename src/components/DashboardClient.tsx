@@ -2,7 +2,7 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText, MoreVertical } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
@@ -220,6 +220,19 @@ export default function DashboardClient({
   const [shouldAutoSync, setShouldAutoSync] = useState(false);
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
   const [isStartingBatch, setIsStartingBatch] = useState(false);
+  const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
+
+  const toggleCardExpand = (id: string) => {
+    setExpandedJobIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Use refs to always have the latest values without stale closures
   const checkedJobsRef = useRef(checkedJobs);
@@ -1940,6 +1953,7 @@ export default function DashboardClient({
             const feedbackObj = Array.isArray(job.job_feedback) ? job.job_feedback[0] : job.job_feedback;
             const isDisliked = feedbackObj?.feedback_type === 'dislike';
             const isViewed = !!(job.is_viewed || job.isViewed);
+            const isExpanded = expandedJobIds.has(job.id);
             
             const cardStyle: any = {
               opacity: isDisliked ? 0.5 : 1,
@@ -1958,9 +1972,9 @@ export default function DashboardClient({
             
             return (
               <div key={job.id} id={`job-item-${job.id}`} className={`glass-card job-card${isViewed ? ' job-card-viewed' : ''}${confettiJobId === job.id ? ' confetti' : ''}`} style={cardStyle}>
-                {/* Top Header: Company Name, Badges & Score */}
+                {/* Top Header: Company Name, Badges, Score & Checkbox */}
                 <div className="job-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-primary, #0070f3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {cleanCompanyName(job.company)}
                       {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures)}
@@ -1981,20 +1995,68 @@ export default function DashboardClient({
                     </Link>
                   </div>
 
-                  {score ? (
-                    <div className={`score-badge ${scoreClass}`} style={{ fontSize: '1.2rem', fontWeight: 700, padding: '0.4rem 0.75rem', borderRadius: '12px', flexShrink: 0 }}>
-                      {score}
-                    </div>
-                  ) : scoresExhausted ? (
-                    <div 
-                      onClick={() => setShowUpgradeModal(true)} 
-                      title="Weekly score allowance reached. Click to upgrade to Pro!" 
-                      className="score-badge" 
-                      style={{ cursor: 'pointer', background: 'rgba(255, 255, 255, 0.05)', border: '1px dashed rgba(255, 255, 255, 0.2)', color: 'var(--text-secondary)', padding: '0.4rem 0.75rem', borderRadius: '12px', flexShrink: 0 }}
-                    >
-                      <Lock size={16} />
-                    </div>
-                  ) : null}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexShrink: 0 }}>
+                    {score ? (
+                      <div 
+                        className={`score-badge ${scoreClass}`} 
+                        style={{ 
+                          fontSize: '1.35rem', 
+                          fontWeight: 700, 
+                          padding: '0.6rem', 
+                          minWidth: '48px', 
+                          minHeight: '48px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          borderRadius: '14px', 
+                          flexShrink: 0,
+                          lineHeight: 1
+                        }}
+                      >
+                        {score}
+                      </div>
+                    ) : scoresExhausted ? (
+                      <div 
+                        onClick={() => setShowUpgradeModal(true)} 
+                        title="Weekly score allowance reached. Click to upgrade to Pro!" 
+                        className="score-badge" 
+                        style={{ 
+                          cursor: 'pointer', 
+                          background: 'rgba(255, 255, 255, 0.05)', 
+                          border: '1px dashed rgba(255, 255, 255, 0.2)', 
+                          color: 'var(--text-secondary)', 
+                          padding: '0.6rem', 
+                          minWidth: '48px', 
+                          minHeight: '48px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          borderRadius: '14px', 
+                          flexShrink: 0 
+                        }}
+                      >
+                        <Lock size={18} />
+                      </div>
+                    ) : null}
+
+                    {/* Checkbox positioned in upper right corner */}
+                    <input 
+                      type="checkbox" 
+                      checked={checkedJobs.has(job.id)} 
+                      onChange={() => toggleJobCheck(job.id)}
+                      style={{ 
+                        cursor: 'pointer', 
+                        width: '20px', 
+                        height: '20px', 
+                        borderRadius: '4px', 
+                        flexShrink: 0, 
+                        marginTop: '-6px',
+                        marginRight: '-6px',
+                        accentColor: 'var(--accent-primary, #0070f3)' 
+                      }}
+                      title="Select job"
+                    />
+                  </div>
                 </div>
                 
                 {/* Metadata Row */}
@@ -2010,83 +2072,105 @@ export default function DashboardClient({
                   </span>
                 </div>
                 
-                {/* Status Badge */}
-                <div style={{ marginTop: 'auto', marginBottom: '1rem' }}>
-                  {getEffectiveStatus(job) === 'applied' ? (
-                    <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(0, 112, 243, 0.1)', border: '1px solid rgba(0, 112, 243, 0.3)', color: 'var(--accent-primary)', fontSize: '0.85rem', fontWeight: 500 }}>
-                      <CheckCircle2 size={15} /> Applied {safeFormatDate(job.applied_at)}
-                    </span>
-                  ) : (
-                    <span className={`badge badge-${getEffectiveStatus(job)}`} style={{ padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.85rem', fontWeight: 500 }}>
-                      {getEffectiveStatus(job).replace('_', ' ')}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Horizontal Action Bar (Single Line: Thumbs, Delete, Save, Original, Details, Checkbox) */}
-                <div className="dashboard-job-action-row" style={{ paddingTop: '0.85rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.3rem', width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0 }}>
-                    {/* Thumbs Up & Thumbs Down */}
-                    <FeedbackButtons
-                      jobId={job.id}
-                      initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
-                      compact
-                      showNudgeTooltip={nudgeJobId === job.id}
-                      nudgeVariant="dashboard"
-                      onNudgeDismiss={handleNudgeDismiss}
-                      onFeedbackGiven={handleNudgeFeedbackGiven}
-                    />
-
-                    {/* Delete */}
-                    <button 
-                      onClick={() => deleteJob(job.id)} 
-                      className="btn-outline card-icon-action-btn" 
-                      style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} 
-                      title="Delete"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-
-                    {/* Save / Bookmark */}
-                    <button 
-                      onClick={() => toggleArchive(job.id)} 
-                      className="btn-outline card-icon-action-btn" 
-                      style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
-                      title={job.is_archived ? "Unsave" : "Save"}
-                    >
-                      {job.is_archived ? <BookmarkX size={15} /> : <Bookmark size={15} />}
-                    </button>
-
-                    {/* Original */}
-                    <a 
-                      href={job.url} 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      onClick={() => handleMarkViewed(job.id)} 
-                      className="btn-outline card-icon-action-btn original-link-btn"
-                      title="Original Job Listing"
-                    >
-                      <ExternalLink size={15} />
-                    </a>
-
-                    {/* Details */}
-                    <Link 
-                      href={`/job/${job.id}`} 
-                      onClick={() => handleMarkViewed(job.id)} 
-                      className="btn-primary card-label-action-btn"
-                    >
-                      Details
-                    </Link>
+                {/* Status Badge & More Button Row */}
+                <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '32px' }}>
+                  <div>
+                    {getEffectiveStatus(job) === 'applied' ? (
+                      <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(0, 112, 243, 0.1)', border: '1px solid rgba(0, 112, 243, 0.3)', color: 'var(--accent-primary)', fontSize: '0.85rem', fontWeight: 500 }}>
+                        <CheckCircle2 size={15} /> Applied {safeFormatDate(job.applied_at)}
+                      </span>
+                    ) : (
+                      <span className={`badge badge-${getEffectiveStatus(job)}`} style={{ padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.85rem', fontWeight: 500 }}>
+                        {getEffectiveStatus(job).replace('_', ' ')}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Checkbox */}
-                  <input 
-                    type="checkbox" 
-                    checked={checkedJobs.has(job.id)} 
-                    onChange={() => toggleJobCheck(job.id)}
-                    style={{ cursor: 'pointer', width: '20px', height: '20px', borderRadius: '4px', flexShrink: 0, marginLeft: 'auto' }}
-                    title="Select job"
-                  />
+                  <button 
+                    type="button"
+                    onClick={() => toggleCardExpand(job.id)} 
+                    className="card-more-btn"
+                    style={{
+                      opacity: isExpanded ? 0 : 1,
+                      pointerEvents: isExpanded ? 'none' : 'auto',
+                      visibility: isExpanded ? 'hidden' : 'visible',
+                      transition: 'opacity 0.2s ease, visibility 0.2s ease'
+                    }}
+                    title="More actions"
+                  >
+                    <MoreVertical size={18} />
+                  </button>
+                </div>
+                
+                {/* Collapsible Action Bar */}
+                <div className={`job-card-collapsible ${isExpanded ? 'expanded' : ''}`}>
+                  <div className="job-card-collapsible-inner">
+                    <div className="dashboard-job-action-row" style={{ paddingTop: '0.85rem', marginTop: '0.85rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.3rem', width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0 }}>
+                        {/* Thumbs Up & Thumbs Down */}
+                        <FeedbackButtons
+                          jobId={job.id}
+                          initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
+                          compact
+                          showNudgeTooltip={nudgeJobId === job.id}
+                          nudgeVariant="dashboard"
+                          onNudgeDismiss={handleNudgeDismiss}
+                          onFeedbackGiven={handleNudgeFeedbackGiven}
+                        />
+
+                        {/* Delete */}
+                        <button 
+                          onClick={() => deleteJob(job.id)} 
+                          className="btn-outline card-icon-action-btn" 
+                          style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} 
+                          title="Delete"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+
+                        {/* Save / Bookmark */}
+                        <button 
+                          onClick={() => toggleArchive(job.id)} 
+                          className="btn-outline card-icon-action-btn" 
+                          style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
+                          title={job.is_archived ? "Unsave" : "Save"}
+                        >
+                          {job.is_archived ? <BookmarkX size={15} /> : <Bookmark size={15} />}
+                        </button>
+
+                        {/* Original */}
+                        <a 
+                          href={job.url} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          onClick={() => handleMarkViewed(job.id)} 
+                          className="btn-outline card-icon-action-btn original-link-btn"
+                          title="Original Job Listing"
+                        >
+                          <ExternalLink size={15} />
+                        </a>
+
+                        {/* Details */}
+                        <Link 
+                          href={`/job/${job.id}`} 
+                          onClick={() => handleMarkViewed(job.id)} 
+                          className="btn-primary card-label-action-btn"
+                        >
+                          Details
+                        </Link>
+                      </div>
+
+                      {/* Collapse button */}
+                      <button 
+                        type="button"
+                        onClick={() => toggleCardExpand(job.id)} 
+                        className="card-more-btn"
+                        title="Less actions"
+                      >
+                        <MoreVertical size={18} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
