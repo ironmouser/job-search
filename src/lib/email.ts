@@ -307,10 +307,16 @@ export async function fetchEmailsAndExtractJobs(
             return true;
           });
 
-          if (!effectiveText && allUrls.length === 0) continue;
+          // Pre-AI filter: An email must have at least one valid external link to be a usable job listing
+          if (allUrls.length === 0) continue;
 
-          // Focus snippet for AI processing (12,000 chars captures complete job alert digests)
-          const textSnippet = effectiveText.slice(0, 12000);
+          // Payload Trimming: Strip legal disclaimers and footer noise to minimize LLM tokens and latency
+          const cleanedText = effectiveText
+            .replace(/(you are receiving this email because|unsubscribe from this email|preferences & notifications|privacy policy|terms of use|all rights reserved)[\s\S]*$/i, '')
+            .trim();
+
+          const textSnippet = (cleanedText.length > 50 ? cleanedText : effectiveText).slice(0, 8000);
+          if (!textSnippet && allUrls.length === 0) continue;
 
           candidatePayloads.push({
             subject,
@@ -322,7 +328,7 @@ EMAIL TEXT:
 ${textSnippet}
 
 LINKS FOUND IN EMAIL:
-${allUrls.slice(0, 60).join('\n')}
+${allUrls.slice(0, 40).join('\n')}
             `.trim(),
           });
         } catch (msgErr) {
@@ -332,16 +338,16 @@ ${allUrls.slice(0, 60).join('\n')}
 
       onProgress?.(0, `Processing ${candidatePayloads.length} email message${candidatePayloads.length === 1 ? '' : 's'} for job postings...`);
 
-      // Stage 3: AI Job Extraction in concurrent batches of 5
+      // Stage 3: AI Job Extraction in concurrent batches of 10
       let runningFoundCount = 0;
       const extractedJobBatches: any[][] = [];
-      const batchSize = 5;
+      const batchSize = 10;
 
       for (let i = 0; i < candidatePayloads.length; i += batchSize) {
         const chunk = candidatePayloads.slice(i, i + batchSize);
         const batchNum = Math.floor(i / batchSize) + 1;
         const totalBatches = Math.ceil(candidatePayloads.length / batchSize);
-        console.log(`[Email Sync AI] Processing batch ${batchNum}/${totalBatches} (${chunk.length} emails)...`);
+        console.log(`[Email Sync AI] Processing batch ${batchNum}/${totalBatches} (${chunk.length} emails in parallel)...`);
 
         const batchResults = await Promise.all(
           chunk.map(async ({ emailContentForAI, subject }) => {
