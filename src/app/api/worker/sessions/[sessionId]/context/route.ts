@@ -29,6 +29,7 @@ export async function GET(
             title: true,
             company: true,
             url: true,
+            applicationUrl: true,
             description: true,
             requirements: true,
           },

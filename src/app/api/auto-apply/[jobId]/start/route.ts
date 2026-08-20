@@ -39,13 +39,14 @@ export async function POST(
   const { jobId } = await context.params;
   const userId = session.user.id;
 
-  let body: { simulationMode?: boolean } = {};
+  let body: { simulationMode?: boolean; applicationUrl?: string } = {};
   try {
     body = await request.json();
   } catch {
     // Body is optional
   }
   const simulationMode = body.simulationMode ?? false; // Default to real apply
+  const customApplicationUrl = body.applicationUrl?.trim() || null;
 
   try {
     // 0. Enforce Auto Apply Quota & Velocity Limits
@@ -78,6 +79,15 @@ export async function POST(
 
     if (!userJob) {
       return NextResponse.json({ error: 'Job not found for this user' }, { status: 404 });
+    }
+
+    // If a direct applicationUrl was provided in the start request, update the job record immediately
+    if (customApplicationUrl && customApplicationUrl !== userJob.job.applicationUrl) {
+      await prisma.job.update({
+        where: { id: jobId },
+        data: { applicationUrl: customApplicationUrl, consecutiveAutoFailures: 0 },
+      });
+      userJob.job.applicationUrl = customApplicationUrl;
     }
 
     // 2. Check for assets; if missing, auto-generate assets for seamless 1-click apply

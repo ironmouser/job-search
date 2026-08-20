@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle, X, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle, X, Zap, Check } from 'lucide-react';
 import AutofillButton from './AutofillButton';
 import { AutoApplyPanel } from './AutoApplyPanel';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
@@ -39,9 +39,18 @@ export function ApplyStepAccordion({
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeUrl, setActiveUrl] = useState(applicationUrl || initialUrl);
-  const [customUrl, setCustomUrl] = useState('');
+  const [customUrl, setCustomUrl] = useState(applicationUrl || '');
   const [isSavingUrl, setIsSavingUrl] = useState(false);
-  const [hasAttemptedCustomUrl, setHasAttemptedCustomUrl] = useState(!!applicationUrl);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  
+  useEffect(() => {
+    if (applicationUrl) {
+      setActiveUrl(applicationUrl);
+      setCustomUrl(applicationUrl);
+    } else {
+      setActiveUrl(initialUrl);
+    }
+  }, [applicationUrl, initialUrl]);
   
   const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
   const [isGeneratingAssets, setIsGeneratingAssets] = useState(false);
@@ -171,16 +180,18 @@ export function ApplyStepAccordion({
     };
   }, [isExpanded]);
 
-  // Check confidence whenever activeUrl changes
+  const effectiveUrl = (customUrl.trim() && customUrl.trim().startsWith('http')) ? customUrl.trim() : activeUrl;
+
+  // Check confidence whenever effectiveUrl changes
   useEffect(() => {
-    if (!activeUrl || !isExpanded || isGeneratingAssets) return;
+    if (!effectiveUrl || !isExpanded || isGeneratingAssets) return;
     let isMounted = true;
     setIsCheckingConfidence(true);
 
     fetch('/api/auto-apply/detect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobUrl: activeUrl }),
+      body: JSON.stringify({ jobUrl: effectiveUrl }),
     })
       .then((r) => r.json())
       .then((d) => {
@@ -216,21 +227,26 @@ export function ApplyStepAccordion({
     return () => {
       isMounted = false;
     };
-  }, [activeUrl, isExpanded]);
+  }, [effectiveUrl, isExpanded]);
 
-  async function handleSaveCustomUrl() {
-    if (!customUrl.trim()) return;
+  async function handleSaveCustomUrl(overrideUrl?: string) {
+    const targetToSave = (typeof overrideUrl === 'string' ? overrideUrl : customUrl).trim();
+    if (!targetToSave) return;
     setIsSavingUrl(true);
     try {
       const res = await fetch(`/api/jobs/${jobId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationUrl: customUrl.trim() }),
+        body: JSON.stringify({ applicationUrl: targetToSave }),
       });
       if (res.ok) {
-        setActiveUrl(customUrl.trim());
-        setCustomUrl('');
-        setHasAttemptedCustomUrl(true);
+        setActiveUrl(targetToSave);
+        setCustomUrl(targetToSave);
+        setSavedSuccess(true);
+        router.refresh();
+        setTimeout(() => {
+          setSavedSuccess(false);
+        }, 3000);
       }
     } catch (e) {
       console.error('Failed to save URL', e);
@@ -417,8 +433,22 @@ export function ApplyStepAccordion({
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                 <input
                   type="url"
-                  value={customUrl || (hasAttemptedCustomUrl ? activeUrl : '')}
-                  onChange={(e) => setCustomUrl(e.target.value)}
+                  value={customUrl}
+                  onChange={(e) => {
+                    setCustomUrl(e.target.value);
+                    setSavedSuccess(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveCustomUrl();
+                    }
+                  }}
+                  onBlur={() => {
+                    if (customUrl.trim() && customUrl.trim() !== activeUrl && customUrl.trim().startsWith('http')) {
+                      handleSaveCustomUrl();
+                    }
+                  }}
                   placeholder={activeUrl || 'https://company.com/careers/job/12345'}
                   style={{
                     flex: 1,
@@ -432,8 +462,8 @@ export function ApplyStepAccordion({
                   }}
                 />
                 <button
-                  onClick={handleSaveCustomUrl}
-                  disabled={!customUrl.trim() || isSavingUrl}
+                  onClick={() => handleSaveCustomUrl()}
+                  disabled={(!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl}
                   style={{
                     whiteSpace: 'nowrap',
                     display: 'flex',
@@ -442,17 +472,34 @@ export function ApplyStepAccordion({
                     fontSize: '0.85rem',
                     padding: '0.65rem 1.15rem',
                     borderRadius: '6px',
-                    border: '1px solid var(--border-glass, #e2e8f0)',
-                    background: 'var(--bg-primary, #ffffff)',
-                    color: 'var(--text-secondary, #475569)',
-                    fontWeight: 500,
-                    cursor: !customUrl.trim() || isSavingUrl ? 'not-allowed' : 'pointer',
-                    opacity: !customUrl.trim() ? 0.7 : 1,
+                    border: savedSuccess
+                      ? '1px solid #16a34a'
+                      : '1px solid var(--border-glass, #e2e8f0)',
+                    background: savedSuccess
+                      ? 'rgba(22, 163, 74, 0.08)'
+                      : 'var(--bg-primary, #ffffff)',
+                    color: savedSuccess
+                      ? '#16a34a'
+                      : customUrl.trim() && customUrl.trim() !== activeUrl
+                      ? '#2563eb'
+                      : 'var(--text-secondary, #475569)',
+                    fontWeight: 600,
+                    cursor: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 'not-allowed' : 'pointer',
+                    opacity: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 0.65 : 1,
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  {isSavingUrl ? <Loader2 size={13} className="animate-spin" /> : null}
-                  Update URL
+                  {isSavingUrl ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" /> Saving...
+                    </>
+                  ) : savedSuccess ? (
+                    <>
+                      <Check size={14} color="#16a34a" /> Saved
+                    </>
+                  ) : (
+                    'Update URL'
+                  )}
                 </button>
               </div>
             </div>
@@ -572,7 +619,7 @@ export function ApplyStepAccordion({
           {/* Main Auto Apply Panel with Stepper, Receipt, and Inline Interventions (No top border) */}
           <AutoApplyPanel
             jobId={jobId}
-            jobUrl={activeUrl}
+            jobUrl={effectiveUrl}
             hasAssets={localHasAssets}
             hasResume={hasResume}
             onStatusChange={(sess, active) => {

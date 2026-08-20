@@ -42,6 +42,7 @@ const ACTIVE_STATUSES = new Set([
 
 export function AutoApplyButton({
   jobId,
+  jobUrl,
   hasAssets,
   hasResume,
   currentStatus,
@@ -69,7 +70,7 @@ export function AutoApplyButton({
       const res = await fetch(`/api/auto-apply/${jobId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ simulationMode: false }),
+        body: JSON.stringify({ simulationMode: false, applicationUrl: jobUrl || undefined }),
       });
       const data = await res.json();
       if (res.ok) {
