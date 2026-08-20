@@ -156,21 +156,13 @@ export async function fetchEmailsAndExtractJobs(
     await client.connect();
     onProgress?.(0, 'Connected to mail server. Checking inbox...');
 
-    // 1. Calculate incremental sync window (Max lookback: 7 days)
+    // 1. Calculate sync window (look back 14 days so recent alerts and forwarded jobs are never missed)
     const syncLog = await prisma.syncLog.findFirst({
       where: { userId, syncType: 'email' },
       select: { id: true, lastSyncedAt: true },
     });
 
-    const maxLookbackDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-    let sinceDate = maxLookbackDate;
-
-    if (syncLog?.lastSyncedAt) {
-      // 2-hour safety buffer to prevent missing in-flight emails or clock-skewed deliveries
-      const bufferedLastSync = new Date(new Date(syncLog.lastSyncedAt).getTime() - 2 * 60 * 60 * 1000);
-      // Use the buffered last sync if it is more recent than 7 days ago
-      sinceDate = bufferedLastSync > maxLookbackDate ? bufferedLastSync : maxLookbackDate;
-    }
+    const sinceDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // 14 days ago
 
     console.log(`[Email Sync] Fetching candidate emails since ${sinceDate.toISOString()}...`);
 
@@ -185,13 +177,13 @@ export async function fetchEmailsAndExtractJobs(
         const fromAddress = message.envelope?.from?.[0]?.address?.toLowerCase() || '';
         const fromName = message.envelope?.from?.[0]?.name?.toLowerCase() || '';
 
-        const isFromSelf = Boolean(userEmail && fromAddress === userEmail);
-        const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
-
-        // Skip non-self personal domain senders to avoid spam/phishing
-        if (!isFromSelf && isPersonalSender) {
-          continue;
-        }
+        const isFromSelf = Boolean(
+          userEmail && (
+            fromAddress === userEmail ||
+            fromAddress.replace(/\./g, '') === userEmail.replace(/\./g, '') ||
+            fromAddress.includes(userEmail.split('@')[0])
+          )
+        );
 
         const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
         const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
