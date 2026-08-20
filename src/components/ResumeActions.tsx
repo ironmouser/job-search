@@ -62,6 +62,14 @@ export default function ResumeActions({ jobId, markdownText, selectedColor = "#0
             };
 
             await html2pdf().set(opt).from(html).save();
+
+            // Track download asynchronously
+            fetch('/api/analytics/track-download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'resume', jobId }),
+            }).catch((err) => console.warn('Could not record download tracking:', err));
+
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
         } catch (e: any) {

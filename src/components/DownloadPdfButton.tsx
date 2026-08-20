@@ -10,10 +10,11 @@ interface DownloadPdfButtonProps {
     label?: string;
     html?: string;
     type?: 'resume' | 'coverLetter';
+    jobId?: string;
     styleOptions?: PdfStyleOptions;
 }
 
-export default function DownloadPdfButton({ markdownText, filename, label = "Download", html, type = 'resume', styleOptions }: DownloadPdfButtonProps) {
+export default function DownloadPdfButton({ markdownText, filename, label = "Download", html, type = 'resume', jobId, styleOptions }: DownloadPdfButtonProps) {
     const [isDownloading, setIsDownloading] = useState(false);
     const [isDownloaded, setIsDownloaded] = useState(false);
 
@@ -60,6 +61,13 @@ export default function DownloadPdfButton({ markdownText, filename, label = "Dow
 
             await html2pdf().set(opt).from(finalHtml).save();
             
+            // Track download asynchronously
+            fetch('/api/analytics/track-download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, jobId }),
+            }).catch((err) => console.warn('Could not record download tracking:', err));
+
             setIsDownloaded(true);
             setTimeout(() => setIsDownloaded(false), 2000);
         } catch (err: any) {
