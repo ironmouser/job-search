@@ -772,15 +772,16 @@ export abstract class ATSPlugin {
         );
       }
 
-      // ─── 3. Check Employer Application Limits ─────────────────────────────
+      // ─── 3. Check Explicit Submission Rejection Errors ────────────────────
       if (
-        (combinedText.includes('application limits') || combinedText.includes('limit of') || combinedText.includes('reached this limit')) &&
-        (combinedText.includes('limit of 2 applications') || combinedText.includes('limit of 3 applications') || combinedText.includes('set a limit') || combinedText.includes('maximum applications'))
+        combinedText.includes('you have exceeded the maximum number of applications') ||
+        combinedText.includes('you have already submitted the maximum allowed applications') ||
+        combinedText.includes('maximum application limit exceeded')
       ) {
-        await logger.warn('submission_limit_reached', `Employer application limit reached on ${platform}`);
+        await logger.warn('submission_limit_exceeded', `Application limit exceeded on ${platform}`);
         throw new InterventionError(
           InterventionReason.JOB_CLOSED,
-          `Employer application limit reached for this company on ${platform}.`,
+          `You have exceeded the maximum allowed applications for this company on ${platform}.`,
           page.url()
         );
       }
