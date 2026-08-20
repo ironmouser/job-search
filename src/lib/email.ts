@@ -177,13 +177,13 @@ export async function fetchEmailsAndExtractJobs(
         const fromAddress = message.envelope?.from?.[0]?.address?.toLowerCase() || '';
         const fromName = message.envelope?.from?.[0]?.name?.toLowerCase() || '';
 
-        const isFromSelf = Boolean(
-          userEmail && (
-            fromAddress === userEmail ||
-            fromAddress.replace(/\./g, '') === userEmail.replace(/\./g, '') ||
-            fromAddress.includes(userEmail.split('@')[0])
-          )
-        );
+        const isFromSelf = Boolean(userEmail && fromAddress === userEmail);
+        const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
+
+        // Skip non-self personal domain senders to avoid spam/phishing
+        if (!isFromSelf && isPersonalSender) {
+          continue;
+        }
 
         const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
         const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
