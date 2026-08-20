@@ -73,6 +73,11 @@ async function rescrapeDiceJobs() {
                 { source: { contains: 'dice', mode: 'insensitive' } },
                 { url: { contains: 'dice.com/job-detail', mode: 'insensitive' } }
             ]
+        },
+        include: {
+            userJobs: {
+                select: { status: true }
+            }
         }
     });
 
@@ -80,6 +85,7 @@ async function rescrapeDiceJobs() {
 
     let updatedCount = 0;
     let failedCount = 0;
+    let deletedDeadCount = 0;
     let skippedCount = 0;
 
     const fetchDiceDetails = async (job) => {
@@ -110,6 +116,19 @@ async function rescrapeDiceJobs() {
                 }
             } else if (res.status === 404 || res.status === 410) {
                 console.warn(`[Expired 404/410] Job ${job.id} no longer exists on Dice.`);
+                const isSavedOrApplied = job.userJobs?.some(uj => ['saved', 'applied', 'interviewing', 'offered'].includes(uj.status));
+                if (!isSavedOrApplied) {
+                    try {
+                        await prisma.userJob.deleteMany({ where: { jobId: job.id } });
+                        await prisma.jobFeedback.deleteMany({ where: { jobId: job.id } });
+                        await prisma.application.deleteMany({ where: { jobId: job.id } });
+                        await prisma.job.delete({ where: { id: job.id } });
+                        console.log(`[Cleaned Expired] Purged dead job ${job.id} from DB.`);
+                        deletedDeadCount++;
+                    } catch (delErr) {
+                        console.warn(`Failed to delete expired job ${job.id}: ${delErr.message}`);
+                    }
+                }
                 failedCount++;
                 return;
             }
