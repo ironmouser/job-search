@@ -45,6 +45,7 @@ const REASON_LABELS: Record<string, string> = {
   resume_rejected:                       'Resume Format Rejected by ATS',
   attachment_missing:                    'Required Attachment Missing',
   login_required:                        'Candidate Account Required',
+  job_board_auth_required:               'Job Board Account Required',
   assessment_required:                   'Candidate Assessment Required',
   application_destination_not_found:     'Application Destination Not Found',
   application_not_found:                 'Application Control Not Found',
@@ -91,6 +92,7 @@ function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: 
     case 'resume_rejected': return <FileText size={16} color="#fbbf24" />;
     case 'attachment_missing': return <Paperclip size={16} color="#fbbf24" />;
     case 'login_required':
+    case 'job_board_auth_required':
     case 'application_blocked_by_login':
     case 'application_blocked_by_authentication':
       return <Key size={16} color="#fbbf24" />;
@@ -119,6 +121,7 @@ export function InterventionPanel({
   const portalDisplayName = getPortalDisplayName(pageUrl, description);
   const isAuthReason =
     reason === 'login_required' ||
+    reason === 'job_board_auth_required' ||
     reason === 'application_blocked_by_login' ||
     reason === 'application_blocked_by_authentication';
 
