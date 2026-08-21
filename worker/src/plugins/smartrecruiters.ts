@@ -49,24 +49,56 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     };
   }
 
+  private async checkAccessRestriction(browser: BrowserSession, logger: ExecutionLogger, url: string): Promise<void> {
+    const pageText = ((await browser.page.textContent('body').catch(() => '')) || '').toLowerCase();
+    const isRestricted =
+      pageText.includes('access is temporarily restricted') ||
+      pageText.includes('we detected unusual activity') ||
+      pageText.includes('automated (bot) activity') ||
+      pageText.includes('rapid taps or clicks');
+
+    if (isRestricted) {
+      await logger.warn('anti_bot_restriction_detected', 'SmartRecruiters anti-bot access restriction screen detected');
+      throw new InterventionError(
+        InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
+        'SmartRecruiters temporarily restricted access due to automated activity or network IP reputation. Routing via residential proxy is required.',
+        browser.page.url() || url
+      );
+    }
+  }
+
   async prepare(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
     await logger.info('plugin_loaded', `SmartRecruiters plugin active — navigating to ${context.jobUrl}`);
     await browser.navigate(context.jobUrl, 'domcontentloaded');
-    await browser.page.waitForTimeout(2000);
+    await browser.page.waitForTimeout(1500);
+
+    // Check for access restriction or closed position early
+    await this.checkAccessRestriction(browser, logger, context.jobUrl);
     await this.checkClosedJob(browser, logger, context.jobUrl);
 
-    // If an "I'm interested" or "Apply" button is present on the page, click it to show the form
+    // Organic browsing simulation: natural reading scroll
+    await browser.page.evaluate(() => {
+      window.scrollBy({ top: 350 + Math.floor(Math.random() * 200), behavior: 'smooth' });
+    }).catch(() => {});
+    await browser.page.waitForTimeout(800 + Math.floor(Math.random() * 600));
+
+    // If an "I'm interested" or "Apply" button is present on the page, hover and click it
     const applyBtn = await browser.page.$(
       'button:has-text("I\'m interested"), a:has-text("I\'m interested"), button:has-text("Apply"), a:has-text("Apply for this job")'
     ).catch(() => null);
 
     if (applyBtn) {
+      await applyBtn.hover().catch(() => {});
+      await browser.page.waitForTimeout(300 + Math.floor(Math.random() * 200));
       await applyBtn.click().catch(() => {});
       await browser.page.waitForTimeout(1500);
     }
+
+    await this.checkAccessRestriction(browser, logger, context.jobUrl);
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
+    await this.checkAccessRestriction(browser, logger, context.jobUrl);
     await logger.info('apply_started', 'Filling SmartRecruiters application form...');
     const targetContext: Frame | Page = await browser.findFormFrame([
       '#first-name-input',
@@ -87,6 +119,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     );
     if (fnInput && firstName) {
       await this.typeHumanized(targetContext, fnInput, firstName);
+      await browser.page.waitForTimeout(200 + Math.floor(Math.random() * 200));
     }
 
     const lnInput = await targetContext.$(
@@ -94,6 +127,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     );
     if (lnInput && lastName) {
       await this.typeHumanized(targetContext, lnInput, lastName);
+      await browser.page.waitForTimeout(200 + Math.floor(Math.random() * 200));
     }
 
     // 2. Email
@@ -102,6 +136,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     );
     if (email && profile.email) {
       await this.typeHumanized(targetContext, email, profile.email);
+      await browser.page.waitForTimeout(200 + Math.floor(Math.random() * 200));
     }
 
     // 3. Phone
@@ -110,6 +145,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     );
     if (phone && profile.phone) {
       await this.typeHumanized(targetContext, phone, profile.phone);
+      await browser.page.waitForTimeout(200 + Math.floor(Math.random() * 200));
     }
 
     // 4. Resume File Upload
@@ -118,6 +154,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
       const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
       await fileInput.setInputFiles(pdfPath);
       await logger.info('file_uploaded', 'Uploaded PDF resume to SmartRecruiters');
+      await browser.page.waitForTimeout(500);
     }
 
     // 5. Consent & Privacy Checkboxes
@@ -139,6 +176,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
   }
 
   async validate(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<{ valid: boolean; issues: string[] }> {
+    await this.checkAccessRestriction(browser, logger, context.jobUrl);
     const issues: string[] = [];
     const targetContext = await browser.findFormFrame(['input[type="email"]', '#email-input', 'form']);
 

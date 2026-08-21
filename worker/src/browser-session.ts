@@ -36,8 +36,53 @@ export class BrowserSession {
   // ─── Lifecycle ────────────────────────────────────────────────────────────
 
   async launch(storageState?: any): Promise<void> {
+    // ─── Proxy Configuration ────────────────────────────────────────────────
+    let proxy: { server: string; username?: string; password?: string } | undefined = undefined;
+
+    if (process.env.DISABLE_WORKER_PROXY !== 'true') {
+      if (process.env.AUTO_APPLY_PROXY_URL) {
+        // Direct URL format: http://user:pass@host:port or http://host:port
+        try {
+          const u = new URL(process.env.AUTO_APPLY_PROXY_URL);
+          proxy = {
+            server: `${u.protocol}//${u.host}`,
+            username: u.username ? decodeURIComponent(u.username) : undefined,
+            password: u.password ? decodeURIComponent(u.password) : undefined,
+          };
+        } catch {
+          proxy = { server: process.env.AUTO_APPLY_PROXY_URL };
+        }
+      } else if (process.env.PLAYWRIGHT_PROXY_SERVER) {
+        proxy = {
+          server: process.env.PLAYWRIGHT_PROXY_SERVER,
+          username: process.env.PLAYWRIGHT_PROXY_USERNAME,
+          password: process.env.PLAYWRIGHT_PROXY_PASSWORD,
+        };
+      } else if (process.env.SCRAPERAPI_KEY) {
+        const apiKey = process.env.SCRAPERAPI_KEY.trim();
+        const countryCode = process.env.SCRAPERAPI_COUNTRY_CODE || 'us';
+        const useSticky = process.env.SCRAPERAPI_STICKY_SESSION !== 'false';
+
+        // Sticky sessions reuse the same residential IP across multi-step forms
+        let username = `scraperapi.country_code=${countryCode}`;
+        if (useSticky) {
+          const stickySessionId = Math.floor(Math.random() * 899999) + 100000;
+          username += `.session_number=${stickySessionId}`;
+        } else {
+          username += `.premium=true`;
+        }
+
+        proxy = {
+          server: 'http://proxy-server.scraperapi.com:8001',
+          username,
+          password: apiKey,
+        };
+      }
+    }
+
     this.browser = await chromium.launch({
       headless: true,
+      proxy,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -45,6 +90,8 @@ export class BrowserSession {
         '--disable-gpu',
         '--disable-extensions',
         '--disable-blink-features=AutomationControlled',
+        '--ignore-certificate-errors',
+        '--ignore-certificate-errors-spki-list',
         '--window-size=1920,1080',
       ],
     });
@@ -58,6 +105,7 @@ export class BrowserSession {
       acceptDownloads: true,
       locale: 'en-US',
       timezoneId: 'America/New_York',
+      ignoreHTTPSErrors: true,
     };
 
     if (storageState && typeof storageState === 'object') {
@@ -108,6 +156,41 @@ export class BrowserSession {
           get: () => mockPlugins,
           configurable: true,
         });
+
+        // 4b. Mock realistic userAgentData (Client Hints)
+        if (!g.navigator.userAgentData) {
+          Object.defineProperty(g.navigator, 'userAgentData', {
+            get: () => ({
+              brands: [
+                { brand: 'Chromium', version: '124' },
+                { brand: 'Google Chrome', version: '124' },
+                { brand: 'Not-A.Brand', version: '99' },
+              ],
+              mobile: false,
+              platform: 'Windows',
+              getHighEntropyValues: async () => ({
+                architecture: 'x86',
+                bitness: '64',
+                brands: [
+                  { brand: 'Chromium', version: '124' },
+                  { brand: 'Google Chrome', version: '124' },
+                  { brand: 'Not-A.Brand', version: '99' },
+                ],
+                fullVersionList: [
+                  { brand: 'Chromium', version: '124.0.6367.207' },
+                  { brand: 'Google Chrome', version: '124.0.6367.207' },
+                  { brand: 'Not-A.Brand', version: '99.0.0.0' },
+                ],
+                mobile: false,
+                model: '',
+                platform: 'Windows',
+                platformVersion: '10.0.0',
+                uaFullVersion: '124.0.6367.207',
+              }),
+            }),
+            configurable: true,
+          });
+        }
       }
 
       // 5. Mock window.chrome runtime object

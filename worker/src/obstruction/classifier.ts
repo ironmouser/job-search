@@ -93,6 +93,11 @@ export class UIObstructionClassifier {
       'bot detection',
       'human verification',
       'press and hold',
+      'access is temporarily restricted',
+      'we detected unusual activity',
+      'automated (bot) activity',
+      'rapid taps or clicks',
+      'use of developer or inspection tools',
     ];
     const matchedBot = botKeywords.filter(
       (kw) => combinedText.includes(kw) || iframeUrls.includes(kw)

@@ -833,6 +833,9 @@ export abstract class ATSPlugin {
         'turn off your vpn or proxy',
         'turn off your vpn',
         'legitimate applications are occasionally flagged',
+        'access is temporarily restricted',
+        'we detected unusual activity',
+        'automated (bot) activity',
       ];
       for (const kw of spamKeywords) {
         if (combinedText.includes(kw)) {
