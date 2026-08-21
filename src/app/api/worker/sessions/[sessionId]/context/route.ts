@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateWorker } from '@/lib/auto-apply/worker-auth';
+import { decrypt } from '@/lib/encryption';
 
 /**
  * GET /api/worker/sessions/[sessionId]/context
@@ -164,7 +165,7 @@ export async function GET(
         willingToTravel: (prefs as any)?.willingToTravel ?? undefined,
         isOver18: (prefs as any)?.isOver18 ?? undefined,
         willingToRelocate: (prefs as any)?.willingToRelocate ?? undefined,
-        accountPassword: (prefs as any)?.defaultAccountPassword ?? undefined,
+        accountPassword: (prefs as any)?.defaultAccountPassword ? decrypt((prefs as any).defaultAccountPassword) : undefined,
         accountEmail: prefs?.emailAddress || userEmail || undefined,
         accountAuthMode: ((prefs?.sources as any)?.accountAuthMode === 'create_account' ? 'create_account' : 'sign_in'),
       },

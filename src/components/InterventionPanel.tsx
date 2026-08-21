@@ -85,7 +85,7 @@ function getJobBoardProvider(pageUrl?: string | null, description?: string | nul
   if (combined.includes('ziprecruiter')) return { id: 'ziprecruiter', name: 'ZipRecruiter', description: 'Connect your ZipRecruiter candidate account session' };
   if (combined.includes('linkedin')) return { id: 'linkedin', name: 'LinkedIn', description: 'Connect your LinkedIn candidate account session' };
   if (combined.includes('indeed')) return { id: 'indeed', name: 'Indeed', description: 'Connect your Indeed candidate account session' };
-  return { id: 'dice', name: 'Job Board', description: 'Connect your candidate account session' };
+  return null;
 }
 
 function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: boolean) {
@@ -130,9 +130,10 @@ export function InterventionPanel({
 
   const portalDisplayName = getPortalDisplayName(pageUrl, description);
   const providerInfo = getJobBoardProvider(pageUrl, description);
-  const isJobBoardAuthReason = reason === 'job_board_auth_required';
+  const isJobBoardAuthReason = reason === 'job_board_auth_required' && providerInfo !== null;
   const isAtsAuthReason =
     reason === 'login_required' ||
+    (reason === 'job_board_auth_required' && providerInfo === null) ||
     reason === 'application_blocked_by_login' ||
     reason === 'application_blocked_by_authentication';
   const isAuthReason = isAtsAuthReason || isJobBoardAuthReason;
@@ -1353,15 +1354,17 @@ export function InterventionPanel({
         document.body
       )}
       {/* Connect Job Board Modal */}
-      <ConnectJobBoardModal
-        isOpen={isConnectModalOpen}
-        onClose={() => setIsConnectModalOpen(false)}
-        provider={providerInfo}
-        onConnected={() => {
-          setIsJobBoardConnected(true);
-          setIsConnectModalOpen(false);
-        }}
-      />
+      {providerInfo && (
+        <ConnectJobBoardModal
+          isOpen={isConnectModalOpen}
+          onClose={() => setIsConnectModalOpen(false)}
+          provider={providerInfo}
+          onConnected={() => {
+            setIsJobBoardConnected(true);
+            setIsConnectModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
