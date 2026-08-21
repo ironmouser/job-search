@@ -326,19 +326,20 @@ export class UniversalQuestionResolver {
           // React Select
           const control = container.locator('.select__control, .select-shell').first();
           const reactInput = container.locator('input.select__input, input[role="combobox"]').first();
+          const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+
           if (await control.count() > 0 || await reactInput.count() > 0) {
             if (await control.count() > 0) await control.click().catch(() => null);
-            if (ctx.page) await ctx.page().waitForTimeout(200);
+            await page.waitForTimeout(200);
 
             if (await reactInput.count() > 0) {
               await reactInput.focus().catch(() => null);
               await reactInput.fill(answer);
               await reactInput.press('Enter');
-              if (ctx.page) await ctx.page().waitForTimeout(300);
+              await page.waitForTimeout(300);
             }
 
             // Click option in popup if visible
-            const page = 'page' in ctx ? ctx.page() : ctx;
             const optionItem = page.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(answer, 'i') }).first();
             if (await optionItem.count() > 0 && await optionItem.isVisible().catch(() => false)) {
               await optionItem.click().catch(() => null);
