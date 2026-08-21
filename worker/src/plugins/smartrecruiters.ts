@@ -11,6 +11,7 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
 import { Frame, Page } from 'playwright';
+import { UniversalQuestionResolver } from './question-resolver';
 
 /**
  * SmartRecruitersPlugin — automation plugin for SmartRecruiters ATS.
@@ -124,6 +125,15 @@ export class SmartRecruitersPlugin extends ATSPlugin {
 
     // 6. Work Authorization & EEOC Demographics
     await this.handleEEOCDemographics(targetContext, profile, logger);
+
+    // 7. Custom questions & screening questions
+    await UniversalQuestionResolver.resolveAndFillQuestions(
+      targetContext,
+      browser,
+      context,
+      logger,
+      logger.getApiClient()
+    );
 
     await logger.info('form_filling_complete', 'Completed filling SmartRecruiters form fields');
   }

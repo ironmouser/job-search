@@ -100,6 +100,10 @@ export async function POST(
       return NextResponse.json({ interventionId: intervention.id, autoResolved: true, resolution: 'skipped' });
     }
 
+    const formattedDescription = body.questionData && !body.description.includes('[QUESTION_DATA:')
+      ? `[QUESTION_DATA:${JSON.stringify(body.questionData)}] ${body.description}`
+      : body.description;
+
     // Create the intervention record and update session status atomically
     const transactions: any[] = [
       prisma.interventionRequest.create({
@@ -108,7 +112,7 @@ export async function POST(
           userId: session.userId,
           jobId: session.jobId,
           reason: effectiveReason,
-          description: body.description,
+          description: formattedDescription,
           screenshotUrl: body.screenshotUrl ?? null,
           pageUrl: body.pageUrl ?? null,
         },
@@ -119,7 +123,7 @@ export async function POST(
           status: AutoApplyStatus.NEEDS_INTERVENTION,
           currentStep: 'needs_intervention',
           failureReason: isJobClosed ? 'job_closed' : undefined,
-          failureDetails: body.description,
+          failureDetails: formattedDescription,
         },
       }),
     ];

@@ -11,6 +11,7 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
 import { Frame, Page } from 'playwright';
+import { UniversalQuestionResolver } from './question-resolver';
 
 /**
  * WorkablePlugin — automation plugin for Workable ATS (apply.workable.com).
@@ -141,6 +142,15 @@ export class WorkablePlugin extends ATSPlugin {
 
     // 7. Work Authorization & EEOC Demographics
     await this.handleEEOCDemographics(targetContext, profile, logger);
+
+    // 8. Custom screening questions
+    await UniversalQuestionResolver.resolveAndFillQuestions(
+      targetContext,
+      browser,
+      context,
+      logger,
+      logger.getApiClient()
+    );
 
     await logger.info('form_filling_complete', 'Workable form fields filled');
   }

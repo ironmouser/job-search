@@ -93,6 +93,37 @@ export class RailwayAPIClient {
     return res.json() as Promise<SessionContext>;
   }
 
+  /**
+   * Request AI answers for screening and custom form questions.
+   */
+  async answerQuestions(
+    sessionId: string,
+    questions: Array<{
+      id: string;
+      label: string;
+      type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+      options?: string[];
+      required?: boolean;
+    }>
+  ): Promise<Array<{
+    id: string;
+    answer: string | null;
+    confidence: number;
+    requiresHumanInput: boolean;
+  }>> {
+    const res = await this.request(
+      'POST',
+      `/api/worker/sessions/${sessionId}/answer-questions`,
+      { questions }
+    );
+    if (!res.ok) {
+      console.warn(`[APIClient] answerQuestions failed (${res.status}): ${await res.text()}`);
+      return questions.map((q) => ({ id: q.id, answer: null, confidence: 0, requiresHumanInput: true }));
+    }
+    const data = (await res.json()) as { answers: Array<{ id: string; answer: string | null; confidence: number; requiresHumanInput: boolean }> };
+    return data.answers || [];
+  }
+
   // ─── Interventions ────────────────────────────────────────────────────────
 
   /**

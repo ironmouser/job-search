@@ -3,6 +3,7 @@ import { ATSPlugin, InterventionError } from './base-plugin';
 import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
+import { UniversalQuestionResolver } from './question-resolver';
 
 /**
  * WorkdayPlugin — automation plugin for Workday ATS.
@@ -187,6 +188,15 @@ export class WorkdayPlugin extends ATSPlugin {
       await this.answerDynamicQuestions(browser, context, logger);
       await this.handleConsentCheckboxes(page, logger);
       await this.handleEEOCDemographics(page, context.userProfile, logger);
+
+      // Custom screening questions & questionnaires
+      await UniversalQuestionResolver.resolveAndFillQuestions(
+        page,
+        browser,
+        context,
+        logger,
+        logger.getApiClient()
+      );
 
       // Step 4: Upload cover letter if second upload field exists
       const clInputs = page.locator('[data-automation-id="file-upload-input-ref"]');

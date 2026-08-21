@@ -242,11 +242,20 @@ export interface ExecutionLogEntry {
 
 // ─── Human Intervention ──────────────────────────────────────────────────────
 
+export interface QuestionInterventionData {
+  fieldKey?: string;
+  label: string;
+  fieldType: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+  options?: string[];
+  required?: boolean;
+}
+
 export interface CreateInterventionPayload {
   reason: InterventionReason;
   description: string;
   screenshotUrl?: string;
   pageUrl?: string;
+  questionData?: QuestionInterventionData;
 }
 
 export interface InterventionStatus {

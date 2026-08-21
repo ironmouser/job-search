@@ -143,6 +143,19 @@ export function InterventionPanel({
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [isJobBoardConnected, setIsJobBoardConnected] = useState(false);
 
+  const questionData = (() => {
+    const match = (description || '').match(/\[QUESTION_DATA:(.*?)\]/);
+    if (match && match[1]) {
+      try {
+        return JSON.parse(match[1]);
+      } catch {}
+    }
+    return null;
+  })();
+
+  const cleanDescription = (description || '').replace(/\[QUESTION_DATA:.*?\]\s*/g, '').trim();
+  const [customAnswer, setCustomAnswer] = useState<string>('');
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -251,7 +264,15 @@ export function InterventionPanel({
     setResolution(res);
     try {
       if (res === 'completed' && settings) {
-        await saveSettings({ accountAuthMode: accountMode });
+        const extraPayload: Record<string, any> = { accountAuthMode: accountMode };
+        if (customAnswer && questionData?.fieldKey) {
+          extraPayload.customAnswers = {
+            ...(settings?.customAnswers || {}),
+            [questionData.fieldKey]: customAnswer,
+            [questionData.label]: customAnswer,
+          };
+        }
+        await saveSettings(extraPayload);
       }
       await fetch(`/api/auto-apply/interventions/${interventionId}/resolve`, {
         method: 'POST',
@@ -327,11 +348,11 @@ export function InterventionPanel({
       </div>
 
       {(() => {
-        let displayDesc = description;
+        let displayDesc = cleanDescription;
         if (isAuthReason) {
           displayDesc = `${portalDisplayName} requires you to sign in or create a candidate account before Jahq can continue your application.`;
         } else if (reason === 'unknown_question') {
-          const match = description.match(/(?:requires your input|question):\s*["'“]?([^"'”\n]+)["'”]?/i);
+          const match = cleanDescription.match(/(?:requires your input|question):\s*["'“]?([^"'”\n]+)["'”]?/i);
           if (match && match[1]) {
             displayDesc = `I did not have enough information to answer: "${match[1].trim()}"`;
           }
@@ -880,8 +901,117 @@ export function InterventionPanel({
                 </div>
               )}
 
+              {questionData && (
+                <div
+                  style={{
+                    background: 'var(--accent-glow, rgba(0, 112, 243, 0.08))',
+                    border: '1px solid var(--border-glass)',
+                    borderRadius: '10px',
+                    padding: '1.15rem 1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <HelpCircle size={17} color="var(--accent-primary, #3b82f6)" /> Employer Question {questionData.required ? <span style={{ color: '#ef4444' }}>*</span> : '(Optional)'}
+                    </h4>
+                    {questionData.fieldType && (
+                      <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {questionData.fieldType}
+                      </span>
+                    )}
+                  </div>
+
+                  <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.45 }}>
+                    {questionData.label}
+                  </p>
+
+                  {questionData.fieldType === 'select' && questionData.options && questionData.options.length > 0 ? (
+                    <select
+                      value={customAnswer}
+                      onChange={(e) => setCustomAnswer(e.target.value)}
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        width: '100%',
+                      }}
+                    >
+                      <option value="">Select an answer...</option>
+                      {questionData.options.map((opt: string, i: number) => (
+                        <option key={i} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : questionData.fieldType === 'radio' && questionData.options && questionData.options.length > 0 ? (
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {questionData.options.map((opt: string, i: number) => {
+                        const isSelected = customAnswer === opt;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setCustomAnswer(opt)}
+                            className={isSelected ? 'btn-primary' : 'btn-outline'}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              background: isSelected ? 'var(--primary, #3b82f6)' : 'var(--background-card)',
+                              color: isSelected ? '#ffffff' : 'var(--text-primary)',
+                              border: '1px solid var(--border-glass)',
+                            }}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : questionData.fieldType === 'textarea' ? (
+                    <textarea
+                      rows={4}
+                      value={customAnswer}
+                      onChange={(e) => setCustomAnswer(e.target.value)}
+                      placeholder="Type your answer here..."
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        width: '100%',
+                        resize: 'vertical',
+                      }}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={customAnswer}
+                      onChange={(e) => setCustomAnswer(e.target.value)}
+                      placeholder="Type your answer here..."
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        width: '100%',
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+
               {showAuthForm && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: isAuthReason ? '1px solid var(--border-glass)' : 'none', paddingTop: isAuthReason ? '1.25rem' : '0' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: isAuthReason || questionData ? '1px solid var(--border-glass)' : 'none', paddingTop: isAuthReason || questionData ? '1.25rem' : '0' }}>
                   <div className="auto-apply-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                       <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>

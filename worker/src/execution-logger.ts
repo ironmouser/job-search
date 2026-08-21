@@ -21,6 +21,10 @@ export class ExecutionLogger {
     private readonly apiClient: RailwayAPIClient
   ) {}
 
+  getApiClient(): RailwayAPIClient {
+    return this.apiClient;
+  }
+
   // ─── Convenience methods ──────────────────────────────────────────────────
 
   async info(step: string, message: string, metadata?: Record<string, unknown>): Promise<void> {

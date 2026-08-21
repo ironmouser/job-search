@@ -845,7 +845,46 @@ export abstract class ATSPlugin {
         }
       }
 
-      // ─── 2. Check Security Challenges / CAPTCHA ───────────────────────────
+      // ─── 2. Check Form Field Validation Errors First ───────────────────────
+      const formValidationSelectors = [
+        '.invalid-field',
+        '[aria-invalid="true"]',
+        '.field_with_errors',
+        'p.error',
+        'span.error',
+        '.error-message',
+        '.application--error',
+        '.form-error',
+      ];
+      for (const errSel of formValidationSelectors) {
+        const errEl = (ctx !== page ? ctx.locator(errSel).first() : page.locator(errSel).first());
+        if (await errEl.isVisible().catch(() => false)) {
+          const errText = ((await errEl.textContent().catch(() => '')) || '').trim();
+          if (errText.length > 0 && !/cookie|privacy/i.test(errText)) {
+            await logger.warn('submission_validation_error', `Form field validation error detected on ${platform}: ${errText.slice(0, 100)}`);
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `Application requires additional input on ${platform}: "${errText.slice(0, 150)}"`,
+              page.url()
+            );
+          }
+        }
+      }
+
+      if (
+        combinedText.includes('this field is required') ||
+        combinedText.includes('please fill out this field') ||
+        combinedText.includes('select a country')
+      ) {
+        await logger.warn('submission_validation_error', `Required field validation error on ${platform}`);
+        throw new InterventionError(
+          InterventionReason.UNKNOWN_QUESTION,
+          `Application form on ${platform} has required fields that need your input.`,
+          page.url()
+        );
+      }
+
+      // ─── 3. Check Security Challenges / CAPTCHA (Active Interactive Challenges Only) ───
       const activeChallengePhrases = [
         'verify you are human',
         'verifying you are human',
@@ -858,11 +897,13 @@ export abstract class ATSPlugin {
       ];
       const hasChallengePhrase = activeChallengePhrases.some((phrase) => combinedText.includes(phrase));
 
-      const hasVisibleChallengeElement = (await page.locator(
-        'iframe[src*="recaptcha"]:visible, iframe[src*="hcaptcha"]:visible, iframe[src*="turnstile"]:visible, iframe[src*="cloudflare"]:visible, .g-recaptcha:visible, .cf-turnstile:visible'
+      // Note: We deliberately exclude passive Google reCAPTCHA v3 badge anchors (e.g. iframe[src*="recaptcha/api2/anchor"] or .grecaptcha-badge)
+      // which are present harmlessly on all Greenhouse / ATS pages. We only match active challenge puzzles or interactive frames.
+      const hasActiveChallengeElement = (await page.locator(
+        'iframe[title*="recaptcha challenge" i]:visible, iframe[src*="recaptcha/api2/bframe"]:visible, iframe[src*="recaptcha/enterprise/bframe"]:visible, iframe[src*="hcaptcha.com"][src*="frame=challenge"]:visible, iframe[src*="challenges.cloudflare.com"]:not([hidden]):visible, .cf-turnstile:visible'
       ).count().catch(() => 0)) > 0;
 
-      if (hasChallengePhrase || hasVisibleChallengeElement) {
+      if (hasChallengePhrase || hasActiveChallengeElement) {
         await logger.warn('submission_security_challenge', `Security challenge / CAPTCHA detected on ${platform}`);
         throw new InterventionError(
           InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,

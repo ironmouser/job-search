@@ -19,6 +19,7 @@ import {
 } from '../types';
 import { InterventionError } from '../plugins/base-plugin';
 import { safeClick } from '../obstruction/safe-interact';
+import { UniversalQuestionResolver } from '../plugins/question-resolver';
 
 export class GenericFormFiller {
   /**
@@ -54,7 +55,16 @@ export class GenericFormFiller {
     // 4. Answer standard questions (EEO, work auth, terms)
     await this.answerStandardQuestions(formCtx, context.userProfile, logger);
 
-    // 5. If form is a multi-step wizard, attempt to advance steps
+    // 5. Answer custom & screening questions using AI
+    await UniversalQuestionResolver.resolveAndFillQuestions(
+      formCtx,
+      browser,
+      context,
+      logger,
+      logger.getApiClient()
+    );
+
+    // 6. If form is a multi-step wizard, attempt to advance steps
     await this.advanceMultiStepWizardIfPresent(browser, context, logger);
   }
 

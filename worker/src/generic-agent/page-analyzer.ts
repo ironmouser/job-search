@@ -148,22 +148,22 @@ export class GenericPageAnalyzer {
       const pageText = document.body?.innerText || '';
       
       const captchaSelectors = [
-        'iframe[src*="recaptcha"]',
-        'iframe[src*="hcaptcha"]',
-        'iframe[src*="turnstile"]',
+        'iframe[title*="recaptcha challenge" i]',
+        'iframe[src*="recaptcha/api2/bframe"]',
+        'iframe[src*="recaptcha/enterprise/bframe"]',
+        'iframe[src*="hcaptcha.com"][src*="frame=challenge"]',
+        'iframe[src*="challenges.cloudflare.com"]',
         'iframe[src*="arkoselabs"]',
         'iframe[src*="funcaptcha"]',
-        '.g-recaptcha',
-        '.h-captcha',
         '.cf-turnstile',
         '#captcha',
-        '[data-sitekey]',
-        '[id*="captcha"]',
+        '[id*="captcha-box" i]',
       ];
 
       for (const sel of captchaSelectors) {
-        if (document.querySelector(sel)) {
-          return { type: 'CAPTCHA' as const, reason: `CAPTCHA element found (${sel})`, keyword: sel };
+        const el = document.querySelector(sel);
+        if (el && (el as HTMLElement).offsetWidth > 0 && (el as HTMLElement).offsetHeight > 0) {
+          return { type: 'CAPTCHA' as const, reason: `Active CAPTCHA element found (${sel})`, keyword: sel };
         }
       }
 

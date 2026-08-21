@@ -10,6 +10,7 @@ import { ATSPlugin, InterventionError } from './base-plugin';
 import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
+import { UniversalQuestionResolver } from './question-resolver';
 
 /**
  * LeverPlugin — automation plugin for Lever ATS.
@@ -254,6 +255,15 @@ export class LeverPlugin extends ATSPlugin {
     await this.answerCustomQuestions(browser, context, logger);
     await this.handleConsentCheckboxes(page, logger);
     await this.handleEEOCDemographics(page, profile, logger);
+
+    // ── Universal AI question resolver for custom & screening questions ───
+    await UniversalQuestionResolver.resolveAndFillQuestions(
+      page,
+      browser,
+      context,
+      logger,
+      logger.getApiClient()
+    );
   }
 
   // ─── Validate ─────────────────────────────────────────────────────────────

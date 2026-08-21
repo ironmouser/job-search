@@ -11,6 +11,7 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
 import { Frame, Page } from 'playwright';
+import { UniversalQuestionResolver } from './question-resolver';
 
 /**
  * AshbyPlugin — automation plugin for Ashby ATS.
@@ -163,6 +164,15 @@ export class AshbyPlugin extends ATSPlugin {
 
     // 7. Work Authorization, Sponsorship, and EEOC Demographics (Veteran, Disability, Gender, Race)
     await this.handleEEOCDemographics(targetContext, profile, logger);
+
+    // 8. Custom questions & screening questions
+    await UniversalQuestionResolver.resolveAndFillQuestions(
+      targetContext,
+      browser,
+      context,
+      logger,
+      logger.getApiClient()
+    );
 
     await logger.info('form_filling_complete', 'Completed filling Ashby application fields');
   }

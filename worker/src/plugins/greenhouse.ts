@@ -10,6 +10,7 @@ import { ATSPlugin, InterventionError } from './base-plugin';
 import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
+import { UniversalQuestionResolver } from './question-resolver';
 
 /**
  * GreenhousePlugin — automation plugin for Greenhouse ATS.
@@ -154,6 +155,27 @@ export class GreenhousePlugin extends ATSPlugin {
 
     if (profile.phone) {
       await this.fillInput(page, '#phone', profile.phone, logger, 'phone');
+
+      // Handle phone country dropdown if present
+      try {
+        const countryVal = profile.country || 'United States';
+        const countryDropdown = page.locator('div.select, [id*="country"], div[class*="country"]').first();
+        if (await countryDropdown.count() > 0 && await countryDropdown.isVisible().catch(() => false)) {
+          const reactInput = countryDropdown.locator('input.select__input, input[role="combobox"]').first();
+          const control = countryDropdown.locator('.select__control, .select-shell').first();
+          if (await control.count() > 0) await control.click().catch(() => null);
+          if (await reactInput.count() > 0) {
+            await reactInput.focus().catch(() => null);
+            await page.keyboard.type(countryVal, { delay: 40 });
+            await page.keyboard.press('Enter');
+            await page.waitForTimeout(200);
+          }
+          const optionItem = page.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(countryVal, 'i') }).first();
+          if (await optionItem.count() > 0 && await optionItem.isVisible().catch(() => false)) {
+            await optionItem.click().catch(() => null);
+          }
+        }
+      } catch {}
     }
 
     if (profile.location) {
@@ -251,6 +273,15 @@ export class GreenhousePlugin extends ATSPlugin {
     await this.answerCustomQuestions(browser, context, logger);
     await this.handleConsentCheckboxes(page, logger);
     await this.handleEEOCDemographics(page, profile, logger);
+
+    // ── Universal AI question resolver for custom & screening questions ───
+    await UniversalQuestionResolver.resolveAndFillQuestions(
+      page,
+      browser,
+      context,
+      logger,
+      logger.getApiClient()
+    );
   }
 
   // ─── Validate ─────────────────────────────────────────────────────────────
