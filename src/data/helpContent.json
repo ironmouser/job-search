@@ -2,7 +2,7 @@
     "tours": {
         "dashboard": {
             "name": "Dashboard Overview",
-            "description": "Learn how to navigate your dashboard and track job applications.",
+            "description": "Learn how to navigate your dashboard, review matches, and apply to jobs.",
             "roles": ["*"],
             "autoStart": false,
             "route": "/dashboard",
@@ -17,14 +17,42 @@
                 {
                     "target": "[data-tour='recent-jobs']",
                     "title": "Recent Jobs",
-                    "content": "View jobs that match your profile and see how well they score as a fit.",
+                    "content": "View jobs that match your profile. Selecting any job card displays its full interactive details on the right.",
+                    "placement": "top",
+                    "route": "/dashboard"
+                },
+                {
+                    "target": "[data-tour='job-detail-score']",
+                    "title": "AI Opportunity Score",
+                    "content": "Review the multi-dimensional AI score breakdown analyzing company fit, compensation, remote flex, AI maturity, leadership, culture, and tech stack.",
+                    "placement": "bottom",
+                    "route": "/dashboard"
+                },
+                {
+                    "target": "[data-tour='job-detail-description']",
+                    "title": "Job Description",
+                    "content": "Read and review the full job description scraped from the web or imported via email.",
+                    "placement": "bottom",
+                    "route": "/dashboard"
+                },
+                {
+                    "target": "[data-tour='job-detail-assets']",
+                    "title": "Generate Assets",
+                    "content": "Generate tailored resumes, cover letters, and networking messages customized specifically for this role.",
+                    "placement": "bottom",
+                    "route": "/dashboard"
+                },
+                {
+                    "target": "[data-tour='job-detail-apply']",
+                    "title": "Apply to Job",
+                    "content": "Submit your application using 1-click Auto Apply, Chrome extension autofill, or the direct career site link.",
                     "placement": "top",
                     "route": "/dashboard"
                 },
                 {
                     "target": "[data-tour='dashboard-sync-jobs']",
-                    "title": "Job results",
-                    "content": "Click the sync jobs button to search top job boards and web sites for your dream job.",
+                    "title": "Sync Jobs",
+                    "content": "Click the sync jobs button anytime to fetch the newest postings from your configured job boards and email alerts.",
                     "placement": "bottom",
                     "route": "/dashboard"
                 }
@@ -184,21 +212,28 @@
                     "target": "[data-tour='job-detail-score']",
                     "title": "AI Opportunity Score",
                     "content": "A detailed breakdown of how well this job matches your preferences and profile.",
-                    "placement": "left",
+                    "placement": "bottom",
                     "route": "/dashboard"
                 },
                 {
                     "target": "[data-tour='job-detail-description']",
-                    "title": "Review Job Description",
-                    "content": "The original job description scraped from the web.",
+                    "title": "Job Description",
+                    "content": "The original job description scraped from the web or imported via email.",
                     "placement": "bottom",
                     "route": "/dashboard"
                 },
                 {
                     "target": "[data-tour='job-detail-assets']",
-                    "title": "Application Assets",
+                    "title": "Generate Assets",
                     "content": "Generate a tailored cover letter, networking message, and resume extract specifically for this role.",
                     "placement": "bottom",
+                    "route": "/dashboard"
+                },
+                {
+                    "target": "[data-tour='job-detail-apply']",
+                    "title": "Apply to Job",
+                    "content": "Submit your application using 1-click Auto Apply, Chrome extension autofill, or the direct career site link.",
+                    "placement": "top",
                     "route": "/dashboard"
                 }
             ]

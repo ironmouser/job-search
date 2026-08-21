@@ -315,7 +315,7 @@ export function GlobalAutoApplyBar() {
       <div className="auto-apply-bar-header">
         {/* LEFT SECTION: Page Actions OR Batch Selection — hidden on mobile OR when expanded to reduce clutter */}
         {!isMobile && !isExpanded && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0, flex: 1, overflowX: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {hasSelection ? (
               /* Batch Selection Mode */
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'nowrap' }}>

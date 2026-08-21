@@ -7,14 +7,18 @@
                 {
                     "id": "dashboard",
                     "title": "Tour the Dashboard",
-                    "description": "Get to know your job tracking dashboard.",
+                    "description": "Get to know your job tracking dashboard and split application workflow.",
                     "route": "/",
                     "tourId": "dashboard",
                     "roles": ["*"],
                     "steps": [
                         "Locate your application statistics.",
-                        "View jobs that match your profile.",
-                        "Click the sync jobs button to search top job."
+                        "Browse matched jobs in the split view.",
+                        "Review the AI opportunity score breakdown.",
+                        "Read the job description.",
+                        "Generate tailored application assets.",
+                        "Apply to the job using Auto Apply or direct application.",
+                        "Sync new jobs from job boards and email alerts."
                     ]
                 },
                 {
