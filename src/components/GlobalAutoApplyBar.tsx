@@ -287,28 +287,33 @@ export function GlobalAutoApplyBar() {
     }
   };
 
+  // On mobile & tablet, only show the bottom command bar if there is an active auto-apply task or user intervention
+  const shouldShowBottomBar = !isMobile || hasActiveQueue;
+
   return (
     <>
-      {/* Semi-transparent dark cover overlay when expanded with smooth fade */}
-      <div
-        onClick={() => {
-          setIsExpanded(false);
-          setActiveDrawerTab(null);
-        }}
-        className={`command-bar-backdrop ${isExpanded ? 'active' : ''}`}
-        aria-label="Close expanded command bar"
-        title="Click to minimize command bar"
-      />
+      {shouldShowBottomBar && (
+        <>
+          {/* Semi-transparent dark cover overlay when expanded with smooth fade */}
+          <div
+            onClick={() => {
+              setIsExpanded(false);
+              setActiveDrawerTab(null);
+            }}
+            className={`command-bar-backdrop ${isExpanded ? 'active' : ''}`}
+            aria-label="Close expanded command bar"
+            title="Click to minimize command bar"
+          />
 
-      <div
-        id="global-command-bar"
-        className={`global-auto-apply-bar ${isExpanded ? 'expanded' : 'collapsed'}`}
-        style={{
-          left: sidebarWidth,
-        }}
-      >
-      {/* ─── Compact Command Bar Header (52px) ─── */}
-      <div className="auto-apply-bar-header">
+          <div
+            id="global-command-bar"
+            className={`global-auto-apply-bar ${isExpanded ? 'expanded' : 'collapsed'}`}
+            style={{
+              left: sidebarWidth,
+            }}
+          >
+          {/* ─── Compact Command Bar Header (52px) ─── */}
+          <div className="auto-apply-bar-header">
         {/* LEFT SECTION: Page Actions OR Batch Selection — hidden on mobile OR when expanded to reduce clutter */}
         {!isMobile && !isExpanded && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -1095,9 +1100,11 @@ export function GlobalAutoApplyBar() {
           )}
         </div>
       </div>
+        </>
+      )}
 
       {/* ─── Mobile Multi-Button Speed Dial FAB ─── */}
-      {isMobile && !isExpanded && (hasSelection || pageActions) && (
+      {!isExpanded && (
         <>
           {/* FAB backdrop */}
           {isFabOpen && (
@@ -1116,6 +1123,11 @@ export function GlobalAutoApplyBar() {
           <div
             className={`mobile-fab-menu ${isFabOpen ? 'open' : ''}`}
             aria-hidden={!isFabOpen}
+            style={{
+              bottom: hasActiveQueue
+                ? 'max(8.5rem, calc(8.25rem + env(safe-area-inset-bottom, 0px)))'
+                : 'max(5.25rem, calc(5rem + env(safe-area-inset-bottom, 0px)))',
+            }}
           >
             {hasSelection ? (
               <div style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-end', gap: '0.65rem' }}>
@@ -1180,13 +1192,38 @@ export function GlobalAutoApplyBar() {
                   );
                 })()}
               </div>
-            ) : (
+            ) : pageActions ? (
               /* Page actions rendered in vertical speed dial column */
               <div
                 style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-end', gap: '0.65rem' }}
                 onClick={() => setIsFabOpen(false)}
               >
                 {pageActions}
+              </div>
+            ) : (
+              /* Default Quick Actions if no custom page actions registered */
+              <div
+                style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-end', gap: '0.65rem' }}
+                onClick={() => setIsFabOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => router.push('/jobs')}
+                  className="command-bar-btn command-bar-btn-primary"
+                >
+                  <Sparkles size={14} />
+                  <span>Browse Jobs</span>
+                </button>
+                {hasActiveQueue && (
+                  <button
+                    type="button"
+                    onClick={handleToggleAutoApplyDrawer}
+                    className="command-bar-btn"
+                  >
+                    <Bot size={14} color="#38bdf8" />
+                    <span>Auto Apply Queue ({ongoingCount})</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1197,7 +1234,11 @@ export function GlobalAutoApplyBar() {
             onClick={() => setIsFabOpen((p) => !p)}
             className={`mobile-fab ${isFabOpen ? 'open' : ''} ${hasIntervention ? 'fab-alert' : hasSelection ? 'fab-selection' : ''}`}
             aria-label={isFabOpen ? "Close actions menu" : "Open actions menu"}
-            style={{ bottom: '66px' }}
+            style={{
+              bottom: hasActiveQueue
+                ? 'max(4.5rem, calc(4.25rem + env(safe-area-inset-bottom, 0px)))'
+                : 'max(1.25rem, calc(1rem + env(safe-area-inset-bottom, 0px)))',
+            }}
           >
             {isFabOpen ? (
               <X size={22} />
