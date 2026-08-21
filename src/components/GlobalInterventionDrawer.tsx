@@ -59,28 +59,28 @@ export function GlobalInterventionDrawer({
           maxWidth: '560px',
           maxHeight: '90vh',
           overflowY: 'auto',
-          background: 'var(--bg-secondary, #1e293b)',
-          border: '1px solid var(--border-glass, #334155)',
+          background: 'var(--card, var(--bg-surface, #111111))',
+          border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
           borderRadius: '12px',
           padding: '1.25rem',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+          boxShadow: 'var(--shadow-lg, 0 20px 25px -5px rgba(0, 0, 0, 0.5))',
           display: 'flex',
           flexDirection: 'column',
           gap: '1rem',
-          color: 'var(--text-primary, #f8fafc)',
+          color: 'var(--text-primary)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass, #334155)', paddingBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))', paddingBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ShieldAlert size={20} color="#f59e0b" />
+            <ShieldAlert size={20} color="var(--warning, #f59e0b)" />
             <div>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#f59e0b' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--warning, #f59e0b)' }}>
                 Action Required for Application
               </h3>
               {jobTitle && (
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   {jobTitle} {companyName ? `at ${companyName}` : ''}
                 </span>
               )}
@@ -88,7 +88,7 @@ export function GlobalInterventionDrawer({
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
             title="Close Drawer"
           >
             <X size={18} />

@@ -559,10 +559,10 @@ export function InterventionPanel({
                 padding: '0.65rem 1.25rem',
                 fontSize: '0.88rem',
                 fontWeight: 600,
-                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                color: '#ffffff',
+                background: 'var(--primary)',
+                color: 'var(--primary-foreground, #ffffff)',
                 border: 'none',
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                boxShadow: 'var(--shadow-md)',
               }}
               id={`intervention-manual-continue-${interventionId}`}
             >
@@ -597,8 +597,8 @@ export function InterventionPanel({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1rem',
-                background: 'rgba(99, 102, 241, 0.06)',
-                border: '1px solid rgba(99, 102, 241, 0.25)',
+                background: 'var(--accent-glow, rgba(0, 112, 243, 0.08))',
+                border: '1px solid var(--border-glass)',
                 borderRadius: '10px',
                 padding: '1.15rem 1.25rem',
               }}
@@ -606,7 +606,7 @@ export function InterventionPanel({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                   <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Key size={18} color="#818cf8" /> Connect {providerInfo.name} Account
+                    <Key size={18} color="var(--accent-primary, #0070f3)" /> Connect {providerInfo.name} Account
                   </h4>
                   <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
                     {isJobBoardConnected
@@ -625,7 +625,7 @@ export function InterventionPanel({
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.45rem',
-                    background: isJobBoardConnected ? '#10b981' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                    background: isJobBoardConnected ? 'var(--success, #10b981)' : 'var(--primary)',
                   }}
                   id={`intervention-connect-${providerInfo.id}-${interventionId}`}
                 >
@@ -643,7 +643,7 @@ export function InterventionPanel({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1rem',
-                background: 'rgba(255, 255, 255, 0.03)',
+                background: 'var(--secondary, var(--card-header-bg))',
                 border: '1px solid var(--border-glass)',
                 borderRadius: '10px',
                 padding: '1.1rem 1.25rem',
@@ -698,7 +698,7 @@ export function InterventionPanel({
               </div>
 
               {/* Instructions Box */}
-              <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
+              <div style={{ padding: '1rem', background: 'var(--card, var(--background))', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
                 <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontWeight: 600 }}>
                   Instructions
                 </h4>
@@ -726,8 +726,8 @@ export function InterventionPanel({
             style={{
               fontSize: '0.85rem',
               color: 'var(--text-primary)',
-              background: 'rgba(59, 130, 246, 0.08)',
-              border: '1px solid rgba(59, 130, 246, 0.25)',
+              background: 'var(--accent-glow, rgba(0, 112, 243, 0.08))',
+              border: '1px solid var(--border-glass)',
               borderRadius: '8px',
               padding: '0.9rem 1.1rem',
               display: 'flex',
@@ -768,7 +768,7 @@ export function InterventionPanel({
           {(isAtsAuthReason || showAuthForm) && !loadingSettings && (
             <div
               style={{
-                background: 'rgba(255, 255, 255, 0.03)',
+                background: 'var(--secondary, var(--card-header-bg))',
                 borderRadius: '10px',
                 padding: '1.25rem',
                 border: '1px solid var(--border-glass)',
@@ -804,7 +804,7 @@ export function InterventionPanel({
                         onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
                         placeholder="user@example.com"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -825,7 +825,7 @@ export function InterventionPanel({
                           placeholder={accountMode === 'sign_in' ? 'Enter existing account password' : 'Enter desired password'}
                           style={{
                             width: '100%',
-                            background: 'rgba(0,0,0,0.2)',
+                            background: 'var(--input, var(--background))',
                             border: '1px solid var(--border-glass)',
                             color: 'var(--text-primary)',
                             padding: '0.75rem 2.5rem 0.75rem 0.75rem',
@@ -873,7 +873,7 @@ export function InterventionPanel({
                         value={settings?.usWorkAuthorization || ''}
                         onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)}
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -893,7 +893,7 @@ export function InterventionPanel({
                         value={settings?.visaSponsorship || ''}
                         onChange={(e) => handleSettingsChange('visaSponsorship', e.target.value)}
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -915,7 +915,7 @@ export function InterventionPanel({
                         onChange={(e) => handleSettingsChange('workingRemotelyFrom', e.target.value)}
                         placeholder="e.g. New York, NY"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -933,7 +933,7 @@ export function InterventionPanel({
                         onChange={(e) => handleSettingsChange('country', e.target.value)}
                         placeholder="e.g. United States"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -949,7 +949,7 @@ export function InterventionPanel({
                         value={settings?.eeocGender || ''}
                         onChange={(e) => handleSettingsChange('eeocGender', e.target.value)}
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -970,7 +970,7 @@ export function InterventionPanel({
                         value={settings?.eeocRace || ''}
                         onChange={(e) => handleSettingsChange('eeocRace', e.target.value)}
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -996,7 +996,7 @@ export function InterventionPanel({
                         value={settings?.eeocVeteran || ''}
                         onChange={(e) => handleSettingsChange('eeocVeteran', e.target.value)}
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -1017,7 +1017,7 @@ export function InterventionPanel({
                         value={settings?.eeocDisability || ''}
                         onChange={(e) => handleSettingsChange('eeocDisability', e.target.value)}
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -1040,7 +1040,7 @@ export function InterventionPanel({
                         onChange={(e) => handleSettingsChange('phone', e.target.value)}
                         placeholder="e.g. +1 (555) 000-0000"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -1058,7 +1058,7 @@ export function InterventionPanel({
                         onChange={(e) => handleSettingsChange('streetAddress', e.target.value)}
                         placeholder="e.g. 123 Main St, Apt 4B"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -1081,7 +1081,7 @@ export function InterventionPanel({
                         }}
                         placeholder="e.g. San Francisco"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -1104,7 +1104,7 @@ export function InterventionPanel({
                         }}
                         placeholder="e.g. CA"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -1122,7 +1122,7 @@ export function InterventionPanel({
                         onChange={(e) => handleSettingsChange('postalCode', e.target.value)}
                         placeholder="e.g. 94105"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
@@ -1140,7 +1140,7 @@ export function InterventionPanel({
                         onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)}
                         placeholder="e.g. https://linkedin.com/in/username"
                         style={{
-                          background: 'rgba(0,0,0,0.2)',
+                          background: 'var(--input, var(--background))',
                           border: '1px solid var(--border-glass)',
                           color: 'var(--text-primary)',
                           padding: '0.75rem',
