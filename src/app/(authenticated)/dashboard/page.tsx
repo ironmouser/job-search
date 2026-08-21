@@ -5,7 +5,7 @@ import { getUserSettings } from '@/lib/settings';
 import DashboardClient from '@/components/DashboardClient';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { getEffectiveTier } from '@/lib/tier';
-
+import { isBotRelatedFailure } from '@/lib/auto-apply/failure-helpers';
 
 export const revalidate = 0;
 
@@ -41,7 +41,12 @@ export default async function Dashboard() {
           include: {
             opportunityScores: { where: { userId }, select: { totalScore: true } },
             jobFeedbacks: { where: { userId }, select: { feedbackType: true } },
-            autoApplySessions: { where: { userId, status: 'applied' }, select: { id: true, status: true }, take: 1 }
+            autoApplySessions: { 
+              where: { userId }, 
+              select: { id: true, status: true, failureReason: true, failureDetails: true }, 
+              orderBy: { createdAt: 'desc' }, 
+              take: 5 
+            }
           }
         }
       },
@@ -56,7 +61,13 @@ export default async function Dashboard() {
 
   const jobs = userJobs.map(uj => {
     const j = uj.job;
-    const isAutoApplied = !!(j.autoApplySessions && j.autoApplySessions.length > 0);
+    const sessions = j.autoApplySessions || [];
+    const isAutoApplied = sessions.some((s: any) => s.status === 'applied');
+    const hasRunAutoApply = sessions.length > 0;
+    const hasBotFailure = sessions.some((s: any) => 
+      s.status !== 'applied' && isBotRelatedFailure(s.failureReason, s.failureDetails)
+    );
+
     return {
       id: j.id,
       title: j.title,
@@ -72,6 +83,8 @@ export default async function Dashboard() {
       is_archived: uj.isArchived,
       is_viewed: j.isViewed || false,
       is_auto_applied: isAutoApplied,
+      has_run_auto_apply: hasRunAutoApply,
+      has_bot_failure: hasBotFailure,
       created_at: uj.createdAt,
       applied_at: uj.appliedAt,
       unlockedBySubmission: uj.unlockedBySubmission || j.addedById === userId,

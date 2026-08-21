@@ -7,6 +7,7 @@ import { isDescriptionAdequate } from '@/lib/jobFetcher';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { computeRoleMatchScore } from '@/lib/roleMatcher';
 import { getUserSettings } from '@/lib/settings';
+import { isBotRelatedFailure } from '@/lib/auto-apply/failure-helpers';
 
 export const revalidate = 0;
 
@@ -27,26 +28,16 @@ export async function GET(request: Request) {
   const userId = session.user.id;
   const { searchParams } = new URL(request.url);
 
-  const activeFilter = searchParams.get('activeFilter') || 'all';
-  const sortOption = searchParams.get('sortOption') || 'role_match';
-  const sourceFilter = searchParams.get('sourceFilter') || 'both';
-  const startDate = searchParams.get('startDate') || '';
-  const endDate = searchParams.get('endDate') || '';
-  const keywordFilter = searchParams.get('keywordFilter') || '';
-  const searchRoleParam = searchParams.get('searchRole') || searchParams.get('searchKeyword');
-  const locationFilterParam = searchParams.get('locationFilter');
-  let locationFilter: string[] = [];
-  if (locationFilterParam) {
-    try {
-      locationFilter = JSON.parse(locationFilterParam);
-    } catch {
-      locationFilter = locationFilterParam.split(',').filter(Boolean);
-    }
-  }
+  const filterParam = searchParams.get('filter') || 'all'; // all, interested, skipped, applied
+  const sortParam = searchParams.get('sort') || 'score'; // score, new, salary
+  const keywordFilter = searchParams.get('keyword') || '';
+  const locationFilter = searchParams.get('location') || '';
+  const minSalaryFilter = parseInt(searchParams.get('minSalary') || '0', 10);
+  const isCustomOnly = searchParams.get('customOnly') === 'true';
 
   try {
     const userPrefs = await getUserSettings(userId);
-    const targetRole = (searchRoleParam || userPrefs?.searchKeyword || '').trim();
+    const preferUsOnly = userPrefs?.noInternational || false;
 
     const userJobs = await prisma.userJob.findMany({
       where: {
@@ -58,7 +49,12 @@ export async function GET(request: Request) {
           include: {
             opportunityScores: { where: { userId }, select: { totalScore: true } },
             jobFeedbacks: { where: { userId }, select: { feedbackType: true } },
-            autoApplySessions: { where: { userId, status: 'applied' }, select: { id: true, status: true }, take: 1 }
+            autoApplySessions: { 
+              where: { userId }, 
+              select: { id: true, status: true, failureReason: true, failureDetails: true }, 
+              orderBy: { createdAt: 'desc' }, 
+              take: 5 
+            }
           }
         }
       },
@@ -71,7 +67,13 @@ export async function GET(request: Request) {
       const score = j.opportunityScores?.[0]?.totalScore;
       const feedback = j.jobFeedbacks?.[0]?.feedbackType;
       const hasScore = uj.status === 'scored' || (score !== undefined && score !== null);
-      const isAutoApplied = !!(j.autoApplySessions && j.autoApplySessions.length > 0);
+      const sessions = j.autoApplySessions || [];
+      const isAutoApplied = sessions.some((s: any) => s.status === 'applied');
+      const hasRunAutoApply = sessions.length > 0;
+      const hasBotFailure = sessions.some((s: any) => 
+        s.status !== 'applied' && isBotRelatedFailure(s.failureReason, s.failureDetails)
+      );
+
       return {
         id: j.id,
         title: j.title,
@@ -81,6 +83,8 @@ export async function GET(request: Request) {
         status: uj.status,
         is_archived: uj.isArchived,
         is_auto_applied: isAutoApplied,
+        has_run_auto_apply: hasRunAutoApply,
+        has_bot_failure: hasBotFailure,
         created_at: uj.createdAt,
         consecutive_auto_failures: j.consecutiveAutoFailures || 0,
         automation_confidence: isAutoApplied ? 100 : detectATSFromUrl(j.applicationUrl || j.url).confidence,

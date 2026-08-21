@@ -370,3 +370,48 @@ export function getFailureNextSteps(
   ];
 }
 
+export function isBotRelatedFailure(
+  reason?: string | null,
+  details?: string | null
+): boolean {
+  if (!reason && !details) return false;
+  
+  const r = (reason || '').toLowerCase().trim();
+  const d = (details || '').toLowerCase().trim();
+  const combined = `${r} ${d}`;
+
+  // 1. Exclude explicit user credential / auth / non-bot failures first
+  const isCredentialFailure = 
+    r.includes('login') ||
+    r.includes('account') ||
+    r.includes('job_board_auth') ||
+    r.includes('session_expired') ||
+    r.includes('missing_credentials') ||
+    combined.includes('sign in required') ||
+    combined.includes('create an account') ||
+    combined.includes('candidate account');
+
+  if (isCredentialFailure) {
+    return false;
+  }
+
+  // 2. Check for bot / captcha / security challenge indicators
+  const isBot = 
+    r.includes('captcha') ||
+    r.includes('bot_challenge') ||
+    r.includes('bot_detection') ||
+    r.includes('security_challenge') ||
+    r.includes('mfa') ||
+    combined.includes('captcha') ||
+    combined.includes('cloudflare') ||
+    combined.includes('bot verification') ||
+    combined.includes('security check') ||
+    combined.includes('ddos protection') ||
+    combined.includes('anti-bot') ||
+    combined.includes('confirm you are not a robot') ||
+    combined.includes('human verification');
+
+  return isBot;
+}
+
+

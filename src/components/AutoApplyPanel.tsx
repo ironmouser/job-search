@@ -1062,7 +1062,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
           </div>
 
           {/* Action Buttons: Try Again, Finish Manually, Cancel Auto Apply */}
-          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="auto-apply-button-group" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ flex: '2 1 200px' }}>
               <AutoApplyButton
                 jobId={jobId}
@@ -1229,7 +1229,7 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
 
       {/* Default Auto Apply button (start / cancel) - only shown when neither active intervention nor failure card is taking over */}
       {!isLiveIntervention && !isFailedOrStopped && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+        <div className="auto-apply-button-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
           <AutoApplyButton
             jobId={jobId}
             jobUrl={jobUrl}

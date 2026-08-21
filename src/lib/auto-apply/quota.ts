@@ -146,13 +146,18 @@ export async function getAutoApplyQuota(userId: string): Promise<AutoApplyQuotaR
   let monthlyUsed = 0;
 
   try {
-    const appliedStatuses = [AutoApplyStatus.APPLIED, 'applied'];
+    const countedStatuses = [
+      AutoApplyStatus.APPLIED,
+      'applied',
+      AutoApplyStatus.CANCELLED,
+      'cancelled',
+    ];
 
     const [dailyCount, monthlyCount] = await Promise.all([
       prisma.autoApplySession.count({
         where: {
           userId: { in: userIds },
-          status: { in: appliedStatuses },
+          status: { in: countedStatuses },
           OR: [
             { completedAt: { gte: startOfTodayUtc } },
             { completedAt: null, createdAt: { gte: startOfTodayUtc } },
@@ -162,7 +167,7 @@ export async function getAutoApplyQuota(userId: string): Promise<AutoApplyQuotaR
       prisma.autoApplySession.count({
         where: {
           userId: { in: userIds },
-          status: { in: appliedStatuses },
+          status: { in: countedStatuses },
           OR: [
             { completedAt: { gte: monthlyWindowStart } },
             { completedAt: null, createdAt: { gte: monthlyWindowStart } },

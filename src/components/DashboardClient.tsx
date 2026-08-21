@@ -38,11 +38,16 @@ const safeFormatDate = (dateVal: any) => {
   return d.toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'numeric', day: 'numeric' });
 };
 
-const getConfidenceBadge = (score?: number, failCount: number = 0) => {
-    if (failCount >= 3) {
+const getConfidenceBadge = (
+  score?: number, 
+  failCount: number = 0, 
+  hasBotFailure: boolean = false, 
+  hasRunAutoApply: boolean = false
+) => {
+    if (hasRunAutoApply && hasBotFailure) {
       return (
         <span 
-          title="3+ recent automated attempts failed. Adding a direct URL or manual apply recommended." 
+          title="Automated attempt blocked by anti-bot verification or security challenge. Manual apply recommended." 
           style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}
         >
           Low Auto
@@ -51,8 +56,7 @@ const getConfidenceBadge = (score?: number, failCount: number = 0) => {
     }
     if (score === undefined || score === null) return null;
     if (score >= 70) return <span title="High Automation Confidence" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>High Auto</span>;
-    if (score >= 40) return <span title="Medium Automation Confidence" style={{ color: '#fbbf24', background: 'rgba(251, 191, 36, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Med Auto</span>;
-    return <span title="Low Automation Confidence (Manual Application Recommended)" style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Low Auto</span>;
+    return null;
 };
 
 export default function DashboardClient({ 
@@ -1871,7 +1875,7 @@ export default function DashboardClient({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                           <span>{cleanCompanyName(job.company)}</span>
                           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                            {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures)}
+                            {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures, job.has_bot_failure, job.has_run_auto_apply)}
                             {isUserAdded && (
                               <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>
                             )}
@@ -2029,7 +2033,7 @@ export default function DashboardClient({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-primary, #0070f3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {cleanCompanyName(job.company)}
-                      {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures)}
+                      {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures, job.has_bot_failure, job.has_run_auto_apply)}
                       {isUserAdded && (
                         <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>Custom Added</span>
                       )}

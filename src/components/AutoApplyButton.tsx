@@ -115,7 +115,7 @@ export function AutoApplyButton({
   if (isActive) {
     return (
       <button
-        className="btn-auto-apply"
+        className="btn-auto-apply full-width-mobile"
         style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
         onClick={handleCancel}
         id={`auto-apply-cancel-${jobId}`}
@@ -128,7 +128,7 @@ export function AutoApplyButton({
   return (
     <>
       <button
-        className="btn-auto-apply"
+        className="btn-auto-apply full-width-mobile"
         disabled={isDisabled || starting}
         onClick={handleStart}
         id={`auto-apply-btn-${jobId}`}

@@ -388,7 +388,7 @@ export function ApplyStepAccordion({
       {/* Accordion Content */}
       {isExpanded && (
         <div
-          className="step-card-content-padding"
+          className="step-card-content-padding auto-apply-accordion-content"
           style={{
             borderTop: '1px solid var(--border-glass)',
             background: 'var(--bg-secondary)',
@@ -430,7 +430,7 @@ export function ApplyStepAccordion({
               </div>
 
               {/* Input Row + Update URL Button */}
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <div className="auto-apply-input-group" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                 <input
                   type="url"
                   value={customUrl}

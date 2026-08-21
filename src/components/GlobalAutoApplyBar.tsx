@@ -211,10 +211,20 @@ export function GlobalAutoApplyBar() {
   const currentStepDesc = STEP_DEFINITIONS[activeStepNum - 1]?.desc || 'Processing application...';
 
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
+  const [clearingJobId, setClearingJobId] = useState<string | null>(null);
 
   const handleCancelJob = async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
     setCancellingJobId(jobId);
+    // Immediately remove stopped session from local queue UI state
+    setActiveSessions((prev) => {
+      const next = prev.filter((s) => s.jobId !== jobId);
+      if (selectedSessionId && prev.find((s) => s.jobId === jobId)?.id === selectedSessionId) {
+        const remaining = next.find((s) => s.status !== 'applied' && s.status !== 'failed' && s.status !== 'cancelled') || next[0];
+        setSelectedSessionId(remaining ? remaining.id : null);
+      }
+      return next;
+    });
     try {
       await fetch(`/api/auto-apply/${jobId}/cancel`, { method: 'POST' });
       await fetchSessions();
@@ -223,6 +233,43 @@ export function GlobalAutoApplyBar() {
     } finally {
       setCancellingJobId(null);
     }
+  };
+
+  const handleClearJob = async (e: React.MouseEvent, jobId: string, sessionId: string) => {
+    e.stopPropagation();
+    setClearingJobId(jobId);
+    // Immediately remove cleared session from local queue UI state
+    setActiveSessions((prev) => {
+      const next = prev.filter((s) => s.id !== sessionId && s.jobId !== jobId);
+      if (selectedSessionId === sessionId) {
+        setSelectedSessionId(next.length > 0 ? next[0].id : null);
+      }
+      return next;
+    });
+    try {
+      await fetch(`/api/auto-apply/${jobId}/clear`, { method: 'POST' });
+      await fetchSessions();
+    } catch (err) {
+      console.error('Failed to clear auto apply session:', err);
+    } finally {
+      setClearingJobId(null);
+    }
+  };
+
+  const handleClearAllFinished = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const finishedItems = activeSessions.filter(
+      (s) => s.status === 'applied' || s.status === 'failed' || s.status === 'cancelled'
+    );
+    setActiveSessions((prev) => prev.filter((s) => s.status !== 'applied' && s.status !== 'failed' && s.status !== 'cancelled'));
+    for (const item of finishedItems) {
+      try {
+        await fetch(`/api/auto-apply/${item.jobId}/clear`, { method: 'POST' });
+      } catch (err) {
+        console.error('Failed to clear session:', err);
+      }
+    }
+    await fetchSessions();
   };
 
   const handleNavigateToJob = (e?: React.MouseEvent) => {
@@ -497,17 +544,38 @@ export function GlobalAutoApplyBar() {
                     <ListOrdered size={14} color="#0070f3" />
                     <span>QUEUE ({activeSessions.length})</span>
                   </div>
-                  <span style={{
-                    background: 'rgba(0, 112, 243, 0.08)',
-                    color: '#0070f3',
-                    padding: '0.15rem 0.55rem',
-                    borderRadius: '9999px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    border: '1px solid rgba(0, 112, 243, 0.2)',
-                  }}>
-                    {ongoingCount} Active
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{
+                      background: 'rgba(0, 112, 243, 0.08)',
+                      color: '#0070f3',
+                      padding: '0.15rem 0.55rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      border: '1px solid rgba(0, 112, 243, 0.2)',
+                    }}>
+                      {ongoingCount} Active
+                    </span>
+                    {activeSessions.some((s) => s.status === 'applied' || s.status === 'failed' || s.status === 'cancelled') && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllFinished}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#94a3b8',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: '0 0.25rem',
+                        }}
+                        title="Clear all completed and failed tasks from queue"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', padding: '0.6rem', gap: '0.45rem' }}>
@@ -578,7 +646,7 @@ export function GlobalAutoApplyBar() {
                               </span>
                             </div>
 
-                            {isAct && (
+                            {isAct ? (
                               <button
                                 type="button"
                                 onClick={(e) => handleCancelJob(e, session.jobId)}
@@ -605,6 +673,34 @@ export function GlobalAutoApplyBar() {
                                   <X size={11} />
                                 )}
                                 Stop
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => handleClearJob(e, session.jobId, session.id)}
+                                disabled={clearingJobId === session.jobId}
+                                title="Clear from queue"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '2px',
+                                  background: 'transparent',
+                                  border: '1px solid var(--border, rgba(255,255,255,0.12))',
+                                  color: 'var(--text-secondary)',
+                                  borderRadius: '4px',
+                                  padding: '0.1rem 0.35rem',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                {clearingJobId === session.jobId ? (
+                                  <Loader2 size={11} className="animate-spin" />
+                                ) : (
+                                  <Trash2 size={11} />
+                                )}
+                                Clear
                               </button>
                             )}
                           </div>
@@ -696,11 +792,37 @@ export function GlobalAutoApplyBar() {
                           <ExternalLink size={14} /> View Live Updates & Job
                         </button>
 
-                        {selectedSession && !isApplied && !isFailed && selectedSession.status !== 'cancelled' && (
+                        {selectedSession && !isApplied && !isFailed && selectedSession.status !== 'cancelled' ? (
                           <button
                             type="button"
                             onClick={(e) => handleCancelJob(e, selectedSession.jobId)}
                             disabled={cancellingJobId === selectedSession.jobId}
+                            style={{
+                              fontSize: '0.82rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              padding: '0.45rem 0.8rem',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#ef4444',
+                              background: 'rgba(239, 68, 68, 0.08)',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {cancellingJobId === selectedSession.jobId ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : (
+                              <X size={13} />
+                            )}
+                            Stop Auto Apply
+                          </button>
+                        ) : selectedSession && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleClearJob(e, selectedSession.jobId, selectedSession.id)}
+                            disabled={clearingJobId === selectedSession.jobId}
                             style={{
                               fontSize: '0.82rem',
                               display: 'flex',
@@ -715,12 +837,12 @@ export function GlobalAutoApplyBar() {
                               cursor: 'pointer',
                             }}
                           >
-                            {cancellingJobId === selectedSession.jobId ? (
+                            {clearingJobId === selectedSession.jobId ? (
                               <Loader2 size={13} className="animate-spin" />
                             ) : (
-                              <X size={13} />
+                              <Trash2 size={13} />
                             )}
-                            Stop Auto Apply
+                            Clear from Queue
                           </button>
                         )}
                       </div>
