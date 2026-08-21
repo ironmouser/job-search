@@ -145,6 +145,8 @@ export function ApplyStepAccordion({
     };
   }, [jobId]);
 
+  const hasScrolledRef = useRef(false);
+
   // Smooth scroll directly to the intervention / issue element once expanded
   useEffect(() => {
     if (!isExpanded) return;
@@ -156,28 +158,22 @@ export function ApplyStepAccordion({
       window.location.hash === '#step-3-apply';
 
     if (!shouldScroll) return;
+    if (hasScrolledRef.current) return;
 
-    const attempts = [100, 350, 750, 1200];
-    const timers: NodeJS.Timeout[] = [];
+    const timer = setTimeout(() => {
+      const issueElement =
+        document.querySelector('[id^="intervention-panel-"]') ||
+        document.getElementById('auto-apply-failure-banner') ||
+        document.getElementById('auto-apply-low-confidence-warning') ||
+        document.getElementById('step-3-apply');
 
-    attempts.forEach((delay) => {
-      const timer = setTimeout(() => {
-        const issueElement =
-          document.querySelector('[id^="intervention-panel-"]') ||
-          document.getElementById('auto-apply-failure-banner') ||
-          document.getElementById('auto-apply-low-confidence-warning') ||
-          document.getElementById('step-3-apply');
+      if (issueElement) {
+        issueElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        hasScrolledRef.current = true;
+      }
+    }, 200);
 
-        if (issueElement) {
-          issueElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, delay);
-      timers.push(timer);
-    });
-
-    return () => {
-      timers.forEach((t) => clearTimeout(t));
-    };
+    return () => clearTimeout(timer);
   }, [isExpanded]);
 
   const effectiveUrl = (customUrl.trim() && customUrl.trim().startsWith('http')) ? customUrl.trim() : activeUrl;

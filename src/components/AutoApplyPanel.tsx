@@ -184,7 +184,10 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
     }
   }, [session?.status, jobId, router, session?.atsPlatform]);
 
-  // Scroll directly to intervention / failure issue when session status is fetched
+  const hasScrolledToIssueRef = useRef(false);
+  const lastScrolledInterventionIdRef = useRef<string | null>(null);
+
+  // Scroll directly to intervention / failure issue only when newly presented or visited
   useEffect(() => {
     if (!session) return;
     if (typeof window === 'undefined') return;
@@ -194,6 +197,12 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
       window.location.hash === '#step-3-apply';
 
     if (!shouldScroll) return;
+
+    const currentInterventionId = session.interventions?.[0]?.id || null;
+    const isNewIntervention = currentInterventionId && currentInterventionId !== lastScrolledInterventionIdRef.current;
+
+    // Only scroll if we haven't scrolled yet on this page visit, or if a brand new intervention was triggered
+    if (hasScrolledToIssueRef.current && !isNewIntervention) return;
 
     const timer = setTimeout(() => {
       const issueElement =
@@ -205,8 +214,12 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
 
       if (issueElement) {
         issueElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        hasScrolledToIssueRef.current = true;
+        if (currentInterventionId) {
+          lastScrolledInterventionIdRef.current = currentInterventionId;
+        }
       }
-    }, 150);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [session?.status, session?.interventions]);
