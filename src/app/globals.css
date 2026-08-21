@@ -4816,7 +4816,7 @@ body.light-theme .checklist-item-row:hover {
   box-sizing: border-box;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .view-toggle-btn.desktop-only-toggle {
     display: none !important;
   }

@@ -205,7 +205,15 @@ export default function DashboardClient({
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [minScoreFilter, setMinScoreFilter] = useState<number>(25);
-  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'columns'>('columns');
+  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'columns'>(() => {
+    if (typeof window !== 'undefined') {
+      const isMobile = window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) return 'grid';
+      const explicit = localStorage.getItem('dashboard_view_mode_explicit');
+      if (explicit === 'grid' || explicit === 'table' || explicit === 'columns') return explicit as 'grid' | 'table' | 'columns';
+    }
+    return 'columns';
+  });
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
 
@@ -461,20 +469,22 @@ export default function DashboardClient({
       try {
         stateFromStorage = JSON.parse(saved);
         if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter);
+        const isMobile = typeof window !== 'undefined' && (
+          window.innerWidth <= 1024 ||
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        );
         const explicitViewMode = typeof window !== 'undefined' ? localStorage.getItem('dashboard_view_mode_explicit') : null;
-        if (explicitViewMode === 'grid' || explicitViewMode === 'table' || explicitViewMode === 'columns') {
-          if (typeof window !== 'undefined' && window.innerWidth <= 768 && explicitViewMode === 'columns') {
-            setViewMode('grid');
+        if (isMobile) {
+          if (explicitViewMode === 'table') {
+            setViewMode('table');
           } else {
-            setViewMode(explicitViewMode as 'grid' | 'table' | 'columns');
+            setViewMode('grid');
           }
+        } else if (explicitViewMode === 'grid' || explicitViewMode === 'table' || explicitViewMode === 'columns') {
+          setViewMode(explicitViewMode as 'grid' | 'table' | 'columns');
         } else {
-          // Default all current & future users to split panel 'columns' (or 'grid' on mobile)
-          if (typeof window !== 'undefined' && window.innerWidth <= 768) {
-            setViewMode('grid');
-          } else {
-            setViewMode('columns');
-          }
+          // Default all current & future desktop users to split panel 'columns'
+          setViewMode('columns');
         }
         if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption);
         if (stateFromStorage.locationFilter !== undefined) {
@@ -539,6 +549,21 @@ export default function DashboardClient({
 
     setIsLoaded(true);
     isPageInitialized.current = true;
+  }, []);
+
+  // Listen for screen resize to dynamically switch from columns view to grid view on mobile/tablet
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      const isMobile = window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        setViewMode(prev => (prev === 'columns' ? 'grid' : prev));
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const changePage = (newPage: number) => {
