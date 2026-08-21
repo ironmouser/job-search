@@ -2213,8 +2213,8 @@ export default function DashboardClient({
                   {/* Collapsible Action Bar */}
                   <div className={`job-card-collapsible ${isExpanded ? 'expanded' : ''}`}>
                     <div className="job-card-collapsible-inner">
-                      <div className="dashboard-job-action-row" style={{ paddingTop: '0.65rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.3rem', width: '100%' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0, flexWrap: 'wrap' }}>
+                      <div className="dashboard-job-action-row" style={{ paddingTop: '0.65rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', width: '100%', flexWrap: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, flexWrap: 'nowrap' }}>
                           {/* Thumbs Up & Thumbs Down */}
                           <FeedbackButtons
                             jobId={job.id}
@@ -2484,8 +2484,8 @@ export default function DashboardClient({
                   {/* Collapsible Action Bar */}
                   <div className={`job-card-collapsible ${isExpanded ? 'expanded' : ''}`}>
                     <div className="job-card-collapsible-inner">
-                      <div className="dashboard-job-action-row" style={{ paddingTop: '0.65rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.3rem', width: '100%' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0, flexWrap: 'wrap' }}>
+                      <div className="dashboard-job-action-row" style={{ paddingTop: '0.65rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', width: '100%', flexWrap: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, flexWrap: 'nowrap' }}>
                           <FeedbackButtons
                             jobId={job.id}
                             initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
@@ -2524,15 +2524,6 @@ export default function DashboardClient({
                           >
                             <ExternalLink size={14} />
                           </a>
-
-                          <Link 
-                            href={`/job/${job.id}`} 
-                            onClick={() => handleMarkViewed(job.id)} 
-                            className="btn-primary card-label-action-btn"
-                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
-                          >
-                            Details
-                          </Link>
                         </div>
 
                         <button 

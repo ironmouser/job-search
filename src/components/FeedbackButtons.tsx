@@ -269,7 +269,7 @@ export default function FeedbackButtons({
   };
 
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
+    <div style={{ display: 'flex', gap: compact ? '0.35rem' : '0.5rem', alignItems: 'center', flexWrap: 'nowrap', position: 'relative' }}>
       {showNudgeTooltip && !feedback && (
         <FeedbackNudgeTooltip
           variant={nudgeVariant}

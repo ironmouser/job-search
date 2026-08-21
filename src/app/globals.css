@@ -1867,8 +1867,18 @@ details.glass-card>summary::marker {
   align-items: center !important;
   justify-content: space-between !important;
   flex-wrap: nowrap !important;
-  gap: 0.3rem !important;
+  gap: 0.35rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
   overflow-x: hidden !important;
+}
+
+.dashboard-job-action-row > div:first-child {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 0.35rem !important;
+  flex-shrink: 0 !important;
 }
 
 .card-more-btn {
