@@ -116,6 +116,19 @@ export class AggregatorHandler {
       await logger.warn('destination_discovery', `Page body too short (${bodyLen} chars) — may be bot-blocked. Proceeding with available content.`);
     }
 
+    // ── Check if application form is already present on this page ─────────────
+    try {
+      const { GenericPageAnalyzer } = await import('../generic-agent/page-analyzer');
+      const formPresence = await GenericPageAnalyzer.inspectFormPresence(page);
+      if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
+        await logger.info(
+          'destination_discovery',
+          `Application form is already present directly on this page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination reached.`
+        );
+        return { navigated: false, candidateReports: [] };
+      }
+    } catch {}
+
     await logger.info('destination_discovery', `Phase 1: Scanning page for application destinations at ${page.url()}...`);
 
     // ── Check for page obstructions (e.g. marketing/newsletter/cookie modals) ─
@@ -203,6 +216,20 @@ export class AggregatorHandler {
           await logger.info('destination_discovery', `Script metadata canonical destination matches current page (${rawUrl}) — destination convergence reached.`);
           continue;
         }
+
+        // Host + Path convergence check: if candidate URL is on the exact same host and path as current page,
+        // do not navigate again (avoids stripping query parameters like ?gh_jid=...)
+        try {
+          const uCandidate = new URL(rawUrl);
+          const uCurrent = new URL(currentUrl);
+          if (
+            uCandidate.hostname.toLowerCase().replace(/^www\./, '') === uCurrent.hostname.toLowerCase().replace(/^www\./, '') &&
+            (uCandidate.pathname.replace(/\/+$/, '') || '/') === (uCurrent.pathname.replace(/\/+$/, '') || '/')
+          ) {
+            await logger.info('destination_discovery', `Script metadata canonical destination matches current page path (${rawUrl}) — destination convergence reached.`);
+            continue;
+          }
+        } catch {}
 
         // Loop prevention check: if already visited in hop chain
         if (visitedUrls && visitedUrls.has(normalizedCandidateUrl)) {

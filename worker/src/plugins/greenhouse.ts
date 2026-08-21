@@ -95,7 +95,10 @@ export class GreenhousePlugin extends ATSPlugin {
     // Greenhouse embeds the apply form directly on the job posting page.
     // The page may lazy-load the form inside an iframe or via JS, so we wait
     // for either the direct form container or the Greenhouse iframe.
-    await browser.navigate(context.jobUrl);
+    const currentUrl = page.url();
+    if (context.jobUrl && currentUrl !== context.jobUrl && !currentUrl.startsWith(context.jobUrl)) {
+      await browser.navigate(context.jobUrl);
+    }
 
     await this.checkAccountGate(page, context.jobUrl, this.displayName, context);
 
@@ -106,12 +109,17 @@ export class GreenhousePlugin extends ATSPlugin {
       'form#application',
       '#grnhse_app form',
       '.application--form',
+      'form[action*="greenhouse" i]',
+      'form[data-testid*="application" i]',
+      'div[class*="application-form" i]',
+      'div[class*="ApplicationForm" i]',
+      'form',
     ];
 
     let formFound = false;
     for (const selector of formSelectors) {
       try {
-        await page.waitForSelector(selector, { timeout: 15_000 });
+        await page.waitForSelector(selector, { timeout: 8_000 });
         formFound = true;
         await logger.info('form_located', `Greenhouse application form found via: ${selector}`);
         break;
@@ -133,6 +141,19 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     if (!formFound) {
+      // Check if page has general form inputs with resume upload
+      const hasInputs = await page.evaluate(() => {
+        const hasFile = !!document.querySelector('input[type="file"]');
+        const hasEmail = !!document.querySelector('input[type="email"], input[name*="email" i]');
+        return hasFile && hasEmail;
+      }).catch(() => false);
+      if (hasInputs) {
+        formFound = true;
+        await logger.info('form_located', 'Custom embedded application form detected on page');
+      }
+    }
+
+    if (!formFound) {
       await this.checkClosedJob(browser, logger, page.url());
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
@@ -149,12 +170,36 @@ export class GreenhousePlugin extends ATSPlugin {
     const profile = context.userProfile;
 
     // ── Personal information fields ──────────────────────────────────────────
-    await this.fillInput(page, '#first_name', profile.name.split(' ')[0] ?? '', logger, 'first_name');
-    await this.fillInput(page, '#last_name', profile.name.split(' ').slice(1).join(' ') ?? '', logger, 'last_name');
-    await this.fillInput(page, '#email', profile.email, logger, 'email');
+    await this.fillInput(
+      page,
+      ['#first_name', 'input[name="first_name" i]', 'input[name="firstName" i]', 'input[name*="first" i]', 'input[id*="first_name" i]'],
+      profile.name.split(' ')[0] ?? '',
+      logger,
+      'first_name'
+    );
+    await this.fillInput(
+      page,
+      ['#last_name', 'input[name="last_name" i]', 'input[name="lastName" i]', 'input[name*="last" i]', 'input[id*="last_name" i]'],
+      profile.name.split(' ').slice(1).join(' ') ?? '',
+      logger,
+      'last_name'
+    );
+    await this.fillInput(
+      page,
+      ['#email', 'input[name="email" i]', 'input[type="email"]', 'input[id*="email" i]'],
+      profile.email,
+      logger,
+      'email'
+    );
 
     if (profile.phone) {
-      await this.fillInput(page, '#phone', profile.phone, logger, 'phone');
+      await this.fillInput(
+        page,
+        ['#phone', 'input[name="phone" i]', 'input[type="tel"]', 'input[id*="phone" i]'],
+        profile.phone,
+        logger,
+        'phone'
+      );
 
       // Handle phone country dropdown if present
       try {
@@ -179,7 +224,13 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     if (profile.location) {
-      await this.fillInput(page, '#job_application_location', profile.location, logger, 'location');
+      await this.fillInput(
+        page,
+        ['#job_application_location', '#location', 'input[name*="location" i]', 'input[id*="location" i]'],
+        profile.location,
+        logger,
+        'location'
+      );
     }
 
     if (profile.linkedinUrl) {
@@ -408,15 +459,20 @@ export class GreenhousePlugin extends ATSPlugin {
    */
   private async fillInput(
     page: import('playwright').Page,
-    selector: string,
+    selectorOrSelectors: string | string[],
     value: string,
     logger: ExecutionLogger,
     fieldName: string
   ): Promise<void> {
-    const el = page.locator(selector).first();
-    if (await el.count() > 0 && value) {
-      await this.typeHumanized(page, el, value);
-      await logger.info('field_filled', `Field "${fieldName}" populated`);
+    if (!value) return;
+    const selectors = Array.isArray(selectorOrSelectors) ? selectorOrSelectors : [selectorOrSelectors];
+    for (const sel of selectors) {
+      const el = page.locator(sel).first();
+      if ((await el.count().catch(() => 0)) > 0 && (await el.isVisible().catch(() => true))) {
+        await this.typeHumanized(page, el, value);
+        await logger.info('field_filled', `Field "${fieldName}" populated`);
+        return;
+      }
     }
   }
 

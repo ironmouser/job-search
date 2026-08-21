@@ -140,7 +140,20 @@ export class WorkflowEngine {
           break;
         }
 
-        // 3. If still unknown, attempt to find and follow the Apply button / link
+        // 3. Check if an active application form is ALREADY present directly on the page
+        try {
+          const { GenericPageAnalyzer } = await import('./generic-agent/page-analyzer');
+          const formPresence = await GenericPageAnalyzer.inspectFormPresence(browser.page);
+          if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
+            await logger.info(
+              'destination_discovery',
+              `Active application form detected directly on page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination convergence reached.`
+            );
+            break;
+          }
+        } catch {}
+
+        // 4. If still unknown, attempt to find and follow the Apply button / link
         await this.updateStatus(session.sessionId, AutoApplyStatus.NAVIGATING_TO_ATS, {
           currentStep: `navigating_aggregator_hop_${hopCount + 1}`,
           stepsCompleted: 1,
@@ -236,13 +249,38 @@ export class WorkflowEngine {
       await logger.info('plugin_loaded', `Using plugin: ${plugin.displayName}`);
 
       // ─── Step 4: Prepare plugin ──────────────────────────────────────────
-      await this.runWithIntervention(
-        session.sessionId,
-        browser,
-        logger,
-        context,
-        async () => plugin.prepare(browser, context, logger)
-      );
+      try {
+        await this.runWithIntervention(
+          session.sessionId,
+          browser,
+          logger,
+          context,
+          async () => plugin.prepare(browser, context, logger)
+        );
+      } catch (err: any) {
+        // If a low-confidence specialized ATS plugin fails to locate its proprietary form container,
+        // gracefully fall back to the Generic Application Agent / Generic Form Filler
+        if (
+          plugin.platform !== ATSPlatform.UNKNOWN &&
+          detection.confidence < 50 &&
+          (err instanceof InterventionError && err.reason === InterventionReason.UNEXPECTED_PAGE)
+        ) {
+          await logger.warn(
+            'plugin_fallback',
+            `Specialized plugin (${plugin.displayName}) could not locate proprietary form structure (confidence ${detection.confidence}%). Falling back to Generic Application Agent.`
+          );
+          plugin = pluginRegistry.get(ATSPlatform.UNKNOWN)!;
+          await this.runWithIntervention(
+            session.sessionId,
+            browser,
+            logger,
+            context,
+            async () => plugin.prepare(browser, context, logger)
+          );
+        } else {
+          throw err;
+        }
+      }
 
       await this.updateStatus(session.sessionId, AutoApplyStatus.APPLYING, {
         currentStep: 'filling_form',
@@ -250,13 +288,40 @@ export class WorkflowEngine {
       });
 
       // ─── Step 5: Apply (fill form) ───────────────────────────────────────
-      await this.runWithIntervention(
-        session.sessionId,
-        browser,
-        logger,
-        context,
-        async () => plugin.apply(browser, context, logger)
-      );
+      try {
+        await this.runWithIntervention(
+          session.sessionId,
+          browser,
+          logger,
+          context,
+          async () => plugin.apply(browser, context, logger)
+        );
+      } catch (err: any) {
+        if (
+          plugin.platform !== ATSPlatform.UNKNOWN &&
+          detection.confidence < 50 &&
+          (err instanceof InterventionError && (
+            err.reason === InterventionReason.UNEXPECTED_PAGE ||
+            err.reason === InterventionReason.APPLICATION_INTERACTION_FAILED ||
+            err.reason === InterventionReason.APPLICATION_NOT_FOUND
+          ))
+        ) {
+          await logger.warn(
+            'plugin_fallback',
+            `Specialized plugin (${plugin.displayName}) form filling encountered an issue on embedded portal. Falling back to Generic Form Filler.`
+          );
+          plugin = pluginRegistry.get(ATSPlatform.UNKNOWN)!;
+          await this.runWithIntervention(
+            session.sessionId,
+            browser,
+            logger,
+            context,
+            async () => plugin.apply(browser, context, logger)
+          );
+        } else {
+          throw err;
+        }
+      }
 
       await this.updateStatus(session.sessionId, AutoApplyStatus.VALIDATING, {
         currentStep: 'validating',

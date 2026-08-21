@@ -263,66 +263,92 @@ export class GenericPageAnalyzer {
   }
 
   /**
-   * Evaluates form presence, input counts, resume file upload presence, and buttons.
+   * Evaluates form presence, input counts, resume file upload presence, and buttons across page frames.
    */
   static async inspectFormPresence(page: Page): Promise<FormPresenceInfo> {
-    const presence = await page.evaluate(() => {
-      let totalInputs = 0;
-      let hasResume = false;
-      let hasCL = false;
-      let hasEmail = false;
-      let hasName = false;
-      let hasSubmit = false;
-      let hasNext = false;
+    const frames = page.frames();
+    let bestInfo: FormPresenceInfo | null = null;
 
-      const fileInputs = document.querySelectorAll('input[type="file"]');
-      if (fileInputs.length > 0) {
-        hasResume = true;
-        if (fileInputs.length > 1) hasCL = true;
+    for (const frame of frames) {
+      const presence = await frame.evaluate(() => {
+        let totalInputs = 0;
+        let hasResume = false;
+        let hasCL = false;
+        let hasEmail = false;
+        let hasName = false;
+        let hasSubmit = false;
+        let hasNext = false;
+
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        if (fileInputs.length > 0) {
+          hasResume = true;
+          if (fileInputs.length > 1) hasCL = true;
+        }
+
+        const emailInputs = document.querySelectorAll('input[type="email"], input[name*="email" i], input[id*="email" i]');
+        if (emailInputs.length > 0) hasEmail = true;
+
+        const nameInputs = document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="name" i]');
+        if (nameInputs.length > 0) hasName = true;
+
+        const allInputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea');
+        totalInputs = allInputs.length;
+
+        const submits = document.querySelectorAll('button[type="submit"], input[type="submit"]');
+        if (submits.length > 0) hasSubmit = true;
+        else {
+          document.querySelectorAll('button, a[role="button"]').forEach(b => {
+            const t = (b.textContent || '').trim().toLowerCase();
+            if (t.includes('submit') || t.includes('complete application')) hasSubmit = true;
+            if (t.includes('next') || t.includes('continue') || t.includes('save and continue')) hasNext = true;
+          });
+        }
+
+        return {
+          totalInputs,
+          hasResume,
+          hasCL,
+          hasEmail,
+          hasName,
+          hasSubmit,
+          hasNext,
+        };
+      }).catch(() => null);
+
+      if (presence) {
+        const hasForm = (presence.hasResume && presence.totalInputs >= 2) || (presence.hasEmail && presence.totalInputs >= 3);
+        const info: FormPresenceInfo = {
+          hasForm,
+          inputCount: presence.totalInputs,
+          hasResumeUpload: presence.hasResume,
+          hasCoverLetterUpload: presence.hasCL,
+          hasEmailInput: presence.hasEmail,
+          hasNameInput: presence.hasName,
+          hasSubmitButton: presence.hasSubmit,
+          hasWizardNextButton: presence.hasNext,
+          frameContextsCount: frames.length,
+        };
+
+        if (hasForm || (info.hasResumeUpload && info.inputCount >= 2)) {
+          return info;
+        }
+
+        if (!bestInfo || info.inputCount > bestInfo.inputCount) {
+          bestInfo = info;
+        }
       }
+    }
 
-      const emailInputs = document.querySelectorAll('input[type="email"], input[name*="email" i], input[id*="email" i]');
-      if (emailInputs.length > 0) hasEmail = true;
-
-      const nameInputs = document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="name" i]');
-      if (nameInputs.length > 0) hasName = true;
-
-      const allInputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea');
-      totalInputs = allInputs.length;
-
-      const submits = document.querySelectorAll('button[type="submit"], input[type="submit"]');
-      if (submits.length > 0) hasSubmit = true;
-      else {
-        document.querySelectorAll('button, a[role="button"]').forEach(b => {
-          const t = (b.textContent || '').trim().toLowerCase();
-          if (t.includes('submit') || t.includes('complete application')) hasSubmit = true;
-          if (t.includes('next') || t.includes('continue') || t.includes('save and continue')) hasNext = true;
-        });
-      }
-
-      return {
-        totalInputs,
-        hasResume,
-        hasCL,
-        hasEmail,
-        hasName,
-        hasSubmit,
-        hasNext,
-      };
-    }).catch(() => ({ totalInputs: 0, hasResume: false, hasCL: false, hasEmail: false, hasName: false, hasSubmit: false, hasNext: false }));
-
-    const hasForm = (presence.hasResume && presence.totalInputs >= 2) || (presence.hasEmail && presence.totalInputs >= 3);
-
-    return {
-      hasForm,
-      inputCount: presence.totalInputs,
-      hasResumeUpload: presence.hasResume,
-      hasCoverLetterUpload: presence.hasCL,
-      hasEmailInput: presence.hasEmail,
-      hasNameInput: presence.hasName,
-      hasSubmitButton: presence.hasSubmit,
-      hasWizardNextButton: presence.hasNext,
-      frameContextsCount: page.frames().length,
+    return bestInfo ?? {
+      hasForm: false,
+      inputCount: 0,
+      hasResumeUpload: false,
+      hasCoverLetterUpload: false,
+      hasEmailInput: false,
+      hasNameInput: false,
+      hasSubmitButton: false,
+      hasWizardNextButton: false,
+      frameContextsCount: frames.length,
     };
   }
 
