@@ -1,3 +1,4 @@
+import { Frame, Page } from 'playwright';
 import {
   ATSPlatform,
   ATSDetectionResult,
@@ -163,29 +164,51 @@ export class GreenhousePlugin extends ATSPlugin {
     }
   }
 
+  private async getFormContext(browser: BrowserSession): Promise<Frame | Page> {
+    return await browser.findFormFrame([
+      '#application_form',
+      '#main_fields',
+      'form#application',
+      '#grnhse_app form',
+      '.application--form',
+      'form[action*="greenhouse" i]',
+      'form[data-testid*="application" i]',
+      'div[class*="application-form" i]',
+      'div[class*="ApplicationForm" i]',
+      'input[name="resume"]',
+      'input[name="job_application[resume]"]',
+      'input[name*="first_name" i]',
+      'input[name*="firstName" i]',
+      'input[name*="email" i]',
+      'input[type="email"]',
+      'input[type="file"]',
+      'form',
+    ]);
+  }
+
   // ─── Apply ────────────────────────────────────────────────────────────────
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
-    const page = browser.page;
+    const targetContext = await this.getFormContext(browser);
     const profile = context.userProfile;
 
     // ── Personal information fields ──────────────────────────────────────────
     await this.fillInput(
-      page,
+      targetContext,
       ['#first_name', 'input[name="first_name" i]', 'input[name="firstName" i]', 'input[name*="first" i]', 'input[id*="first_name" i]'],
       profile.name.split(' ')[0] ?? '',
       logger,
       'first_name'
     );
     await this.fillInput(
-      page,
+      targetContext,
       ['#last_name', 'input[name="last_name" i]', 'input[name="lastName" i]', 'input[name*="last" i]', 'input[id*="last_name" i]'],
       profile.name.split(' ').slice(1).join(' ') ?? '',
       logger,
       'last_name'
     );
     await this.fillInput(
-      page,
+      targetContext,
       ['#email', 'input[name="email" i]', 'input[type="email"]', 'input[id*="email" i]'],
       profile.email,
       logger,
@@ -194,7 +217,7 @@ export class GreenhousePlugin extends ATSPlugin {
 
     if (profile.phone) {
       await this.fillInput(
-        page,
+        targetContext,
         ['#phone', 'input[name="phone" i]', 'input[type="tel"]', 'input[id*="phone" i]'],
         profile.phone,
         logger,
@@ -204,18 +227,18 @@ export class GreenhousePlugin extends ATSPlugin {
       // Handle phone country dropdown if present
       try {
         const countryVal = profile.country || 'United States';
-        const countryDropdown = page.locator('div.select, [id*="country"], div[class*="country"]').first();
+        const countryDropdown = targetContext.locator('div.select, [id*="country"], div[class*="country"]').first();
         if (await countryDropdown.count() > 0 && await countryDropdown.isVisible().catch(() => false)) {
           const reactInput = countryDropdown.locator('input.select__input, input[role="combobox"]').first();
           const control = countryDropdown.locator('.select__control, .select-shell').first();
           if (await control.count() > 0) await control.click().catch(() => null);
           if (await reactInput.count() > 0) {
             await reactInput.focus().catch(() => null);
-            await page.keyboard.type(countryVal, { delay: 40 });
-            await page.keyboard.press('Enter');
-            await page.waitForTimeout(200);
+            await this.typeHumanized(targetContext, reactInput, countryVal);
+            await browser.page.keyboard.press('Enter');
+            await browser.page.waitForTimeout(200);
           }
-          const optionItem = page.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(countryVal, 'i') }).first();
+          const optionItem = targetContext.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(countryVal, 'i') }).first();
           if (await optionItem.count() > 0 && await optionItem.isVisible().catch(() => false)) {
             await optionItem.click().catch(() => null);
           }
@@ -225,7 +248,7 @@ export class GreenhousePlugin extends ATSPlugin {
 
     if (profile.location) {
       await this.fillInput(
-        page,
+        targetContext,
         ['#job_application_location', '#location', 'input[name*="location" i]', 'input[id*="location" i]'],
         profile.location,
         logger,
@@ -234,7 +257,6 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     if (profile.linkedinUrl) {
-      // Greenhouse uses several possible selectors for LinkedIn
       const linkedinSelectors = [
         '#linkedin_profile',
         'input[name="job_application[urls][LinkedIn]"]',
@@ -242,9 +264,9 @@ export class GreenhousePlugin extends ATSPlugin {
         'input[aria-label*="LinkedIn"]',
       ];
       for (const sel of linkedinSelectors) {
-        const el = page.locator(sel);
+        const el = targetContext.locator(sel);
         if (await el.count() > 0) {
-          await this.typeHumanized(page, el, profile.linkedinUrl);
+          await this.typeHumanized(targetContext, el, profile.linkedinUrl);
           await logger.info('field_filled', 'LinkedIn URL populated');
           break;
         }
@@ -259,9 +281,9 @@ export class GreenhousePlugin extends ATSPlugin {
         'input[placeholder*="Portfolio"]',
       ];
       for (const sel of websiteSelectors) {
-        const el = page.locator(sel);
+        const el = targetContext.locator(sel);
         if (await el.count() > 0) {
-          await this.typeHumanized(page, el, profile.websiteUrl);
+          await this.typeHumanized(targetContext, el, profile.websiteUrl);
           await logger.info('field_filled', 'Website/portfolio URL populated');
           break;
         }
@@ -284,12 +306,12 @@ export class GreenhousePlugin extends ATSPlugin {
 
     let resumeUploaded = false;
     for (const sel of resumeSelectors) {
-      const el = page.locator(sel).first();
+      const el = targetContext.locator(sel).first();
       if (await el.count() > 0) {
         await el.setInputFiles(resumePath);
         resumeUploaded = true;
         await logger.info('resume_uploaded', `Resume uploaded via: ${sel}`);
-        await page.waitForTimeout(1500);
+        await browser.page.waitForTimeout(1500);
         break;
       }
     }
@@ -299,35 +321,37 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     // ── Cover letter upload (optional field) ─────────────────────────────────
-    const clPath = await browser.writeMarkdownToPdf(
-      context.coverLetterMarkdown,
-      `cover_letter_${context.sessionId}.pdf`
-    );
+    if (context.coverLetterMarkdown) {
+      const clPath = await browser.writeMarkdownToPdf(
+        context.coverLetterMarkdown,
+        `cover_letter_${context.sessionId}.pdf`
+      );
 
-    const clSelectors = [
-      'input[name="cover_letter"]',
-      'input[name="job_application[cover_letter]"]',
-      '#cover_letter',
-    ];
+      const clSelectors = [
+        'input[name="cover_letter"]',
+        'input[name="job_application[cover_letter]"]',
+        '#cover_letter',
+      ];
 
-    for (const sel of clSelectors) {
-      const el = page.locator(sel).first();
-      if (await el.count() > 0) {
-        await el.setInputFiles(clPath);
-        await logger.info('cover_letter_uploaded', 'Cover letter uploaded');
-        await page.waitForTimeout(1000);
-        break;
+      for (const sel of clSelectors) {
+        const el = targetContext.locator(sel).first();
+        if (await el.count() > 0) {
+          await el.setInputFiles(clPath);
+          await logger.info('cover_letter_uploaded', 'Cover letter uploaded');
+          await browser.page.waitForTimeout(1000);
+          break;
+        }
       }
     }
 
     // ── Custom questions & Demographics ─────────────────────────────────────
-    await this.answerCustomQuestions(browser, context, logger);
-    await this.handleConsentCheckboxes(page, logger);
-    await this.handleEEOCDemographics(page, profile, logger);
+    await this.answerCustomQuestions(targetContext, browser, context, logger);
+    await this.handleConsentCheckboxes(targetContext, logger);
+    await this.handleEEOCDemographics(targetContext, profile, logger);
 
     // ── Universal AI question resolver for custom & screening questions ───
     await UniversalQuestionResolver.resolveAndFillQuestions(
-      page,
+      targetContext,
       browser,
       context,
       logger,
@@ -342,7 +366,7 @@ export class GreenhousePlugin extends ATSPlugin {
     _context: WorkflowContext,
     logger: ExecutionLogger
   ): Promise<{ valid: boolean; issues: string[] }> {
-    const page = browser.page;
+    const targetContext = await this.getFormContext(browser);
     const issues: string[] = [];
 
     // Greenhouse marks invalid fields with .invalid-field or aria-invalid
@@ -355,7 +379,7 @@ export class GreenhousePlugin extends ATSPlugin {
     ];
 
     for (const sel of errorSelectors) {
-      const els = await page.locator(sel).all();
+      const els = await targetContext.locator(sel).all();
       for (const el of els) {
         const text = await el.textContent();
         if (text?.trim()) issues.push(text.trim());
@@ -378,6 +402,7 @@ export class GreenhousePlugin extends ATSPlugin {
     context: WorkflowContext,
     logger: ExecutionLogger
   ): Promise<WorkflowResult> {
+    const targetContext = await this.getFormContext(browser);
     const page = browser.page;
 
     if (context.simulationMode) {
@@ -398,12 +423,18 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     // Live mode — click the submit button.
-    // Greenhouse's stable semantic selectors are passed as Tier 1; the base-class
-    // helper falls back through fuzzy attribute matching and text scanning.
     const submitBtn = await this.findSubmitButton(
-      page,
+      targetContext,
       logger,
-      ['input[type="submit"]#submit_app', '#submit_app', 'input[type="submit"][value*="Submit" i]']
+      [
+        'input[type="submit"]#submit_app',
+        '#submit_app',
+        'input[type="submit"][value*="Submit" i]',
+        'button[type="submit"]',
+        '#submit_button',
+        'button:has-text("Submit Application")',
+        'button:has-text("Submit")',
+      ]
     );
 
     if (!submitBtn) {
@@ -458,7 +489,7 @@ export class GreenhousePlugin extends ATSPlugin {
    * Fill a text input if it exists; log and skip silently if not found.
    */
   private async fillInput(
-    page: import('playwright').Page,
+    ctx: Frame | Page,
     selectorOrSelectors: string | string[],
     value: string,
     logger: ExecutionLogger,
@@ -467,10 +498,10 @@ export class GreenhousePlugin extends ATSPlugin {
     if (!value) return;
     const selectors = Array.isArray(selectorOrSelectors) ? selectorOrSelectors : [selectorOrSelectors];
     for (const sel of selectors) {
-      const el = page.locator(sel).first();
+      const el = ctx.locator(sel).first();
       if ((await el.count().catch(() => 0)) > 0 && (await el.isVisible().catch(() => true))) {
-        await this.typeHumanized(page, el, value);
-        await logger.info('field_filled', `Field "${fieldName}" populated`);
+        await this.typeHumanized(ctx, el, value);
+        await logger.info('field_filled', `Field "${fieldName}" populated via: ${sel}`);
         return;
       }
     }
@@ -481,15 +512,15 @@ export class GreenhousePlugin extends ATSPlugin {
    * Handles text inputs, radio buttons, native HTML selects, and modern React Select dropdowns.
    */
   private async answerCustomQuestions(
+    ctx: Frame | Page,
     browser: BrowserSession,
     context: WorkflowContext,
     logger: ExecutionLogger
   ): Promise<void> {
-    const page = browser.page;
     const profile = context.userProfile;
 
     // Greenhouse wraps question fields in .field-wrapper, .field, .custom-field, or .select__container
-    const questionContainers = await page
+    const questionContainers = await ctx
       .locator('.field-wrapper, .field, .custom-field, .application--questions > div, div.select')
       .all();
 
@@ -521,7 +552,7 @@ export class GreenhousePlugin extends ATSPlugin {
         if (answer) {
           const currentVal = await textInput.inputValue().catch(() => '');
           if (!currentVal) {
-            await this.typeHumanized(page, textInput, answer);
+            await this.typeHumanized(ctx, textInput, answer);
             await logger.info('question_answered', `Custom text field populated: "${label.substring(0, 50)}"`);
           }
         }
@@ -633,17 +664,17 @@ export class GreenhousePlugin extends ATSPlugin {
 
               if (await control.count() > 0 || await reactInput.count() > 0) {
                 if (await control.count() > 0) await control.click().catch(() => null);
-                await page.waitForTimeout(200);
+                await browser.page.waitForTimeout(200);
 
                 if (await reactInput.count() > 0) {
                   await reactInput.focus().catch(() => null);
-                  await page.keyboard.type(targetValue, { delay: 50 });
-                  await page.keyboard.press('Enter');
-                  await page.waitForTimeout(300);
+                  await this.typeHumanized(ctx, reactInput, targetValue);
+                  await browser.page.keyboard.press('Enter');
+                  await browser.page.waitForTimeout(300);
                 }
 
                 // Fallback: Click matching option in dropdown popup
-                const optionItem = page.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(targetValue, 'i') }).first();
+                const optionItem = ctx.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(targetValue, 'i') }).first();
                 if (await optionItem.count() > 0 && await optionItem.isVisible().catch(() => false)) {
                   await optionItem.click().catch(() => null);
                 }
