@@ -465,7 +465,7 @@ function ScoreRow({ label, score }: { label: string, score: number }) {
         <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
         <span style={{ fontWeight: 600, color }}>{score}/100</span>
       </div>
-      <div style={{ width: '100%', height: '6px', background: 'var(--bg-color)', borderRadius: '99px', overflow: 'hidden' }}>
+      <div style={{ width: '100%', height: '6px', background: '#eceded', borderRadius: '99px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: '99px' }} />
       </div>
     </div>
