@@ -119,10 +119,13 @@ export abstract class ATSPlugin {
       lowerTitle.includes('register');
 
     const hasPasswordField = (await page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]').count().catch(() => 0)) > 0;
-    const domCreateAccount = (await page.locator('h1, h2, h3, div, button, a').filter({ hasText: /create account/i }).count().catch(() => 0)) > 0;
-    const domSignIn = (await page.locator('h1, h2, h3, button, a').filter({ hasText: /sign in/i }).count().catch(() => 0)) > 0;
-    const domPasswordReq = (await page.locator(':has-text("Password Requirements")').count().catch(() => 0)) > 0;
-    const domVerifyPassword = (await page.locator(':has-text("Verify New Password")').count().catch(() => 0)) > 0;
+    const domPasswordReq = (await page.locator(':has-text("Password Requirements"), :has-text("Verify New Password"), :has-text("Verify Password")').count().catch(() => 0)) > 0;
+
+    const authModal = page.locator('[role="dialog"], [aria-modal="true"], [data-automation-id*="auth" i], [data-automation-id*="modal" i], form[action*="login" i], form[action*="auth" i]').first();
+    const hasAuthModal = (await authModal.count().catch(() => 0)) > 0 && 
+      (await authModal.locator('input[type="password"], input[type="email"], input[name*="user" i], [data-automation-id*="password" i]').count().catch(() => 0)) > 0;
+
+    const hasAuthInputs = (await page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').count().catch(() => 0)) > 0;
 
     const guestBtn = page.locator('button, a').filter({ hasText: /apply as guest|continue as guest|apply without account/i }).first();
     const isGuestOption = (await guestBtn.count().catch(() => 0)) > 0;
@@ -137,7 +140,9 @@ export abstract class ATSPlugin {
       }
     }
 
-    const isGateActive = urlMatch || titleMatch || hasPasswordField || domCreateAccount || domSignIn || domPasswordReq || domVerifyPassword;
+    // A gate is genuinely active only when a password field is present, password requirements are shown,
+    // an auth modal with inputs is open, or an explicit auth URL/title has login input fields.
+    const isGateActive = hasPasswordField || domPasswordReq || hasAuthModal || ((urlMatch || titleMatch) && hasAuthInputs);
 
     if (isGateActive) {
       const email = context?.userProfile?.accountEmail || context?.userProfile?.email;
@@ -204,6 +209,19 @@ export abstract class ATSPlugin {
           let passwordInputs = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
 
           for (let waitCount = 0; waitCount < 5; waitCount++) {
+            if ((await emailInput.count().catch(() => 0)) > 0 && (await passwordInputs.count().catch(() => 0)) > 0) {
+              break;
+            }
+            for (const frame of page.frames()) {
+              if (frame === page.mainFrame()) continue;
+              const frameEmail = frame.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
+              const framePass = frame.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
+              if ((await frameEmail.count().catch(() => 0)) > 0 && (await framePass.count().catch(() => 0)) > 0) {
+                emailInput = frameEmail;
+                passwordInputs = framePass;
+                break;
+              }
+            }
             if ((await emailInput.count().catch(() => 0)) > 0 && (await passwordInputs.count().catch(() => 0)) > 0) {
               break;
             }
@@ -276,11 +294,13 @@ export abstract class ATSPlugin {
               }
             }
 
-            const termsCheckbox = page.locator('input[type="checkbox"][name*="term" i], input[type="checkbox"][name*="privacy" i], [data-automation-id*="agree" i], [data-automation-id*="checkbox" i], input[type="checkbox"]').first();
+            const termsCheckbox = page.locator('input[type="checkbox"][name*="term" i], input[type="checkbox"][name*="privacy" i], [data-automation-id*="agree" i], [data-automation-id*="createAccountCheckbox" i], [data-automation-id*="checkbox" i], [data-automation-id*="consent" i], input[type="checkbox"]').first();
             if (await termsCheckbox.count() > 0) {
               const isChecked = await termsCheckbox.isChecked().catch(() => false);
               if (!isChecked) {
-                await termsCheckbox.check({ force: true }).catch(() => {});
+                await termsCheckbox.check({ force: true }).catch(async () => {
+                  await termsCheckbox.click({ force: true }).catch(() => {});
+                });
               }
             }
 

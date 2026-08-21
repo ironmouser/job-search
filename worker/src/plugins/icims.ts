@@ -60,6 +60,39 @@ export class ICIMSPlugin extends ATSPlugin {
       await logger.info('iframe_detected', 'Found iCIMS application iframe');
     }
 
+    // If on job description page, click Apply button (in main page or inside iCIMS iframe)
+    const applySelectors = [
+      'a.iCIMS_ApplyOnline',
+      'a:has-text("Apply for this job online")',
+      'button:has-text("Apply for this job online")',
+      'a:has-text("Apply Online")',
+      'button:has-text("Apply Online")',
+      'a[title*="Apply for this job" i]',
+      'a[title*="Apply online" i]',
+      'a:has-text("Apply")',
+      'button:has-text("Apply")',
+    ];
+
+    for (const sel of applySelectors) {
+      try {
+        const btn = browser.page.locator(sel).first();
+        if ((await btn.count().catch(() => 0)) > 0 && (await btn.isVisible().catch(() => false))) {
+          await btn.click().catch(() => {});
+          await logger.info('apply_button_clicked', `Clicked iCIMS apply button via: ${sel}`);
+          await browser.page.waitForTimeout(2500);
+          break;
+        }
+
+        const iframeBtn = browser.page.frameLocator('#icims_content_iframe, iframe[name="icims_iframe"]').locator(sel).first();
+        if ((await iframeBtn.count().catch(() => 0)) > 0 && (await iframeBtn.isVisible().catch(() => false))) {
+          await iframeBtn.click().catch(() => {});
+          await logger.info('apply_button_clicked', `Clicked iCIMS iframe apply button via: ${sel}`);
+          await browser.page.waitForTimeout(2500);
+          break;
+        }
+      } catch {}
+    }
+
     await this.checkAccountGate(browser.page, context.jobUrl, this.displayName, context);
   }
 

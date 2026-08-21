@@ -95,7 +95,7 @@ export class WorkdayPlugin extends ATSPlugin {
     await browser.navigate(context.jobUrl);
     await logger.info('page_navigated', 'Navigated to Workday job posting');
 
-    // Check for login/create account page before clicking Apply (some URLs go straight to auth/apply)
+    // Check for login/create account page before clicking Apply (if URL is already on a dedicated auth gate)
     await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
     // Wait for and click the Apply button
@@ -128,8 +128,29 @@ export class WorkdayPlugin extends ATSPlugin {
     // Give page time to load after click
     await page.waitForTimeout(2500);
 
-    // Check for login/create account page after clicking Apply
-    await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
+    // If clicking "Apply" opened a popover menu (e.g. "Autofill with Resume", "Apply Manually"), click "Autofill with Resume"
+    const subOptionSelectors = [
+      '[data-automation-id="autofillWithResume"]',
+      'a[data-automation-id*="autofill" i]',
+      'button[data-automation-id*="autofill" i]',
+      'a:has-text("Autofill with Resume")',
+      'button:has-text("Autofill with Resume")',
+      '[data-automation-id="applyManually"]',
+      'a[data-automation-id*="applyManually" i]',
+      'button[data-automation-id*="applyManually" i]',
+      'a:has-text("Apply Manually")',
+      'button:has-text("Apply Manually")',
+    ];
+
+    for (const sel of subOptionSelectors) {
+      const subOption = page.locator(sel).first();
+      if ((await subOption.count().catch(() => 0)) > 0 && (await subOption.isVisible().catch(() => false))) {
+        await subOption.click().catch(() => {});
+        await logger.info('sub_option_clicked', `Selected Workday application mode via: ${sel}`);
+        await page.waitForTimeout(2500);
+        break;
+      }
+    }
 
     if (!clicked) {
       await this.checkClosedJob(browser, logger, context.jobUrl);
@@ -139,6 +160,9 @@ export class WorkdayPlugin extends ATSPlugin {
         context.jobUrl
       );
     }
+
+    // Check for login/create account page after clicking Apply and selecting application mode
+    await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
     await logger.info('form_located', 'Workday application form ready');
   }
