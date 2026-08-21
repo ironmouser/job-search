@@ -461,11 +461,19 @@ export default function DashboardClient({
       try {
         stateFromStorage = JSON.parse(saved);
         if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter);
-        if (stateFromStorage.viewMode) {
-          if (typeof window !== 'undefined' && window.innerWidth <= 768 && stateFromStorage.viewMode === 'columns') {
+        const explicitViewMode = typeof window !== 'undefined' ? localStorage.getItem('dashboard_view_mode_explicit') : null;
+        if (explicitViewMode === 'grid' || explicitViewMode === 'table' || explicitViewMode === 'columns') {
+          if (typeof window !== 'undefined' && window.innerWidth <= 768 && explicitViewMode === 'columns') {
             setViewMode('grid');
           } else {
-            setViewMode(stateFromStorage.viewMode);
+            setViewMode(explicitViewMode as 'grid' | 'table' | 'columns');
+          }
+        } else {
+          // Default all current & future users to split panel 'columns' (or 'grid' on mobile)
+          if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+            setViewMode('grid');
+          } else {
+            setViewMode('columns');
           }
         }
         if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption);
@@ -573,6 +581,19 @@ export default function DashboardClient({
       params.set('page', '1');
       params.set('limit', newLimit.toString());
       window.history.replaceState(null, '', `?${params.toString()}`);
+    }
+  };
+
+  const handleViewModeChange = (mode: 'grid' | 'table' | 'columns') => {
+    setViewMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboard_view_mode_explicit', mode);
+      try {
+        const saved = localStorage.getItem('jobAgentDashboardState');
+        const stateObj = saved ? JSON.parse(saved) : {};
+        stateObj.viewMode = mode;
+        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
+      } catch (e) {}
     }
   };
 
@@ -1793,7 +1814,7 @@ export default function DashboardClient({
                 }}
               >
                 <button 
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => handleViewModeChange('grid')}
                   className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
                   title="Grid View"
                   style={{
@@ -1813,7 +1834,7 @@ export default function DashboardClient({
                   <LayoutGrid size={16} />
                 </button>
                 <button 
-                  onClick={() => setViewMode('table')}
+                  onClick={() => handleViewModeChange('table')}
                   className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
                   title="Table View"
                   style={{
@@ -1833,7 +1854,7 @@ export default function DashboardClient({
                   <List size={16} />
                 </button>
                 <button 
-                  onClick={() => setViewMode('columns')}
+                  onClick={() => handleViewModeChange('columns')}
                   className={`view-toggle-btn desktop-only-toggle ${viewMode === 'columns' ? 'active' : ''}`}
                   title="Column Split View"
                   style={{
