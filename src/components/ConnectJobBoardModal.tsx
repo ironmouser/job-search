@@ -129,10 +129,10 @@ export function ConnectJobBoardModal({
         style={{
           width: '100%',
           maxWidth: '560px',
-          backgroundColor: 'var(--bg-card, #18181b)',
-          border: '1px solid var(--border-color, #27272a)',
+          backgroundColor: 'var(--card, var(--card-bg, #ffffff))',
+          border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.08)))',
           borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          boxShadow: 'var(--shadow-lg, 0 25px 50px -12px rgba(0, 0, 0, 0.25))',
           overflow: 'hidden',
           animation: 'fadeIn 0.2s ease-out',
         }}
@@ -144,7 +144,7 @@ export function ConnectJobBoardModal({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '20px 24px',
-            borderBottom: '1px solid var(--border-color, #27272a)',
+            borderBottom: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.08)))',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -153,20 +153,20 @@ export function ConnectJobBoardModal({
                 width: '40px',
                 height: '40px',
                 borderRadius: '10px',
-                backgroundColor: 'var(--primary-muted, rgba(99, 102, 241, 0.15))',
+                backgroundColor: 'var(--accent-glow, rgba(0, 112, 243, 0.1))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--primary, #6366f1)',
+                color: 'var(--primary)',
               }}
             >
               <Key size={20} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary, #f4f4f5)', margin: 0 }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
                 Connect {provider.name}
               </h3>
-              <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary, #a1a1aa)', margin: 0 }}>
+              <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', margin: 0 }}>
                 {provider.description}
               </p>
             </div>
@@ -207,7 +207,7 @@ export function ConnectJobBoardModal({
           </div>
 
           {/* Navigation Tabs */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color, #27272a)', paddingBottom: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.08)))', paddingBottom: '8px' }}>
             <button
               onClick={() => setActiveTab('quick')}
               style={{
@@ -217,8 +217,8 @@ export function ConnectJobBoardModal({
                 fontWeight: 500,
                 border: 'none',
                 cursor: 'pointer',
-                backgroundColor: activeTab === 'quick' ? 'var(--primary, #6366f1)' : 'transparent',
-                color: activeTab === 'quick' ? '#ffffff' : 'var(--text-secondary, #a1a1aa)',
+                backgroundColor: activeTab === 'quick' ? 'var(--primary)' : 'transparent',
+                color: activeTab === 'quick' ? 'var(--primary-foreground, #ffffff)' : 'var(--text-secondary)',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -233,8 +233,8 @@ export function ConnectJobBoardModal({
                 fontWeight: 500,
                 border: 'none',
                 cursor: 'pointer',
-                backgroundColor: activeTab === 'manual' ? 'var(--primary, #6366f1)' : 'transparent',
-                color: activeTab === 'manual' ? '#ffffff' : 'var(--text-secondary, #a1a1aa)',
+                backgroundColor: activeTab === 'manual' ? 'var(--primary)' : 'transparent',
+                color: activeTab === 'manual' ? 'var(--primary-foreground, #ffffff)' : 'var(--text-secondary)',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -270,7 +270,7 @@ export function ConnectJobBoardModal({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #a1a1aa)', display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
                     Profile Name (Optional)
                   </label>
                   <input
@@ -282,15 +282,15 @@ export function ConnectJobBoardModal({
                       width: '100%',
                       padding: '8px 12px',
                       borderRadius: '8px',
-                      backgroundColor: 'var(--bg-muted, #27272a)',
-                      border: '1px solid var(--border-color, #3f3f46)',
-                      color: 'var(--text-primary, #f4f4f5)',
+                      backgroundColor: 'var(--input, var(--background))',
+                      border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
+                      color: 'var(--text-primary)',
                       fontSize: '0.85rem',
                     }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #a1a1aa)', display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
                     Account Email (Optional)
                   </label>
                   <input
@@ -302,9 +302,9 @@ export function ConnectJobBoardModal({
                       width: '100%',
                       padding: '8px 12px',
                       borderRadius: '8px',
-                      backgroundColor: 'var(--bg-muted, #27272a)',
-                      border: '1px solid var(--border-color, #3f3f46)',
-                      color: 'var(--text-primary, #f4f4f5)',
+                      backgroundColor: 'var(--input, var(--background))',
+                      border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
+                      color: 'var(--text-primary)',
                       fontSize: '0.85rem',
                     }}
                   />
@@ -327,7 +327,7 @@ export function ConnectJobBoardModal({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary, #a1a1aa)' }}>
+              <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
                 Paste the exported Playwright `storageState` JSON or cookie array:
               </div>
               <textarea
@@ -339,20 +339,19 @@ export function ConnectJobBoardModal({
                   width: '100%',
                   padding: '10px',
                   borderRadius: '8px',
-                  backgroundColor: 'var(--bg-muted, #27272a)',
-                  border: '1px solid var(--border-color, #3f3f46)',
-                  color: 'var(--text-primary, #f4f4f5)',
+                  backgroundColor: 'var(--input, var(--background))',
+                  border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
+                  color: 'var(--text-primary)',
                   fontSize: '0.8rem',
                   fontFamily: 'monospace',
                 }}
               />
               <Button
                 onClick={() => handleConnect()}
+                className="btn-primary"
                 disabled={submitting || !sessionInput.trim()}
                 style={{
                   width: '100%',
-                  backgroundColor: 'var(--primary, #6366f1)',
-                  color: '#ffffff',
                 }}
               >
                 {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}

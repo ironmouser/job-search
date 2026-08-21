@@ -95,8 +95,8 @@ export default function ConnectedAccountsSection() {
         style={{
           padding: '16px 20px',
           borderRadius: '12px',
-          backgroundColor: 'rgba(99, 102, 241, 0.08)',
-          border: '1px solid rgba(99, 102, 241, 0.2)',
+          backgroundColor: 'var(--accent-glow, rgba(99, 102, 241, 0.08))',
+          border: '1px solid var(--border-glass, rgba(99, 102, 241, 0.2))',
           display: 'flex',
           alignItems: 'flex-start',
           gap: '14px',
@@ -104,10 +104,10 @@ export default function ConnectedAccountsSection() {
       >
         <ShieldCheck size={24} style={{ color: 'var(--primary, #6366f1)', flexShrink: 0, marginTop: '2px' }} />
         <div>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary, #f4f4f5)', fontSize: '0.95rem', marginBottom: '4px' }}>
+          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: '4px' }}>
             Connected Job Boards for 1-Click & Easy Apply
           </div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             Connect your job board profiles so Jahq can automate applications on ZipRecruiter 1-Click, Dice Easy Apply, and LinkedIn. Sessions are encrypted using AES-256-GCM and refreshed automatically.
           </div>
         </div>
@@ -130,18 +130,19 @@ export default function ConnectedAccountsSection() {
               key={acc.id}
               style={{
                 borderRadius: '12px',
-                backgroundColor: 'var(--bg-card, #18181b)',
+                backgroundColor: 'var(--card, var(--card-bg, #ffffff))',
                 border: isConnected
-                  ? '1px solid rgba(34, 197, 94, 0.3)'
+                  ? '1px solid rgba(34, 197, 94, 0.4)'
                   : isExpired
-                  ? '1px solid rgba(234, 179, 8, 0.3)'
-                  : '1px solid var(--border-color, #27272a)',
+                  ? '1px solid rgba(234, 179, 8, 0.4)'
+                  : '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.08)))',
                 padding: '18px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 gap: '16px',
                 transition: 'all 0.2s ease',
+                boxShadow: 'var(--shadow-sm)',
               }}
             >
               <div>
@@ -149,10 +150,10 @@ export default function ConnectedAccountsSection() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontSize: '1.4rem' }}>{getProviderIcon(acc.id)}</span>
                     <div>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary, #f4f4f5)', fontSize: '0.95rem' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
                         {acc.name}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #a1a1aa)' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                         {acc.description}
                       </div>
                     </div>
@@ -200,8 +201,8 @@ export default function ConnectedAccountsSection() {
                         gap: '6px',
                         fontSize: '0.75rem',
                         fontWeight: 500,
-                        color: 'var(--text-muted, #71717a)',
-                        backgroundColor: 'var(--bg-muted, #27272a)',
+                        color: 'var(--text-secondary)',
+                        backgroundColor: 'var(--secondary, var(--muted, rgba(0, 0, 0, 0.04)))',
                         padding: '4px 8px',
                         borderRadius: '6px',
                       }}
@@ -212,11 +213,11 @@ export default function ConnectedAccountsSection() {
                 </div>
 
                 {isConnected && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #a1a1aa)', marginTop: '8px', lineHeight: 1.4 }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
                     {acc.profileName && <div>Profile: <strong style={{ color: 'var(--text-primary)' }}>{acc.profileName}</strong></div>}
                     {acc.profileEmail && <div>Email: {acc.profileEmail}</div>}
                     {acc.lastUsedAt && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                         Last used: {new Date(acc.lastUsedAt).toLocaleDateString()}
                       </div>
                     )}
@@ -250,11 +251,10 @@ export default function ConnectedAccountsSection() {
                 ) : (
                   <Button
                     size="sm"
+                    className="btn-primary"
                     onClick={() => handleOpenConnect(acc)}
                     style={{
                       width: '100%',
-                      backgroundColor: 'var(--primary, #6366f1)',
-                      color: '#ffffff',
                       fontSize: '0.825rem',
                       fontWeight: 500,
                     }}
