@@ -4805,6 +4805,16 @@ body.light-theme .checklist-item-row:hover {
   position: relative;
 }
 
+@media (max-width: 1024px) {
+  .column-job-card {
+    max-width: 100% !important;
+  }
+}
+
+.dashboard-grid .column-job-card {
+  max-width: 100% !important;
+}
+
 
 .column-job-card:hover {
   border-color: rgba(255, 255, 255, 0.2);
