@@ -13,6 +13,7 @@ import {
   ATSPlatform,
   InterventionReason,
   WorkflowContext,
+} from '../types';
 import { InterventionError, ATSPlugin } from '../plugins/base-plugin';
 
 class GenericAuthHelper extends ATSPlugin {
