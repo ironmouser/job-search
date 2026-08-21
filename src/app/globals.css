@@ -3479,6 +3479,10 @@ body.light-theme .global-auto-apply-bar {
     left: 0 !important;
     width: 100% !important;
   }
+
+  .auto-apply-bar-header {
+    padding: 0 0.75rem;
+  }
 }
 
 .global-auto-apply-bar.collapsed {

@@ -406,8 +406,8 @@ export function GlobalAutoApplyBar() {
           </div>
         )}
 
-        {/* When expanded: show clean header title and quota */}
-        {isExpanded && (
+        {/* When expanded on desktop: show clean header title and quota */}
+        {isExpanded && !isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               Auto Apply Queue
@@ -442,13 +442,17 @@ export function GlobalAutoApplyBar() {
           </div>
         )}
 
-        {/* Spacer so right section stays right-aligned */}
-        {(isMobile || isExpanded) && <div style={{ flex: 1 }} />}
+        {/* Spacer so right section stays right-aligned on desktop */}
+        {!isMobile && <div style={{ flex: 1 }} />}
 
         {/* RIGHT SECTION: Global Background Auto Apply Status & Drawer Toggle */}
-
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isMobile ? 'center' : 'flex-end',
+          width: isMobile ? '100%' : 'auto',
+          flexShrink: 0
+        }}>
           {hasActiveQueue ? (
             /* Active / Recent Queue Pill */
             <div
@@ -456,6 +460,8 @@ export function GlobalAutoApplyBar() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
+                width: isMobile ? '100%' : 'auto',
                 gap: '0.5rem',
                 background: hasIntervention
                   ? '#2d1a04'
@@ -463,25 +469,26 @@ export function GlobalAutoApplyBar() {
                   ? '#0d2847'
                   : '#062d1d',
                 border: `1.5px solid ${hasIntervention ? '#f59e0b' : ongoingCount > 0 ? '#3b82f6' : '#10b981'}`,
-                borderRadius: '8px',
-                padding: '0.3rem 0.75rem',
+                borderRadius: '9999px',
+                padding: isMobile ? '0.4rem 1rem' : '0.35rem 0.85rem',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                 boxShadow: ongoingCount > 0 ? '0 0 12px rgba(59, 130, 246, 0.3)' : 'none',
               }}
               title="Click to view live application progress and queue"
             >
-              {hasIntervention ? (
-                <AlertTriangle size={15} color="#fbbf24" className="animate-pulse" />
-              ) : ongoingCount > 0 ? (
-                <Loader2 size={15} color="#60a5fa" className="animate-spin" />
-              ) : (
-                <CheckCircle2 size={15} color="#34d399" />
-              )}
+              {/* Left group inside pill */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                {hasIntervention ? (
+                  <AlertTriangle size={16} color="#fbbf24" className="animate-pulse" />
+                ) : ongoingCount > 0 ? (
+                  <Loader2 size={16} color="#60a5fa" className="animate-spin" />
+                ) : (
+                  <CheckCircle2 size={16} color="#34d399" />
+                )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <span style={{
-                  fontSize: '0.8rem',
+                  fontSize: '0.84rem',
                   fontWeight: 700,
                   color: '#ffffff',
                   whiteSpace: 'nowrap',
@@ -492,36 +499,39 @@ export function GlobalAutoApplyBar() {
                     ? `Auto Apply (${completedCount}/${totalCount})`
                     : 'Queue Complete'}
                 </span>
-
-                {selectedSession?.job?.company && (
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'none' }} className="md-inline-flex">
-                    • {selectedSession.job.company}
-                  </span>
-                )}
               </div>
 
-              <span style={{
-                fontSize: '0.75rem',
+              {/* Vertical Divider inside pill */}
+              <div style={{
+                height: '15px',
+                width: '1px',
+                background: 'rgba(255, 255, 255, 0.25)',
+                margin: '0 0.4rem',
+                flexShrink: 0,
+              }} />
+
+              {/* Right group inside pill */}
+              <div style={{
+                fontSize: '0.8rem',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.15rem',
-                borderLeft: '1px solid rgba(255, 255, 255, 0.25)',
-                paddingLeft: '0.45rem',
+                gap: '0.2rem',
                 fontWeight: 600,
+                flexShrink: 0,
               }}>
                 {isExpanded && activeDrawerTab === 'auto-apply' ? (
                   <>
                     <span>Close</span>
-                    <ChevronDown size={14} />
+                    <ChevronDown size={15} color="#ffffff" />
                   </>
                 ) : (
                   <>
                     <span>Live</span>
-                    <ChevronUp size={14} />
+                    <ChevronUp size={15} color="#ffffff" />
                   </>
                 )}
-              </span>
+              </div>
             </div>
           ) : (
             /* Idle System Status */
@@ -539,6 +549,53 @@ export function GlobalAutoApplyBar() {
             <>
               {/* Left Panel: Queue List */}
               <div className="drawer-queue-sidebar">
+                {/* Mobile Drawer Title Header */}
+                {isMobile && (
+                  <div style={{
+                    padding: '0.85rem 1rem 0.65rem 1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    borderBottom: '1px solid var(--border, rgba(255, 255, 255, 0.08))',
+                    background: 'var(--bg-primary, #0d1117)'
+                  }}>
+                    <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Auto Apply Queue
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        color: '#0070f3',
+                        background: 'rgba(0, 112, 243, 0.08)',
+                        border: '1px solid rgba(0, 112, 243, 0.2)',
+                        padding: '0.12rem 0.55rem',
+                        borderRadius: '9999px'
+                      }}>
+                        {activeSessions.length} {activeSessions.length === 1 ? 'task' : 'tasks'}
+                      </span>
+                      {quota && quota.tier !== 'FREE' && (
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          color: '#f59e0b',
+                          background: 'rgba(245, 158, 11, 0.08)',
+                          border: '1px solid rgba(245, 158, 11, 0.25)',
+                          padding: '0.12rem 0.55rem',
+                          borderRadius: '9999px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}>
+                          <Zap size={11} fill="currentColor" /> {quota.monthlyRemaining} of {quota.monthlyLimit} left
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="drawer-queue-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                     <ListOrdered size={14} color="#0070f3" />
