@@ -8,17 +8,66 @@ import { reformatJobDescriptionWithGemini } from '@/lib/formatter';
 import { scoreJob } from '@/lib/scoring';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { callAI } from '@/lib/ai';
-import { cleanJobUrl, isTrustedJobUrl, isSafePublicUrl } from '@/lib/urlUtils';
+import { cleanJobUrl, isTrustedJobUrl, isSafePublicUrl, evaluateUrlReputation } from '@/lib/urlUtils';
 import { logSuspiciousActivity } from '@/lib/security';
 import { getEffectiveTier } from '@/lib/tier';
 import { fetchWithScraperAPI, extractATSUrlFromHtml } from '@/lib/scraperapi';
 
-async function extractJobMetadataWithGemini(rawText: string) {
-  if ((!process.env.OPENAI_API_KEY && !process.env.DEEPSEEK_API_KEY) || !rawText || rawText.trim().length === 0) {
+/**
+ * Direct scraper helper for Salesforce career pages
+ */
+async function fetchSalesforceJob(cleanUrl: string) {
+  try {
+    const match = cleanUrl.match(/JR\d+/i);
+    if (!match) return null;
+    const reqId = match[0].toUpperCase();
+
+    const [res1, res2] = await Promise.allSettled([
+      fetch('https://a.sfdcstatic.com/digital/xsf/careers/prod/jobs_1.json').then(r => r.json()),
+      fetch('https://a.sfdcstatic.com/digital/xsf/careers/prod/jobs_2.json').then(r => r.json()),
+    ]);
+
+    const list1 = res1.status === 'fulfilled' ? res1.value?.Report_Entry || [] : [];
+    const list2 = res2.status === 'fulfilled' ? res2.value?.Report_Entry || [] : [];
+    // Prioritize list2 (jobs_2.json) because it contains the full Job_Description
+    const allJobs = [...list2, ...list1];
+
+    const matchJob = allJobs.find((j: any) => j.Job_Requisition_Ref_ID === reqId);
+    if (!matchJob) return null;
+
+    let salary = null;
+    const payTransparency = matchJob['Pay_Transparency_Text_if_location_region_is__Non-Sales-NAT_US___Geo_A_SEL_'];
+    if (payTransparency) {
+      const salaryMatch = payTransparency.match(/\$[\d,]+\s*-\s*\$[\d,]+/);
+      if (salaryMatch) {
+        salary = salaryMatch[0];
+      }
+    }
+
+    return {
+      title: matchJob.Job_Posting_Title || '',
+      company: 'Salesforce',
+      location: matchJob.Job_Requisition_Primary_Location || (matchJob.Locations ? matchJob.Locations.join(', ') : 'Remote'),
+      salaryRange: salary,
+      description: matchJob.Job_Description || '',
+      applicationUrl: matchJob.External_Job_Posting_Site || null,
+    };
+  } catch (err) {
+    console.warn('[add-by-url] Salesforce static fetch failed:', err);
+    return null;
+  }
+}
+
+async function extractAndVerifyJobPostingWithAI(rawText: string) {
+  if (!rawText || rawText.trim().length === 0) {
     return null;
   }
   try {
-    const prompt = `Extract job details from the following web page content. Return strictly valid JSON with no markdown wrapping.
+    const prompt = `Extract job details from the following web page content.
+Evaluate if this represents an authentic, legitimate job posting for any company (small business, startup, mid-market, or enterprise).
+Flag "is_legitimate_job_posting" as false ONLY if the content is completely unrelated to a job (e.g. empty shell, generic homepage, navigation menu only, 404 error, captcha) OR if it is an obvious scam/phishing page (demanding upfront payment, crypto, SSN upfront). If it contains real job description details, "is_legitimate_job_posting" MUST be true.
+
+Return strictly valid JSON with no markdown formatting.
 JSON Structure:
 {
   "title": "Job Title",
@@ -41,9 +90,23 @@ ${rawText.slice(0, 15000)}`;
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanJson);
   } catch (err) {
-    console.warn('DeepSeek metadata extraction failed:', err);
+    console.warn('[add-by-url] AI metadata extraction failed:', err);
     return null;
   }
+}
+
+function sanitizeManualInput(text?: string | null, maxLength = 25000): string {
+  if (!text || typeof text !== 'string') return '';
+  let sanitized = text.slice(0, maxLength);
+  // Strip dangerous executable/script tags & javascript: protocols
+  sanitized = sanitized
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+    .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/\bon\w+\s*=\s*(['"]).*?\1/gi, '');
+  return sanitized.trim();
 }
 
 export async function POST(request: Request) {
@@ -62,7 +125,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { url: rawUrl, manualTitle, manualCompany, manualDescription, manualLocation } = body;
 
-    if (!rawUrl && !manualDescription) {
+    const sanitizedManualDescription = sanitizeManualInput(manualDescription, 25000);
+    const sanitizedManualTitle = sanitizeManualInput(manualTitle, 200);
+    const sanitizedManualCompany = sanitizeManualInput(manualCompany, 200);
+    const sanitizedManualLocation = sanitizeManualInput(manualLocation, 200);
+
+    if (!rawUrl && !sanitizedManualDescription) {
       return NextResponse.json({ error: 'Job URL or description is required' }, { status: 400 });
     }
 
@@ -72,10 +140,29 @@ export async function POST(request: Request) {
 
     const cleanUrl = rawUrl ? cleanJobUrl(rawUrl) : `manual-${Date.now()}@userjob`;
 
-    const isTrusted = isTrustedJobUrl(cleanUrl);
+    // Perform universal URL & company reputation analysis
+    if (rawUrl) {
+      const reputation = evaluateUrlReputation(cleanUrl);
+      if (!reputation.isLegitimate || reputation.confidence === 'suspicious') {
+        await logSuspiciousActivity({ 
+          type: 'BLOCKED_SUSPICIOUS_URL', 
+          message: `Blocked suspicious URL: ${reputation.reasons.join('; ')}`, 
+          userId, 
+          metadata: { url: cleanUrl, flags: reputation.flags } 
+        });
+        return NextResponse.json({ 
+          error: 'UNTRUSTED_SOURCE',
+          message: `We could not verify that this URL is safe: ${reputation.reasons[0] || 'Suspicious URL pattern.'}`,
+          partialData: { 
+            title: sanitizedManualTitle || reputation.suggestedCompanyName ? `Position at ${reputation.suggestedCompanyName}` : '',
+            company: sanitizedManualCompany || reputation.suggestedCompanyName || '',
+            url: cleanUrl
+          }
+        }, { status: 400 });
+      }
+    }
 
-    // We no longer block untrusted URLs immediately.
-    // Instead, we verify their content using the LLM later in the pipeline.
+    const isTrusted = isTrustedJobUrl(cleanUrl);
 
     // 1. Check if job already exists in DB by cleanUrl
     let job = rawUrl ? await prisma.job.findUnique({ where: { url: cleanUrl } }) : null;
@@ -104,42 +191,74 @@ export async function POST(request: Request) {
       }
     }
 
-    let title = manualTitle || job?.title || '';
-    let company = manualCompany || job?.company || '';
-    let location = manualLocation || job?.location || 'Remote';
+    let title = sanitizedManualTitle || job?.title || '';
+    let company = sanitizedManualCompany || job?.company || '';
+    let location = sanitizedManualLocation || job?.location || 'Remote';
     let salaryRange = job?.salaryRange || null;
-    let description = manualDescription || job?.description || '';
+    let description = sanitizedManualDescription || job?.description || '';
 
     // If job does not exist and no manual description provided, attempt scraping
     let resolvedApplicationUrl: string | null = null;
-    if (!job && !manualDescription) {
+    if (!job && !sanitizedManualDescription) {
       let rawHtml = '';
       let fetchSuccess = false;
 
-      // Tier 1: Direct scrape (fast, free)
-      try {
-        const res = await gotScraping({
-          url: cleanUrl,
-          timeout: { request: 15000 },
-          retry: { limit: 0 },
-          throwHttpErrors: false,
-        });
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          rawHtml = res.body.toString();
-          if (!rawHtml.includes('Just a moment...') && !rawHtml.includes('cf-challenge-error-title')) {
-            fetchSuccess = true;
-          }
+      // Special handler for Salesforce Career URLs
+      if (cleanUrl.includes('salesforce.com') && /JR\d+/i.test(cleanUrl)) {
+        const sfJob = await fetchSalesforceJob(cleanUrl);
+        if (sfJob && sfJob.description) {
+          title = sfJob.title;
+          company = sfJob.company;
+          location = sfJob.location;
+          salaryRange = sfJob.salaryRange;
+          description = sfJob.description;
+          resolvedApplicationUrl = sfJob.applicationUrl;
+          fetchSuccess = true;
         }
-      } catch (e: any) {
-        console.warn(`Direct fetch failed for custom URL ${cleanUrl}: ${e.message}`);
       }
 
-      // Tier 2: ScraperAPI (raw HTML 1-credit fast path first, JS rendering fallback)
+      // Tier 1: Direct scrape (fast, free)
+      if (!fetchSuccess) {
+        try {
+          const res = await gotScraping({
+            url: cleanUrl,
+            timeout: { request: 15000 },
+            retry: { limit: 0 },
+            throwHttpErrors: false,
+          });
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            const tempHtml = res.body.toString();
+            if (!tempHtml.includes('Just a moment...') && !tempHtml.includes('cf-challenge-error-title')) {
+              const $temp = cheerio.load(tempHtml);
+              $temp('script, style, noscript, nav, header, footer, iframe, svg').remove();
+              const extractedBody = $temp('main, article, .job-description, .job_description, #job-description, [class*="description"], [id*="description"]').text() || $temp('body').text() || '';
+              // Verify we got substantive text (not just an empty client-side SPA shell)
+              if (extractedBody.trim().length >= 150) {
+                rawHtml = tempHtml;
+                fetchSuccess = true;
+              }
+            }
+          }
+        } catch (e: any) {
+          console.warn(`Direct fetch failed for custom URL ${cleanUrl}: ${e.message}`);
+        }
+      }
+
+      // Tier 2: ScraperAPI (raw HTML fast path first, JS rendering fallback for client-side SPAs)
       if (!fetchSuccess) {
         let scraperHtml = await fetchWithScraperAPI(cleanUrl, false);
-        if (!scraperHtml) {
+        if (scraperHtml) {
+          const $temp = cheerio.load(scraperHtml);
+          $temp('script, style, noscript, nav, header, footer, iframe, svg').remove();
+          const bodyText = $temp('body').text() || '';
+          if (bodyText.trim().length < 150) {
+            // HTML is a client-side SPA shell; escalate to JS rendering
+            scraperHtml = await fetchWithScraperAPI(cleanUrl, true);
+          }
+        } else {
           scraperHtml = await fetchWithScraperAPI(cleanUrl, true);
         }
+
         if (scraperHtml) {
           rawHtml = scraperHtml;
           fetchSuccess = true;
@@ -150,7 +269,7 @@ export async function POST(request: Request) {
         }
       }
 
-      if (fetchSuccess && rawHtml) {
+      if (fetchSuccess && rawHtml && !description) {
         const $ = cheerio.load(rawHtml);
 
         // Try extracting from JSON-LD schema
@@ -180,16 +299,16 @@ export async function POST(request: Request) {
           description = htmlBody;
         }
 
-        // If metadata is incomplete, description is raw HTML, or it's an untrusted URL, attempt LLM extraction/verification
-        if ((!title || !company || description.includes('<') || !isTrusted) && (process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY)) {
-          const aiExtracted = await extractJobMetadataWithGemini(description || $('body').text());
+        // If metadata is incomplete, description is raw HTML, or it's a custom company URL, run AI extraction & verification
+        if (!title || !company || description.includes('<') || !isTrusted) {
+          const aiExtracted = await extractAndVerifyJobPostingWithAI(description || $('body').text());
           if (aiExtracted) {
-            // For custom/untrusted URLs, strictly enforce AI verification
-            if (!isTrusted && aiExtracted.is_legitimate_job_posting === false) {
+            // Strictly enforce AI authenticity verification
+            if (aiExtracted.is_legitimate_job_posting === false) {
               await logSuspiciousActivity({ type: 'AI_PHISHING_FLAG', message: 'AI flagged submitted URL as non-job or malicious content', userId, metadata: { url: cleanUrl } });
               return NextResponse.json({ 
                 error: 'UNTRUSTED_SOURCE',
-                message: 'We could not verify that this URL is a legitimate job posting. For your security, we only allow verified job postings to be added.'
+                message: 'We could not verify that this page is an authentic job posting. Please ensure the link points directly to a job opening, or paste the description manually.'
               }, { status: 400 });
             }
 
@@ -201,18 +320,17 @@ export async function POST(request: Request) {
               description = aiExtracted.description;
             }
           } else if (!isTrusted) {
-             // If AI extraction failed completely on an untrusted site, we block it to be safe
-             await logSuspiciousActivity({ type: 'AI_VERIFICATION_FAILED', message: 'AI failed to extract data from untrusted URL', userId, metadata: { url: cleanUrl } });
+             await logSuspiciousActivity({ type: 'AI_VERIFICATION_FAILED', message: 'AI failed to extract data from custom company URL', userId, metadata: { url: cleanUrl } });
              return NextResponse.json({ 
                 error: 'UNTRUSTED_SOURCE',
-                message: 'Failed to verify custom job URL. Please paste the job description manually.'
+                message: 'Could not extract job information from this link. Please paste the job description text manually.'
               }, { status: 400 });
           }
         }
+      }
 
-        if (description && description.length > 50 && !description.includes('## ')) {
-          description = await reformatJobDescriptionWithGemini(description);
-        }
+      if (description && description.length > 50 && !description.includes('## ')) {
+        description = await reformatJobDescriptionWithGemini(description);
       }
     }
 

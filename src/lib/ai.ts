@@ -72,12 +72,12 @@ export async function callAI(options: CallAIOptions): Promise<string> {
         case 'triage':
         case 'extract':
         case 'repair': {
-            // Light tasks: GPT-5 nano -> Gemini 3.1 Flash-Lite -> DeepSeek V4 Flash
+            // Light tasks: GPT-5 nano -> DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite
             if (hasOpenAI) {
                 try {
                     return await callOpenAI({
                         model: 'gpt-5-nano',
-                        fallbackModels: ['gemini-3.1-flash-lite', ...fallbackModels],
+                        fallbackModels: ['deepseek-v4-flash', 'gemini-3.1-flash-lite', ...fallbackModels],
                         messages: messages as OpenAIMessage[],
                         jsonMode,
                         temperature,
@@ -85,28 +85,28 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                         userId
                     });
                 } catch (err: any) {
-                    console.warn(`[callAI:${task}] OpenAI failed, attempting Gemini/DeepSeek fallback:`, err.message);
+                    console.warn(`[callAI:${task}] OpenAI failed, attempting DeepSeek/Gemini fallback:`, err.message);
                 }
             }
-            if (hasGemini) {
+            if (hasDeepSeek) {
                 try {
-                    return await callGemini({
-                        model: 'gemini-3.1-flash-lite',
-                        fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
-                        messages: messages as GeminiMessage[],
+                    return await callDeepSeek({
+                        model: 'deepseek-v4-flash',
+                        messages: messages as DeepSeekMessage[],
                         jsonMode,
                         temperature,
                         maxTokens,
                         userId
                     });
                 } catch (err: any) {
-                    console.warn(`[callAI:${task}] Gemini failed, attempting DeepSeek fallback:`, err.message);
+                    console.warn(`[callAI:${task}] DeepSeek failed, attempting Gemini fallback:`, err.message);
                 }
             }
-            if (hasDeepSeek) {
-                return await callDeepSeek({
-                    model: 'deepseek-v4-flash',
-                    messages: messages as DeepSeekMessage[],
+            if (hasGemini) {
+                return await callGemini({
+                    model: 'gemini-3.1-flash-lite',
+                    fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                    messages: messages as GeminiMessage[],
                     jsonMode,
                     temperature,
                     maxTokens,

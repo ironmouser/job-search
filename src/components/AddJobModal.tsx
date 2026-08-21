@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, X, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, X, CheckCircle2, Link2, FileText, Info } from 'lucide-react';
 import { trackAddJobUrl } from '@/lib/analytics';
 
 interface AddJobModalProps {
@@ -20,23 +20,38 @@ export default function AddJobModal({
 }: AddJobModalProps) {
   const [mounted, setMounted] = useState(false);
   const isPro = userPlanTier === 'PRO';
+
+  // Mode Selection: 'url' or 'manual'
+  const [activeTab, setActiveTab] = useState<'url' | 'manual'>('url');
+
+  // URL Mode State
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [statusStep, setStatusStep] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Manual Fallback Modal State
-  const [showManualModal, setShowManualModal] = useState(false);
+  // Manual Mode State
   const [manualTitle, setManualTitle] = useState('');
   const [manualCompany, setManualCompany] = useState('');
   const [manualLocation, setManualLocation] = useState('');
   const [manualDescription, setManualDescription] = useState('');
+  const [manualUrl, setManualUrl] = useState('');
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+  const [scrapeFailureReason, setScrapeFailureReason] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Reset state on close / open
+  useEffect(() => {
+    if (isOpen) {
+      setErrorMsg(null);
+      setSuccessMsg(null);
+      setScrapeFailureReason(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen || !mounted) return null;
 
@@ -45,7 +60,15 @@ export default function AddJobModal({
       const text = await navigator.clipboard.readText();
       if (text) setUrl(text.trim());
     } catch {
-      // Clipboard permission denied fallback
+      // Clipboard permission fallback
+    }
+  };
+
+  const handleTabChange = (tab: 'url' | 'manual') => {
+    setActiveTab(tab);
+    setErrorMsg(null);
+    if (tab === 'manual' && url.trim() && !manualUrl) {
+      setManualUrl(url.trim());
     }
   };
 
@@ -55,11 +78,12 @@ export default function AddJobModal({
 
     setErrorMsg(null);
     setSuccessMsg(null);
+    setScrapeFailureReason(null);
     setIsLoading(true);
-    setStatusStep('Fetching job page & details...');
+    setStatusStep('Fetching job page & security check...');
 
     try {
-      const timer1 = setTimeout(() => setStatusStep('Extracting job title & description...'), 2000);
+      const timer1 = setTimeout(() => setStatusStep('Extracting job title, company & description...'), 2000);
       const timer2 = setTimeout(() => setStatusStep('Scoring match & auto-apply confidence...'), 4500);
 
       const res = await fetch('/api/jobs/add-by-url', {
@@ -76,14 +100,17 @@ export default function AddJobModal({
       if (!res.ok) {
         const errText = data.message || data.error || 'Failed to add job from URL';
         trackAddJobUrl(url.trim(), 'error', errText);
-        if (data.error === 'COULD_NOT_SCRAPE') {
+
+        // If scraping failed or unverified source, transition smoothly to manual entry with explanation
+        if (data.error === 'COULD_NOT_SCRAPE' || data.error === 'UNTRUSTED_SOURCE') {
           if (data.partialData) {
             setManualTitle(data.partialData.title || '');
             setManualCompany(data.partialData.company || '');
             setManualLocation(data.partialData.location || '');
           }
-          setShowManualModal(true);
-          setErrorMsg('Unable to scrape this site directly. Please paste the job description manually below.');
+          setManualUrl(url.trim());
+          setScrapeFailureReason(errText);
+          setActiveTab('manual');
         } else {
           setErrorMsg(errText);
         }
@@ -113,6 +140,11 @@ export default function AddJobModal({
     e.preventDefault();
     if (!manualDescription.trim() || isSubmittingManual) return;
 
+    if (manualDescription.trim().length < 30) {
+      setErrorMsg('Job description must be at least 30 characters.');
+      return;
+    }
+
     setIsSubmittingManual(true);
     setErrorMsg(null);
 
@@ -121,7 +153,7 @@ export default function AddJobModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          url: url.trim(),
+          url: manualUrl.trim() || undefined,
           manualTitle: manualTitle.trim(),
           manualCompany: manualCompany.trim(),
           manualLocation: manualLocation.trim(),
@@ -133,19 +165,20 @@ export default function AddJobModal({
 
       if (!res.ok) {
         const errText = data.message || data.error || 'Failed to submit job details';
-        trackAddJobUrl(url.trim(), 'error', `Manual submit: ${errText}`);
+        trackAddJobUrl(manualUrl.trim() || 'manual', 'error', `Manual submit: ${errText}`);
         setErrorMsg(errText);
         setIsSubmittingManual(false);
         return;
       }
 
-      trackAddJobUrl(url.trim(), 'success', 'Manual submit');
-      setShowManualModal(false);
+      trackAddJobUrl(manualUrl.trim() || 'manual', 'success', 'Manual submit');
       setUrl('');
       setManualTitle('');
       setManualCompany('');
       setManualLocation('');
       setManualDescription('');
+      setManualUrl('');
+      setScrapeFailureReason(null);
       setSuccessMsg(data.message || 'Job successfully added!');
       onJobAdded(data.job);
       setTimeout(() => {
@@ -154,7 +187,7 @@ export default function AddJobModal({
       }, 1200);
     } catch (err: any) {
       const errMsg = err.message || 'Network error occurred';
-      trackAddJobUrl(url.trim(), 'error', `Manual submit: ${errMsg}`);
+      trackAddJobUrl(manualUrl.trim() || 'manual', 'error', `Manual submit: ${errMsg}`);
       setErrorMsg(errMsg);
     } finally {
       setIsSubmittingManual(false);
@@ -182,11 +215,13 @@ export default function AddJobModal({
           border: '1px solid var(--border)',
           borderRadius: '16px',
           padding: '1.75rem',
-          maxWidth: '560px',
+          maxWidth: '580px',
           width: '100%',
           position: 'relative',
           boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
-          color: 'var(--card-foreground)'
+          color: 'var(--card-foreground)',
+          maxHeight: '90vh',
+          overflowY: 'auto'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -194,8 +229,8 @@ export default function AddJobModal({
           onClick={onClose}
           style={{
             position: 'absolute',
-            top: '1rem',
-            right: '1rem',
+            top: '1.1rem',
+            right: '1.1rem',
             background: 'none',
             border: 'none',
             color: 'var(--muted-foreground)',
@@ -208,27 +243,97 @@ export default function AddJobModal({
           <X size={20} />
         </button>
 
-        <h2 style={{ marginTop: 0, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.35rem', fontWeight: 700 }}>
+        {/* Modal Header */}
+        <h2 style={{ marginTop: 0, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.35rem', fontWeight: 700 }}>
           <PlusCircle size={24} style={{ color: 'var(--accent-primary)' }} />
-          Scrape & Add Job
+          Add Job Opening
         </h2>
 
-        <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
-          {isPro ? (
-            <span>Paste any job opening URL to instantly extract job details, score match & add to your pipeline.</span>
+        {/* Dynamic Context Instructions */}
+        <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+          {activeTab === 'url' ? (
+            isPro ? (
+              <span>Paste any job opening URL to automatically extract details, score match & add to your pipeline.</span>
+            ) : (
+              <span>Paste a job URL to scrape & score match immediately. Unlocks +1 Free Resume & Cover Letter generation!</span>
+            )
           ) : (
-            <span>Paste a job URL to scrape & score match immediately. Unlocks +1 Free Resume & Cover Letter generation!</span>
+            <span>Enter the job details and full description below to save this position and calculate your match score.</span>
           )}
         </p>
 
-        {!showManualModal ? (
+        {/* Segmented Mode Selector Tabs */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '6px',
+            backgroundColor: 'var(--muted)',
+            padding: '4px',
+            borderRadius: '10px',
+            marginBottom: '1.25rem'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => handleTabChange('url')}
+            disabled={isLoading || isSubmittingManual}
+            style={{
+              padding: '0.5rem 0.75rem',
+              borderRadius: '7px',
+              border: 'none',
+              fontSize: '0.85rem',
+              fontWeight: activeTab === 'url' ? 600 : 500,
+              backgroundColor: activeTab === 'url' ? 'var(--card)' : 'transparent',
+              color: activeTab === 'url' ? 'var(--foreground)' : 'var(--muted-foreground)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: activeTab === 'url' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Link2 size={16} />
+            <span>Import via URL</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange('manual')}
+            disabled={isLoading || isSubmittingManual}
+            style={{
+              padding: '0.5rem 0.75rem',
+              borderRadius: '7px',
+              border: 'none',
+              fontSize: '0.85rem',
+              fontWeight: activeTab === 'manual' ? 600 : 500,
+              backgroundColor: activeTab === 'manual' ? 'var(--card)' : 'transparent',
+              color: activeTab === 'manual' ? 'var(--foreground)' : 'var(--muted-foreground)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: activeTab === 'manual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <FileText size={16} />
+            <span>Enter Job Info</span>
+          </button>
+        </div>
+
+        {/* Tab 1: URL Mode */}
+        {activeTab === 'url' && (
           <form onSubmit={handleSubmitUrl} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ position: 'relative', width: '100%' }}>
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="Paste job URL (e.g. https://boards.greenhouse.io/...)"
+                placeholder="Paste job URL (e.g. https://company.com/careers/jobs/...)"
                 disabled={isLoading}
                 required
                 style={{
@@ -266,7 +371,7 @@ export default function AddJobModal({
               </button>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
               <button
                 type="button"
                 onClick={onClose}
@@ -298,7 +403,7 @@ export default function AddJobModal({
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin" size={16} />
-                    <span>Scraping...</span>
+                    <span>Scraping & Scoring...</span>
                   </>
                 ) : (
                   <>
@@ -309,15 +414,48 @@ export default function AddJobModal({
               </button>
             </div>
           </form>
-        ) : (
-          <form onSubmit={handleManualSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        )}
+
+        {/* Tab 2: Manual Mode */}
+        {activeTab === 'manual' && (
+          <form onSubmit={handleManualSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+            {/* Scrape Failure Alert Banner */}
+            {scrapeFailureReason && (
+              <div
+                style={{
+                  padding: '0.75rem 0.85rem',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                  border: '1px solid rgba(234, 179, 8, 0.3)',
+                  color: 'var(--foreground)',
+                  fontSize: '0.825rem',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.5rem',
+                  lineHeight: '1.4'
+                }}
+              >
+                <Info size={16} style={{ color: '#eab308', flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong>Automatic scrape notice:</strong> {scrapeFailureReason}
+                  <div style={{ marginTop: '3px', color: 'var(--muted-foreground)' }}>
+                    You can easily add this position by filling out the details below.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Job Title</label>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>
+                Job Title <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
               <input
                 type="text"
                 value={manualTitle}
                 onChange={(e) => setManualTitle(e.target.value)}
-                placeholder="e.g. Senior Software Engineer"
+                placeholder="e.g. Senior Product Manager"
+                maxLength={200}
+                required
                 style={{
                   width: '100%',
                   height: '38px',
@@ -325,19 +463,24 @@ export default function AddJobModal({
                   borderRadius: '8px',
                   border: '1px solid var(--border)',
                   background: 'var(--input)',
-                  color: 'var(--foreground)'
+                  color: 'var(--foreground)',
+                  fontSize: '0.875rem'
                 }}
               />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Company</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>
+                  Company <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
                 <input
                   type="text"
                   value={manualCompany}
                   onChange={(e) => setManualCompany(e.target.value)}
                   placeholder="e.g. Acme Corp"
+                  maxLength={200}
+                  required
                   style={{
                     width: '100%',
                     height: '38px',
@@ -345,17 +488,21 @@ export default function AddJobModal({
                     borderRadius: '8px',
                     border: '1px solid var(--border)',
                     background: 'var(--input)',
-                    color: 'var(--foreground)'
+                    color: 'var(--foreground)',
+                    fontSize: '0.875rem'
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Location</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>
+                  Location
+                </label>
                 <input
                   type="text"
                   value={manualLocation}
                   onChange={(e) => setManualLocation(e.target.value)}
-                  placeholder="e.g. Remote / New York"
+                  placeholder="e.g. Remote / Seattle, WA"
+                  maxLength={200}
                   style={{
                     width: '100%',
                     height: '38px',
@@ -363,20 +510,51 @@ export default function AddJobModal({
                     borderRadius: '8px',
                     border: '1px solid var(--border)',
                     background: 'var(--input)',
-                    color: 'var(--foreground)'
+                    color: 'var(--foreground)',
+                    fontSize: '0.875rem'
                   }}
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>Job Description *</label>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--foreground)' }}>
+                Job Posting URL (Optional)
+              </label>
+              <input
+                type="url"
+                value={manualUrl}
+                onChange={(e) => setManualUrl(e.target.value)}
+                placeholder="https://company.com/careers/..."
+                style={{
+                  width: '100%',
+                  height: '38px',
+                  padding: '0 0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--input)',
+                  color: 'var(--foreground)',
+                  fontSize: '0.875rem'
+                }}
+              />
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                  Job Description <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
+                <span style={{ fontSize: '0.75rem', color: manualDescription.length > 24000 ? 'var(--danger)' : 'var(--muted-foreground)' }}>
+                  {manualDescription.length.toLocaleString()} / 25,000
+                </span>
+              </div>
               <textarea
                 value={manualDescription}
                 onChange={(e) => setManualDescription(e.target.value)}
-                placeholder="Paste full job description here..."
+                placeholder="Paste the full job description, role requirements, and responsibilities here..."
                 required
-                rows={5}
+                maxLength={25000}
+                rows={6}
                 style={{
                   width: '100%',
                   padding: '0.75rem',
@@ -385,32 +563,52 @@ export default function AddJobModal({
                   background: 'var(--input)',
                   color: 'var(--foreground)',
                   fontSize: '0.85rem',
-                  resize: 'vertical'
+                  resize: 'vertical',
+                  lineHeight: '1.4'
                 }}
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
               <button
                 type="button"
-                onClick={() => setShowManualModal(false)}
+                onClick={onClose}
                 className="btn-outline"
-                style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}
+                style={{ padding: '0.55rem 1.15rem', borderRadius: '8px', fontSize: '0.9rem' }}
               >
-                Back
+                Cancel
               </button>
               <button
                 type="submit"
-                disabled={isSubmittingManual || !manualDescription.trim()}
+                disabled={isSubmittingManual || !manualDescription.trim() || !manualTitle.trim() || !manualCompany.trim()}
                 className="btn-primary"
-                style={{ padding: '0.5rem 1.25rem', borderRadius: '8px', fontWeight: 600 }}
+                style={{
+                  padding: '0.55rem 1.35rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
               >
-                {isSubmittingManual ? 'Saving Job...' : 'Save & Score Job'}
+                {isSubmittingManual ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    <span>Saving & Scoring...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Save & Score Job</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
         )}
 
+        {/* Live Loading Steps */}
         {isLoading && statusStep && (
           <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#60a5fa' }}>
             <Loader2 className="animate-spin" size={14} />
@@ -418,13 +616,15 @@ export default function AddJobModal({
           </div>
         )}
 
-        {errorMsg && !showManualModal && (
+        {/* Error Messages */}
+        {errorMsg && (
           <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--danger)' }}>
             <AlertCircle size={16} />
             <span>{errorMsg}</span>
           </div>
         )}
 
+        {/* Success Messages */}
         {successMsg && (
           <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--success)', fontWeight: 600 }}>
             <CheckCircle2 size={16} />

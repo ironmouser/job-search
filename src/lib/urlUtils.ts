@@ -67,7 +67,10 @@ export function cleanJobUrl(rawUrl: string): string {
     ];
     trackingParams.forEach(param => parsed.searchParams.delete(param));
 
-    // 5. Normalize www vs non-www to always use non-www for deduplication
+    // 5. Strip hash fragments (e.g. Chrome text fragments #:~:text=...)
+    parsed.hash = '';
+
+    // 6. Normalize www vs non-www to always use non-www for deduplication
     if (parsed.hostname.startsWith('www.')) {
         parsed.hostname = parsed.hostname.slice(4);
     }
@@ -82,37 +85,18 @@ export function cleanJobUrl(rawUrl: string): string {
   }
 }
 
-export const TRUSTED_JOB_DOMAINS = [
-  'linkedin.com',
-  'indeed.com',
-  'glassdoor.com',
-  'ziprecruiter.com',
-  'wellfound.com',
-  'angel.co',
-  'greenhouse.io',
-  'lever.co',
-  'workday.com',
-  'myworkdayjobs.com',
-  'ashbyhq.com',
-  'workable.com',
-  'bamboohr.com',
-  'icims.com',
-  'smartrecruiters.com',
-  'taleo.net',
-  'breezy.hr',
-  'applytojob.com',
-];
+import { evaluateUrlReputation } from './companyReputation';
+export { evaluateUrlReputation } from './companyReputation';
 
+/**
+ * Returns true if the URL is a verified ATS/Job board OR a recognized company career portal.
+ */
 export function isTrustedJobUrl(rawUrl: string): boolean {
   try {
-    const parsed = new URL(rawUrl);
-    // Remove www. just in case
-    const hostname = parsed.hostname.replace(/^www\./, '');
-    return TRUSTED_JOB_DOMAINS.some(domain => 
-      hostname === domain || hostname.endsWith(`.${domain}`)
-    );
+    const rep = evaluateUrlReputation(rawUrl);
+    return rep.isLegitimate && (rep.isKnownATS || rep.confidence === 'high');
   } catch {
-    return false; // Invalid URLs are inherently untrusted
+    return false;
   }
 }
 
@@ -210,6 +194,8 @@ export const KNOWN_ATS_DOMAINS = [
   'successfactors.com',
   'jobs.workday.com',
 ];
+
+export const TRUSTED_JOB_DOMAINS = KNOWN_ATS_DOMAINS;
 
 export function isKnownATSUrl(url?: string | null): boolean {
   if (!url) return false;
