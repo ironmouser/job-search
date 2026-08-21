@@ -4477,6 +4477,7 @@ body.light-theme .checklist-item-row:hover {
 
 .column-job-card {
   width: 100%;
+  max-width: 380px;
   box-sizing: border-box;
   padding: 1rem;
   border-radius: 12px;
