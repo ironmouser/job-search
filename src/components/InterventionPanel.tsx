@@ -235,6 +235,17 @@ export function InterventionPanel({
       description.toLowerCase().includes('unable to determine')
     );
 
+  const isBotBlockReason =
+    reason === 'captcha' ||
+    reason === 'application_blocked_by_captcha' ||
+    reason === 'application_blocked_by_bot_challenge' ||
+    reason === 'application_blocked_by_security_challenge' ||
+    description.toLowerCase().includes('bot verification') ||
+    description.toLowerCase().includes('cloudflare') ||
+    description.toLowerCase().includes('ddos protection') ||
+    description.toLowerCase().includes('captcha') ||
+    description.toLowerCase().includes('security check');
+
   async function resolve(res: 'completed' | 'skipped' | 'cancelled') {
     setResolving(true);
     setResolution(res);
@@ -742,7 +753,9 @@ export function InterventionPanel({
                 <ArrowRight size={16} /> What to do next
               </strong>
               <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>
-                {isAuthReason
+                {isBotBlockReason
+                  ? 'This site is protected by bot verification (Cloudflare / CAPTCHA). Click "Finish Manually" to open the job application directly in your browser.'
+                  : isAuthReason
                   ? (accountMode === 'sign_in'
                       ? 'Enter the credentials for your existing account so Jahq can sign in and continue your application.'
                       : `${portalDisplayName} requires a candidate account before you can continue. Jahq will create the account using the credentials you provide, then resume your application.`)
@@ -757,11 +770,13 @@ export function InterventionPanel({
                 <Zap size={16} color="var(--accent-primary, #3b82f6)" /> What will happen next
               </strong>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                {isAuthReason
+                {isBotBlockReason
+                  ? 'Cloudflare protection blocks automated server sessions. Completing your application manually in your browser ensures it gets submitted without wasting automated retries.'
+                  : isAuthReason
                   ? (accountMode === 'sign_in'
-                      ? <>Once submitted, click <strong>Sign In & Resume Application</strong> so Jahq can authenticate and continue filling your application.</>
-                      : <>Once submitted, click <strong>Create Account & Resume</strong> so Jahq can register your profile and submit your application.</>)
-                  : <>Once submitted, click <strong>Resume Automation</strong> so the AI agent can automatically fill out and submit your application.</>}
+                      ? <>Click <strong>Sign In & Resume Application</strong> so Jahq can authenticate and continue filling your application.</>
+                      : <>Click <strong>Create Account & Resume</strong> so Jahq can register your profile and submit your application.</>)
+                  : <>Once verified, click <strong>Resume Automation</strong> so the AI agent can automatically fill out and submit your application.</>}
               </span>
             </div>
           </div>
@@ -1157,57 +1172,92 @@ export function InterventionPanel({
           )}
 
           <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-            <button
-              className="btn-primary"
-              onClick={() => resolve('completed')}
-              disabled={resolving || (isAtsAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress))}
-              style={{
-                flex: 2,
-                minWidth: '180px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.4rem',
-                padding: '0.7rem 1.35rem',
-                fontSize: '0.88rem',
-                fontWeight: 600,
-                borderRadius: '8px',
-              }}
-              id={`intervention-resolve-${interventionId}`}
-            >
-              {resolving && resolution === 'completed'
-                ? 'Resuming…'
-                : (
-                  <>
-                    <Check size={16} color="#ffffff" />
-                    {isAuthReason
-                      ? (accountMode === 'sign_in' ? 'Sign In & Resume Application' : 'Create Account & Resume')
-                      : 'Resume Automation'}
-                  </>
+            {isBotBlockReason ? (
+              <>
+                {pageUrl && (
+                  <button
+                    className="btn-primary"
+                    onClick={handleManualContinue}
+                    disabled={resolving}
+                    style={{
+                      flex: 2,
+                      minWidth: '180px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                      padding: '0.7rem 1.35rem',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                    }}
+                    id={`intervention-switch-manual-${interventionId}`}
+                  >
+                    {resolving && resolution === 'skipped'
+                      ? 'Opening Job…'
+                      : (
+                        <>
+                          <ExternalLink size={16} /> Finish Application Manually
+                        </>
+                      )}
+                  </button>
                 )}
-            </button>
-            {pageUrl && (
-              <button
-                className="btn-outline"
-                onClick={handleManualContinue}
-                disabled={resolving}
-                style={{
-                  flex: 1,
-                  minWidth: '140px',
-                  padding: '0.7rem 1rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.35rem',
-                  fontSize: '0.86rem',
-                  fontWeight: 600,
-                  borderRadius: '8px',
-                }}
-                title="Stop automated execution and apply directly in your browser"
-                id={`intervention-switch-manual-${interventionId}`}
-              >
-                {resolving && resolution === 'skipped' ? 'Opening Job…' : <><ExternalLink size={14} /> Finish Manually</>}
-              </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="btn-primary"
+                  onClick={() => resolve('completed')}
+                  disabled={resolving || (isAtsAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress))}
+                  style={{
+                    flex: 2,
+                    minWidth: '180px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    padding: '0.7rem 1.35rem',
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                  }}
+                  id={`intervention-resolve-${interventionId}`}
+                >
+                  {resolving && resolution === 'completed'
+                    ? 'Resuming…'
+                    : (
+                      <>
+                        <Check size={16} color="#ffffff" />
+                        {isAuthReason
+                          ? (accountMode === 'sign_in' ? 'Sign In & Resume Application' : 'Create Account & Resume')
+                          : 'Resume Automation'}
+                      </>
+                    )}
+                </button>
+                {pageUrl && (
+                  <button
+                    className="btn-outline"
+                    onClick={handleManualContinue}
+                    disabled={resolving}
+                    style={{
+                      flex: 1,
+                      minWidth: '140px',
+                      padding: '0.7rem 1rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.35rem',
+                      fontSize: '0.86rem',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                    }}
+                    title="Stop automated execution and apply directly in your browser"
+                    id={`intervention-switch-manual-${interventionId}`}
+                  >
+                    {resolving && resolution === 'skipped' ? 'Opening Job…' : <><ExternalLink size={14} /> Finish Manually</>}
+                  </button>
+                )}
+              </>
             )}
             <button
               className="btn-outline"

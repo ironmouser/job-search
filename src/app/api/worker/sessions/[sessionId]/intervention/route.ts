@@ -124,6 +124,32 @@ export async function POST(
       }),
     ];
 
+    const isBotChallenge =
+      effectiveReason === 'captcha' ||
+      effectiveReason === 'application_blocked_by_captcha' ||
+      effectiveReason === 'application_blocked_by_bot_challenge' ||
+      effectiveReason === 'application_blocked_by_security_challenge' ||
+      body.description?.toLowerCase().includes('bot verification') ||
+      body.description?.toLowerCase().includes('cloudflare') ||
+      body.description?.toLowerCase().includes('ddos protection');
+
+    if (isBotChallenge) {
+      transactions.push(
+        prisma.autoApplySession.update({
+          where: { id: sessionId },
+          data: { automationConfidence: 15 },
+        })
+      );
+      if (session.jobId) {
+        transactions.push(
+          prisma.job.update({
+            where: { id: session.jobId },
+            data: { consecutiveAutoFailures: 3 },
+          })
+        );
+      }
+    }
+
     if (isJobClosed) {
       transactions.push(
         prisma.userJob.updateMany({

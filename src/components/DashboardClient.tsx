@@ -49,10 +49,10 @@ const getConfidenceBadge = (score?: number, failCount: number = 0) => {
         </span>
       );
     }
-    if (score === undefined) return null;
+    if (score === undefined || score === null) return null;
     if (score >= 70) return <span title="High Automation Confidence" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>High Auto</span>;
     if (score >= 40) return <span title="Medium Automation Confidence" style={{ color: '#fbbf24', background: 'rgba(251, 191, 36, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Med Auto</span>;
-    return null;
+    return <span title="Low Automation Confidence (Manual Application Recommended)" style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Low Auto</span>;
 };
 
 export default function DashboardClient({ 
