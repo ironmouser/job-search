@@ -15,6 +15,7 @@ import {
   CandidateClassification,
   classifyCandidate,
   isLegitimateApplicationDestination,
+  isAggregatorDomain,
   extractApplicationUrlFromJson,
   extractEmbeddedScriptUrls,
   normalizeUrl,
@@ -116,18 +117,20 @@ export class AggregatorHandler {
       await logger.warn('destination_discovery', `Page body too short (${bodyLen} chars) — may be bot-blocked. Proceeding with available content.`);
     }
 
-    // ── Check if application form is already present on this page ─────────────
-    try {
-      const { GenericPageAnalyzer } = await import('../generic-agent/page-analyzer');
-      const formPresence = await GenericPageAnalyzer.inspectFormPresence(page);
-      if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
-        await logger.info(
-          'destination_discovery',
-          `Application form is already present directly on this page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination reached.`
-        );
-        return { navigated: false, candidateReports: [] };
-      }
-    } catch {}
+    // ── Check if application form is already present on this page (employer domains only) ─────
+    if (!isAggregatorDomain(currentUrl)) {
+      try {
+        const { GenericPageAnalyzer } = await import('../generic-agent/page-analyzer');
+        const formPresence = await GenericPageAnalyzer.inspectFormPresence(page);
+        if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
+          await logger.info(
+            'destination_discovery',
+            `Application form is already present directly on this page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination reached.`
+          );
+          return { navigated: false, candidateReports: [] };
+        }
+      } catch {}
+    }
 
     await logger.info('destination_discovery', `Phase 1: Scanning page for application destinations at ${page.url()}...`);
 

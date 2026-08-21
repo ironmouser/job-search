@@ -160,4 +160,52 @@ describe('Embedded and Custom Career Form Flow Tests', () => {
       await page.close();
     }
   });
+
+  it('Test 4 — Aggregator Domain: Does NOT bypass link discovery on aggregator domains (e.g. builtin.com) with promotional resume widget', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.goto('about:blank');
+      // Mock page on builtin.com domain with promotional resume upload widget and apply button
+      await page.setContent(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Product Manager at Hex | Built In</title></head>
+        <body>
+          <div class="job-insights-widget">
+            <p>Get Personalized Job Insights</p>
+            <input type="file" name="resume-widget" />
+          </div>
+          <a href="https://hex.tech/careers/5983041004" class="btn apply-button">Apply</a>
+        </body>
+        </html>
+      `);
+
+      const logger = new ExecutionLogger();
+      const mockBrowserSession = {
+        page: {
+          ...page,
+          url: () => 'https://builtin.com/job/senior-product-manager/9172682',
+          content: () => page.content(),
+          evaluate: (...args: any[]) => (page.evaluate as any)(...args),
+          $$eval: (...args: any[]) => (page.$$eval as any)(...args),
+          locator: (...args: any[]) => page.locator(...args),
+          frames: () => [page.mainFrame()],
+        },
+        getHtml: async () => page.content(),
+        getRedirectChain: async () => ['https://builtin.com/job/senior-product-manager/9172682'],
+      } as unknown as BrowserSession;
+
+      const clickResult = await AggregatorHandler.attemptClickThrough(
+        mockBrowserSession,
+        logger,
+        'test-session-789'
+      );
+
+      // On an aggregator domain, it should NOT return navigated: false immediately from form detection
+      // It should evaluate candidates / find the destination URL
+      assert.ok(clickResult.candidateReports.length > 0 || clickResult.navigated);
+    } finally {
+      await page.close();
+    }
+  });
 });

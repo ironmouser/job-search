@@ -140,18 +140,22 @@ export class WorkflowEngine {
           break;
         }
 
-        // 3. Check if an active application form is ALREADY present directly on the page
-        try {
-          const { GenericPageAnalyzer } = await import('./generic-agent/page-analyzer');
-          const formPresence = await GenericPageAnalyzer.inspectFormPresence(browser.page);
-          if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
-            await logger.info(
-              'destination_discovery',
-              `Active application form detected directly on page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination convergence reached.`
-            );
-            break;
-          }
-        } catch {}
+        // 3. Check if an active application form is ALREADY present directly on an employer's page
+        // (Do NOT trigger this on aggregator/job board domains like builtin.com which have promotional resume widgets)
+        const { isAggregatorDomain } = await import('./utils/destination-validator');
+        if (!isAggregatorDomain(currentUrl)) {
+          try {
+            const { GenericPageAnalyzer } = await import('./generic-agent/page-analyzer');
+            const formPresence = await GenericPageAnalyzer.inspectFormPresence(browser.page);
+            if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
+              await logger.info(
+                'destination_discovery',
+                `Active application form detected directly on page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination convergence reached.`
+              );
+              break;
+            }
+          } catch {}
+        }
 
         // 4. If still unknown, attempt to find and follow the Apply button / link
         await this.updateStatus(session.sessionId, AutoApplyStatus.NAVIGATING_TO_ATS, {
