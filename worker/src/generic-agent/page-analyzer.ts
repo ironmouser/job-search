@@ -19,7 +19,7 @@ import {
 import { ExecutionLogger } from '../execution-logger';
 import { normalizeUrl } from '../utils/destination-validator';
 
-const POSITIVE_APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company site|apply directly|start application|begin application|submit application|continue to application|proceed to application|apply with resume|apply online|go to application)\b/i;
+const POSITIVE_APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company site|apply directly|start application|begin application|submit application|continue to application|proceed to application|apply with resume|apply online|go to application|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
 
 const NEGATIVE_TEXT_REGEX = /\b(apply (filter|filters|coupon|promo|code|discount|search|changes|settings|preferences|sort|tags)|clear filters|reset filters|save search|subscribe|job alerts?)\b/i;
 
@@ -172,7 +172,8 @@ export class GenericPageAnalyzer {
       }
 
       // Check for mandatory login wall (no guest apply)
-      const hasPassword = !!document.querySelector('input[type="password"]');
+      const hasPassword = !!document.querySelector('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
+      const hasEmailOrUserInput = !!document.querySelector('input[type="email"], input[name*="email" i], input[name*="user" i], input[name*="login" i], [data-automation-id*="email" i]');
       let hasSignInHeader = false;
       document.querySelectorAll('h1, h2, h3').forEach(h => {
         if (/sign in to apply|log in to apply|create account to apply/i.test(h.textContent || '')) {
@@ -187,7 +188,8 @@ export class GenericPageAnalyzer {
         }
       });
 
-      if ((hasPassword || hasSignInHeader) && !hasGuest) {
+      // Actual authentication gate requires active credential inputs (password or email field on screen)
+      if ((hasPassword || (hasSignInHeader && hasEmailOrUserInput)) && !hasGuest) {
         return { type: 'AUTHENTICATION_REQUIRED' as const, reason: 'Employer portal requires authentication / login with no guest option', keyword: 'password' };
       }
 

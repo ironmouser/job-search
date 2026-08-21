@@ -214,10 +214,43 @@ export abstract class ATSPlugin {
 
           // 3. Fallback: If inputs still not visible, try option buttons (e.g. "Apply Manually", "Sign In to Apply", "Autofill with Resume")
           if ((await emailInput.count().catch(() => 0)) === 0 || (await passwordInputs.count().catch(() => 0)) === 0) {
-            const optionBtns = page.locator('button, a').filter({ hasText: /apply manually|autofill with resume|sign in to apply|create account to apply/i });
+            const optionBtns = page.locator('button, a, [role="button"]').filter({ hasText: /apply manually|autofill with resume|sign in to apply|log in to apply|sign up to apply|create account to apply/i });
             if ((await optionBtns.count().catch(() => 0)) > 0) {
-              await optionBtns.first().click().catch(() => {});
+              await optionBtns.first().scrollIntoViewIfNeeded().catch(() => {});
+              await optionBtns.first().click({ force: true }).catch(() => {});
               await page.waitForTimeout(2000);
+
+              // Re-check tab switching after opening auth view
+              if (authMode === 'create_account') {
+                const createTabSelectors = [
+                  '[data-automation-id="createAccountLink"]',
+                  '[data-automation-id="createAccountButton"]',
+                  '[data-automation-id*="createAccount" i]',
+                  '[data-automation-id*="register" i]',
+                  'a:has-text("Create Account")',
+                  'button:has-text("Create Account")',
+                  'a:has-text("Create an account")',
+                  'button:has-text("Create an account")',
+                  'a:has-text("Register")',
+                  'button:has-text("Register")',
+                  'a:has-text("Sign Up")',
+                  'button:has-text("Sign Up")',
+                  'a:has-text("Don\'t have an account")',
+                  'button:has-text("Don\'t have an account")',
+                  'a:has-text("New User")',
+                  'button:has-text("New User")',
+                ];
+                for (const sel of createTabSelectors) {
+                  const tabEl = page.locator(sel).first();
+                  if ((await tabEl.count().catch(() => 0)) > 0 && (await tabEl.isVisible().catch(() => false))) {
+                    await tabEl.scrollIntoViewIfNeeded().catch(() => {});
+                    await tabEl.click({ force: true }).catch(() => {});
+                    await page.waitForTimeout(1500);
+                    break;
+                  }
+                }
+              }
+
               emailInput = page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
               passwordInputs = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
             }

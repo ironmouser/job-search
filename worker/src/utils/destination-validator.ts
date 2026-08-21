@@ -142,7 +142,8 @@ const AUTH_PATHS = [
   '/cold-join', '/start',
 ];
 
-const AUTH_TEXT_REGEX = /\b(sign in|sign up|log in|log out|login|register|create account|join now|join to apply|create a profile)\b/i;
+const AUTH_TEXT_REGEX = /\b(sign in|sign up|log in|log out|login|register|create account|join now|create a profile)\b/i;
+const APPLY_AUTH_TEXT_REGEX = /\b(sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
 
 const NAV_PATHS = [
   '/about', '/about-us', '/company',
@@ -157,7 +158,7 @@ const NAV_PATHS = [
 
 const NAV_TEXT_REGEX = /\b(about us|contact us|home|pricing|our team|our story|browse jobs|view all jobs|back to jobs|back to search|create job alert|share this job|report this job|follow company|bookmark)\b/i;
 
-const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|submit application|continue to (application|employer|company)|proceed to application|apply with resume|apply online|go to application)\b/i;
+const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|submit application|continue to (application|employer|company)|proceed to application|apply with resume|apply online|go to application|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
 
 const AGGREGATOR_REDIRECT_URL_REGEX = /(externalApply|\/apply-redirect|\/rc\/clk|\/job\/apply|apply-link-offsite|\/jobs\/view\/apply)/i;
 const APPLICATION_INDICATOR_REGEX = /(\/apply|\/application|\/jobs\/apply|\/careers\/apply|\/job-application|\/job\/apply)/i;
@@ -281,8 +282,9 @@ export function classifyCandidate(
     return { classification: CandidateClassification.LEGAL_LINK, accepted: false, reason: 'Matches known legal/privacy policy path or text', resolvedHref };
   }
 
-  // ── 2. Auth / signup gates ────────────────────────────────────────────────
-  if (AUTH_PATHS.some(p => pathname.startsWith(p)) || AUTH_TEXT_REGEX.test(allText)) {
+  // ── 2. Auth / signup gates (reject general login links, but allow "Sign In to Apply" action buttons) ───
+  const isApplyAuthAction = APPLY_AUTH_TEXT_REGEX.test(allText);
+  if (!isApplyAuthAction && (AUTH_PATHS.some(p => pathname.startsWith(p)) || AUTH_TEXT_REGEX.test(allText))) {
     return { classification: CandidateClassification.AUTH_LINK, accepted: false, reason: 'Matches auth/signup path or text', resolvedHref };
   }
 
