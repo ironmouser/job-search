@@ -11,8 +11,10 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import {
   ATSPlatform,
+  AutoApplyStatus,
   InterventionReason,
   WorkflowContext,
+  WorkflowResult,
 } from '../types';
 import { InterventionError, ATSPlugin } from '../plugins/base-plugin';
 
@@ -23,7 +25,18 @@ class GenericAuthHelper extends ATSPlugin {
   async prepare() {}
   async apply() {}
   async validate() { return { valid: true, issues: [] }; }
-  async finalize() { return { status: 'applied' as any }; }
+  async finalize(): Promise<WorkflowResult> {
+    return {
+      status: AutoApplyStatus.APPLIED,
+      canComplete: true,
+      platform: ATSPlatform.UNKNOWN,
+      automationConfidence: 100,
+      stepsCompleted: 1,
+      stepsRemaining: 0,
+      blockingIssue: null,
+      estimatedSubmissionTime: null,
+    };
+  }
 }
 import {
   ApplicationControlCandidate,

@@ -366,19 +366,9 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         }
 
         @media (max-width: 639px) {
-          .stepper-labels-desktop {
-            display: none !important;
-          }
-          .stepper-label-mobile {
-            display: flex !important;
-          }
-        }
-        @media (min-width: 640px) {
-          .stepper-labels-desktop {
-            display: flex !important;
-          }
-          .stepper-label-mobile {
-            display: none !important;
+          .stepper-label-inactive {
+            opacity: 0 !important;
+            visibility: hidden !important;
           }
         }
       `}</style>
@@ -563,9 +553,9 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
           </div>
         </div>
 
-        {/* Step Labels Row for Desktop / Tablet */}
+        {/* Step Labels Row */}
         <div
-          className="stepper-labels-desktop"
+          className="stepper-labels-row"
           style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -577,10 +567,13 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
             const isCompleted = isAllDone || (isActive && st.num < activeStepNum);
             const isCurrent = isActive && st.num === activeStepNum;
             const isIntervention = (session?.status === AutoApplyStatus.NEEDS_INTERVENTION || session?.status === AutoApplyStatus.NEEDS_REVIEW) && st.num === 4;
+            const isFailedStep = session?.status === AutoApplyStatus.FAILED && st.num === activeStepNum;
+            const isStepActive = st.num === (isAllDone ? 6 : activeStepNum);
 
             return (
               <span
                 key={st.num}
+                className={isStepActive ? 'stepper-label-active' : 'stepper-label-inactive'}
                 style={{
                   width: '32px',
                   display: 'flex',
@@ -589,7 +582,9 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
                   fontWeight: 700,
                   letterSpacing: '0.04em',
                   textTransform: 'uppercase',
-                  color: isCompleted
+                  color: isFailedStep
+                    ? '#ef4444'
+                    : isCompleted
                     ? '#10b981'
                     : isIntervention
                     ? '#f59e0b'
@@ -597,46 +592,13 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
                     ? '#3b82f6'
                     : 'var(--text-muted, #94a3b8)',
                   whiteSpace: 'nowrap',
-                  transition: 'color 0.3s',
+                  transition: 'color 0.3s, opacity 0.3s',
                 }}
               >
                 {st.label}
               </span>
             );
           })}
-        </div>
-
-        {/* Single Current Step Label for Mobile Screens */}
-        <div
-          className="stepper-label-mobile"
-          style={{
-            display: 'none',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: '0.5rem',
-            textAlign: 'center',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: isAllDone
-                ? '#10b981'
-                : (session?.status === AutoApplyStatus.NEEDS_INTERVENTION || session?.status === AutoApplyStatus.NEEDS_REVIEW)
-                ? '#f59e0b'
-                : session?.status === AutoApplyStatus.FAILED
-                ? '#ef4444'
-                : '#3b82f6',
-              transition: 'color 0.3s',
-            }}
-          >
-            {isAllDone
-              ? 'Application Submitted'
-              : `Current: ${STEP_DEFINITIONS.find((s) => s.num === activeStepNum)?.label || 'ATS CHECK'}`}
-          </span>
         </div>
       </div>
 

@@ -1016,7 +1016,7 @@ export function GlobalAutoApplyBar() {
                       </div>
 
                       {/* Step labels */}
-                      <div style={{
+                      <div className="stepper-labels-row" style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         marginTop: '0.45rem',
@@ -1025,8 +1025,11 @@ export function GlobalAutoApplyBar() {
                         {STEP_DEFINITIONS.map((st) => {
                           const isComplete = isApplied || st.num < activeStepNum;
                           const isCurrent = !isApplied && st.num === activeStepNum;
+                          const isFailedStep = isFailed && st.num === activeStepNum;
+                          const isStepActive = st.num === (isApplied ? 6 : activeStepNum);
+
                           return (
-                            <span key={st.num} style={{
+                            <span key={st.num} className={isStepActive ? 'stepper-label-active' : 'stepper-label-inactive'} style={{
                               width: '32px',
                               display: 'flex',
                               justifyContent: 'center',
@@ -1034,9 +1037,9 @@ export function GlobalAutoApplyBar() {
                               fontWeight: 700,
                               letterSpacing: '0.04em',
                               textTransform: 'uppercase',
-                              color: isComplete ? '#10b981' : isCurrent ? '#0070f3' : 'var(--text-secondary)',
+                              color: isFailedStep ? '#ef4444' : isComplete ? '#10b981' : isCurrent ? '#0070f3' : 'var(--text-secondary)',
                               whiteSpace: 'nowrap',
-                              transition: 'color 0.25s',
+                              transition: 'color 0.25s, opacity 0.25s',
                             }}>
                               {st.label}
                             </span>

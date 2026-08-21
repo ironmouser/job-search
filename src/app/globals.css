@@ -3707,6 +3707,11 @@ body.light-theme .drawer-detail-content {
     grid-template-rows: auto 1fr;
     overflow-y: auto;
   }
+
+  .stepper-label-inactive {
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
 }
 
 .dashboard-bulk-info {
