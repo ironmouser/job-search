@@ -25,6 +25,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
+import { ConnectJobBoardModal } from '@/components/ConnectJobBoardModal';
 
 interface InterventionPanelProps {
   interventionId: string;
@@ -78,6 +79,15 @@ function getPortalDisplayName(pageUrl?: string | null, description?: string | nu
   return 'The employer portal';
 }
 
+function getJobBoardProvider(pageUrl?: string | null, description?: string | null) {
+  const combined = `${pageUrl || ''} ${description || ''}`.toLowerCase();
+  if (combined.includes('dice')) return { id: 'dice', name: 'Dice', description: 'Connect your Dice candidate account session' };
+  if (combined.includes('ziprecruiter')) return { id: 'ziprecruiter', name: 'ZipRecruiter', description: 'Connect your ZipRecruiter candidate account session' };
+  if (combined.includes('linkedin')) return { id: 'linkedin', name: 'LinkedIn', description: 'Connect your LinkedIn candidate account session' };
+  if (combined.includes('indeed')) return { id: 'indeed', name: 'Indeed', description: 'Connect your Indeed candidate account session' };
+  return { id: 'dice', name: 'Job Board', description: 'Connect your candidate account session' };
+}
+
 function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: boolean) {
   if (isClosed || reason === 'job_closed') return <ShieldAlert size={16} color="#ef4444" />;
   if (isUnsupportedOrFatal) return <AlertTriangle size={16} color="#f97316" />;
@@ -119,14 +129,18 @@ export function InterventionPanel({
   const [loadingSettings, setLoadingSettings] = useState(true);
 
   const portalDisplayName = getPortalDisplayName(pageUrl, description);
-  const isAuthReason =
+  const providerInfo = getJobBoardProvider(pageUrl, description);
+  const isJobBoardAuthReason = reason === 'job_board_auth_required';
+  const isAtsAuthReason =
     reason === 'login_required' ||
-    reason === 'job_board_auth_required' ||
     reason === 'application_blocked_by_login' ||
     reason === 'application_blocked_by_authentication';
+  const isAuthReason = isAtsAuthReason || isJobBoardAuthReason;
 
   const [accountMode, setAccountMode] = useState<'sign_in' | 'create_account'>('sign_in');
   const [showPassword, setShowPassword] = useState(false);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [isJobBoardConnected, setIsJobBoardConnected] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -576,8 +590,54 @@ export function InterventionPanel({
         </>
       ) : (
         <>
+          {/* Job Board Session Required: Inline Connect Flow */}
+          {isJobBoardAuthReason && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                background: 'rgba(99, 102, 241, 0.06)',
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+                borderRadius: '10px',
+                padding: '1.15rem 1.25rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Key size={18} color="#818cf8" /> Connect {providerInfo.name} Account
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                    {isJobBoardConnected
+                      ? `${providerInfo.name} session connected! Click Resume Automation below to continue.`
+                      : `${providerInfo.name} requires an account connection before Jahq can submit your application.`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => setIsConnectModalOpen(true)}
+                  style={{
+                    padding: '0.6rem 1.1rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    background: isJobBoardConnected ? '#10b981' : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                  }}
+                  id={`intervention-connect-${providerInfo.id}-${interventionId}`}
+                >
+                  {isJobBoardConnected ? <Check size={16} /> : <Key size={16} />}
+                  {isJobBoardConnected ? 'Session Connected' : `Connect ${providerInfo.name} Account`}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Candidate Account Required: User Choice Flow */}
-          {isAuthReason && (
+          {isAtsAuthReason && (
             <div
               style={{
                 display: 'flex',
@@ -705,7 +765,7 @@ export function InterventionPanel({
             </div>
           </div>
 
-          {(isAuthReason || showAuthForm) && !loadingSettings && (
+          {(isAtsAuthReason || showAuthForm) && !loadingSettings && (
             <div
               style={{
                 background: 'rgba(255, 255, 255, 0.03)',
@@ -1099,7 +1159,7 @@ export function InterventionPanel({
             <button
               className="btn-primary"
               onClick={() => resolve('completed')}
-              disabled={resolving || (isAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress))}
+              disabled={resolving || (isAtsAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress))}
               style={{
                 flex: 2,
                 minWidth: '180px',
@@ -1292,6 +1352,16 @@ export function InterventionPanel({
         </div>,
         document.body
       )}
+      {/* Connect Job Board Modal */}
+      <ConnectJobBoardModal
+        isOpen={isConnectModalOpen}
+        onClose={() => setIsConnectModalOpen(false)}
+        provider={providerInfo}
+        onConnected={() => {
+          setIsJobBoardConnected(true);
+          setIsConnectModalOpen(false);
+        }}
+      />
     </div>
   );
 }
