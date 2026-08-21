@@ -109,14 +109,15 @@ export function GlobalAutoApplyBar() {
     setMounted(true);
   }, []);
 
-  // Track sidebar width dynamically (expanded 220px vs collapsed 64px)
+  // Track sidebar width dynamically (expanded 220px vs collapsed 52px)
   useEffect(() => {
-    const updateSidebarWidth = () => {
+    const updateSidebarWidth = (e?: Event) => {
       if (typeof window === 'undefined') return;
+      const customWidth = (e as CustomEvent)?.detail?.width;
       const isMinimized = localStorage.getItem('sidebarMinimized') === 'true';
       const mobile = window.innerWidth <= 1024;
       setIsMobile(mobile);
-      const width = mobile ? '0px' : isMinimized ? '64px' : '220px';
+      const width = customWidth || (mobile ? '0px' : isMinimized ? '52px' : '220px');
       setSidebarWidth((prev) => {
         if (prev !== width) {
           document.documentElement.style.setProperty('--sidebar-width', width);
@@ -129,9 +130,11 @@ export function GlobalAutoApplyBar() {
     updateSidebarWidth();
     window.addEventListener('resize', updateSidebarWidth);
     window.addEventListener('storage', updateSidebarWidth);
+    window.addEventListener('sidebarStateChange', updateSidebarWidth);
     return () => {
       window.removeEventListener('resize', updateSidebarWidth);
       window.removeEventListener('storage', updateSidebarWidth);
+      window.removeEventListener('sidebarStateChange', updateSidebarWidth);
     };
   }, []);
 

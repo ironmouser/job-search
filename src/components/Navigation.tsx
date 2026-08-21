@@ -48,11 +48,28 @@ export default function Navigation() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const updateSidebarVar = () => {
+      const isMobile = window.innerWidth <= 1024;
+      const width = isMobile ? '0px' : isMinimized ? '52px' : '220px';
+      document.documentElement.style.setProperty('--sidebar-width', width);
+      window.dispatchEvent(new CustomEvent('sidebarStateChange', { detail: { isMinimized, width } }));
+    };
+
+    updateSidebarVar();
+    window.addEventListener('resize', updateSidebarVar);
+    return () => window.removeEventListener('resize', updateSidebarVar);
+  }, [isMinimized]);
+
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
   const toggleMinimize = () => {
-    setIsMinimized(!isMinimized);
-    localStorage.setItem('sidebarMinimized', JSON.stringify(!isMinimized));
+    setIsMinimized(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebarMinimized', JSON.stringify(next));
+      return next;
+    });
   };
 
   if (!session || pathname?.startsWith('/onboarding')) {
