@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { encrypt } from '@/lib/encryption';
+import { encrypt, decrypt } from '@/lib/encryption';
 import { ensureKeywordColumnsExist, ALL_PRO_SOURCES, DEFAULT_PRO_SOURCES, DEFAULT_FREE_SOURCES, FREE_ALLOWED_SOURCES } from '@/lib/settings';
 import { getEffectiveTier } from '@/lib/tier';
 import { logSuspiciousActivity } from '@/lib/security';
@@ -126,7 +126,7 @@ export async function GET() {
             willingToTravel: (prefs as any).willingToTravel || '',
             isOver18: (prefs as any).isOver18 || '',
             willingToRelocate: (prefs as any).willingToRelocate || '',
-            defaultAccountPassword: (prefs as any).defaultAccountPassword || '',
+            defaultAccountPassword: (prefs as any).defaultAccountPassword ? decrypt((prefs as any).defaultAccountPassword) : '',
             accountAuthMode: (prefs?.sources as any)?.accountAuthMode || 'sign_in',
             phone: (prefs as any).phone || '',
             location: (prefs as any).location || '',
@@ -245,7 +245,7 @@ export async function POST(request: Request) {
             willingToTravel: data.willingToTravel,
             isOver18: data.isOver18,
             willingToRelocate: data.willingToRelocate,
-            defaultAccountPassword: data.defaultAccountPassword,
+            defaultAccountPassword: data.defaultAccountPassword && data.defaultAccountPassword !== '********' ? encrypt(data.defaultAccountPassword) : data.defaultAccountPassword,
             phone: data.phone,
             location: data.location || ([data.city, data.state].filter(Boolean).join(', ') || undefined),
             streetAddress: data.streetAddress,
