@@ -198,7 +198,8 @@ export function InterventionPanel({
     !settings.eeocDisability ||
     !settings.phone ||
     (!settings.location && !settings.city) ||
-    !settings.linkedinUrl
+    !settings.linkedinUrl ||
+    !settings.expectedSalary
   );
 
   const showAuthForm = reason === 'unknown_question' || isMissingAuth;
@@ -1294,6 +1295,63 @@ export function InterventionPanel({
                           fontSize: '0.875rem',
                         }}
                       />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Salary / Compensation Expectation</label>
+                      <input
+                        type="text"
+                        value={settings?.expectedSalary || ''}
+                        onChange={(e) => handleSettingsChange('expectedSalary', e.target.value)}
+                        placeholder="e.g. $140,000 or 140000"
+                        style={{
+                          background: 'var(--input, var(--background))',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Available Start Date</label>
+                      <input
+                        type="text"
+                        value={settings?.startDate || ''}
+                        onChange={(e) => handleSettingsChange('startDate', e.target.value)}
+                        placeholder="e.g. Immediately or 2 weeks"
+                        style={{
+                          background: 'var(--input, var(--background))',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Willing to Relocate</label>
+                      <select
+                        value={settings?.willingToRelocate || ''}
+                        onChange={(e) => handleSettingsChange('willingToRelocate', e.target.value)}
+                        style={{
+                          background: 'var(--input, var(--background))',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        <option value="">Select...</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                        <option value="Negotiable">Negotiable</option>
+                      </select>
                     </div>
                   </div>
                 </div>

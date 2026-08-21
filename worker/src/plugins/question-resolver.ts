@@ -70,15 +70,30 @@ export class UniversalQuestionResolver {
 
     for (const q of questions) {
       const match = aiAnswers.find((a) => a.id === q.id);
-      const answer = match?.answer;
-      const requiresHuman = match?.requiresHumanInput || !answer;
+      let answer = match?.answer;
+      let requiresHuman = match?.requiresHumanInput || !answer;
+
+      // Profile-based fallback if AI did not return an answer
+      if (!answer) {
+        const lowerQ = q.label.toLowerCase();
+        if (/salary|compensation|desired pay|expected pay|pay expectation|target salary/i.test(lowerQ) && context.userProfile.expectedSalary) {
+          answer = context.userProfile.expectedSalary;
+          requiresHuman = false;
+        } else if (/start date|availability|notice period|available to start|when can you start/i.test(lowerQ) && (context.userProfile as any).startDate) {
+          answer = (context.userProfile as any).startDate;
+          requiresHuman = false;
+        } else if (/relocat/i.test(lowerQ) && (context.userProfile as any).willingToRelocate) {
+          answer = (context.userProfile as any).willingToRelocate;
+          requiresHuman = false;
+        }
+      }
 
       if (answer) {
         const filled = await this.fillSingleQuestion(ctx, q, answer, logger);
         if (filled) {
           await logger.info(
             'question_answered_ai',
-            `AI answered (${q.type}): "${q.label.slice(0, 60)}" -> "${answer.slice(0, 40)}..."`
+            `Answered question (${q.type}): "${q.label.slice(0, 60)}" -> "${answer.slice(0, 40)}..."`
           );
           continue;
         }

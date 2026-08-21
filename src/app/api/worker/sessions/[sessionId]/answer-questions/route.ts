@@ -103,7 +103,10 @@ Gender: ${prefs?.eeocGender || 'Decline to self-identify'}
 Race: ${prefs?.eeocRace || 'Decline to self-identify'}
 Veteran Status: ${prefs?.eeocVeteran || 'Decline to self-identify'}
 Disability Status: ${prefs?.eeocDisability || 'Decline to self-identify'}
-Salary Expectation: ${prefs?.expectedSalary || ''}
+Salary Expectation: ${prefs?.expectedSalary || session.job?.salaryRange || 'Open / Negotiable'}
+Start Date / Availability: ${prefs?.startDate || 'Immediately / 2 weeks'}
+Willing to Relocate: ${prefs?.willingToRelocate || 'Open to discussion'}
+Willing to Travel: ${prefs?.willingToTravel || 'Yes'}
 
 RESUME SUMMARY / EXPERIENCE:
 ${resumeMarkdown.slice(0, 4000)}
@@ -111,6 +114,7 @@ ${resumeMarkdown.slice(0, 4000)}
 TARGET ROLE & COMPANY:
 Role: ${jobTitle}
 Company: ${company}
+Salary Range: ${session.job?.salaryRange || 'Not specified'}
 Description excerpt: ${jobDescription.slice(0, 1500)}
 
 CONTENT WRITING RULES (STRICT):
@@ -120,7 +124,8 @@ CONTENT WRITING RULES (STRICT):
 4. Keep the tone grounded, confident, natural, and conversational.
 5. For open-ended questions (text / textarea), write crisp, direct, 1-3 sentence answers referencing candidate strengths and past achievements where relevant.
 6. For dropdowns or radio choices with Allowed Options, YOU MUST SELECT ONE OF THE EXACT ALLOWED OPTIONS verbatim.
-7. If a question is highly personal, confidential, or impossible to deduce safely, mark requiresHumanInput as true and answer as null.
+7. For salary or compensation questions: If candidate has a configured salary expectation ("${prefs?.expectedSalary || ''}"), provide that value (clean number if required, e.g. 150000 or $150,000 depending on field type). If not specified, use a reasonable market rate for the role or the job's salary range ("${session.job?.salaryRange || ''}").
+8. If a question is highly personal, confidential, or impossible to deduce safely, mark requiresHumanInput as true and answer as null.
 
 OUTPUT FORMAT:
 Return a valid JSON array of objects with the exact structure:
