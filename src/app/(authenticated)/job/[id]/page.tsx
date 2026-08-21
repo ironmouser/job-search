@@ -32,42 +32,8 @@ import JobDetailTracker from '@/components/JobDetailTracker';
 import { getEffectiveTier } from '@/lib/tier';
 import { getUserSettings } from '@/lib/settings';
 
-import { convertHtmlToMarkdown } from '@/lib/formatter';
+import { convertHtmlToMarkdown, formatDescriptionMarkdown } from '@/lib/formatter';
 
-const markedRenderer = new marked.Renderer();
-markedRenderer.link = ({ text }: { text: string }) => {
-  return text;
-};
-
-marked.setOptions({ gfm: true, breaks: true, renderer: markedRenderer });
-
-function formatDescriptionMarkdown(desc?: string | null): string {
-  if (!desc) return '';
-  let cleaned = desc.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
-  }
-
-  // Non-LLM feature: detect if description contains HTML or encoded entities and convert to clean Markdown
-  cleaned = convertHtmlToMarkdown(cleaned);
-
-  // Strip out "Apply at: <url>" lines and variations
-  cleaned = cleaned
-    .replace(/(?:^|\n|\r)\s*(?:apply\s+at|apply\s+here|application\s+link):\s*(?:https?:\/\/\S+|\[[^\]]*\]\([^)]*\)|<[^>]*>|\S+)?(?:\n|\r|$)/gi, '\n')
-    .replace(/\b(?:apply\s+at|apply\s+here|application\s+link):\s*(?:https?:\/\/\S+|\[[^\]]*\]\([^)]*\)|\S+)/gi, '')
-    .trim();
-
-  let html = marked.parse(cleaned) as string;
-  // Remove any raw or parsed anchor tags so links inside the job description are not clickable
-  html = html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1').replace(/<\/?a\b[^>]*>/gi, '');
-  // Clean up any remaining "Apply at:" HTML blocks or empty paragraphs
-  html = html
-    .replace(/<p\b[^>]*>\s*(?:apply\s+at|apply\s+here|application\s+link):?\s*(?:https?:\/\/\S+|[\s\S]*?)?<\/p>/gi, '')
-    .replace(/\b(?:apply\s+at|apply\s+here|application\s+link):\s*https?:\/\/\S+/gi, '')
-    .replace(/<p\b[^>]*>\s*<\/p>/gi, '')
-    .trim();
-  return html;
-}
 
 export default async function JobDetail({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -373,7 +339,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             </section>
 
             {/* Step 3: Apply & Auto Apply */}
-            <section id="step-3-apply">
+            <section id="step-3-apply" data-tour="job-detail-apply">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>3</div>
                 <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Apply</h2>

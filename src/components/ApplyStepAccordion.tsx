@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle, X, Zap, Check } from 'lucide-react';
 import AutofillButton from './AutofillButton';

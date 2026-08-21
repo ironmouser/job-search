@@ -1,6 +1,8 @@
 import * as cheerio from 'cheerio';
 import dns from 'dns';
+import { marked } from 'marked';
 import { callAI } from './ai';
+
 
 // Fix Node.js IPv6 dual-stack fetch issues on macOS / local environments
 try {
@@ -384,4 +386,41 @@ export function fallbackHtmlCleanup(htmlOrText: string): string {
         .replace(/\n{3,}/g, '\n\n')
         .trim();
 }
+
+const markedRenderer = new marked.Renderer();
+markedRenderer.link = ({ text }: { text: string }) => {
+  return text;
+};
+
+marked.setOptions({ gfm: true, breaks: true, renderer: markedRenderer });
+
+
+export function formatDescriptionMarkdown(desc?: string | null): string {
+  if (!desc) return '';
+  let cleaned = desc.replace(/^"|"$/g, '').replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+  }
+
+  // Detect if description contains HTML or encoded entities and convert to clean Markdown
+  cleaned = convertHtmlToMarkdown(cleaned);
+
+  // Strip out "Apply at: <url>" lines and variations
+  cleaned = cleaned
+    .replace(/(?:^|\n|\r)\s*(?:apply\s+at|apply\s+here|application\s+link):\s*(?:https?:\/\/\S+|\[[^\]]*\]\([^)]*\)|<[^>]*>|\S+)?(?:\n|\r|$)/gi, '\n')
+    .replace(/\b(?:apply\s+at|apply\s+here|application\s+link):\s*(?:https?:\/\/\S+|\[[^\]]*\]\([^)]*\)|\S+)/gi, '')
+    .trim();
+
+  let html = marked.parse(cleaned) as string;
+  // Remove any raw or parsed anchor tags so links inside the job description are not clickable
+  html = html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1').replace(/<\/?a\b[^>]*>/gi, '');
+  // Clean up any remaining "Apply at:" HTML blocks or empty paragraphs
+  html = html
+    .replace(/<p\b[^>]*>\s*(?:apply\s+at|apply\s+here|application\s+link):?\s*(?:https?:\/\/\S+|[\s\S]*?)?<\/p>/gi, '')
+    .replace(/\b(?:apply\s+at|apply\s+here|application\s+link):\s*https?:\/\/\S+/gi, '')
+    .replace(/<p\b[^>]*>\s*<\/p>/gi, '')
+    .trim();
+  return html;
+}
+
 

@@ -2,7 +2,7 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText, MoreVertical } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText, MoreVertical } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
@@ -13,6 +13,8 @@ import DashboardDock, { SortOptionType } from '@/components/DashboardDock';
 import DashboardFilterModal from '@/components/DashboardFilterModal';
 import DashboardSearchModal from '@/components/DashboardSearchModal';
 import AddJobModal from '@/components/AddJobModal';
+import JobDetailView from '@/components/JobDetailView';
+
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
 import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInternationalLocation, isOutsideUsLocation } from '@/lib/locationUtils';
 import { computeRoleMatchScore } from '@/lib/roleMatcher';
@@ -203,8 +205,10 @@ export default function DashboardClient({
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [minScoreFilter, setMinScoreFilter] = useState<number>(25);
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'columns'>('columns');
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
+
   const [sortOption, setSortOption] = useState<SortOptionType>('role_match');
   const [locationFilter, setLocationFilter] = useState<string[]>([]);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
@@ -457,7 +461,13 @@ export default function DashboardClient({
       try {
         stateFromStorage = JSON.parse(saved);
         if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter);
-        if (stateFromStorage.viewMode) setViewMode(stateFromStorage.viewMode);
+        if (stateFromStorage.viewMode) {
+          if (typeof window !== 'undefined' && window.innerWidth <= 768 && stateFromStorage.viewMode === 'columns') {
+            setViewMode('grid');
+          } else {
+            setViewMode(stateFromStorage.viewMode);
+          }
+        }
         if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption);
         if (stateFromStorage.locationFilter !== undefined) {
           if (Array.isArray(stateFromStorage.locationFilter)) {
@@ -1160,7 +1170,33 @@ export default function DashboardClient({
 
   const { nudgeJobId, handleDismiss: handleNudgeDismiss, handleFeedbackGiven: handleNudgeFeedbackGiven } = useDashboardFeedbackNudge(currentJobs);
 
+  // Auto-select first job in list if none is selected or selected job is no longer in currentJobs
+  useEffect(() => {
+    if (currentJobs.length > 0) {
+      if (!selectedJobId || !currentJobs.some(j => j.id === selectedJobId)) {
+        setSelectedJobId(currentJobs[0].id);
+      }
+    } else {
+      setSelectedJobId(null);
+    }
+  }, [currentJobs, selectedJobId]);
+
+  const handleJobUpdated = useCallback((id: string, updates: Partial<{ status: string; is_archived: boolean; feedback_type: string | null }>) => {
+    setJobList(prev => prev.map(job => {
+      if (job.id !== id) return job;
+      return {
+        ...job,
+        ...(updates.status !== undefined ? { status: updates.status } : {}),
+        ...(updates.is_archived !== undefined ? { is_archived: updates.is_archived } : {}),
+        ...(updates.feedback_type !== undefined ? {
+          job_feedback: updates.feedback_type ? [{ feedback_type: updates.feedback_type }] : []
+        } : {})
+      };
+    }));
+  }, []);
+
   // Scroll to top of last clicked job when returning to dashboard
+
   useEffect(() => {
     if (!isLoaded || currentJobs.length === 0) return;
 
@@ -1796,8 +1832,29 @@ export default function DashboardClient({
                 >
                   <List size={16} />
                 </button>
+                <button 
+                  onClick={() => setViewMode('columns')}
+                  className={`view-toggle-btn desktop-only-toggle ${viewMode === 'columns' ? 'active' : ''}`}
+                  title="Column Split View"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '30px',
+                    padding: 0,
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: viewMode === 'columns' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    color: viewMode === 'columns' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Columns2 size={16} />
+                </button>
               </div>
             </div>
+
           </div>
         </div>
       
@@ -1980,8 +2037,230 @@ export default function DashboardClient({
             </tbody>
           </table>
         </div>
+      ) : viewMode === 'columns' ? (
+        <div 
+          className="dashboard-column-view-layout" 
+          data-tour="recent-jobs"
+        >
+          {/* Left Column: Job Cards List */}
+          <div className="column-view-left-pane">
+            {currentJobs.map((job) => {
+              const isSelected = selectedJobId === job.id;
+              const isExpanded = expandedJobIds.has(job.id);
+              const score = job.opportunity_scores?.[0]?.total_score;
+              const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
+              const isEmailJob = job.company?.includes('(Scraped via Email)') || job.source?.toLowerCase().includes('email');
+              const isUserAdded = job.unlockedBySubmission === true;
+              const feedbackObj = Array.isArray(job.job_feedback) ? job.job_feedback[0] : job.job_feedback;
+              const isDisliked = feedbackObj?.feedback_type === 'dislike';
+              const isViewed = !!(job.is_viewed || job.isViewed);
+
+              return (
+                <div
+                  key={job.id}
+                  id={`column-job-item-${job.id}`}
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('input, button, a, [role="button"]')) {
+                      return;
+                    }
+                    setSelectedJobId(job.id);
+                    handleMarkViewed(job.id);
+                  }}
+                  className={`glass-card column-job-card ${isSelected ? 'selected' : ''}${isViewed ? ' job-card-viewed' : ''}`}
+                  style={{
+                    opacity: isDisliked ? 0.5 : 1,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-primary, #0070f3)', textTransform: 'uppercase', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {cleanCompanyName(job.company)}
+                      </div>
+                      <h4 style={{ margin: '0.2rem 0 0 0', fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {job.title}
+                      </h4>
+                    </div>
+                    {score ? (
+                      <div className={`score-badge ${scoreClass}`} style={{ fontSize: '0.95rem', fontWeight: 700, minWidth: '34px', height: '34px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', flexShrink: 0 }}>
+                        {score}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                      <MapPin size={12} /> {job.location || 'Remote'}
+                    </span>
+                    {job.salary_range && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                        <DollarSign size={12} /> {job.salary_range}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bottom Row */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    {/* Lower Left Corner: Checkbox + Badges */}
+                    <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: '-6px', marginBottom: '-22px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={checkedJobs.has(job.id)} 
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleJobCheck(job.id)}
+                        style={{ 
+                          cursor: 'pointer', 
+                          width: '16px', 
+                          height: '16px', 
+                          borderRadius: '4px', 
+                          accentColor: 'var(--accent-primary, #0070f3)',
+                          margin: 0
+                        }}
+                        title="Select for batch apply"
+                      />
+                      {isUserAdded && <span style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Custom</span>}
+                      {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Email</span>}
+                      {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Easy Apply</span>}
+                      {job.status === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.68rem', padding: '1px 5px' }}>Applied</span>}
+                    </div>
+
+                    {/* Lower Right Corner: Date + More Icon */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                      <span style={{ opacity: 0.75 }}>{safeFormatDate(job.created_at)}</span>
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCardExpand(job.id);
+                        }} 
+                        className="card-more-btn"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          opacity: isExpanded ? 0 : 1,
+                          pointerEvents: isExpanded ? 'none' : 'auto',
+                          visibility: isExpanded ? 'hidden' : 'visible',
+                          transition: 'opacity 0.2s ease, visibility 0.2s ease'
+                        }}
+                        title="More actions"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Collapsible Action Bar */}
+                  <div className={`job-card-collapsible ${isExpanded ? 'expanded' : ''}`}>
+                    <div className="job-card-collapsible-inner">
+                      <div className="dashboard-job-action-row" style={{ paddingTop: '0.65rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.3rem', width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0, flexWrap: 'wrap' }}>
+                          {/* Thumbs Up & Thumbs Down */}
+                          <FeedbackButtons
+                            jobId={job.id}
+                            initialFeedback={feedbackObj?.feedback_type as 'like' | 'dislike' | undefined}
+                            compact
+                            showNudgeTooltip={nudgeJobId === job.id}
+                            nudgeVariant="dashboard"
+                            onNudgeDismiss={handleNudgeDismiss}
+                            onFeedbackGiven={handleNudgeFeedbackGiven}
+                          />
+
+                          {/* Delete */}
+                          <button 
+                            onClick={() => deleteJob(job.id)} 
+                            className="btn-outline card-icon-action-btn" 
+                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} 
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+
+                          {/* Save / Bookmark */}
+                          <button 
+                            onClick={() => toggleArchive(job.id)} 
+                            className="btn-outline card-icon-action-btn" 
+                            style={{ color: job.is_archived ? 'var(--accent-primary)' : undefined, borderColor: job.is_archived ? 'var(--accent-primary)' : undefined }} 
+                            title={job.is_archived ? "Unsave" : "Save"}
+                          >
+                            {job.is_archived ? <BookmarkX size={14} /> : <Bookmark size={14} />}
+                          </button>
+
+                          {/* Original */}
+                          <a 
+                            href={job.url} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            onClick={() => handleMarkViewed(job.id)} 
+                            className="btn-outline card-icon-action-btn original-link-btn"
+                            title="Original Job Listing"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
+                        </div>
+
+                        {/* Collapse button */}
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCardExpand(job.id);
+                          }} 
+                          className="card-more-btn"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '2px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            borderRadius: '4px'
+                          }}
+                          title="Less actions"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+
+            {currentJobs.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                No jobs found
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Selected Job Full Details */}
+          <div className="column-view-right-pane">
+            {selectedJobId ? (
+              <JobDetailView 
+                jobId={selectedJobId} 
+                embeddedMode={true} 
+                onJobUpdated={handleJobUpdated}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: 'var(--text-secondary)' }}>
+                Select a job on the left to view details
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="job-card-grid" data-tour="recent-jobs">
+
           {currentJobs.map((job) => {
             const score = job.opportunity_scores?.[0]?.total_score;
             const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
