@@ -79,11 +79,13 @@ export default function Navigation() {
             position: 'fixed',
             inset: 0,
             background: 'rgba(0, 0, 0, 0.6)',
-            zIndex: 90,
+            zIndex: 9930,
+            WebkitTransform: 'translateZ(0)',
+            transform: 'translateZ(0)',
           }}
         />
       )}
-      <aside className={`sidebar ${isMinimized ? 'minimized' : ''}`}>
+      <aside className={`sidebar ${isMinimized ? 'minimized' : ''} ${isOpen ? 'menu-open' : ''}`}>
         {/* Header */}
         <div className="mobile-nav-header">
           <Link

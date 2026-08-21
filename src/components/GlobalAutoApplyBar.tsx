@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Bot,
@@ -96,12 +97,17 @@ export function GlobalAutoApplyBar() {
     dailyLimit: number;
     tier: string;
   } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState('220px');
   const [isMobile, setIsMobile] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
   const [clearingJobId, setClearingJobId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Track sidebar width dynamically (expanded 220px vs collapsed 64px)
   useEffect(() => {
@@ -290,7 +296,9 @@ export function GlobalAutoApplyBar() {
   // On mobile & tablet, only show the bottom command bar if there is an active auto-apply task or user intervention
   const shouldShowBottomBar = !isMobile || hasActiveQueue;
 
-  return (
+  if (!mounted || typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {shouldShowBottomBar && (
         <>
@@ -1250,6 +1258,7 @@ export function GlobalAutoApplyBar() {
           </button>
         </>
       )}
-    </>
+    </>,
+    document.body
   );
 }

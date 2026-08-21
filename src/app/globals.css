@@ -1513,19 +1513,35 @@ details.glass-card>summary::marker {
   }
 
   .sidebar {
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 100;
+    left: 0;
+    right: 0;
     width: 100%;
     height: auto;
-    max-height: 100vh;
-    overflow-y: auto;
-    padding: 0.875rem 1rem;
-    padding-top: max(0.875rem, env(safe-area-inset-top));
+    max-height: calc(56px + env(safe-area-inset-top, 0px));
+    overflow: hidden;
+    padding: 0.75rem 1rem;
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
     border-right: none;
     border-bottom: 1px solid var(--sidebar-border);
     flex-direction: column;
     background: var(--sidebar-bg);
+    z-index: 9940;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    box-sizing: border-box;
+    transition: max-height 0.25s ease;
+  }
+
+  .sidebar.menu-open,
+  .sidebar:has(.nav-menu.open) {
+    max-height: 100dvh;
+    max-height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .mobile-nav-header {
@@ -1578,8 +1594,10 @@ details.glass-card>summary::marker {
 
   .main-content {
     padding: 1.25rem 1rem;
-    padding-bottom: max(3rem, env(safe-area-inset-bottom));
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + 1rem);
+    padding-bottom: max(5.5rem, calc(4.5rem + env(safe-area-inset-bottom, 0px)));
     height: auto;
+    overflow-y: visible;
   }
 
   .job-detail-grid {
@@ -3623,6 +3641,8 @@ body.light-theme .job-apply-popover .command-bar-btn:hover {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.38s cubic-bezier(0.25, 1, 0.5, 1);
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .command-bar-backdrop.active {
@@ -3636,6 +3656,10 @@ body.light-theme .job-apply-popover .command-bar-btn:hover {
   right: 0;
   left: var(--sidebar-width, 220px);
   z-index: 9950;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   background: #0d1117;
   border-top: 1px solid rgba(59, 130, 246, 0.4);
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.8), 0 -2px 10px rgba(37, 99, 235, 0.2);
@@ -3818,17 +3842,21 @@ body.light-theme .drawer-queue-item.active {
   justify-content: center;
   cursor: pointer;
   z-index: 9960;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   box-shadow: 0 6px 22px rgba(99, 102, 241, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .mobile-fab:hover {
-  transform: scale(1.06);
+  transform: scale(1.06) translateZ(0);
   box-shadow: 0 8px 26px rgba(99, 102, 241, 0.7);
 }
 
 .mobile-fab:active {
-  transform: scale(0.94);
+  transform: scale(0.94) translateZ(0);
 }
 
 .mobile-fab.open {
@@ -3858,12 +3886,16 @@ body.light-theme .mobile-fab.open {
   right: 1.1rem;
   bottom: 124px;
   z-index: 9960;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   display: flex;
   flex-direction: column-reverse;
   align-items: flex-end;
   gap: 0.65rem;
   opacity: 0;
-  transform: translateY(16px) scale(0.92);
+  transform: translateY(16px) scale(0.92) translateZ(0);
   visibility: hidden;
   pointer-events: none;
   transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s;
@@ -3871,7 +3903,7 @@ body.light-theme .mobile-fab.open {
 
 .mobile-fab-menu.open {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(1) translateZ(0);
   visibility: visible;
   pointer-events: auto;
 }

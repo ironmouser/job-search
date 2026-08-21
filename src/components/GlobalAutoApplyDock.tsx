@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
 import { Bot, AlertTriangle, Loader2, ChevronDown, ChevronUp, ExternalLink, Building2, CheckCircle2, Zap } from 'lucide-react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
@@ -35,6 +36,7 @@ export function GlobalAutoApplyDock() {
   const router = useRouter();
   const pathname = usePathname();
   const isOnboarding = pathname?.startsWith('/onboarding');
+  const [mounted, setMounted] = useState(false);
   const [activeSession, setActiveSession] = useState<ActiveSessionData | null>(null);
   const [quota, setQuota] = useState<{
     monthlyRemaining: number;
@@ -46,6 +48,10 @@ export function GlobalAutoApplyDock() {
   const [collapsed, setCollapsed] = useState(false);
   const [dismissedSessionId, setDismissedSessionId] = useState<string | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchActive = useCallback(async () => {
     if (isOnboarding) return;
@@ -122,9 +128,11 @@ export function GlobalAutoApplyDock() {
     setActiveSession(null);
   };
 
+  if (!mounted || typeof document === 'undefined') return null;
+
   // Render minimized icon floating button
   if (collapsed) {
-    return (
+    return createPortal(
       <>
         <div
           onClick={() => setCollapsed(false)}
@@ -133,6 +141,10 @@ export function GlobalAutoApplyDock() {
             bottom: '1.5rem',
             right: '1.5rem',
             zIndex: 9990,
+            WebkitTransform: 'translateZ(0)',
+            transform: 'translateZ(0)',
+            WebkitBackfaceVisibility: 'hidden',
+            backfaceVisibility: 'hidden',
             background: isIntervention ? '#f59e0b' : '#3b82f6',
             color: '#ffffff',
             borderRadius: '9999px',
@@ -171,12 +183,13 @@ export function GlobalAutoApplyDock() {
           companyName={companyName}
           onResolved={fetchActive}
         />
-      </>
+      </>,
+      document.body
     );
   }
 
   // Render full dock card
-  return (
+  return createPortal(
     <>
       <div
         style={{
@@ -184,6 +197,10 @@ export function GlobalAutoApplyDock() {
           bottom: '1.5rem',
           right: '1.5rem',
           zIndex: 9990,
+          WebkitTransform: 'translateZ(0)',
+          transform: 'translateZ(0)',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden',
           width: '360px',
           maxWidth: 'calc(100vw - 3rem)',
           background: isIntervention ? '#fffbe6' : '#ffffff',
@@ -314,6 +331,7 @@ export function GlobalAutoApplyDock() {
         companyName={companyName}
         onResolved={fetchActive}
       />
-    </>
+    </>,
+    document.body
   );
 }
