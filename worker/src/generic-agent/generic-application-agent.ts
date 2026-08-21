@@ -13,8 +13,17 @@ import {
   ATSPlatform,
   InterventionReason,
   WorkflowContext,
-} from '../types';
-import { InterventionError } from '../plugins/base-plugin';
+import { InterventionError, ATSPlugin } from '../plugins/base-plugin';
+
+class GenericAuthHelper extends ATSPlugin {
+  readonly platform = ATSPlatform.UNKNOWN;
+  readonly displayName = 'Employer Portal';
+  detect() { return { platform: ATSPlatform.UNKNOWN, confidence: 0, detectedFeatures: [], automationSupported: true }; }
+  async prepare() {}
+  async apply() {}
+  async validate() { return { valid: true, issues: [] }; }
+  async finalize() { return { status: 'applied' as any }; }
+}
 import {
   ApplicationControlCandidate,
   PageAnalysisResult,
@@ -95,6 +104,22 @@ export class GenericApplicationAgent {
         }
 
         if (blocker.type === 'AUTHENTICATION_REQUIRED') {
+          const email = context?.userProfile?.accountEmail || context?.userProfile?.email;
+          const password = context?.userProfile?.accountPassword;
+
+          if (email && password) {
+            await logger.info('login_attempt', 'Credentials available — attempting candidate account creation / sign in...');
+            try {
+              const helper = new GenericAuthHelper();
+              await (helper as any).checkAccountGate(page, currentUrl, 'Employer Portal', context);
+              await page.waitForTimeout(2000);
+              hop++;
+              continue;
+            } catch (authErr) {
+              if (authErr instanceof InterventionError) throw authErr;
+            }
+          }
+
           await logger.warn('login_required', `Authentication required: ${blocker.reason}`);
           throw new InterventionError(
             InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,

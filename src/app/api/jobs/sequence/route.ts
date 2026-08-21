@@ -30,14 +30,21 @@ export async function GET(request: Request) {
 
   const filterParam = searchParams.get('filter') || 'all'; // all, interested, skipped, applied
   const sortParam = searchParams.get('sort') || 'score'; // score, new, salary
+  const sortOption = sortParam;
   const keywordFilter = searchParams.get('keyword') || '';
-  const locationFilter = searchParams.get('location') || '';
+  const locationFilterParam = searchParams.get('location') || '';
+  const locationFilter = locationFilterParam ? locationFilterParam.split(',').map(s => s.trim()).filter(Boolean) : [];
   const minSalaryFilter = parseInt(searchParams.get('minSalary') || '0', 10);
   const isCustomOnly = searchParams.get('customOnly') === 'true';
+  const activeFilter = searchParams.get('activeFilter') || searchParams.get('status') || 'active';
+  const sourceFilter = searchParams.get('source') || searchParams.get('sourceFilter') || 'all';
+  const startDate = searchParams.get('startDate') || '';
+  const endDate = searchParams.get('endDate') || '';
 
   try {
     const userPrefs = await getUserSettings(userId);
     const preferUsOnly = userPrefs?.noInternational || false;
+    const targetRole = userPrefs?.searchKeyword || '';
 
     const userJobs = await prisma.userJob.findMany({
       where: {
