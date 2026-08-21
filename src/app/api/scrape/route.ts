@@ -9,7 +9,7 @@ import { getEffectiveTier } from '@/lib/tier';
 
 
 import { isUsLocation, isRemoteLocation, extractStateAbbr, isOutsideUsLocation } from '@/lib/locationUtils';
-import { expandSearchKeywords, expandSearchKeywordsWithAI } from '@/lib/keywordExpansion';
+import { expandSearchKeywords, expandSearchKeywordsWithAI, splitTargetRoles } from '@/lib/keywordExpansion';
 import { extractTopTitlesFromResults } from '@/lib/serpapi';
 
 export async function POST(request: Request) {
@@ -200,8 +200,9 @@ export async function POST(request: Request) {
                         console.warn(`[DB-First Pre-Check Warning]: ${dbErr.message}`);
                     }
 
-                    // Step 2: Derive up to 3 keyword variants for live scraper rotation immediately
-                    const scraperKeywords = initialKeywords.slice(0, 3);
+                    // Step 2: Derive keyword variants for live scraper rotation immediately
+                    const subRoles = splitTargetRoles(keyword);
+                    const scraperKeywords = initialKeywords.slice(0, Math.min(6, Math.max(3, subRoles.length)));
 
                     const tasks: Promise<void>[] = [];
 

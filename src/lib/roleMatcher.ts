@@ -5,6 +5,8 @@
  * aligns with a user's target job title or role.
  */
 
+import { splitTargetRoles } from './roleTaxonomy';
+
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'in', 'on', 'at', 'for', 'to', 'of', 'and', 'or', 'with',
   '&', '/', '-', '–', '—', 'as', 'by', 'from'
@@ -33,6 +35,7 @@ function extractTokens(text: string): string[] {
 /**
  * Computes a score from 0 to 1000 representing how closely `jobTitle` matches `targetRole`.
  * Also checks `jobDescription` as a low-weight fallback if title does not match.
+ * If `targetRole` contains comma-separated titles, returns the best match score among them.
  */
 export function computeRoleMatchScore(
   jobTitle?: string | null,
@@ -42,6 +45,27 @@ export function computeRoleMatchScore(
   if (!targetRole || !targetRole.trim()) return 0;
   if (!jobTitle || !jobTitle.trim()) return 0;
 
+  const subRoles = splitTargetRoles(targetRole);
+  if (subRoles.length > 1) {
+    let bestScore = 0;
+    for (const role of subRoles) {
+      const score = computeSingleRoleMatchScore(jobTitle, role, jobDescription);
+      if (score > bestScore) {
+        bestScore = score;
+      }
+      if (bestScore === 1000) break;
+    }
+    return bestScore;
+  }
+
+  return computeSingleRoleMatchScore(jobTitle, targetRole, jobDescription);
+}
+
+function computeSingleRoleMatchScore(
+  jobTitle: string,
+  targetRole: string,
+  jobDescription?: string | null
+): number {
   const cleanTarget = normalizeText(targetRole);
   const cleanTitle = normalizeText(jobTitle);
 

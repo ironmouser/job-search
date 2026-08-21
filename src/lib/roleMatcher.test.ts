@@ -56,6 +56,23 @@ const descScore = computeRoleMatchScore('Team Member', target, 'We are looking f
 console.log(`  Description match score: ${descScore}`);
 assert('Description match fallback is > 0', descScore > 0, `Got ${descScore}`);
 
+console.log('\n📋 Multi-Role Comma-Separated Matches');
+const multiTarget = 'Administrative Assistant, quality control, medical, coding, billing';
+const adminScore = computeRoleMatchScore('Administrative Assistant', multiTarget);
+const qcScore = computeRoleMatchScore('Quality Control Inspector', multiTarget);
+const codingScore = computeRoleMatchScore('Medical Billing and Coding Specialist', multiTarget);
+const unrelatedScore = computeRoleMatchScore('Dentist', multiTarget);
+
+console.log(`  Administrative Assistant: ${adminScore}`);
+console.log(`  Quality Control Inspector: ${qcScore}`);
+console.log(`  Medical Billing and Coding Specialist: ${codingScore}`);
+console.log(`  Dentist: ${unrelatedScore}`);
+
+assert('Administrative Assistant matches perfectly (1000)', adminScore === 1000, `Got ${adminScore}`);
+assert('Quality Control matches strongly (> 700)', qcScore > 700, `Got ${qcScore}`);
+assert('Medical Billing and Coding matches strongly (> 700)', codingScore > 700, `Got ${codingScore}`);
+assert('Unrelated Dentist scores 0', unrelatedScore === 0, `Got ${unrelatedScore}`);
+
 console.log(`\n${'─'.repeat(40)}`);
 console.log(`Results: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

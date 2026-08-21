@@ -57,6 +57,9 @@ export function Modal({
         style={{
           width: '100%',
           maxWidth: maxWidth,
+          maxHeight: 'calc(100dvh - 2rem)',
+          display: 'flex',
+          flexDirection: 'column',
           background: 'var(--card)',
           color: 'var(--card-foreground)',
           borderRadius: 'var(--radius, 12px)',
@@ -76,6 +79,7 @@ export function Modal({
               alignItems: 'flex-start',
               justifyContent: 'space-between',
               background: 'var(--card-header-bg)',
+              flexShrink: 0,
             }}
           >
             <div>
@@ -123,7 +127,16 @@ export function Modal({
             </button>
           </div>
         )}
-        <div style={{ padding: '1.5rem' }}>{children}</div>
+        <div
+          style={{
+            padding: '1.5rem',
+            overflowY: 'auto',
+            flex: 1,
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>,
     document.body

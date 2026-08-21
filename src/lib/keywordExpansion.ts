@@ -16,10 +16,11 @@ export {
   ROLE_SYNONYM_CLUSTERS,
   getCoreKeyword,
   matchesWholeWords,
+  splitTargetRoles,
   expandSearchKeywords,
   CANONICAL_TITLE_LIST
 } from './roleTaxonomy';
-import { expandSearchKeywords } from './roleTaxonomy';
+import { expandSearchKeywords, splitTargetRoles } from './roleTaxonomy';
 
 // ---------------------------------------------------------------------------
 // AI-Powered Semantic Expansion
@@ -30,16 +31,15 @@ const _aiExpansionCache = new Map<string, { keywords: string[]; ts: number }>();
 const AI_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
- * Expands a job title into semantically equivalent search terms using AI.
+ * Expands a job title (or comma-separated list of titles) into semantically
+ * equivalent search terms using AI.
  *
- * Works for any role title — niche, compound, or abbreviated — regardless of
- * whether it appears in the static `ROLE_SYNONYM_CLUSTERS` dictionary.
- *
+ * Works for any role title — niche, compound, multi-role, or abbreviated.
  * Falls back to `expandSearchKeywords()` if the AI call fails or times out.
  *
- * @param keyword  The user's raw job title / search keyword.
+ * @param keyword  The user's raw job title or comma-separated search keywords.
  * @param userId   Optional user ID passed through to the AI router for logging.
- * @returns        Array of 2–6 search terms; the user's original input is always first.
+ * @returns        Array of search terms; user's original input roles are always first.
  */
 export async function expandSearchKeywordsWithAI(
   keyword: string,
@@ -48,6 +48,7 @@ export async function expandSearchKeywordsWithAI(
   if (!keyword || !keyword.trim()) return [];
 
   const cacheKey = keyword.trim().toLowerCase();
+  const subRoles = splitTargetRoles(keyword);
 
   // Return cached result if still fresh
   const cached = _aiExpansionCache.get(cacheKey);
@@ -57,21 +58,25 @@ export async function expandSearchKeywordsWithAI(
   }
 
   try {
+    const userRoleDesc = subRoles.length > 1
+      ? `Target roles: ${JSON.stringify(subRoles)}`
+      : `Job title: "${keyword.trim()}"`;
+
     const raw = await Promise.race<string>([
       callAI({
         task: 'extract',
         jsonMode: true,
-        maxTokens: 200,
+        maxTokens: 250,
         userId,
         messages: [
           {
             role: 'system',
             content:
-              'You are a job search optimization assistant. Given a job title or role description, return the most common equivalent job board search terms that recruiters use when posting similar positions. Focus on standard industry-recognized titles. Return ONLY valid JSON in the exact format: {"keywords": ["Term 1", "Term 2", "Term 3", "Term 4", "Term 5"]} — between 3 and 6 terms, no explanations.',
+              'You are a job search optimization assistant. Given one or more target job titles or role descriptions, return the most common equivalent job board search terms that recruiters use when posting similar positions across each role. Focus on standard industry-recognized titles. Return ONLY valid JSON in the exact format: {"keywords": ["Term 1", "Term 2", "Term 3", "Term 4", "Term 5", "Term 6"]} — between 3 and 8 terms, no explanations.',
           },
           {
             role: 'user',
-            content: `Job title: "${keyword.trim()}"`,
+            content: userRoleDesc,
           },
         ],
       }),
@@ -87,13 +92,18 @@ export async function expandSearchKeywordsWithAI(
 
     if (aiTerms.length === 0) throw new Error('Empty AI expansion response');
 
-    // Always put the user's exact input first, then AI suggestions (deduped, max 6 total)
-    const combined: string[] = [keyword.trim()];
+    // Always put each user input role first (deduped), then AI suggestions
+    const combined: string[] = [];
+    for (const r of subRoles) {
+      if (!combined.some(c => c.toLowerCase() === r.toLowerCase())) {
+        combined.push(r);
+      }
+    }
     for (const term of aiTerms) {
       if (!combined.some(r => r.toLowerCase() === term.toLowerCase())) {
         combined.push(term);
       }
-      if (combined.length >= 6) break;
+      if (combined.length >= Math.max(8, subRoles.length * 2)) break;
     }
 
     _aiExpansionCache.set(cacheKey, { keywords: combined, ts: Date.now() });
@@ -102,7 +112,6 @@ export async function expandSearchKeywordsWithAI(
   } catch (err: any) {
     console.warn(`[KeywordExpansion] AI expansion failed for "${keyword}", using static fallback: ${err.message}`);
     const fallback = expandSearchKeywords(keyword);
-    // Cache the fallback too so we don't hammer the AI on repeated failures
     _aiExpansionCache.set(cacheKey, { keywords: fallback, ts: Date.now() });
     return fallback;
   }

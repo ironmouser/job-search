@@ -9,15 +9,12 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
-  Building2,
   CheckCircle2,
   AlertCircle,
   X,
   ListOrdered,
   Trash2,
-  Plus,
   Sparkles,
-  ShieldCheck,
   Check,
   Zap,
 } from 'lucide-react';
@@ -103,6 +100,8 @@ export function GlobalAutoApplyBar() {
   const [sidebarWidth, setSidebarWidth] = useState('220px');
   const [isMobile, setIsMobile] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
+  const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
+  const [clearingJobId, setClearingJobId] = useState<string | null>(null);
 
   // Track sidebar width dynamically (expanded 220px vs collapsed 64px)
   useEffect(() => {
@@ -209,9 +208,6 @@ export function GlobalAutoApplyBar() {
   const companyName = selectedSession?.job?.company || '';
   const currentStepLabel = STEP_DEFINITIONS[activeStepNum - 1]?.label || 'Processing';
   const currentStepDesc = STEP_DEFINITIONS[activeStepNum - 1]?.desc || 'Processing application...';
-
-  const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
-  const [clearingJobId, setClearingJobId] = useState<string | null>(null);
 
   const handleCancelJob = async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
@@ -1100,7 +1096,7 @@ export function GlobalAutoApplyBar() {
         </div>
       </div>
 
-      {/* ─── Mobile FAB + Bottom Sheet ─── */}
+      {/* ─── Mobile Multi-Button Speed Dial FAB ─── */}
       {isMobile && !isExpanded && (hasSelection || pageActions) && (
         <>
           {/* FAB backdrop */}
@@ -1110,109 +1106,102 @@ export function GlobalAutoApplyBar() {
               style={{
                 position: 'fixed',
                 inset: 0,
-                background: 'rgba(0, 0, 0, 0.55)',
-                zIndex: 9945,
+                background: 'rgba(0, 0, 0, 0.45)',
+                zIndex: 9955,
               }}
             />
           )}
 
-          {/* Slide-up bottom sheet */}
+          {/* Speed Dial Action Items (stacked vertically above FAB) */}
           <div
-            className={`fab-action-sheet ${isFabOpen ? 'open' : ''}`}
-            style={{ bottom: '54px' }}
+            className={`mobile-fab-menu ${isFabOpen ? 'open' : ''}`}
+            aria-hidden={!isFabOpen}
           >
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.9rem 1.1rem 0.6rem',
-              borderBottom: '1px solid rgba(255,255,255,0.08)',
-            }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em' }}>
-                {hasSelection ? 'SELECTION ACTIONS' : 'PAGE ACTIONS'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsFabOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.2rem' }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div style={{ padding: '0.85rem 1rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-              {hasSelection ? (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                    <CheckCircle2 size={15} color="#38bdf8" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#38bdf8' }}>
-                      {selectionState?.count} job{(selectionState?.count ?? 0) > 1 ? 's' : ''} selected
-                    </span>
-                  </div>
-
-                  {selectionState?.onDeselectAll && (
-                    <button
-                      type="button"
-                      onClick={() => { selectionState.onDeselectAll!(); setIsFabOpen(false); }}
-                      className="command-bar-btn"
-                      style={{ justifyContent: 'center', width: '100%' }}
-                    >
-                      Deselect All
-                    </button>
-                  )}
-
-                  {selectionState?.onArchiveDelete && (
-                    <button
-                      type="button"
-                      onClick={() => { selectionState.onArchiveDelete!(); setIsFabOpen(false); }}
-                      className="command-bar-btn command-bar-btn-danger"
-                      style={{ justifyContent: 'center', width: '100%' }}
-                    >
-                      <Trash2 size={14} />
-                      <span>Archive / Delete</span>
-                    </button>
-                  )}
-
-                  {selectionState?.onStartApply && (() => {
-                    const isBatchApplying = Boolean(
-                      selectionState?.isApplying ||
-                      (ongoingCount > 0 && activeSessions.some((s) => s.status !== 'applied' && s.status !== 'failed' && s.status !== 'cancelled' && s.status !== AutoApplyStatus.NEEDS_INTERVENTION && s.status !== AutoApplyStatus.NEEDS_REVIEW))
-                    );
-                    return (
-                      <button
-                        type="button"
-                        onClick={selectionState.onStartApply}
-                        disabled={isBatchApplying}
-                        className="command-bar-btn command-bar-btn-primary"
-                        style={{ justifyContent: 'center', width: '100%', color: '#ffffff', opacity: isBatchApplying ? 0.85 : 1 }}
-                      >
-                        {isBatchApplying ? (
-                          <><Loader2 size={15} color="#ffffff" className="animate-spin" /><span style={{ color: '#ffffff' }}>Auto Applying ({completedCount}/{totalCount || selectionState?.count})...</span></>
-                        ) : (
-                          <><Bot size={15} color="#ffffff" /><span style={{ color: '#ffffff' }}>1-Click Auto Apply ({selectionState?.count})</span></>
-                        )}
-                      </button>
-                    );
-                  })()}
-                </>
-              ) : (
-                /* Page actions rendered in a vertical column on mobile */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {pageActions}
+            {hasSelection ? (
+              <div style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-end', gap: '0.65rem' }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.45rem 0.9rem',
+                  borderRadius: '9999px',
+                  background: 'rgba(14, 165, 233, 0.18)',
+                  border: '1px solid rgba(56, 189, 248, 0.45)',
+                  color: '#38bdf8',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
+                  backdropFilter: 'none',
+                }}>
+                  <CheckCircle2 size={14} color="#38bdf8" />
+                  <span>{selectionState?.count} job{(selectionState?.count ?? 0) > 1 ? 's' : ''} selected</span>
                 </div>
-              )}
-            </div>
+
+                {selectionState?.onDeselectAll && (
+                  <button
+                    type="button"
+                    onClick={() => { selectionState.onDeselectAll!(); setIsFabOpen(false); }}
+                    className="command-bar-btn"
+                  >
+                    <span>Deselect All</span>
+                  </button>
+                )}
+
+                {selectionState?.onArchiveDelete && (
+                  <button
+                    type="button"
+                    onClick={() => { selectionState.onArchiveDelete!(); setIsFabOpen(false); }}
+                    className="command-bar-btn command-bar-btn-danger"
+                  >
+                    <Trash2 size={14} />
+                    <span>Archive / Delete</span>
+                  </button>
+                )}
+
+                {selectionState?.onStartApply && (() => {
+                  const isBatchApplying = Boolean(
+                    selectionState?.isApplying ||
+                    (ongoingCount > 0 && activeSessions.some((s) => s.status !== 'applied' && s.status !== 'failed' && s.status !== 'cancelled' && s.status !== AutoApplyStatus.NEEDS_INTERVENTION && s.status !== AutoApplyStatus.NEEDS_REVIEW))
+                  );
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => { selectionState.onStartApply!(); setIsFabOpen(false); }}
+                      disabled={isBatchApplying}
+                      className="command-bar-btn command-bar-btn-primary"
+                      style={{ color: '#ffffff', opacity: isBatchApplying ? 0.85 : 1 }}
+                    >
+                      {isBatchApplying ? (
+                        <><Loader2 size={15} color="#ffffff" className="animate-spin" /><span style={{ color: '#ffffff' }}>Auto Applying ({completedCount}/{totalCount || selectionState?.count})...</span></>
+                      ) : (
+                        <><Bot size={15} color="#ffffff" /><span style={{ color: '#ffffff' }}>1-Click Auto Apply ({selectionState?.count})</span></>
+                      )}
+                    </button>
+                  );
+                })()}
+              </div>
+            ) : (
+              /* Page actions rendered in vertical speed dial column */
+              <div
+                style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-end', gap: '0.65rem' }}
+                onClick={() => setIsFabOpen(false)}
+              >
+                {pageActions}
+              </div>
+            )}
           </div>
 
-          {/* FAB button */}
+          {/* Main FAB trigger button */}
           <button
             type="button"
             onClick={() => setIsFabOpen((p) => !p)}
-            className={`mobile-fab ${hasIntervention ? 'fab-alert' : hasSelection ? 'fab-selection' : ''}`}
-            aria-label="Open actions"
+            className={`mobile-fab ${isFabOpen ? 'open' : ''} ${hasIntervention ? 'fab-alert' : hasSelection ? 'fab-selection' : ''}`}
+            aria-label={isFabOpen ? "Close actions menu" : "Open actions menu"}
             style={{ bottom: '66px' }}
           >
-            {hasSelection ? (
+            {isFabOpen ? (
+              <X size={22} />
+            ) : hasSelection ? (
               <><CheckCircle2 size={18} /><span style={{ fontSize: '0.78rem', fontWeight: 700 }}>{selectionState?.count}</span></>
             ) : (
               <Sparkles size={20} />

@@ -100,6 +100,26 @@ export function getCoreKeyword(keyword: string): string {
 }
 
 /**
+ * Splits comma- or semicolon-separated job titles into clean, distinct target roles.
+ * E.g., "Administrative Assistant, quality control, medical, coding, billing"
+ *   -> ["Administrative Assistant", "quality control", "medical", "coding", "billing"]
+ */
+export function splitTargetRoles(raw: string): string[] {
+  if (!raw || !raw.trim()) return [];
+  const parts = raw.split(/[,;/|]+/).map(p => p.trim()).filter(Boolean);
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const part of parts) {
+    const lower = part.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      unique.push(part);
+    }
+  }
+  return unique.length > 0 ? unique : [raw.trim()];
+}
+
+/**
  * Checks if targetText contains query with whole word boundary semantics.
  */
 export function matchesWholeWords(targetText: string, query: string): boolean {
@@ -110,10 +130,37 @@ export function matchesWholeWords(targetText: string, query: string): boolean {
 }
 
 /**
- * Expands a target search keyword into 2 to 5 relevant search terms.
- * Always ensures the user's exact input is the first element.
+ * Expands a target search keyword into relevant search terms.
+ * Supports comma-separated lists by expanding each distinct role and deduplicating.
+ * Always ensures the user's exact input role(s) are the first elements.
  */
 export function expandSearchKeywords(keyword: string): string[] {
+  if (!keyword || !keyword.trim()) return [];
+  const subRoles = splitTargetRoles(keyword);
+
+  if (subRoles.length > 1) {
+    const results: string[] = [];
+    for (const role of subRoles) {
+      if (!results.some(r => r.toLowerCase() === role.toLowerCase())) {
+        results.push(role);
+      }
+    }
+    for (const role of subRoles) {
+      const singleExp = expandSingleKeyword(role);
+      for (const term of singleExp) {
+        if (!results.some(r => r.toLowerCase() === term.toLowerCase())) {
+          results.push(term);
+        }
+        if (results.length >= Math.max(8, subRoles.length * 2)) break;
+      }
+    }
+    return results;
+  }
+
+  return expandSingleKeyword(keyword.trim());
+}
+
+function expandSingleKeyword(keyword: string): string[] {
   if (!keyword || !keyword.trim()) return [];
   const rawTrimmed = keyword.trim();
   const lowerKeyword = rawTrimmed.toLowerCase();

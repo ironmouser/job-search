@@ -1,7 +1,7 @@
 // Test script for expandSearchKeywords and getCoreKeyword
 // Run with: npx tsx src/lib/keywordExpansion.test.ts
 
-import { expandSearchKeywords, getCoreKeyword, CANONICAL_TITLE_LIST, inferSkillsFromTitle } from './keywordExpansion';
+import { expandSearchKeywords, getCoreKeyword, splitTargetRoles, CANONICAL_TITLE_LIST, inferSkillsFromTitle } from './keywordExpansion';
 
 let passed = 0;
 let failed = 0;
@@ -25,6 +25,22 @@ async function runTests() {
   assert('Includes core keyword', accountMgr.includes('Account Manager'));
   assert('Includes Account Executive synonym', accountMgr.includes('Account Executive'));
   assert('Includes Client Success Manager synonym', accountMgr.includes('Client Success Manager'));
+
+  const multiExp = expandSearchKeywords('Administrative Assistant, quality control, medical, coding, billing');
+  console.log('Multi-role comma-separated expansion ->', multiExp);
+  assert('Multi-role expansion contains Administrative Assistant', multiExp.includes('Administrative Assistant'));
+  assert('Multi-role expansion contains quality control', multiExp.includes('quality control'));
+  assert('Multi-role expansion contains medical', multiExp.includes('medical'));
+  assert('Multi-role expansion contains coding', multiExp.includes('coding'));
+  assert('Multi-role expansion contains billing', multiExp.includes('billing'));
+
+  console.log('\n📋 Test splitTargetRoles');
+  const splitRoles = splitTargetRoles('Administrative Assistant, quality control, medical, coding, billing');
+  assert('splitTargetRoles splits 5 roles correctly', splitRoles.length === 5 && splitRoles[0] === 'Administrative Assistant' && splitRoles[4] === 'billing');
+  const singleRole = splitTargetRoles('Product Manager');
+  assert('splitTargetRoles handles single role', singleRole.length === 1 && singleRole[0] === 'Product Manager');
+  const emptySplit = splitTargetRoles('');
+  assert('splitTargetRoles handles empty string', emptySplit.length === 0);
 
   const rn = expandSearchKeywords('RN');
   console.log('RN ->', rn);
