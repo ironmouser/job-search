@@ -83,6 +83,7 @@
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
 
   --card-tint-opacity: 2%;
+  --view-toggle-active-bg: rgba(255, 255, 255, 0.12);
 }
 
 @media (min-width: 768px) {
@@ -135,6 +136,7 @@ body.light-theme {
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --view-toggle-active-bg: #0070f30f;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────── */
@@ -2154,8 +2156,13 @@ body.light-theme .card-more-btn:hover {
   }
 
   .view-toggle-btn.active {
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: var(--accent-primary) !important;
+    background: var(--view-toggle-active-bg, rgba(255, 255, 255, 0.12)) !important;
+    color: var(--text-primary) !important;
+  }
+
+  body.light-theme .view-toggle-btn.active {
+    background: #0070f30f !important;
+    background-color: #0070f30f !important;
   }
 
   /* Pagination Card Mobile Grid */
@@ -2337,9 +2344,14 @@ body.light-theme .card-more-btn:hover {
 }
 
 .view-toggle-btn.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--accent-primary);
-  border-color: var(--accent-primary);
+  background: var(--view-toggle-active-bg, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary);
+}
+
+body.light-theme .view-toggle-btn.active,
+body.light-theme .dashboard-view-toggles button.active {
+  background: #0070f30f !important;
+  background-color: #0070f30f !important;
 }
 
 .action-control-btn {

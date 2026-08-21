@@ -1851,7 +1851,7 @@ export default function DashboardClient({
                     padding: 0,
                     borderRadius: '6px',
                     border: 'none',
-                    background: viewMode === 'grid' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    background: viewMode === 'grid' ? 'var(--view-toggle-active-bg, rgba(255, 255, 255, 0.12))' : 'transparent',
                     color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-secondary)',
                     cursor: 'pointer'
                   }}
@@ -1871,7 +1871,7 @@ export default function DashboardClient({
                     padding: 0,
                     borderRadius: '6px',
                     border: 'none',
-                    background: viewMode === 'table' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    background: viewMode === 'table' ? 'var(--view-toggle-active-bg, rgba(255, 255, 255, 0.12))' : 'transparent',
                     color: viewMode === 'table' ? 'var(--text-primary)' : 'var(--text-secondary)',
                     cursor: 'pointer'
                   }}
@@ -1891,7 +1891,7 @@ export default function DashboardClient({
                     padding: 0,
                     borderRadius: '6px',
                     border: 'none',
-                    background: viewMode === 'columns' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    background: viewMode === 'columns' ? 'var(--view-toggle-active-bg, rgba(255, 255, 255, 0.12))' : 'transparent',
                     color: viewMode === 'columns' ? 'var(--text-primary)' : 'var(--text-secondary)',
                     cursor: 'pointer'
                   }}
