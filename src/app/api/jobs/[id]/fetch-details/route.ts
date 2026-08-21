@@ -100,12 +100,10 @@ export async function POST(
             update: {}
         });
 
-        // 5. Automatically score the job with the new description
-        try {
-            await scoreJob(userId, jobId, job.title, updatePayload.description);
-        } catch (scoreErr: any) {
+        // 5. Fire-and-forget background scoring so HTTP response returns immediately once description is saved
+        scoreJob(userId, jobId, job.title, updatePayload.description).catch((scoreErr: any) => {
             console.warn(`Failed to auto-score job ${jobId} after fetching details:`, scoreErr.message);
-        }
+        });
 
         return NextResponse.json({ success: true });
 
