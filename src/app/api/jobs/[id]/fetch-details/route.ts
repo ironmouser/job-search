@@ -8,6 +8,8 @@ import { fetchJobDescriptionDetailed, extractUrlFromStubDescription, FetchJobDes
 import { cleanJobUrl } from '@/lib/urlUtils';
 import { searchJobDescriptionFromSerpApi } from '@/lib/serpapi';
 
+export const maxDuration = 60;
+
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }

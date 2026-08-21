@@ -55,7 +55,7 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
-    }, 15000); // 15-second timeout ceiling
+    }, 25000); // 25-second timeout ceiling
     
     const fetchAndScore = async () => {
       setStatus('fetching');
@@ -86,7 +86,7 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
       } catch (err: any) {
         if (!isMounted) return;
         if (err?.name === 'AbortError') {
-          console.warn('Job details fetch timed out after 15s');
+          console.warn('Job details fetch timed out after 25s');
           setErrorMessage('Fetching details took too long. The job board may be blocking automated scrapers.');
         } else {
           console.warn('Error auto-fetching job details:', err?.message || err);
@@ -275,7 +275,7 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
         title="Fetching Details"
         subtext={
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem' }}>
-            <span>We are currently extracting the full job description. This usually takes about 10-15 seconds.</span>
+            <span>We are currently extracting the full job description. This usually takes about 10-25 seconds.</span>
             <button
               type="button"
               onClick={() => {

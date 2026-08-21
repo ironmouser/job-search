@@ -363,6 +363,7 @@ export default function DashboardClient({
   const scoringInProgress = useRef(new Set<string>());
   const attemptedScoringJobs = useRef(new Set<string>());
   const isPageInitialized = useRef(false);
+  const lastFilterRef = useRef<string | null>(null);
 
   // Trigger confetti on the card of the job the user just applied to
   useEffect(() => {
@@ -498,6 +499,21 @@ export default function DashboardClient({
         setItemsPerPage(limitNum);
       }
     }
+
+    const restoredFilterKey = JSON.stringify({
+      activeFilter: stateFromStorage.activeFilter || activeFilter,
+      minScoreFilter: stateFromStorage.minScoreFilter ?? minScoreFilter,
+      sortOption: stateFromStorage.sortOption || sortOption,
+      locationFilter: stateFromStorage.locationFilter !== undefined
+        ? (Array.isArray(stateFromStorage.locationFilter) ? stateFromStorage.locationFilter : [stateFromStorage.locationFilter])
+        : locationFilter,
+      sourceFilter: stateFromStorage.sourceFilter || sourceFilter,
+      startDate: stateFromStorage.startDate !== undefined ? stateFromStorage.startDate : startDate,
+      endDate: stateFromStorage.endDate !== undefined ? stateFromStorage.endDate : endDate,
+      keywordFilter: stateFromStorage.keywordFilter !== undefined ? stateFromStorage.keywordFilter : keywordFilter,
+      searchRole: stateFromStorage.searchRole !== undefined ? stateFromStorage.searchRole : (savedSearchRole || searchRole)
+    });
+    lastFilterRef.current = restoredFilterKey;
 
     setIsLoaded(true);
     isPageInitialized.current = true;
@@ -1100,15 +1116,31 @@ export default function DashboardClient({
     return result;
   }, [jobList, activeFilter, minScoreFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter, searchRole, searchKeyword]);
 
-  const isInitialMount = useRef(true);
-
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    if (!isLoaded || !isPageInitialized.current) return;
+
+    const currentFilterKey = JSON.stringify({
+      activeFilter,
+      minScoreFilter,
+      sortOption,
+      locationFilter,
+      sourceFilter,
+      startDate,
+      endDate,
+      keywordFilter,
+      searchRole
+    });
+
+    if (lastFilterRef.current === null) {
+      lastFilterRef.current = currentFilterKey;
       return;
     }
-    changePage(1);
-  }, [activeFilter, minScoreFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole]);
+
+    if (lastFilterRef.current !== currentFilterKey) {
+      lastFilterRef.current = currentFilterKey;
+      changePage(1);
+    }
+  }, [activeFilter, minScoreFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, isLoaded]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / itemsPerPage));
   
