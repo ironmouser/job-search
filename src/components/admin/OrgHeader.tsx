@@ -2,7 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Building2 } from "lucide-react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import {
+  Building2,
+  LayoutDashboard,
+  Users,
+  Mail,
+  Cpu,
+  Settings,
+  Activity,
+} from "lucide-react";
 
 const ORG_TYPE_LABELS: Record<string, string> = {
   BUSINESS: "Business",
@@ -12,12 +22,53 @@ const ORG_TYPE_LABELS: Record<string, string> = {
   EDUCATIONAL_INSTITUTION: "Educational Institution",
 };
 
+export const ORG_ADMIN_NAV_ITEMS = [
+  {
+    title: "Dashboard",
+    href: "/org-admin",
+    Icon: LayoutDashboard,
+    color: "#3695e3",
+  },
+  {
+    title: "Members",
+    href: "/org-admin/members",
+    Icon: Users,
+    color: "#3695e3",
+  },
+  {
+    title: "Invitations",
+    href: "/org-admin/invitations",
+    Icon: Mail,
+    color: "#10b981",
+  },
+  {
+    title: "Passes",
+    href: "/org-admin/seats",
+    Icon: Cpu,
+    color: "#8b5cf6",
+  },
+  {
+    title: "Settings",
+    href: "/org-admin/settings",
+    Icon: Settings,
+    color: "#f59e0b",
+  },
+  {
+    title: "Activity Log",
+    href: "/org-admin/activity",
+    Icon: Activity,
+    color: "#ec4899",
+  },
+];
+
 interface OrgHeaderProps {
   title?: string;
   subtitle?: string;
+  hideNav?: boolean;
 }
 
-export function OrgHeader({ title, subtitle }: OrgHeaderProps) {
+export function OrgHeader({ title, subtitle, hideNav = false }: OrgHeaderProps) {
+  const pathname = usePathname();
   const { data: session } = useSession();
   const sessionUser = session?.user as any;
   const orgId = sessionUser?.organizationId as string | null;
@@ -35,6 +86,13 @@ export function OrgHeader({ title, subtitle }: OrgHeaderProps) {
       })
       .catch(console.error);
   }, [orgId]);
+
+  const isItemActive = (href: string) => {
+    if (href === "/org-admin") {
+      return pathname === "/org-admin";
+    }
+    return pathname?.startsWith(href);
+  };
 
   return (
     <div style={{ marginBottom: "2rem" }}>
@@ -59,9 +117,51 @@ export function OrgHeader({ title, subtitle }: OrgHeaderProps) {
           </span>
         )}
       </div>
-      <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 0 0", fontSize: "0.9rem" }}>
+      <p style={{ color: "var(--text-secondary)", margin: "0.25rem 0 1rem 0", fontSize: "0.9rem" }}>
         {subtitle || "Manage your organization's members, seats, and billing."}
       </p>
+
+      {!hideNav && (
+        <div
+          className="org-admin-header-nav"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            paddingTop: "0.75rem",
+            borderTop: "1px solid var(--border-glass, rgba(255,255,255,0.1))",
+          }}
+        >
+          {ORG_ADMIN_NAV_ITEMS.map(({ title, href, Icon, color }) => {
+            const active = isItemActive(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`org-admin-nav-button ${active ? "active" : ""}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 14px",
+                  borderRadius: 9999,
+                  fontSize: "0.85rem",
+                  fontWeight: active ? 600 : 500,
+                  textDecoration: "none",
+                  transition: "all 0.15s ease",
+                  backgroundColor: active ? `${color}25` : "rgba(255,255,255,0.05)",
+                  color: active ? color : "var(--text-secondary)",
+                  border: `1px solid ${active ? `${color}60` : "var(--border-glass, rgba(255,255,255,0.12))"}`,
+                }}
+              >
+                <Icon size={15} style={{ color: color }} />
+                <span>{title}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

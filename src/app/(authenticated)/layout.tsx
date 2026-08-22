@@ -5,6 +5,7 @@ import HelpPanel from "@/components/common/HelpPanel";
 import Navigation from "@/components/Navigation";
 import { GlobalAutoApplyBar } from "@/components/GlobalAutoApplyBar";
 import UserSessionGuard from "@/components/UserSessionGuard";
+import OrgAdminDock from "@/components/admin/OrgAdminDock";
 
 export default function AuthenticatedLayout({
   children,
@@ -23,8 +24,10 @@ export default function AuthenticatedLayout({
           </main>
           <HelpPanel />
           <GlobalAutoApplyBar />
+          <OrgAdminDock />
         </div>
       </AutoApplyBarProvider>
     </HelpProvider>
   );
 }
+
