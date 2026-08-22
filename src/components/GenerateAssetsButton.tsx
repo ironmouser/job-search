@@ -18,6 +18,7 @@ interface GenerateAssetsButtonProps {
   // Stats for contextual upgrade prompt
   totalResumesGenerated?: number;
   totalApplied?: number;
+  buttonLabel?: string;
 }
 
 export default function GenerateAssetsButton({
@@ -29,6 +30,7 @@ export default function GenerateAssetsButton({
   trialEndsAt,
   totalResumesGenerated,
   totalApplied,
+  buttonLabel,
 }: GenerateAssetsButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -69,12 +71,12 @@ export default function GenerateAssetsButton({
           setLocalHasResume(false);
           setIsJitResumeOpen(true);
         } else {
-          alert(data.error || 'Failed to generate assets.');
+          alert(data.error || 'Failed to generate tailored application documents.');
         }
       }
     } catch (e) {
       console.error(e);
-      alert('An error occurred while generating assets.');
+      alert('An error occurred while generating application documents.');
     } finally {
       setIsGenerating(false);
     }
@@ -115,7 +117,7 @@ export default function GenerateAssetsButton({
           ) : (
             <>
               <FileText size={16} />
-              Generate Assets
+              {buttonLabel || 'Generate Tailor Resume & Cover Letter for'}
             </>
           )}
         </button>
@@ -141,13 +143,13 @@ export default function GenerateAssetsButton({
         isOpen={isJitResumeOpen}
         onClose={() => setIsJitResumeOpen(false)}
         onSuccess={handleResumeUploadSuccess}
-        title="Upload Resume to Generate Assets"
+        title="Upload Resume to Tailor Application"
         description="To generate tailored resumes and cover letters for this job, please upload your base resume."
       />
 
       <SyncOverlay
         isSyncing={isGenerating}
-        title="Generating Assets"
+        title="Tailoring Application"
         syncMessage="Crafting personalized cover letter and resume..."
         subtext={"This could take up to 30 seconds to complete.\nPlease do not close or refresh this page."}
       />

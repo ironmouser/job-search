@@ -267,7 +267,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             <section id="step-2-assets" data-tour="job-detail-assets">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>2</div>
-                <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Generate Assets</h2>
+                <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Tailor Application</h2>
               </div>
               
               {assets ? (

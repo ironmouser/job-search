@@ -378,21 +378,21 @@ export default function JobDetailsActionBar({
           <span>Review Job</span>
         </button>
 
-        {/* Step 2: Generate Assets */}
+        {/* Step 2: Tailor docs */}
         <button
           type="button"
           onClick={handleStep2Generate}
           className="command-bar-btn"
-          title={localHasAssets ? "Assets Generated — Scroll to view" : "Generate Cover Letter & Resume Extract"}
+          title={localHasAssets ? "Documents Ready — Scroll to view" : "Tailor Cover Letter & Resume"}
         >
           <span style={{ opacity: 0.75, fontSize: '0.75rem' }}>2.</span>
           {localHasAssets ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#34d399' }}>
-              <CheckCircle2 size={14} /> Assets Ready
+              <CheckCircle2 size={14} /> Docs Ready
             </span>
           ) : (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-              <Sparkles size={14} style={{ color: '#38bdf8' }} /> {isGenerating ? 'Generating...' : 'Assets'}
+              <Sparkles size={14} style={{ color: '#38bdf8' }} /> {isGenerating ? 'Generating...' : 'Tailor docs'}
             </span>
           )}
         </button>

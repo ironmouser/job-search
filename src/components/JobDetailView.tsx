@@ -440,7 +440,7 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
           <section id="step-2-assets" data-tour="job-detail-assets">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
               <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>2</div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Generate Assets</h2>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Tailor Application</h2>
             </div>
             
             {assets ? (
@@ -503,7 +503,7 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
                 <div>
                   <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>Tailored Application Assets</h3>
                   <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '540px', lineHeight: 1.5, fontSize: '0.9rem' }}>
-                    Generate a personalized cover letter, networking message, and tailored resume extract customized specifically to this role.
+                    Generate a highly personalized cover letter, networking message, and resume extract tailored specifically to this role using your profile and the job description.
                   </p>
                 </div>
                 <GenerateAssetsButton 

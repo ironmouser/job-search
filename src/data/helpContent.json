@@ -37,7 +37,7 @@
                 },
                 {
                     "target": "[data-tour='job-detail-assets']",
-                    "title": "Generate Assets",
+                    "title": "Tailor Application",
                     "content": "Generate tailored resumes, cover letters, and networking messages customized specifically for this role.",
                     "placement": "bottom",
                     "route": "/dashboard"
@@ -224,7 +224,7 @@
                 },
                 {
                     "target": "[data-tour='job-detail-assets']",
-                    "title": "Generate Assets",
+                    "title": "Tailor Application",
                     "content": "Generate a tailored cover letter, networking message, and resume extract specifically for this role.",
                     "placement": "bottom",
                     "route": "/dashboard"
