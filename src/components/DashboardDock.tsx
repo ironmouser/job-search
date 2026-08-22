@@ -260,6 +260,7 @@ export default function DashboardDock({
           <button
             onClick={() => setIsFabOpen(prev => !prev)}
             aria-label="Toggle Dashboard Quick Actions"
+            className="mobile-fab dashboard-dock-fab"
             style={{
               position: 'fixed',
               bottom: '1.5rem',

@@ -1121,6 +1121,7 @@ export function GlobalAutoApplyBar() {
           {isFabOpen && (
             <div
               onClick={() => setIsFabOpen(false)}
+              className="mobile-fab-backdrop"
               style={{
                 position: 'fixed',
                 inset: 0,

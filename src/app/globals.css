@@ -3854,14 +3854,6 @@ body.light-theme .drawer-queue-item.active {
 }
 
 
-@media (min-width: 1025px) {
-
-  .mobile-fab,
-  .mobile-fab-menu {
-    display: none !important;
-  }
-}
-
 .mobile-fab {
   position: fixed;
   right: 1.1rem;
@@ -3871,7 +3863,7 @@ body.light-theme .drawer-queue-item.active {
   background: linear-gradient(135deg, #6366f1, #818cf8);
   border: none;
   color: #ffffff;
-  display: flex !important;
+  display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
@@ -4014,6 +4006,21 @@ body.light-theme .mobile-fab-menu .command-bar-btn-primary {
   background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
   color: #ffffff !important;
   border: none !important;
+}
+
+/* Hide all mobile FABs and Speed Dial menus on desktop screens (>= 1025px) */
+@media (min-width: 1025px) {
+  .mobile-fab,
+  .mobile-fab-menu,
+  .mobile-fab-backdrop,
+  .dashboard-dock-mobile,
+  .job-fab-menu,
+  .dashboard-fab-menu {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
 }
 
 /* ─── Drawer Right Panel (Selected Job Details & Stepper) ────────────── */
@@ -4756,7 +4763,7 @@ body.light-theme .checklist-item-row:hover {
 
 .dashboard-column-view-layout {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: minmax(0, 380px) 2fr;
   gap: 1.25rem;
   height: calc(100vh - 270px);
   min-height: 600px;
