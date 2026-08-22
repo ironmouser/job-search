@@ -1536,10 +1536,11 @@ export default function DashboardClient({
             </div>
             <button
               onClick={() => router.push('/prepare')}
-              className="btn-primary"
+              className="btn-primary prepare-app-btn"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '0.45rem',
                 padding: '0.55rem 1.25rem',
                 borderRadius: '8px',
