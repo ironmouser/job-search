@@ -71,7 +71,6 @@ result.json
 .page.tsx.swp
 
 # agent config
-.agents/
 CLAUDE.md
 
 /src/generated/prisma
