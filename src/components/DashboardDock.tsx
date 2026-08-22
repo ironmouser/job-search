@@ -63,7 +63,7 @@ export default function DashboardDock({
     if (onOpenAddJobModal) {
       onOpenAddJobModal();
     } else {
-      router.push('/dashboard?openAddJob=true');
+      router.push('/prepare');
     }
   };
 
@@ -132,14 +132,14 @@ export default function DashboardDock({
         </button>
 
 
-        {/* 5. Scrape & Add Job Button */}
+        {/* 5. Prepare Application Button */}
         <button
           onClick={handleAddJobClick}
           className="job-step-btn"
-          title="Paste job URL to scrape & add to pipeline"
+          title="Prepare an application for an external job"
         >
-          <PlusCircle size={15} style={{ color: '#10b981' }} />
-          <span>Scrape & Add Job</span>
+          <Sparkles size={15} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+          <span>Prepare Application</span>
         </button>
 
         {/* 6. Clean Up Button */}
@@ -233,14 +233,14 @@ export default function DashboardDock({
                 </button>
 
 
-                {/* 5. Scrape & Add Job */}
+                {/* 5. Prepare Application */}
                 <button
                   onClick={() => { setIsFabOpen(false); handleAddJobClick(); }}
                   className="btn-outline"
                   style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem 0.75rem', fontSize: '0.85rem', gap: '0.5rem' }}
                 >
-                  <PlusCircle size={16} style={{ color: '#10b981' }} />
-                  <span>Scrape & Add Job</span>
+                  <Sparkles size={16} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+                  <span>Prepare Application</span>
                 </button>
 
                 {/* 6. Clean Up */}

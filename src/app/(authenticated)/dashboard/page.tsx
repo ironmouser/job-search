@@ -87,7 +87,6 @@ export default async function Dashboard() {
       has_bot_failure: hasBotFailure,
       created_at: uj.createdAt,
       applied_at: uj.appliedAt,
-      unlockedBySubmission: uj.unlockedBySubmission || j.addedById === userId,
 
       opportunity_scores: j.opportunityScores.map((s: any) => ({ total_score: s.totalScore })),
       job_feedback: j.jobFeedbacks.map((f: any) => ({ feedback_type: f.feedbackType })),

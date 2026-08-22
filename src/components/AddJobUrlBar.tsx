@@ -154,9 +154,9 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
         className="add-job-card-trigger"
       >
         <div className="add-job-card-trigger-left">
-          <PlusCircle className="add-job-card-icon" />
+          <Sparkles className="add-job-card-icon" style={{ color: 'var(--accent-primary, #6366f1)' }} />
           <span className="add-job-card-text">
-            Paste any job URL to scrape, score & add to pipeline. <strong>Private submission (not shared with global feed)</strong>.
+            Already found a job? Paste any job URL to analyze fit & prepare your application. <strong>Private to your workspace</strong>.
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', marginLeft: '0.75rem', flexShrink: 0 }}>
@@ -219,12 +219,12 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
               {isLoading ? (
                 <>
                   <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
-                  <span>Scraping...</span>
+                  <span>Analyzing...</span>
                 </>
               ) : (
                 <>
-                  <PlusCircle style={{ width: 16, height: 16 }} />
-                  <span>Scrape & Add Job</span>
+                  <Sparkles style={{ width: 16, height: 16 }} />
+                  <span>Prepare Application</span>
                 </>
               )}
             </button>

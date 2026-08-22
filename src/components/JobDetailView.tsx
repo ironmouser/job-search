@@ -42,7 +42,6 @@ export interface JobDetailData {
     isEasyApply?: boolean;
     source?: string | null;
     isViewed?: boolean;
-    unlockedBySubmission?: boolean;
     createdAt?: string;
   };
   userJob: {
@@ -281,11 +280,6 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
             <h4 className="job-company" style={{ fontSize: '0.95rem', margin: 0, fontWeight: 700 }}>
               {cleanCompanyName(job.company)}
             </h4>
-            {job.unlockedBySubmission && (
-              <span style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 7px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>
-                Custom Added
-              </span>
-            )}
             {job.isEasyApply && (
               <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 7px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>
                 {job.source && !job.source.toLowerCase().includes('google') ? `${job.source} Easy Apply` : 'Easy Apply'}

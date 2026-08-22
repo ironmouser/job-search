@@ -245,20 +245,16 @@ export default function AddJobModal({
 
         {/* Modal Header */}
         <h2 style={{ marginTop: 0, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1.35rem', fontWeight: 700 }}>
-          <PlusCircle size={24} style={{ color: 'var(--accent-primary)' }} />
-          Add Job Opening
+          <Sparkles size={22} style={{ color: 'var(--accent-primary, #6366f1)' }} />
+          Prepare an Application
         </h2>
 
         {/* Dynamic Context Instructions */}
-        <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+        <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginBottom: '1.25rem', lineHeight: '1.45' }}>
           {activeTab === 'url' ? (
-            isPro ? (
-              <span>Paste any job opening URL to automatically extract details, score match & add to your pipeline.</span>
-            ) : (
-              <span>Paste a job URL to scrape & score match immediately. Unlocks +1 Free Resume & Cover Letter generation!</span>
-            )
+            <span>Already found a job somewhere else? Paste the URL to analyze requirements, score match, and prepare your tailored application materials.</span>
           ) : (
-            <span>Enter the job details and full description below to save this position and calculate your match score.</span>
+            <span>Enter the role details and full job description below to evaluate opportunity fit and generate tailored application assets.</span>
           )}
         </p>
 
@@ -296,7 +292,7 @@ export default function AddJobModal({
             }}
           >
             <Link2 size={16} />
-            <span>Import via URL</span>
+            <span>Import via Job URL</span>
           </button>
 
           <button
@@ -321,7 +317,7 @@ export default function AddJobModal({
             }}
           >
             <FileText size={16} />
-            <span>Enter Job Info</span>
+            <span>Paste Job Description</span>
           </button>
         </div>
 
@@ -403,12 +399,12 @@ export default function AddJobModal({
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin" size={16} />
-                    <span>Scraping & Scoring...</span>
+                    <span>Analyzing Opportunity...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles size={16} />
-                    <span>Scrape & Add</span>
+                    <span>Analyze & Prepare</span>
                   </>
                 )}
               </button>
@@ -600,7 +596,7 @@ export default function AddJobModal({
                 ) : (
                   <>
                     <Sparkles size={16} />
-                    <span>Save & Score Job</span>
+                    <span>Save & Prepare</span>
                   </>
                 )}
               </button>

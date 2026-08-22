@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, MoreVertical, MapPin, Trash2, Calendar } from 'lucide-react';
+import { ExternalLink, MoreVertical, MapPin, Trash2, Calendar, Sparkles } from 'lucide-react';
 
 type Job = {
     id: string;
@@ -93,11 +93,30 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             <div className="pipeline-controls-bar" style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '1.25rem' }}>
-                {/* Row 1: View Mode Switcher (Kanban | Table) */}
+                {/* Row 1: Stages count + Prepare Application CTA + View Mode Switcher */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        Stages ({jobs.length} total)
-                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            Stages ({jobs.length} total)
+                        </h3>
+                        <Link
+                            href="/prepare"
+                            className="btn-primary"
+                            style={{
+                                padding: '0.4rem 0.85rem',
+                                borderRadius: '6px',
+                                fontSize: '0.82rem',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                textDecoration: 'none'
+                            }}
+                        >
+                            <Sparkles size={14} />
+                            <span>Prepare Application</span>
+                        </Link>
+                    </div>
                     <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--card)', border: '1px solid var(--border)', padding: '0.25rem', borderRadius: 'var(--radius-lg, 8px)' }}>
                         <button 
                             onClick={() => setViewMode('kanban')}

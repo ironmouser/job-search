@@ -18,6 +18,7 @@ import JobDetailView from '@/components/JobDetailView';
 import { useDashboardFeedbackNudge } from '@/hooks/useDashboardFeedbackNudge';
 import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInternationalLocation, isOutsideUsLocation } from '@/lib/locationUtils';
 import { computeRoleMatchScore } from '@/lib/roleMatcher';
+import { isDescriptionAdequate } from '@/lib/descriptionUtils';
 import InternationalLocationModal from '@/components/InternationalLocationModal';
 import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -438,13 +439,16 @@ export default function DashboardClient({
       handleEmailSync();
     }
     const isAutoSyncParam = searchParams.get('autoSync') === 'true';
-    const isAutoSyncStorage = typeof window !== 'undefined' && localStorage.getItem('job_agent_auto_sync_on_mount') === 'true';
-    if (isAutoSyncParam || isAutoSyncStorage) {
+    if (isAutoSyncParam) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('job_agent_auto_sync_on_mount');
       }
       if (!jobs || jobs.length === 0) {
         setShouldAutoSync(true);
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('job_agent_auto_sync_on_mount');
       }
     }
     if (
@@ -946,15 +950,15 @@ export default function DashboardClient({
           )}
         </button>
 
-        {/* Scrape & Add Job */}
+        {/* Prepare Application (Bring a Job) */}
         <button
           type="button"
-          onClick={() => setIsAddJobModalOpen(true)}
+          onClick={() => router.push('/prepare')}
           className="command-bar-btn"
-          title="Paste job URL to add to pipeline"
+          title="Prepare an application for an external job"
         >
-          <Sparkles size={14} style={{ color: '#34d399' }} />
-          <span>Add Job</span>
+          <Sparkles size={14} style={{ color: '#38bdf8' }} />
+          <span>Prepare App</span>
         </button>
 
         {/* Clean Up Tool */}
@@ -1180,6 +1184,15 @@ export default function DashboardClient({
       // Recency tie-breaker
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
+
+    // 4. Ensure the first job listed on the dashboard has a usable description
+    if (result.length > 1 && !isDescriptionAdequate(result[0]?.description)) {
+      const firstAdequateIndex = result.findIndex(j => isDescriptionAdequate(j.description));
+      if (firstAdequateIndex > 0) {
+        const [firstAdequateJob] = result.splice(firstAdequateIndex, 1);
+        result.unshift(firstAdequateJob);
+      }
+    }
 
     return result;
   }, [jobList, activeFilter, minScoreFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter, searchRole, searchKeyword]);
@@ -1499,6 +1512,50 @@ export default function DashboardClient({
               <h4 className="stat-card-label">Saved</h4>
               <h2 className="stat-card-number">{totalArchived}</h2>
             </div>
+          </div>
+
+          {/* Prepare an Application Action Section (Mockup Spec) */}
+          <div style={{ marginTop: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Prepare an application
+              </h3>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0.15rem 0.6rem',
+                borderRadius: '9999px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                color: '#2563eb',
+                border: '1px solid rgba(37, 99, 235, 0.25)'
+              }}>
+                Already found a job post?
+              </span>
+            </div>
+            <button
+              onClick={() => router.push('/prepare')}
+              className="btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.55rem 1.25rem',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                backgroundColor: '#0070f3',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0, 112, 243, 0.25)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>Prepare application</span>
+              <ArrowRight size={14} />
+            </button>
           </div>
         </div>
 
@@ -1949,7 +2006,6 @@ export default function DashboardClient({
                   const score = job.opportunity_scores?.[0]?.total_score;
                   const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
                   const isEmailJob = job.company?.includes('(Scraped via Email)') || job.source?.toLowerCase().includes('email');
-                  const isUserAdded = job.unlockedBySubmission === true;
                   
                   // job_feedback is a 1-to-1 relation, so it's an object or null, not an array.
                   // Sometimes Supabase might return it as an array if queried dynamically, so we handle both just in case.
@@ -1960,12 +2016,7 @@ export default function DashboardClient({
                   const rowStyle: any = {
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                     opacity: isDisliked ? 0.5 : 1,
-                    ...(isUserAdded ? {
-                      '--accent-primary': '#a855f7',
-                      '--accent-secondary': '#9333ea',
-                      '--accent-glow': 'rgba(168, 85, 247, 0.15)',
-                      background: 'rgba(168, 85, 247, 0.04)'
-                    } : isEmailJob ? {
+                    ...(isEmailJob ? {
                       '--accent-primary': '#0cc22d',
                       '--accent-secondary': '#09a026',
                       '--accent-glow': 'rgba(12, 194, 45, 0.15)'
@@ -1987,9 +2038,6 @@ export default function DashboardClient({
                           <span>{cleanCompanyName(job.company)}</span>
                           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures, job.has_bot_failure, job.has_run_auto_apply)}
-                            {isUserAdded && (
-                              <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Custom Added</span>
-                            )}
                             {isEmailJob && (
                               <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Emailed Job</span>
                             )}
@@ -2104,7 +2152,6 @@ export default function DashboardClient({
               const score = job.opportunity_scores?.[0]?.total_score;
               const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
               const isEmailJob = job.company?.includes('(Scraped via Email)') || job.source?.toLowerCase().includes('email');
-              const isUserAdded = job.unlockedBySubmission === true;
               const feedbackObj = Array.isArray(job.job_feedback) ? job.job_feedback[0] : job.job_feedback;
               const isDisliked = feedbackObj?.feedback_type === 'dislike';
               const isViewed = !!(job.is_viewed || job.isViewed);
@@ -2172,7 +2219,6 @@ export default function DashboardClient({
                         }}
                         title="Select for batch apply"
                       />
-                      {isUserAdded && <span style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Custom</span>}
                       {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Email</span>}
                       {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Easy Apply</span>}
                       {job.status === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.68rem', padding: '1px 5px' }}>Applied</span>}
@@ -2319,7 +2365,6 @@ export default function DashboardClient({
             const score = job.opportunity_scores?.[0]?.total_score;
             const scoreClass = !score ? '' : score >= 80 ? 'score-high' : 'score-med';
             const isEmailJob = job.company?.includes('(Scraped via Email)') || job.source?.toLowerCase().includes('email');
-            const isUserAdded = job.unlockedBySubmission === true;
             
             const feedbackObj = Array.isArray(job.job_feedback) ? job.job_feedback[0] : job.job_feedback;
             const isDisliked = feedbackObj?.feedback_type === 'dislike';
@@ -2329,12 +2374,7 @@ export default function DashboardClient({
             const cardStyle: any = {
               opacity: isDisliked ? 0.5 : 1,
               boxShadow: isDisliked ? 'none' : undefined,
-              ...(isUserAdded ? {
-                '--accent-primary': '#a855f7',
-                '--accent-secondary': '#9333ea',
-                '--accent-glow': 'rgba(168, 85, 247, 0.15)',
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%)'
-              } : isEmailJob ? {
+              ...(isEmailJob ? {
                 '--accent-primary': '#0cc22d',
                 '--accent-secondary': '#09a026',
                 '--accent-glow': 'rgba(12, 194, 45, 0.15)'
@@ -2443,7 +2483,6 @@ export default function DashboardClient({
                         title="Select for batch apply"
                       />
                       {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures, job.has_bot_failure, job.has_run_auto_apply)}
-                      {isUserAdded && <span style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Custom</span>}
                       {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Email</span>}
                       {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Easy Apply</span>}
                       {getEffectiveStatus(job) === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.68rem', padding: '1px 5px' }}>Applied</span>}
@@ -2570,9 +2609,6 @@ export default function DashboardClient({
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-primary, #0070f3)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {cleanCompanyName(job.company)}
                       {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures, job.has_bot_failure, job.has_run_auto_apply)}
-                      {isUserAdded && (
-                        <span title="Added by you via URL" style={{ color: '#a855f7', background: 'rgba(168, 85, 247, 0.12)', border: '1px solid rgba(168, 85, 247, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>Custom Added</span>
-                      )}
                       {isEmailJob && (
                         <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>Emailed Job</span>
                       )}

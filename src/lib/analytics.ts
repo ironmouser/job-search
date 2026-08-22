@@ -86,6 +86,38 @@ export const trackAddJobUrl = (url: string, status: "success" | "error", errorMe
   });
 };
 
+// --- Prepare Application Journey Events ---
+export const trackPrepareApplicationView = (source: string = "direct") => {
+  trackEvent("prepare_application_view", { source });
+};
+
+export const trackPrepareApplicationStart = (method: "url" | "manual") => {
+  trackEvent("prepare_application_start", { method });
+};
+
+export const trackPrepareApplicationSuccess = (jobId: string, method: "url" | "manual") => {
+  trackEvent("prepare_application_success", {
+    job_id: jobId,
+    method,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+export const trackPrepareApplicationError = (errorMessage: string, method: "url" | "manual") => {
+  trackEvent("prepare_application_error", {
+    error_message: errorMessage,
+    method,
+  });
+};
+
+export const trackWelcomePathChoice = (choice: "find_jobs" | "prepare_application", isNewUser: boolean = false) => {
+  trackEvent("welcome_path_choice", {
+    choice,
+    is_new_user: isNewUser,
+    timestamp: new Date().toISOString(),
+  });
+};
+
 // --- JIT Resume Upload Modal Events ---
 export const trackJitResumeModalOpen = (source: string = "asset_card") => {
   trackEvent("jit_resume_modal_open", { source });

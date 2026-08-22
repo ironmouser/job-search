@@ -204,10 +204,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                     remote_only: formData.remoteOnly,
                 });
                 await update({ isOnboarded: true });
-                try {
-                    localStorage.setItem('job_agent_auto_sync_on_mount', 'true');
-                } catch (e) {}
-                window.location.href = '/dashboard?autoSync=true';
+                window.location.href = '/welcome?new_user=true';
             } else {
                 const errorData = await res.json().catch(() => ({}));
                 alert(`Failed to save settings: ${errorData.error || 'Please try again.'}`);
@@ -342,7 +339,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                             <span>Base Resume (Optional)</span>
                         </h2>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.25rem', fontSize: '0.95rem' }}>
-                            Upload your resume now to enable personalized AI opportunity scoring and 1-click tailored applications. You can also skip this and upload it later.
+                            Upload your resume now to enable AI match scoring and tailored applications for any role. You can also skip this and upload it later.
                         </p>
                         
                         <div style={{
@@ -359,11 +356,11 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                             <div style={{ fontSize: '0.86rem', color: 'var(--text-primary)', lineHeight: 1.45 }}>
                                 {hasResumeUploaded ? (
                                     <>
-                                        <strong style={{ color: '#10b981' }}>Resume Loaded:</strong> Your resume is ready. The AI will score opportunities and generate custom tailored applications automatically.
+                                        <strong style={{ color: '#10b981' }}>Resume Loaded:</strong> Your resume is ready to score opportunities and generate custom tailored applications for any job.
                                     </>
                                 ) : (
                                     <>
-                                        <strong>Instant AI Scoring:</strong> Uploading your resume allows the AI to score incoming jobs against your exact background. Don't have it on hand? Skip now and upload anytime from your dashboard!
+                                        <strong>AI Scoring & Tailoring:</strong> Upload your resume to evaluate match scores and tailor applications for any discovered or imported job. Skip now and upload anytime!
                                     </>
                                 )}
                             </div>
@@ -491,9 +488,9 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                     onClick={() => handleSubmit(true)} 
                                     disabled={loading || isParsing}
                                     className="btn-outline" 
-                                    style={{ padding: '0.65rem 1rem', fontSize: '0.88rem', color: 'var(--text-secondary)' }}
+                                    style={{ padding: '0.65rem 1.15rem', fontSize: '0.88rem', color: 'var(--text-secondary)' }}
                                 >
-                                    Skip for now & browse
+                                    Skip for now
                                 </button>
 
                                 <button 
@@ -509,7 +506,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                     }}
                                 >
                                     {loading ? <Loader2 size={16} className="animate-spin" /> : hasResumeUploaded ? <Check size={16} /> : <ArrowRight size={16} />}
-                                    {loading ? 'Setting up Dashboard...' : hasResumeUploaded ? 'Complete Setup & View Jobs' : 'Continue to Dashboard'}
+                                    {loading ? 'Saving preferences...' : 'Complete Setup'}
                                 </button>
                             </div>
                         )}

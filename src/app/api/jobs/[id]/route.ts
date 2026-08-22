@@ -179,7 +179,6 @@ export async function GET(
             isEasyApply: job.isEasyApply,
             source: job.source,
             isViewed: true,
-            unlockedBySubmission: userJob.unlockedBySubmission || job.addedById === userId,
             createdAt: job.createdAt
           },
           userJob: {

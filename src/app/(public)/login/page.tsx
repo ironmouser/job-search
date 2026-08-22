@@ -41,7 +41,7 @@ function LoginForm() {
     try {
       const res = await signIn("email", {
         email,
-        callbackUrl: "/onboarding",
+        callbackUrl: "/dashboard",
         redirect: false
       });
       if (res?.error) {
@@ -60,7 +60,7 @@ function LoginForm() {
     setIsGoogleLoading(true);
     trackLogin("google");
     try {
-      await signIn("google", { callbackUrl: "/onboarding" });
+      await signIn("google", { callbackUrl: "/dashboard" });
     } catch (error) {
       console.error("Google sign in error:", error);
       setIsGoogleLoading(false);
@@ -81,7 +81,7 @@ function LoginForm() {
         localStorage.removeItem("onboarding_banner_close_count");
         localStorage.removeItem("onboarding_banner_never_show");
       } catch (e) {}
-      await signIn("credentials", { reset: "true", callbackUrl: "/onboarding" });
+      await signIn("credentials", { reset: "true", callbackUrl: "/dashboard" });
     } catch (error) {
       console.error("Test sign in error:", error);
       setIsTestLoading(false);

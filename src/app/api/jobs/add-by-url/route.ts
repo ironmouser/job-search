@@ -394,15 +394,13 @@ export async function POST(request: Request) {
       update: {
         status: 'discovered',
         isArchived: false,
-        isPrivate: isPro,
-        unlockedBySubmission: true
+        isPrivate: isPro
       },
       create: {
         userId,
         jobId: job.id,
         status: 'discovered',
-        isPrivate: isPro,
-        unlockedBySubmission: true
+        isPrivate: isPro
       }
     });
 
@@ -441,7 +439,6 @@ export async function POST(request: Request) {
       job_feedback: [],
       consecutive_auto_failures: 0,
       automation_confidence: atsInfo.confidence,
-      unlockedBySubmission: true,
       isPrivate: userJob.isPrivate,
     };
 

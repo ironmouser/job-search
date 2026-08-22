@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, MessageSquareHeart, Users, Mail, Cpu, Activity, Zap, User } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, MessageSquareHeart, Users, Mail, Cpu, Activity, Zap, User } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useHelp } from '@/contexts/HelpContext';
 import { getAssetUrl } from '@/lib/assets';
@@ -187,6 +187,12 @@ export default function Navigation() {
                 <Link href="/dashboard" className={pathname === '/dashboard' ? 'active' : ''} onClick={closeMenu} title="Dashboard">
                   <LayoutDashboard size={16} />
                   <span className="nav-text">Dashboard</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/prepare" className={pathname === '/prepare' ? 'active' : ''} onClick={closeMenu} title="Prepare Application">
+                  <Sparkles size={16} style={{ color: pathname === '/prepare' ? undefined : 'var(--accent-primary, #6366f1)' }} />
+                  <span className="nav-text">Prepare Application</span>
                 </Link>
               </li>
               <li className="nav-item">
