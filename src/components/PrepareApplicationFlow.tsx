@@ -309,35 +309,23 @@ export default function PrepareApplicationFlow({
             <>
               {/* Segmented Mode Selector Tabs */}
               <div
+                className="app-segmented-tabs"
+                role="tablist"
+                aria-label="Prepare Mode"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
                   gap: '6px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  padding: '4px',
-                  borderRadius: '10px',
                   marginBottom: '1.5rem',
-                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))'
                 }}
               >
                 <button
                   type="button"
-                  className="prepare-tab-btn"
+                  role="tab"
+                  aria-selected={activeTab === 'url'}
+                  className={`prepare-tab-btn app-tab-btn ${activeTab === 'url' ? 'active' : ''}`}
                   onClick={() => handleTabChange('url')}
                   disabled={isLoading || isSubmittingManual}
-                  style={{
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontWeight: activeTab === 'url' ? 600 : 500,
-                    backgroundColor: activeTab === 'url' ? 'var(--accent-primary, #6366f1)' : 'transparent',
-                    color: activeTab === 'url' ? '#ffffff' : 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease'
-                  }}
                 >
                   <Link2 size={16} />
                   <span>Import via Job URL</span>
@@ -345,22 +333,11 @@ export default function PrepareApplicationFlow({
 
                 <button
                   type="button"
-                  className="prepare-tab-btn"
+                  role="tab"
+                  aria-selected={activeTab === 'manual'}
+                  className={`prepare-tab-btn app-tab-btn ${activeTab === 'manual' ? 'active' : ''}`}
                   onClick={() => handleTabChange('manual')}
                   disabled={isLoading || isSubmittingManual}
-                  style={{
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontWeight: activeTab === 'manual' ? 600 : 500,
-                    backgroundColor: activeTab === 'manual' ? 'var(--accent-primary, #6366f1)' : 'transparent',
-                    color: activeTab === 'manual' ? '#ffffff' : 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease'
-                  }}
                 >
                   <FileText size={16} />
                   <span>Paste Job Description</span>

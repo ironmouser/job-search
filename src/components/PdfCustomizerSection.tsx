@@ -179,37 +179,40 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
             </div>
 
             {/* Target Selector Tabs (Resume / Cover Letter) */}
-            <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>
+            <div
+                className="app-segmented-tabs"
+                role="tablist"
+                aria-label="Document Type"
+                style={{
+                    display: 'inline-flex',
+                    gap: '4px',
+                    marginBottom: '0.5rem',
+                }}
+            >
                 <button
                     type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'resume'}
                     onClick={() => setActiveTab('resume')}
+                    className={`app-tab-btn ${activeTab === 'resume' ? 'active' : ''}`}
                     style={{
-                        padding: '0.4rem 1rem',
-                        borderRadius: '6px',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        background: activeTab === 'resume' ? '#2563eb' : 'transparent',
-                        color: activeTab === 'resume' ? '#ffffff' : 'var(--text-primary)',
-                        border: 'none',
-                        transition: 'all 0.2s'
+                        padding: '0.45rem 1.15rem',
+                        fontSize: '0.86rem',
+                        fontWeight: activeTab === 'resume' ? 600 : 500,
                     }}
                 >
                     Resume PDF Styles
                 </button>
                 <button
                     type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'coverLetter'}
                     onClick={() => setActiveTab('coverLetter')}
+                    className={`app-tab-btn ${activeTab === 'coverLetter' ? 'active' : ''}`}
                     style={{
-                        padding: '0.4rem 1rem',
-                        borderRadius: '6px',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        background: activeTab === 'coverLetter' ? '#2563eb' : 'transparent',
-                        color: activeTab === 'coverLetter' ? '#ffffff' : 'var(--text-primary)',
-                        border: 'none',
-                        transition: 'all 0.2s'
+                        padding: '0.45rem 1.15rem',
+                        fontSize: '0.86rem',
+                        fontWeight: activeTab === 'coverLetter' ? 600 : 500,
                     }}
                 >
                     Cover Letter PDF Styles
@@ -323,26 +326,30 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                         </div>
 
                         {/* Segmented Alignment Buttons */}
-                        <div style={{
-                            display: 'flex',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                            border: '1px solid var(--border-glass)',
-                            background: '#a1a1aa'
-                        }}>
+                        <div
+                            className="app-segmented-tabs"
+                            role="tablist"
+                            aria-label="Header Alignment"
+                            style={{
+                                display: 'inline-flex',
+                                borderRadius: '8px',
+                                padding: '3px',
+                                gap: '3px',
+                            }}
+                        >
                             <button
                                 type="button"
                                 title="Left Aligned"
+                                role="tab"
+                                aria-selected={currentHeaderLayout === 'left'}
                                 onClick={() => {
                                     onChange(`${prefix}Template`, 'custom');
                                     onChange(`${prefix}HeaderLayout`, 'left');
                                 }}
+                                className={`app-tab-btn ${currentHeaderLayout === 'left' ? 'active' : ''}`}
                                 style={{
-                                    padding: '0.35rem 0.65rem',
-                                    border: 'none',
-                                    background: currentHeaderLayout === 'left' ? '#4a433d' : 'transparent',
-                                    color: currentHeaderLayout === 'left' ? '#ffffff' : '#3f3f46',
-                                    cursor: 'pointer'
+                                    padding: '0.35rem 0.6rem',
+                                    borderRadius: '6px',
                                 }}
                             >
                                 <AlignLeft size={15} />
@@ -350,16 +357,16 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                             <button
                                 type="button"
                                 title="Centered"
+                                role="tab"
+                                aria-selected={currentHeaderLayout === 'centered'}
                                 onClick={() => {
                                     onChange(`${prefix}Template`, 'custom');
                                     onChange(`${prefix}HeaderLayout`, 'centered');
                                 }}
+                                className={`app-tab-btn ${currentHeaderLayout === 'centered' ? 'active' : ''}`}
                                 style={{
-                                    padding: '0.35rem 0.65rem',
-                                    border: 'none',
-                                    background: currentHeaderLayout === 'centered' ? '#4a433d' : 'transparent',
-                                    color: currentHeaderLayout === 'centered' ? '#ffffff' : '#3f3f46',
-                                    cursor: 'pointer'
+                                    padding: '0.35rem 0.6rem',
+                                    borderRadius: '6px',
                                 }}
                             >
                                 <AlignCenter size={15} />
@@ -367,16 +374,16 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                             <button
                                 type="button"
                                 title="Split Header"
+                                role="tab"
+                                aria-selected={currentHeaderLayout === 'split'}
                                 onClick={() => {
                                     onChange(`${prefix}Template`, 'custom');
                                     onChange(`${prefix}HeaderLayout`, 'split');
                                 }}
+                                className={`app-tab-btn ${currentHeaderLayout === 'split' ? 'active' : ''}`}
                                 style={{
-                                    padding: '0.35rem 0.65rem',
-                                    border: 'none',
-                                    background: currentHeaderLayout === 'split' ? '#4a433d' : 'transparent',
-                                    color: currentHeaderLayout === 'split' ? '#ffffff' : '#3f3f46',
-                                    cursor: 'pointer'
+                                    padding: '0.35rem 0.6rem',
+                                    borderRadius: '6px',
                                 }}
                             >
                                 <Columns size={15} />

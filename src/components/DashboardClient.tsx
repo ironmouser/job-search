@@ -1892,13 +1892,12 @@ export default function DashboardClient({
 
               {/* View Mode Toggle Segmented Control */}
               <div
-                className="dashboard-view-toggles"
+                className="dashboard-view-toggles app-segmented-tabs"
+                role="tablist"
+                aria-label="View Mode"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: 'var(--card-bg, rgba(255, 255, 255, 0.05))',
-                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
-                  borderRadius: '8px',
                   padding: '3px',
                   gap: '3px',
                   height: '38px',
@@ -1906,61 +1905,49 @@ export default function DashboardClient({
                 }}
               >
                 <button 
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'grid'}
                   onClick={() => handleViewModeChange('grid')}
-                  className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  className={`view-toggle-btn app-tab-btn ${viewMode === 'grid' ? 'active' : ''}`}
                   title="Grid View"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     width: '32px',
                     height: '30px',
                     padding: 0,
                     borderRadius: '6px',
-                    border: 'none',
-                    background: viewMode === 'grid' ? 'var(--view-toggle-active-bg, rgba(255, 255, 255, 0.12))' : 'transparent',
-                    color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    cursor: 'pointer'
                   }}
                 >
                   <LayoutGrid size={16} />
                 </button>
                 <button 
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'table'}
                   onClick={() => handleViewModeChange('table')}
-                  className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  className={`view-toggle-btn app-tab-btn ${viewMode === 'table' ? 'active' : ''}`}
                   title="Table View"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     width: '32px',
                     height: '30px',
                     padding: 0,
                     borderRadius: '6px',
-                    border: 'none',
-                    background: viewMode === 'table' ? 'var(--view-toggle-active-bg, rgba(255, 255, 255, 0.12))' : 'transparent',
-                    color: viewMode === 'table' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    cursor: 'pointer'
                   }}
                 >
                   <List size={16} />
                 </button>
                 <button 
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'columns'}
                   onClick={() => handleViewModeChange('columns')}
-                  className={`view-toggle-btn desktop-only-toggle ${viewMode === 'columns' ? 'active' : ''}`}
+                  className={`view-toggle-btn desktop-only-toggle app-tab-btn ${viewMode === 'columns' ? 'active' : ''}`}
                   title="Column Split View"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     width: '32px',
                     height: '30px',
                     padding: 0,
                     borderRadius: '6px',
-                    border: 'none',
-                    background: viewMode === 'columns' ? 'var(--view-toggle-active-bg, rgba(255, 255, 255, 0.12))' : 'transparent',
-                    color: viewMode === 'columns' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    cursor: 'pointer'
                   }}
                 >
                   <Columns2 size={16} />

@@ -4950,3 +4950,110 @@ body.light-theme .checklist-item-row:hover {
   }
 }
 
+/* ─── Modern Tab & Button Group Standards (Image Reference) ──── */
+.app-segmented-tabs,
+.app-tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border-bottom: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+  padding: 0;
+  box-sizing: border-box;
+  overflow-y: hidden;
+}
+
+.app-tab-btn {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  padding: 0.6rem 1rem;
+  transition: all 0.15s ease;
+  user-select: none;
+  text-decoration: none;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.app-tab-btn:hover:not(:disabled):not(.active) {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary, #ffffff);
+}
+
+.app-tab-btn.active {
+  font-weight: 600;
+  background: #f3f7fe;
+  color: var(--accent-primary, #0070f3);
+  border-bottom: 2px solid var(--accent-primary, #0070f3);
+  box-shadow: none;
+}
+
+body:not(.light-theme) .app-tab-btn.active {
+  background: rgba(0, 112, 243, 0.14);
+}
+
+.app-tab-btn.active svg {
+  color: var(--accent-primary, #0070f3);
+}
+
+.app-tab-btn:not(.active) svg {
+  color: var(--text-secondary, #94a3b8);
+  opacity: 0.9;
+}
+
+/* Light theme overrides */
+body.light-theme .app-segmented-tabs,
+body.light-theme .app-tabs-container {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: transparent;
+}
+
+body.light-theme .app-tab-btn {
+  color: #526071;
+}
+
+body.light-theme .app-tab-btn:not(.active) svg {
+  color: #526071;
+}
+
+body.light-theme .app-tab-btn:hover:not(:disabled):not(.active) {
+  background: rgba(0, 112, 243, 0.04);
+  color: #1e293b;
+}
+
+body.light-theme .app-tab-btn.active {
+  background: #f3f7fe;
+  color: #0066cc;
+  border-bottom: 2px solid #0066cc;
+}
+
+body.light-theme .app-tab-btn.active svg {
+  color: #0066cc;
+}
+
+.admin-tabs-container {
+  overflow-x: auto;
+  overflow-y: hidden !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  max-width: 100%;
+}
+
+.admin-tabs-container::-webkit-scrollbar {
+  display: none;
+}
+
+
+

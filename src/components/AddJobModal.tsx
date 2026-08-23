@@ -260,35 +260,25 @@ export default function AddJobModal({
 
         {/* Segmented Mode Selector Tabs */}
         <div
+          className="app-segmented-tabs"
+          role="tablist"
+          aria-label="Add Job Mode"
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '6px',
-            backgroundColor: 'var(--muted)',
-            padding: '4px',
-            borderRadius: '10px',
             marginBottom: '1.25rem'
           }}
         >
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'url'}
             onClick={() => handleTabChange('url')}
             disabled={isLoading || isSubmittingManual}
+            className={`app-tab-btn ${activeTab === 'url' ? 'active' : ''}`}
             style={{
-              padding: '0.5rem 0.75rem',
-              borderRadius: '7px',
-              border: 'none',
-              fontSize: '0.85rem',
-              fontWeight: activeTab === 'url' ? 600 : 500,
-              backgroundColor: activeTab === 'url' ? 'var(--card)' : 'transparent',
-              color: activeTab === 'url' ? 'var(--foreground)' : 'var(--muted-foreground)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              boxShadow: activeTab === 'url' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s ease'
+              padding: '0.6rem 0.75rem',
             }}
           >
             <Link2 size={16} />
@@ -297,23 +287,13 @@ export default function AddJobModal({
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'manual'}
             onClick={() => handleTabChange('manual')}
             disabled={isLoading || isSubmittingManual}
+            className={`app-tab-btn ${activeTab === 'manual' ? 'active' : ''}`}
             style={{
-              padding: '0.5rem 0.75rem',
-              borderRadius: '7px',
-              border: 'none',
-              fontSize: '0.85rem',
-              fontWeight: activeTab === 'manual' ? 600 : 500,
-              backgroundColor: activeTab === 'manual' ? 'var(--card)' : 'transparent',
-              color: activeTab === 'manual' ? 'var(--foreground)' : 'var(--muted-foreground)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              boxShadow: activeTab === 'manual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s ease'
+              padding: '0.6rem 0.75rem',
             }}
           >
             <FileText size={16} />

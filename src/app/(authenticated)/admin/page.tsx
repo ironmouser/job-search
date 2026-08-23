@@ -492,45 +492,86 @@ export default function AdminDashboard() {
         </div>
       </PageHeader>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "1rem", borderBottom: "1px solid var(--border-glass)", paddingBottom: "0.5rem" }}>
+      {/* Admin Navigation Tabs */}
+      <div
+        className="app-segmented-tabs admin-tabs-container"
+        role="tablist"
+        aria-label="Admin Navigation Tabs"
+        style={{
+          display: "flex",
+          gap: "0.5rem",
+          flexWrap: "nowrap",
+          width: "100%",
+          overflowY: "hidden",
+        }}
+      >
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'users'}
           onClick={() => setActiveTab('users')}
-          className={activeTab === 'users' ? 'btn-primary' : 'btn-outline'}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          className={`app-tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+          style={{
+            padding: "0.55rem 1rem",
+            fontSize: "0.88rem",
+          }}
         >
           <Users size={16} /> User Directory
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'alerts'}
           onClick={() => setActiveTab('alerts')}
-          className={activeTab === 'alerts' ? 'btn-primary' : 'btn-outline'}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          className={`app-tab-btn ${activeTab === 'alerts' ? 'active' : ''}`}
+          style={{
+            padding: "0.55rem 1rem",
+            fontSize: "0.88rem",
+          }}
         >
           <AlertTriangle size={16} /> System Alerts
           {systemAlerts.length > 0 && (
-            <span style={{ background: "var(--accent-color)", color: "white", padding: "0.1rem 0.4rem", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
+            <span style={{ background: activeTab === 'alerts' ? "rgba(255, 255, 255, 0.3)" : "var(--accent-color, #ef4444)", color: "white", padding: "0.1rem 0.45rem", borderRadius: "12px", fontSize: "0.75rem", fontWeight: "bold" }}>
               {systemAlerts.length}
             </span>
           )}
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'gates'}
           onClick={() => setActiveTab('gates')}
-          className={activeTab === 'gates' ? 'btn-primary' : 'btn-outline'}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          className={`app-tab-btn ${activeTab === 'gates' ? 'active' : ''}`}
+          style={{
+            padding: "0.55rem 1rem",
+            fontSize: "0.88rem",
+          }}
         >
           <Sliders size={16} /> Feature Gates
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'scrapers'}
           onClick={() => setActiveTab('scrapers')}
-          className={activeTab === 'scrapers' ? 'btn-primary' : 'btn-outline'}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          className={`app-tab-btn ${activeTab === 'scrapers' ? 'active' : ''}`}
+          style={{
+            padding: "0.55rem 1rem",
+            fontSize: "0.88rem",
+          }}
         >
           <Cpu size={16} /> Scrapers
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'anti-abuse'}
           onClick={() => setActiveTab('anti-abuse')}
-          className={activeTab === 'anti-abuse' ? 'btn-primary' : 'btn-outline'}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          className={`app-tab-btn ${activeTab === 'anti-abuse' ? 'active' : ''}`}
+          style={{
+            padding: "0.55rem 1rem",
+            fontSize: "0.88rem",
+          }}
         >
           <ShieldAlert size={16} /> Multi-Account & Anti-Abuse
         </button>

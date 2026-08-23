@@ -52,15 +52,17 @@ export function TabsList({
 }) {
   return (
     <div
-      className={`ui-tabs-list ${className}`}
+      role="tablist"
+      className={`ui-tabs-list ${variant === "pills" ? "app-segmented-tabs" : ""} ${className}`}
       style={{
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
-        gap: variant === "pills" ? '0.125rem' : '0',
-        borderBottom: variant === "line" ? '1px solid var(--border)' : 'none',
-        background: variant === "pills" ? 'var(--muted)' : 'transparent',
-        padding: variant === "pills" ? '0.1875rem' : '0',
-        borderRadius: variant === "pills" ? 'var(--radius-md, 0.5rem)' : '0',
+        gap: variant === "pills" ? '4px' : '0',
+        borderBottom: variant === "line" ? '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))' : 'none',
+        background: variant === "pills" ? 'var(--bg-secondary, rgba(255, 255, 255, 0.05))' : 'transparent',
+        padding: variant === "pills" ? '4px' : '0',
+        borderRadius: variant === "pills" ? '10px' : '0',
+        border: variant === "pills" ? '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))' : 'none',
         ...style,
       }}
     >
@@ -88,25 +90,11 @@ export function TabsTrigger({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={isActive}
       onClick={() => ctx.onValueChange(value)}
-      className={`ui-tabs-trigger ${isActive ? 'active' : ''} ${className}`}
+      className={`ui-tabs-trigger app-tab-btn ${isActive ? 'active' : ''} ${className}`}
       style={{
-        padding: '0.4375rem 0.875rem',
-        fontSize: '0.875rem',
-        fontWeight: isActive ? 600 : 500,
-        color: isActive ? 'var(--foreground)' : 'var(--muted-foreground)',
-        background: isActive ? 'var(--card)' : 'transparent',
-        border: 'none',
-        borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
-        marginBottom: '-1px',
-        cursor: 'pointer',
-        transition: 'all 0.15s ease',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.4rem',
-        borderRadius: '0',
-        letterSpacing: '-0.01em',
-        flexShrink: 0,
         ...style,
       }}
     >

@@ -207,35 +207,39 @@ export function ConnectJobBoardModal({
           </div>
 
           {/* Navigation Tabs */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.08)))', paddingBottom: '8px' }}>
+          <div
+            className="app-segmented-tabs"
+            role="tablist"
+            aria-label="Connect Method"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '6px',
+              marginBottom: '1rem',
+            }}
+          >
             <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'quick'}
               onClick={() => setActiveTab('quick')}
+              className={`app-tab-btn ${activeTab === 'quick' ? 'active' : ''}`}
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: activeTab === 'quick' ? 'var(--primary)' : 'transparent',
-                color: activeTab === 'quick' ? 'var(--primary-foreground, #ffffff)' : 'var(--text-secondary)',
-                transition: 'all 0.15s ease',
+                padding: '0.6rem 1rem',
+                fontSize: '0.88rem',
               }}
             >
               Interactive Connect
             </button>
             <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'manual'}
               onClick={() => setActiveTab('manual')}
+              className={`app-tab-btn ${activeTab === 'manual' ? 'active' : ''}`}
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: activeTab === 'manual' ? 'var(--primary)' : 'transparent',
-                color: activeTab === 'manual' ? 'var(--primary-foreground, #ffffff)' : 'var(--text-secondary)',
-                transition: 'all 0.15s ease',
+                padding: '0.6rem 1rem',
+                fontSize: '0.88rem',
               }}
             >
               Session State (JSON)

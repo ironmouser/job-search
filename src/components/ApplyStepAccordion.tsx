@@ -264,57 +264,41 @@ export function ApplyStepAccordion({
 
       {/* 2. Segmented Mode Selector Tabs (Similar to Prepare Application Flow) */}
       <div
+        className="app-segmented-tabs"
+        role="tablist"
+        aria-label="Application Mode"
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '6px',
-          backgroundColor: 'var(--bg-secondary, rgba(255, 255, 255, 0.05))',
-          padding: '4px',
-          borderRadius: '10px',
-          border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
         }}
       >
         {/* Tab 1: Apply Now - Default */}
         <button
           type="button"
+          role="tab"
+          aria-selected={mode === 'manual'}
           onClick={() => setMode('manual')}
+          className={`app-tab-btn ${mode === 'manual' ? 'active' : ''}`}
           style={{
-            borderRadius: '8px',
             padding: '0.7rem 1rem',
-            border: 'none',
-            fontWeight: mode === 'manual' ? 600 : 500,
-            backgroundColor: mode === 'manual' ? 'var(--accent-primary, #0070f3)' : 'transparent',
-            color: mode === 'manual' ? '#ffffff' : 'var(--text-secondary, #a3a3a3)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
             fontSize: '0.92rem',
-            transition: 'all 0.15s ease',
           }}
         >
+          <ExternalLink size={16} />
           <span>Apply Now</span>
         </button>
 
         {/* Tab 2: Auto Apply With AI */}
         <button
           type="button"
+          role="tab"
+          aria-selected={mode === 'auto'}
           onClick={() => setMode('auto')}
+          className={`app-tab-btn ${mode === 'auto' ? 'active' : ''}`}
           style={{
-            borderRadius: '8px',
             padding: '0.7rem 1rem',
-            border: 'none',
-            fontWeight: mode === 'auto' ? 600 : 500,
-            backgroundColor: mode === 'auto' ? 'var(--accent-primary, #0070f3)' : 'transparent',
-            color: mode === 'auto' ? '#ffffff' : 'var(--text-secondary, #a3a3a3)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
             fontSize: '0.92rem',
-            transition: 'all 0.15s ease',
           }}
         >
           <Sparkles size={16} />
