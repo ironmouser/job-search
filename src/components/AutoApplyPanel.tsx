@@ -417,9 +417,22 @@ export function AutoApplyPanel({
         }
 
         @media (max-width: 639px) {
-          .stepper-label-inactive {
-            opacity: 0 !important;
-            visibility: hidden !important;
+          .stepper-node-circle {
+            width: 32px !important;
+            height: 32px !important;
+          }
+          .stepper-node-circle svg {
+            width: 15px !important;
+            height: 15px !important;
+          }
+          .stepper-track-line {
+            top: 16px !important;
+          }
+          .stepper-step-inactive {
+            display: none !important;
+          }
+          .stepper-step-active {
+            display: flex !important;
           }
         }
       `}</style>
@@ -450,13 +463,15 @@ export function AutoApplyPanel({
           style={{
             position: 'relative',
             display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: '0.75rem',
+            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            gap: '0.5rem',
             alignItems: 'flex-start',
+            width: '100%',
           }}
         >
           {/* Background Track Line connecting the circles */}
           <div
+            className="stepper-track-line"
             style={{
               position: 'absolute',
               top: '21px',
@@ -470,6 +485,7 @@ export function AutoApplyPanel({
 
           {/* Dynamic Foreground Progress Line */}
           <div
+            className="stepper-track-line"
             style={{
               position: 'absolute',
               top: '21px',
@@ -489,7 +505,8 @@ export function AutoApplyPanel({
 
           {STEP_DEFINITIONS.map((st) => {
             const isCompleted = isAllDone || (isActive && st.num < activeStepNum);
-            const isCurrent = isActive && st.num === activeStepNum;
+            const isCurrent = (isActive && st.num === activeStepNum) || (!session && st.num === 1);
+            const isCurrentStep = isAllDone ? st.num === 5 : st.num === activeStepNum;
             const isIntervention = (session?.status === AutoApplyStatus.NEEDS_INTERVENTION || session?.status === AutoApplyStatus.NEEDS_REVIEW) && st.num === 4;
             const isFailed = session?.status === AutoApplyStatus.FAILED && st.num === activeStepNum;
             const IconComponent = st.icon;
@@ -504,11 +521,12 @@ export function AutoApplyPanel({
                   textAlign: 'center',
                   position: 'relative',
                   zIndex: 3,
+                  minWidth: 0,
                 }}
               >
                 {/* Step Icon Circle */}
                 <div
-                  className={isCurrent ? 'stepper-active-pulsing' : isIntervention ? 'stepper-amber-pulsing' : ''}
+                  className={`stepper-node-circle ${isActive && isCurrent ? 'stepper-active-pulsing' : isIntervention ? 'stepper-amber-pulsing' : ''}`}
                   style={{
                     width: '42px',
                     height: '42px',
@@ -555,39 +573,52 @@ export function AutoApplyPanel({
                   {isCompleted ? <Check size={18} strokeWidth={2.5} /> : <IconComponent size={18} />}
                 </div>
 
-                {/* Step Number & Title */}
-                <span
+                {/* Step Labels / Description */}
+                <div
+                  className={`stepper-step-content ${isCurrentStep ? 'stepper-step-active' : 'stepper-step-inactive'}`}
                   style={{
-                    fontSize: '0.82rem',
-                    fontWeight: isCurrent || isCompleted ? 700 : 600,
-                    color: isCompleted
-                      ? '#10b981'
-                      : isIntervention
-                      ? '#f59e0b'
-                      : isFailed
-                      ? '#ef4444'
-                      : isCurrent
-                      ? 'var(--accent-primary, #0070f3)'
-                      : 'var(--text-primary, #ededed)',
-                    marginBottom: '0.2rem',
-                    lineHeight: 1.3,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    width: '100%',
                   }}
                 >
-                  {st.title}
-                </span>
+                  {/* Step Number & Title */}
+                  <span
+                    style={{
+                      fontSize: '0.82rem',
+                      fontWeight: isCurrent || isCompleted || isCurrentStep ? 700 : 600,
+                      color: isCompleted
+                        ? '#10b981'
+                        : isIntervention
+                        ? '#f59e0b'
+                        : isFailed
+                        ? '#ef4444'
+                        : isCurrent || isCurrentStep
+                        ? 'var(--accent-primary, #0070f3)'
+                        : 'var(--text-primary, #ededed)',
+                      marginBottom: '0.2rem',
+                      lineHeight: 1.3,
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {st.title}
+                  </span>
 
-                {/* Step Description */}
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '0.72rem',
-                    color: 'var(--text-secondary, #a3a3a3)',
-                    lineHeight: 1.35,
-                    maxWidth: '135px',
-                  }}
-                >
-                  {st.desc}
-                </p>
+                  {/* Step Description */}
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: '0.72rem',
+                      color: 'var(--text-secondary, #a3a3a3)',
+                      lineHeight: 1.35,
+                      maxWidth: '135px',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {st.desc}
+                  </p>
+                </div>
               </div>
             );
           })}
