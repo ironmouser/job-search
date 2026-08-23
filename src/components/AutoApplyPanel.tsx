@@ -631,6 +631,7 @@ export function AutoApplyPanel({
         return (
           <div
             id="auto-apply-success-receipt"
+            className="auto-apply-receipt-card"
             style={{
               background: 'rgba(16, 185, 129, 0.08)',
               border: '1px solid rgba(16, 185, 129, 0.25)',
@@ -901,6 +902,7 @@ export function AutoApplyPanel({
       {isFailedOrStopped && (
         <div
           id="auto-apply-failure-card"
+          className="auto-apply-failure-card"
           style={{
             background: 'rgba(239, 68, 68, 0.05)',
             border: '1.5px solid rgba(239, 68, 68, 0.3)',
@@ -1024,6 +1026,7 @@ export function AutoApplyPanel({
 
           {/* What is Required If Trying Again Box */}
           <div
+            className="auto-apply-requirements-box"
             style={{
               background: 'var(--bg-primary, #ffffff)',
               border: '1px solid var(--border-glass, #e2e8f0)',
@@ -1136,6 +1139,7 @@ export function AutoApplyPanel({
       {quota && (
         <div
           id={`auto-apply-quota-bar-${jobId}`}
+          className="auto-apply-quota-bar"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -1168,6 +1172,7 @@ export function AutoApplyPanel({
       {quota?.blockedReason === 'DAILY_LIMIT_EXCEEDED' && (
         <div
           id="auto-apply-daily-limit-banner"
+          className="auto-apply-limit-banner"
           style={{
             background: 'rgba(245, 158, 11, 0.08)',
             border: '1px solid rgba(245, 158, 11, 0.3)',
@@ -1193,6 +1198,7 @@ export function AutoApplyPanel({
       {quota?.blockedReason === 'MONTHLY_LIMIT_EXCEEDED' && (
         <div
           id="auto-apply-monthly-limit-banner"
+          className="auto-apply-limit-banner"
           style={{
             background: 'rgba(239, 68, 68, 0.08)',
             border: '1px solid rgba(239, 68, 68, 0.25)',

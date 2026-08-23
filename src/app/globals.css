@@ -5055,5 +5055,43 @@ body.light-theme .app-tab-btn.active svg {
   display: none;
 }
 
+/* ─── Step 3 Apply Section Mobile Responsiveness ─────────────── */
+.apply-step-card,
+.apply-manual-card,
+.apply-auto-card,
+.apply-url-card,
+.apply-easy-banner,
+.auto-apply-receipt-card,
+.auto-apply-failure-card,
+.auto-apply-requirements-box,
+.auto-apply-quota-bar,
+.auto-apply-limit-banner,
+.intervention-panel-card {
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  #step-3-apply .glass-card,
+  .apply-step-card,
+  .apply-manual-card,
+  .apply-auto-card,
+  .apply-url-card,
+  .apply-easy-banner,
+  .auto-apply-receipt-card,
+  .auto-apply-failure-card,
+  .auto-apply-requirements-box,
+  .auto-apply-quota-bar,
+  .auto-apply-limit-banner,
+  .intervention-panel-card,
+  #step-3-apply [id^="intervention-panel-"],
+  #step-3-apply [id^="auto-apply-quota-bar"],
+  #step-3-apply #auto-apply-success-receipt,
+  #step-3-apply #auto-apply-failure-card,
+  #step-3-apply #auto-apply-daily-limit-banner,
+  #step-3-apply #auto-apply-monthly-limit-banner {
+    padding: 1rem !important;
+  }
+}
+
 
 

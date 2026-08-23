@@ -329,6 +329,7 @@ export function InterventionPanel({
 
   return (
     <div
+      className="intervention-panel-card"
       style={{
         background: bgCard,
         border: `1px solid ${borderColor}`,

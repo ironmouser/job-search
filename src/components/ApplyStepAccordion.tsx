@@ -243,7 +243,7 @@ export function ApplyStepAccordion({
 
   return (
     <div
-      className="glass-card"
+      className="glass-card apply-step-card"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -309,6 +309,7 @@ export function ApplyStepAccordion({
       {/* Easy Apply Banner if role requires personal sign in */}
       {isEasyApply && (
         <div
+          className="apply-easy-banner"
           style={{
             padding: '1rem 1.25rem',
             background: 'rgba(2, 132, 199, 0.08)',
@@ -359,6 +360,7 @@ export function ApplyStepAccordion({
       {/* Tab 1 Content: Apply Now (Manual Apply) */}
       {mode === 'manual' && (
         <div
+          className="apply-manual-card"
           style={{
             borderRadius: '12px',
             border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
@@ -398,6 +400,7 @@ export function ApplyStepAccordion({
       {/* Tab 2 Content: Auto Apply With AI */}
       {mode === 'auto' && (
         <div
+          className="apply-auto-card"
           style={{
             borderRadius: '14px',
             border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
@@ -486,6 +489,7 @@ export function ApplyStepAccordion({
           {/* Application URL Card */}
           {!isApplied && (
             <div
+              className="apply-url-card"
               style={{
                 border: '1px solid var(--border-subtle-blue, rgba(2, 132, 199, 0.15))',
                 borderRadius: '12px',
