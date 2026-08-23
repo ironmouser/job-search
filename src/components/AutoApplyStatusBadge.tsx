@@ -2,7 +2,7 @@
 
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { formatFailureExplanation } from '@/lib/auto-apply/failure-helpers';
-import { AlertTriangle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, AlertOctagon, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 interface AutoApplyStatusBadgeProps {
   status: AutoApplyStatus | string;
@@ -37,8 +37,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function AutoApplyStatusBadge({ status, failureReason, failureDetails }: AutoApplyStatusBadgeProps) {
-  const label = STATUS_LABELS[status] ?? status;
-  const badgeClass = `badge badge-${status}`;
+  const isJobClosed = failureReason === 'job_closed' || status === 'closed' || status === 'job_closed';
+  const label = isJobClosed ? 'Job Closed' : (STATUS_LABELS[status] ?? status);
+  const badgeClass = isJobClosed ? 'badge badge-closed' : `badge badge-${status}`;
   const humanExplanation = failureReason || failureDetails 
     ? formatFailureExplanation(failureReason, failureDetails) 
     : undefined;
@@ -46,11 +47,14 @@ export function AutoApplyStatusBadge({ status, failureReason, failureDetails }: 
   const isDestinationNotFound = failureReason === 'application_destination_not_found';
 
   // Override the label for destination-not-found skips so it reads as a distinct failure type
-  const displayLabel = (status === AutoApplyStatus.SKIPPED && isDestinationNotFound)
-    ? 'Destination Not Found'
-    : label;
+  const displayLabel = isJobClosed 
+    ? 'Job Closed'
+    : (status === AutoApplyStatus.SKIPPED && isDestinationNotFound)
+      ? 'Destination Not Found'
+      : label;
 
   const renderIcon = () => {
+    if (isJobClosed) return <AlertOctagon size={12} />;
     if (RUNNING_STATUSES.has(status as AutoApplyStatus)) {
       return <Loader2 size={12} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />;
     }

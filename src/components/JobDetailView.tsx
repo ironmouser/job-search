@@ -10,6 +10,7 @@ import {
   Maximize2, 
   Loader2, 
   AlertCircle,
+  AlertOctagon,
   Sparkles,
   ArrowLeft
 } from 'lucide-react';
@@ -311,6 +312,10 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
               <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 <CheckCircle size={13} /> Applied {appliedAt ? new Date(appliedAt).toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'numeric', day: 'numeric' }) : ''}
               </span>
+            ) : status === 'closed' ? (
+              <span className="badge badge-closed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <AlertOctagon size={13} /> Closed / No Longer Hiring
+              </span>
             ) : (
               <span className={`badge badge-${status}`}>{status.replace('_', ' ')}</span>
             )}
@@ -379,6 +384,13 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
           ) : null}
         </div>
       </div>
+
+      {status === 'closed' && (
+        <div style={{ margin: '0 0 1.5rem', padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', color: '#f87171', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <AlertOctagon size={18} />
+          <span>This position has been identified as <strong>closed or no longer accepting applications</strong> by the employer.</span>
+        </div>
+      )}
 
       {/* Main Grid Content */}
       <div 

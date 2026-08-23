@@ -4847,7 +4847,7 @@ body.light-theme .checklist-item-row:hover {
 }
 
 .column-job-card.selected {
-  border: 1.5px solid var(--accent-primary) !important;
+  border: 1.5px solid #0070f37a !important;
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%) !important;
   box-shadow: 0 0 16px rgba(37, 99, 235, 0.25) !important;
 }

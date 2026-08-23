@@ -20,6 +20,8 @@ export function extractUrlFromStubDescription(desc?: string | null): string | nu
     return match ? match[0] : null;
 }
 
+import { isClosedJobText, isClosedHttpStatus } from './jobStatusDetector';
+
 export interface FetchJobDescriptionResult {
     description: string;
     finalUrl?: string;
@@ -29,6 +31,9 @@ export interface FetchJobDescriptionResult {
     company?: string | null;
     /** Job title extracted during detail fetch if available */
     title?: string | null;
+    /** Set to true if page or HTTP status indicates the job is closed/expired */
+    isClosed?: boolean;
+    closedReason?: string;
 }
 
 /**
@@ -58,7 +63,9 @@ export async function fetchJobDescriptionDetailed(rawUrl: string): Promise<Fetch
             finalUrl: simpleDesc.finalUrl, 
             resolvedApplicationUrl: simpleDesc.resolvedApplicationUrl,
             company: simpleDesc.company || null,
-            title: simpleDesc.title || null
+            title: simpleDesc.title || null,
+            isClosed: simpleDesc.isClosed,
+            closedReason: simpleDesc.closedReason
         };
     }
     return null;
@@ -76,7 +83,7 @@ export async function fetchJobDescription(rawUrl: string): Promise<string | null
 /**
  * Core fetch function. Returns the description, finalUrl, and any resolved ATS URL.
  */
-async function _fetchJobDescription(url: string): Promise<{ description: string; finalUrl: string; resolvedApplicationUrl: string | null; company?: string | null; title?: string | null } | null> {
+async function _fetchJobDescription(url: string): Promise<{ description: string; finalUrl: string; resolvedApplicationUrl: string | null; company?: string | null; title?: string | null; isClosed?: boolean; closedReason?: string } | null> {
     if (!url) return null;
 
     if (isNonJobUrl(url)) {
@@ -167,8 +174,17 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
                 throwHttpErrors: false,
             });
 
+            if (isClosedHttpStatus(res.statusCode)) {
+                return { description: '', finalUrl: diceDetailUrl, resolvedApplicationUrl: null, isClosed: true, closedReason: 'Position is no longer available (HTTP 404/410).' };
+            }
+
             if (res.statusCode >= 200 && res.statusCode < 300) {
                 const bodyStr = res.body.toString();
+                const closedCheck = isClosedJobText(bodyStr);
+                if (closedCheck.isClosed) {
+                    return { description: '', finalUrl: diceDetailUrl, resolvedApplicationUrl: null, isClosed: true, closedReason: closedCheck.reason };
+                }
+
                 const $d = cheerio.load(bodyStr);
 
                 let diceTitle = '';
@@ -247,9 +263,18 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
             retry: { limit: 0 },
             throwHttpErrors: false,
         });
+        if (isClosedHttpStatus(res.statusCode)) {
+            return { description: '', finalUrl: url, resolvedApplicationUrl: null, isClosed: true, closedReason: 'Position is no longer available (HTTP 404/410).' };
+        }
+
         if (res.statusCode >= 200 && res.statusCode < 300) {
             const bodyStr = res.body.toString();
             if (!bodyStr.includes('Just a moment...') && !bodyStr.includes('cf-challenge-error-title')) {
+                const closedCheck = isClosedJobText(bodyStr);
+                if (closedCheck.isClosed) {
+                    return { description: '', finalUrl: url, resolvedApplicationUrl: null, isClosed: true, closedReason: closedCheck.reason };
+                }
+
                 const extracted = await extractContent(bodyStr);
                 if (extracted) {
                     return {
@@ -270,6 +295,11 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
     // Fast path: try raw HTML first (render=false, 1 credit, 5s timeout)
     const rawScraperHtml = await fetchWithScraperAPI(url, false, 5000);
     if (rawScraperHtml) {
+        const closedCheck = isClosedJobText(rawScraperHtml);
+        if (closedCheck.isClosed) {
+            return { description: '', finalUrl: url, resolvedApplicationUrl: null, isClosed: true, closedReason: closedCheck.reason };
+        }
+
         const resolvedApplicationUrl = extractATSUrlFromHtml(rawScraperHtml);
         const extracted = await extractContent(rawScraperHtml);
         if (extracted) {
@@ -286,6 +316,11 @@ async function _fetchJobDescription(url: string): Promise<{ description: string;
     // Heavy path: escalate to JS rendering only if raw HTML yielded no description (7s timeout)
     const renderedScraperHtml = await fetchWithScraperAPI(url, true, 7000);
     if (renderedScraperHtml) {
+        const closedCheck = isClosedJobText(renderedScraperHtml);
+        if (closedCheck.isClosed) {
+            return { description: '', finalUrl: url, resolvedApplicationUrl: null, isClosed: true, closedReason: closedCheck.reason };
+        }
+
         const resolvedApplicationUrl = extractATSUrlFromHtml(renderedScraperHtml);
         const extracted = await extractContent(renderedScraperHtml);
         if (extracted) {

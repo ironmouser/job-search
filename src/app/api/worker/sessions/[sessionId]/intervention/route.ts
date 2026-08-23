@@ -157,7 +157,7 @@ export async function POST(
     if (isJobClosed) {
       transactions.push(
         prisma.userJob.updateMany({
-          where: { userId: session.userId, jobId: session.jobId },
+          where: { jobId: session.jobId },
           data: { status: 'closed' },
         }),
         prisma.job.update({

@@ -31,6 +31,11 @@ import {
   Maximize2,
   ArrowRight,
   ShieldAlert,
+  Search,
+  FileText,
+  SlidersHorizontal,
+  ShieldCheck,
+  Globe,
 } from 'lucide-react';
 import { trackAutoApplyAction } from '@/lib/analytics';
 import { isAggregatorUrl } from '@/lib/urlUtils';
@@ -54,6 +59,7 @@ interface AutoApplyPanelProps {
   jobUrl: string;
   hasAssets: boolean;
   hasResume?: boolean;
+  onApplyManually?: () => void;
   onStatusChange?: (session: SessionData | null, isActive: boolean) => void;
 }
 
@@ -112,14 +118,46 @@ const ACTIVE_STATUSES = new Set([
 const POLL_INTERVAL = 1000;
 
 const STEP_DEFINITIONS = [
-  { num: 1, label: 'ATS CHECK' },
-  { num: 2, label: 'ASSET TAILORING' },
-  { num: 3, label: 'FORM MAPPING' },
-  { num: 4, label: 'SCREENING Q&A' },
-  { num: 5, label: 'SUBMISSION' },
+  {
+    num: 1,
+    title: '1. Finding Application',
+    desc: 'Locating the direct application form',
+    icon: Search,
+  },
+  {
+    num: 2,
+    title: '2. Tailoring Assets',
+    desc: 'Customizing resume and cover letter',
+    icon: FileText,
+  },
+  {
+    num: 3,
+    title: '3. Form Mapping',
+    desc: 'Filling out application information',
+    icon: SlidersHorizontal,
+  },
+  {
+    num: 4,
+    title: '4. Screening & Q&A',
+    desc: 'Answering required questions',
+    icon: ShieldCheck,
+  },
+  {
+    num: 5,
+    title: '5. Submission',
+    desc: 'Review and submit application',
+    icon: CheckCircle2,
+  },
 ];
 
-export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusChange }: AutoApplyPanelProps) {
+export function AutoApplyPanel({
+  jobId,
+  jobUrl,
+  hasAssets,
+  hasResume,
+  onApplyManually,
+  onStatusChange,
+}: AutoApplyPanelProps) {
   const router = useRouter();
   const { data: authSession } = useSession();
   const userRole = (authSession?.user as any)?.role;
@@ -406,210 +444,151 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         </div>
       )}
 
-      {/* Sleek Minimal Stepper with Continuous Connecting Progress Bar */}
-      <div style={{ padding: '0.5rem 0 0.25rem', width: '100%' }}>
-        {/* Track and Nodes Container (Height: 24px for exact vertical centering) */}
-        <div style={{ position: 'relative', height: '24px', width: '100%' }}>
-          {/* Background Track Line */}
+      {/* 5-Step Process Stepper matching the mockup */}
+      <div style={{ padding: '0.75rem 0 0.5rem', width: '100%' }}>
+        <div
+          style={{
+            position: 'relative',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: '0.75rem',
+            alignItems: 'flex-start',
+          }}
+        >
+          {/* Background Track Line connecting the circles */}
           <div
             style={{
               position: 'absolute',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              left: '16px',
-              right: '16px',
+              top: '21px',
+              left: '10%',
+              right: '10%',
               height: '2px',
-              background: 'var(--border-glass, rgba(255, 255, 255, 0.15))',
+              borderTop: '2px dashed var(--border-glass, rgba(255, 255, 255, 0.15))',
               zIndex: 1,
             }}
           />
 
-          {/* Foreground Progress Line (Solid Filled to Current Step) */}
+          {/* Dynamic Foreground Progress Line */}
           <div
             style={{
               position: 'absolute',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              left: '16px',
-              width: `calc((100% - 32px) * ${progressPercent / 100})`,
+              top: '21px',
+              left: '10%',
+              width: `calc(80% * ${progressPercent / 100})`,
               height: '2px',
-              background: session?.status === AutoApplyStatus.FAILED
-                ? '#ef4444'
-                : session?.status === AutoApplyStatus.NEEDS_INTERVENTION || session?.status === AutoApplyStatus.NEEDS_REVIEW
-                ? 'linear-gradient(90deg, #2563eb 0%, #f59e0b 100%)'
-                : 'linear-gradient(90deg, #2563eb 0%, #10b981 100%)',
+              background:
+                session?.status === AutoApplyStatus.FAILED
+                  ? '#ef4444'
+                  : session?.status === AutoApplyStatus.NEEDS_INTERVENTION || session?.status === AutoApplyStatus.NEEDS_REVIEW
+                  ? 'linear-gradient(90deg, var(--accent-primary, #0070f3) 0%, #f59e0b 100%)'
+                  : 'linear-gradient(90deg, var(--accent-primary, #0070f3) 0%, #10b981 100%)',
               transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
               zIndex: 2,
             }}
           />
 
-          {/* Step Circles Row */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              height: '100%',
-              position: 'relative',
-              zIndex: 3,
-            }}
-          >
-            {STEP_DEFINITIONS.map((st) => {
-              const isCompleted = isAllDone || (isActive && st.num < activeStepNum);
-              const isCurrent = isActive && st.num === activeStepNum;
-              const isIntervention = (session?.status === AutoApplyStatus.NEEDS_INTERVENTION || session?.status === AutoApplyStatus.NEEDS_REVIEW) && st.num === 4;
-              const isFailed = session?.status === AutoApplyStatus.FAILED && st.num === activeStepNum;
-
-              return (
-                <div
-                  key={st.num}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '32px',
-                    height: '100%',
-                  }}
-                >
-                  {isCompleted ? (
-                    /* Completed Step: Solid Circle with Clean Checkmark */
-                    <div
-                      style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        background: '#10b981',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 6px rgba(16, 185, 129, 0.4)',
-                        transition: 'all 0.3s ease',
-                      }}
-                    >
-                      <Check size={12} strokeWidth={3} />
-                    </div>
-                  ) : isIntervention ? (
-                    /* Intervention Step: Pulsating Amber Circle */
-                    <div
-                      className="stepper-amber-pulsing"
-                      style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        background: '#f59e0b',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.3s ease',
-                      }}
-                    >
-                      <AlertCircle size={13} />
-                    </div>
-                  ) : isFailed ? (
-                    /* Failed Step: Red Circle */
-                    <div
-                      style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        background: '#ef4444',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <AlertCircle size={13} />
-                    </div>
-                  ) : isCurrent ? (
-                    /* Active Current Step: Solid Circle with Concentric White Center Dot + Pulsating Ripple */
-                    <div
-                      className="stepper-active-pulsing"
-                      style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        background: '#2563eb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.3s ease',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '6px',
-                          height: '6px',
-                          borderRadius: '50%',
-                          background: '#ffffff',
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    /* Upcoming / Idle Step: Small Minimal Dot */
-                    <div
-                      style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: 'var(--border-glass, #475569)',
-                        border: '1px solid var(--border-glass, #334155)',
-                        transition: 'all 0.3s ease',
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Step Labels Row */}
-        <div
-          className="stepper-labels-row"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginTop: '0.45rem',
-            width: '100%',
-          }}
-        >
           {STEP_DEFINITIONS.map((st) => {
             const isCompleted = isAllDone || (isActive && st.num < activeStepNum);
             const isCurrent = isActive && st.num === activeStepNum;
             const isIntervention = (session?.status === AutoApplyStatus.NEEDS_INTERVENTION || session?.status === AutoApplyStatus.NEEDS_REVIEW) && st.num === 4;
-            const isFailedStep = session?.status === AutoApplyStatus.FAILED && st.num === activeStepNum;
-            const isStepActive = st.num === (isAllDone ? 6 : activeStepNum);
+            const isFailed = session?.status === AutoApplyStatus.FAILED && st.num === activeStepNum;
+            const IconComponent = st.icon;
 
             return (
-              <span
+              <div
                 key={st.num}
-                className={isStepActive ? 'stepper-label-active' : 'stepper-label-inactive'}
                 style={{
-                  width: '32px',
                   display: 'flex',
-                  justifyContent: 'center',
-                  fontSize: '0.63rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  color: isFailedStep
-                    ? '#ef4444'
-                    : isCompleted
-                    ? '#10b981'
-                    : isIntervention
-                    ? '#f59e0b'
-                    : isCurrent
-                    ? '#3b82f6'
-                    : 'var(--text-muted, #94a3b8)',
-                  whiteSpace: 'nowrap',
-                  transition: 'color 0.3s, opacity 0.3s',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  position: 'relative',
+                  zIndex: 3,
                 }}
               >
-                {st.label}
-              </span>
+                {/* Step Icon Circle */}
+                <div
+                  className={isCurrent ? 'stepper-active-pulsing' : isIntervention ? 'stepper-amber-pulsing' : ''}
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    background: isCompleted
+                      ? 'rgba(16, 185, 129, 0.12)'
+                      : isIntervention
+                      ? 'rgba(245, 158, 11, 0.12)'
+                      : isFailed
+                      ? 'rgba(239, 68, 68, 0.12)'
+                      : isCurrent
+                      ? 'var(--accent-glow, rgba(0, 112, 243, 0.15))'
+                      : 'var(--card-header-bg, rgba(255, 255, 255, 0.04))',
+                    border: isCompleted
+                      ? '2px solid #10b981'
+                      : isIntervention
+                      ? '2px solid #f59e0b'
+                      : isFailed
+                      ? '2px solid #ef4444'
+                      : isCurrent
+                      ? '2px solid var(--accent-primary, #0070f3)'
+                      : '1.5px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
+                    color: isCompleted
+                      ? '#10b981'
+                      : isIntervention
+                      ? '#f59e0b'
+                      : isFailed
+                      ? '#ef4444'
+                      : isCurrent
+                      ? 'var(--accent-primary, #0070f3)'
+                      : 'var(--text-secondary, #a3a3a3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '0.5rem',
+                    transition: 'all 0.3s ease',
+                    boxShadow: isCompleted
+                      ? '0 2px 8px rgba(16, 185, 129, 0.25)'
+                      : isCurrent
+                      ? '0 2px 8px rgba(0, 112, 243, 0.25)'
+                      : 'none',
+                  }}
+                >
+                  {isCompleted ? <Check size={18} strokeWidth={2.5} /> : <IconComponent size={18} />}
+                </div>
+
+                {/* Step Number & Title */}
+                <span
+                  style={{
+                    fontSize: '0.82rem',
+                    fontWeight: isCurrent || isCompleted ? 700 : 600,
+                    color: isCompleted
+                      ? '#10b981'
+                      : isIntervention
+                      ? '#f59e0b'
+                      : isFailed
+                      ? '#ef4444'
+                      : isCurrent
+                      ? 'var(--accent-primary, #0070f3)'
+                      : 'var(--text-primary, #ededed)',
+                    marginBottom: '0.2rem',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {st.title}
+                </span>
+
+                {/* Step Description */}
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '0.72rem',
+                    color: 'var(--text-secondary, #a3a3a3)',
+                    lineHeight: 1.35,
+                    maxWidth: '135px',
+                  }}
+                >
+                  {st.desc}
+                </p>
+              </div>
             );
           })}
         </div>
@@ -1123,32 +1102,35 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
       )}
 
       {/* Auto Apply Quota Display & Rate Limit Banners */}
-      {quota && quota.tier !== 'FREE' && (
+      {quota && (
         <div
           id={`auto-apply-quota-bar-${jobId}`}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
             flexWrap: 'wrap',
-            marginTop: '0.35rem',
-            marginBottom: '0.2rem',
-            fontSize: '0.82rem',
-            color: 'var(--text-muted)',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            background: 'var(--bg-secondary, rgba(255, 255, 255, 0.03))',
+            border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+            fontSize: '0.85rem',
+            color: 'var(--text-secondary, #a3a3a3)',
+            marginTop: '0.25rem',
           }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}>
-            <Zap size={14} color="#f59e0b" fill="currentColor" />
-            <strong style={{ color: quota.monthlyRemaining <= 5 ? '#f59e0b' : 'var(--text-primary)' }}>
-              {quota.monthlyRemaining} of {quota.monthlyLimit}
-            </strong>{' '}
-            {quota.tier === 'TRIAL' ? 'trial auto-applies remaining' : 'auto-applies remaining this month'}
-          </span>
-          {quota.dailyRemaining < quota.dailyLimit && quota.dailyRemaining > 0 && (
-            <span style={{ color: quota.dailyRemaining <= 3 ? '#f59e0b' : 'var(--text-muted)', fontSize: '0.78rem' }}>
-              ({quota.dailyRemaining} left today · resets midnight UTC)
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <Zap size={15} color="#f59e0b" fill="currentColor" />
+            <span style={{ fontWeight: 600, color: 'var(--text-primary, #ededed)' }}>
+              {quota.tier === 'FREE' ? 0 : quota.monthlyRemaining} of {quota.monthlyLimit || 150} auto-applies remaining this month
             </span>
-          )}
+            {quota.dailyRemaining < quota.dailyLimit && quota.dailyRemaining > 0 && (
+              <span style={{ color: 'var(--text-muted, #737373)', fontSize: '0.8rem' }}>
+                {quota.dailyRemaining} left today • Resets midnight UTC
+              </span>
+            )}
+          </div>
         </div>
       )}
 
@@ -1202,9 +1184,19 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
         </div>
       )}
 
-      {/* Default Auto Apply button (start / cancel) - only shown when neither active intervention nor failure card is taking over */}
+      {/* Default Auto Apply button (start / cancel) + Manual Apply button */}
       {!isLiveIntervention && !isFailedOrStopped && (
-        <div className="auto-apply-button-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+        <div
+          className="auto-apply-button-group"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            flexWrap: 'wrap',
+            marginTop: '0.35rem',
+          }}
+        >
           <AutoApplyButton
             jobId={jobId}
             jobUrl={jobUrl}
@@ -1213,9 +1205,35 @@ export function AutoApplyPanel({ jobId, jobUrl, hasAssets, hasResume, onStatusCh
             currentStatus={session?.status}
             isAggregatorJob={isAggregatorJob}
             quota={quota}
+            buttonText="Start Auto Apply"
             onSessionStarted={() => fetchStatus()}
             onStartingChange={(starting) => setIsStarting(starting)}
           />
+
+          {onApplyManually && (
+            <button
+              type="button"
+              onClick={onApplyManually}
+              className="btn-outline full-width-mobile"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.45rem',
+                padding: '0.7rem 1.25rem',
+                borderRadius: '8px',
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: 'transparent',
+                border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
+                color: 'var(--text-primary, #ededed)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Globe size={16} /> Apply Manually Instead
+            </button>
+          )}
         </div>
       )}
 

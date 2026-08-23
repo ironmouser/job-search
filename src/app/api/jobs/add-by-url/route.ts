@@ -12,6 +12,7 @@ import { cleanJobUrl, isTrustedJobUrl, isSafePublicUrl, evaluateUrlReputation } 
 import { logSuspiciousActivity } from '@/lib/security';
 import { getEffectiveTier } from '@/lib/tier';
 import { fetchWithScraperAPI, extractATSUrlFromHtml } from '@/lib/scraperapi';
+import { isClosedJobText } from '@/lib/jobStatusDetector';
 
 /**
  * Direct scraper helper for Salesforce career pages
@@ -199,8 +200,8 @@ export async function POST(request: Request) {
 
     // If job does not exist and no manual description provided, attempt scraping
     let resolvedApplicationUrl: string | null = null;
+    let rawHtml = '';
     if (!job && !sanitizedManualDescription) {
-      let rawHtml = '';
       let fetchSuccess = false;
 
       // Special handler for Salesforce Career URLs
@@ -361,6 +362,9 @@ export async function POST(request: Request) {
       }
     }
 
+    const isClosedDetected = isClosedJobText(rawHtml || description || '').isClosed;
+    const initialJobStatus = isClosedDetected ? 'closed' : 'discovered';
+
     // 2. Upsert Job in DB
     if (!job) {
       try {
@@ -374,6 +378,7 @@ export async function POST(request: Request) {
             url: cleanUrl,
             source: 'User Submission',
             addedById: userId,
+            status: initialJobStatus,
             // Save direct ATS URL if extracted from the aggregator page during scraping
             ...(resolvedApplicationUrl ? { applicationUrl: resolvedApplicationUrl } : {}),
           }
@@ -386,23 +391,35 @@ export async function POST(request: Request) {
           throw e;
         }
       }
+    } else if (isClosedDetected) {
+      await prisma.job.update({
+        where: { id: job.id },
+        data: { status: 'closed' }
+      });
     }
 
     // 3. Upsert UserJob
     const userJob = await prisma.userJob.upsert({
       where: { userId_jobId: { userId, jobId: job.id } },
       update: {
-        status: 'discovered',
+        ...(isClosedDetected ? { status: 'closed' } : {}),
         isArchived: false,
         isPrivate: isPro
       },
       create: {
         userId,
         jobId: job.id,
-        status: 'discovered',
+        status: initialJobStatus,
         isPrivate: isPro
       }
     });
+
+    if (isClosedDetected) {
+      await prisma.userJob.updateMany({
+        where: { jobId: job.id },
+        data: { status: 'closed' }
+      });
+    }
 
     // 4. Calculate Opportunity Score if not present
     let scoreObj = await prisma.opportunityScore.findUnique({

@@ -44,6 +44,17 @@ export async function POST(
 
         for (const tryUrl of urlsToTry) {
             fetchResult = await fetchJobDescriptionDetailed(tryUrl);
+            if (fetchResult?.isClosed) {
+                await prisma.job.update({
+                    where: { id: jobId },
+                    data: { status: 'closed' }
+                });
+                await prisma.userJob.updateMany({
+                    where: { jobId },
+                    data: { status: 'closed' }
+                });
+                return NextResponse.json({ success: true, isClosed: true, message: fetchResult.closedReason || 'Position is closed' });
+            }
             if (fetchResult?.description) { 
                 usedUrl = fetchResult.finalUrl || tryUrl; 
                 break; 

@@ -84,7 +84,6 @@ export async function PATCH(
     } else if (body.failureReason === 'job_closed' || body.failureDetails?.toLowerCase().includes('no longer accepting')) {
       await prisma.userJob.updateMany({
         where: {
-          userId: session.userId,
           jobId: session.jobId,
         },
         data: {

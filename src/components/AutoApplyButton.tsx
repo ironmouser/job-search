@@ -15,6 +15,9 @@ interface AutoApplyButtonProps {
   quota?: AutoApplyQuota | null;
   onSessionStarted?: (sessionId: string) => void;
   onStartingChange?: (starting: boolean) => void;
+  buttonText?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 const ACTIVE_STATUSES = new Set([
@@ -48,6 +51,9 @@ export function AutoApplyButton({
   currentStatus,
   isAggregatorJob,
   quota,
+  buttonText = 'Start Auto Apply',
+  className = '',
+  style = {},
   onSessionStarted,
   onStartingChange,
 }: AutoApplyButtonProps) {
@@ -115,8 +121,22 @@ export function AutoApplyButton({
   if (isActive) {
     return (
       <button
-        className="btn-auto-apply full-width-mobile"
-        style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+        className={`btn-auto-apply full-width-mobile ${className}`}
+        style={{
+          background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.4rem',
+          padding: '0.7rem 1.35rem',
+          borderRadius: '8px',
+          color: '#ffffff',
+          fontWeight: 600,
+          fontSize: '0.9rem',
+          border: 'none',
+          cursor: 'pointer',
+          ...style,
+        }}
         onClick={handleCancel}
         id={`auto-apply-cancel-${jobId}`}
       >
@@ -128,7 +148,7 @@ export function AutoApplyButton({
   return (
     <>
       <button
-        className="btn-auto-apply full-width-mobile"
+        className={`btn-auto-apply full-width-mobile ${className}`}
         disabled={isDisabled || starting}
         onClick={handleStart}
         id={`auto-apply-btn-${jobId}`}
@@ -140,29 +160,31 @@ export function AutoApplyButton({
               ? `Monthly allowance reached (${quota.monthlyLimit}/${quota.monthlyLimit}). Resets on ${new Date(quota.monthlyResetsAt).toLocaleDateString()}.`
               : 'Upgrade to Pro to unlock automated applications.'
             : !hasAssets
-            ? '1-Click Auto Apply (Tailors resume & submits)'
-            : '1-Click Auto Apply'
+            ? 'Start Auto Apply (Tailors resume & submits)'
+            : 'Start Auto Apply'
         }
         style={{
           display: 'inline-flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: '0.55rem',
           padding: '0.7rem 1.35rem',
           borderRadius: '8px',
-          backgroundColor: isQuotaBlocked ? '#64748b' : '#a84a0c',
+          backgroundColor: isQuotaBlocked ? 'var(--muted, #262626)' : 'var(--accent-primary, #0070f3)',
           color: '#ffffff',
           fontWeight: 600,
           fontSize: '0.9rem',
           border: 'none',
           cursor: isDisabled || starting ? 'not-allowed' : 'pointer',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-          transition: 'background-color 0.2s',
-          opacity: isQuotaBlocked ? 0.85 : 1,
+          boxShadow: isQuotaBlocked ? 'none' : '0 2px 8px rgba(0, 112, 243, 0.25)',
+          transition: 'all 0.2s ease',
+          opacity: isQuotaBlocked ? 0.75 : 1,
+          ...style,
         }}
       >
         {starting ? (
           <>
-            <Bot size={18} />
+            <Bot size={18} className="animate-spin" />
             {!hasAssets
               ? 'Auto-tailoring & Starting…'
               : isAggregatorJob
@@ -180,7 +202,7 @@ export function AutoApplyButton({
           </>
         ) : (
           <>
-            <Bot size={18} /> 1-Click Auto Apply
+            <Bot size={18} /> {buttonText}
           </>
         )}
       </button>

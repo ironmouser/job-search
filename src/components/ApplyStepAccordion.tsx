@@ -1,13 +1,27 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-
-
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronUp, Sparkles, Link as LinkIcon, AlertCircle, Loader2, ExternalLink, HelpCircle, X, Zap, Check } from 'lucide-react';
-import AutofillButton from './AutofillButton';
+import {
+  Sparkles,
+  Link as LinkIcon,
+  Loader2,
+  ExternalLink,
+  HelpCircle,
+  Zap,
+  Check,
+  Download,
+  Copy,
+  CheckCircle2,
+  Globe,
+  FileText,
+} from 'lucide-react';
 import { AutoApplyPanel } from './AutoApplyPanel';
 import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
+import { AutoApplyHowItWorksModal } from './AutoApplyHowItWorksModal';
+import AutofillButton from './AutofillButton';
+import { safeCopyToClipboard } from '@/lib/clipboard';
+import { scrollToTop } from './BackToTopButton';
 
 interface ApplyStepAccordionProps {
   jobId: string;
@@ -39,12 +53,14 @@ export function ApplyStepAccordion({
   jobSource,
 }: ApplyStepAccordionProps) {
   const router = useRouter();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [activeUrl, setActiveUrl] = useState(applicationUrl || initialUrl);
   const [customUrl, setCustomUrl] = useState(applicationUrl || '');
   const [isSavingUrl, setIsSavingUrl] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
-  
+  const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
+  // Default to manual apply tab per user specification
+  const [mode, setMode] = useState<'manual' | 'auto'>('manual');
+
   useEffect(() => {
     if (applicationUrl) {
       setActiveUrl(applicationUrl);
@@ -53,70 +69,26 @@ export function ApplyStepAccordion({
       setActiveUrl(initialUrl);
     }
   }, [applicationUrl, initialUrl]);
-  
-  const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
-  const [isGeneratingAssets, setIsGeneratingAssets] = useState(false);
-  const [hasStartedGenerating, setHasStartedGenerating] = useState(false);
 
+  const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
   const [confidenceData, setConfidenceData] = useState<{ platform: string; confidence: number } | null>(null);
   const [isCheckingConfidence, setIsCheckingConfidence] = useState(false);
   const [activeSession, setActiveSession] = useState<{ status: string } | null>(null);
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const [isHelpDismissed, setIsHelpDismissed] = useState(false);
-
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('auto_apply_dismiss_aggregator_help');
-        if (saved === 'true') {
-          setIsHelpDismissed(true);
-        }
-      }
-    } catch {
-      // Ignore localStorage read errors
-    }
-  }, []);
-
-  const handleDismissHelp = () => {
-    setIsHelpDismissed(true);
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auto_apply_dismiss_aggregator_help', 'true');
-      }
-    } catch {
-      // Ignore localStorage write errors
-    }
-  };
 
   useEffect(() => {
     setLocalHasAssets(hasAssets);
   }, [hasAssets]);
 
-  // Check URL parameters and custom triggers to auto-expand the accordion
+  // Check URL parameters and active sessions to auto-select auto tab if triggered or running
   useEffect(() => {
-    const checkAndExpand = () => {
-      if (typeof window === 'undefined') return;
-      const searchParams = new URLSearchParams(window.location.search);
-      const shouldExpand =
-        searchParams.get('autoApplyExpand') === 'true' ||
-        window.location.hash === '#step-3-apply';
+    if (typeof window === 'undefined') return;
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('autoApplyExpand') === 'true') {
+      setMode('auto');
+    }
 
-      if (shouldExpand) {
-        setIsExpanded(true);
-      }
-    };
-
-    checkAndExpand();
-
-    const handleExpandTrigger = () => {
-      setIsExpanded(true);
-    };
-
-    window.addEventListener('auto-apply-expand-trigger', handleExpandTrigger);
-    window.addEventListener('hashchange', checkAndExpand);
-    window.addEventListener('popstate', checkAndExpand);
-
-    // Also auto-expand if this job currently has an active auto-apply session running
+    // Check if an auto-apply session is active in the background
     fetch(`/api/auto-apply/${jobId}/status`, { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -134,55 +106,18 @@ export function ApplyStepAccordion({
             'needs_intervention',
           ];
           if (activeStatuses.includes(data.session.status)) {
-            setIsExpanded(true);
+            setMode('auto');
           }
         }
       })
       .catch(() => {});
-
-    return () => {
-      window.removeEventListener('auto-apply-expand-trigger', handleExpandTrigger);
-      window.removeEventListener('hashchange', checkAndExpand);
-      window.removeEventListener('popstate', checkAndExpand);
-    };
   }, [jobId]);
 
-  const hasScrolledRef = useRef(false);
+  const effectiveUrl = customUrl.trim() && customUrl.trim().startsWith('http') ? customUrl.trim() : activeUrl;
 
-  // Smooth scroll directly to the intervention / issue element once expanded
+  // Check automation confidence whenever effectiveUrl changes
   useEffect(() => {
-    if (!isExpanded) return;
-    if (typeof window === 'undefined') return;
-
-    const searchParams = new URLSearchParams(window.location.search);
-    const shouldScroll =
-      searchParams.get('autoApplyExpand') === 'true' ||
-      window.location.hash === '#step-3-apply';
-
-    if (!shouldScroll) return;
-    if (hasScrolledRef.current) return;
-
-    const timer = setTimeout(() => {
-      const issueElement =
-        document.querySelector('[id^="intervention-panel-"]') ||
-        document.getElementById('auto-apply-failure-banner') ||
-        document.getElementById('auto-apply-low-confidence-warning') ||
-        document.getElementById('step-3-apply');
-
-      if (issueElement) {
-        issueElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        hasScrolledRef.current = true;
-      }
-    }, 200);
-
-    return () => clearTimeout(timer);
-  }, [isExpanded]);
-
-  const effectiveUrl = (customUrl.trim() && customUrl.trim().startsWith('http')) ? customUrl.trim() : activeUrl;
-
-  // Check confidence whenever effectiveUrl changes
-  useEffect(() => {
-    if (!effectiveUrl || !isExpanded || isGeneratingAssets) return;
+    if (!effectiveUrl) return;
     let isMounted = true;
     setIsCheckingConfidence(true);
 
@@ -225,7 +160,7 @@ export function ApplyStepAccordion({
     return () => {
       isMounted = false;
     };
-  }, [effectiveUrl, isExpanded]);
+  }, [effectiveUrl]);
 
   async function handleSaveCustomUrl(overrideUrl?: string) {
     const targetToSave = (typeof overrideUrl === 'string' ? overrideUrl : customUrl).trim();
@@ -253,6 +188,52 @@ export function ApplyStepAccordion({
     }
   }
 
+  // Manual apply execution helper
+  const handleManualApply = async () => {
+    try {
+      if (localHasAssets) {
+        const res = await fetch('/api/autofill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.coverLetter) {
+            await safeCopyToClipboard(data.coverLetter);
+          }
+        }
+      }
+
+      fetch(`/api/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'applied', applied_at: new Date().toISOString() }),
+      })
+        .then(() => router.refresh())
+        .catch(console.error);
+
+      let targetUrl = effectiveUrl;
+      const isInternalLink =
+        targetUrl.includes('jobagenthq.com') ||
+        targetUrl.startsWith('/') ||
+        targetUrl.includes('localhost') ||
+        targetUrl.includes('railway.app');
+
+      if (isInternalLink) {
+        const searchQuery = encodeURIComponent(`${jobTitle} ${jobCompany} careers`);
+        targetUrl = `https://www.google.com/search?q=${searchQuery}`;
+      }
+
+      sessionStorage.setItem('just_applied_job_id', jobId);
+      window.open(targetUrl, '_blank');
+      scrollToTop();
+    } catch (e) {
+      console.error('Manual apply error:', e);
+      window.open(effectiveUrl, '_blank');
+    }
+  };
+
   const isApplied = activeSession?.status === 'applied' || activeSession?.status === 'simulated';
 
   // If already applied, guarantee 100% confidence
@@ -260,175 +241,283 @@ export function ApplyStepAccordion({
     ? { platform: confidenceData?.platform || 'ATS', confidence: 100 }
     : confidenceData;
 
-  // Determine if we should show the low confidence warning
-  const showLowConfidenceWarning = !isApplied && effectiveConfidenceData && effectiveConfidenceData.confidence < 40;
-
-  const isInterventionOrRunning =
-    isSessionActive ||
-    (activeSession &&
-      [
-        'queued',
-        'processing',
-        'generating_assets',
-        'navigating_to_ats',
-        'detecting_ats',
-        'preparing',
-        'applying',
-        'validating',
-        'needs_review',
-        'needs_intervention',
-        'applied',
-        'simulated',
-      ].includes(activeSession.status));
-
   return (
-    <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: '0', overflow: 'hidden' }}>
-      {/* Top Main Section: Manual Apply */}
-      <div className="step-card-main-padding" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ flex: '1 1 280px' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0' }}>Apply to Job</h3>
-          <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>
-            Ready to apply? Click the "Apply to Job" button to open the job application on the company's career page.
-          </p>
-        </div>
-        <div className="full-width-mobile" style={{ flexShrink: 0 }}>
-          <AutofillButton 
-            jobId={jobId} 
-            jobUrl={activeUrl} 
-            jobTitle={jobTitle} 
-            jobCompany={jobCompany} 
-            isPro={isPro} 
-            appliesThisWeek={appliesThisWeek} 
-            hasAssets={localHasAssets}
-            generationsLeftThisWeek={generationsLeftThisWeek}
-          />
-        </div>
+    <div
+      className="glass-card"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '1.5rem',
+        gap: '1.25rem',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 1. Header Row */}
+      <div>
+        <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+          Apply to Job
+        </h3>
+        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
+          Choose how you&apos;d like to apply for this position.
+        </p>
       </div>
 
-      {/* Accordion Divider */}
-      <div style={{ borderTop: '1px solid var(--border-glass)' }} />
+      {/* 2. Segmented Mode Selector Tabs (Similar to Prepare Application Flow) */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '6px',
+          backgroundColor: 'var(--bg-secondary, rgba(255, 255, 255, 0.05))',
+          padding: '4px',
+          borderRadius: '10px',
+          border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+        }}
+      >
+        {/* Tab 1: Apply Now - Default */}
+        <button
+          type="button"
+          onClick={() => setMode('manual')}
+          style={{
+            borderRadius: '8px',
+            padding: '0.7rem 1rem',
+            border: 'none',
+            fontWeight: mode === 'manual' ? 600 : 500,
+            backgroundColor: mode === 'manual' ? 'var(--accent-primary, #0070f3)' : 'transparent',
+            color: mode === 'manual' ? '#ffffff' : 'var(--text-secondary, #a3a3a3)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            fontSize: '0.92rem',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>Apply Now</span>
+        </button>
 
-      {isEasyApply ? (
+        {/* Tab 2: Auto Apply With AI */}
+        <button
+          type="button"
+          onClick={() => setMode('auto')}
+          style={{
+            borderRadius: '8px',
+            padding: '0.7rem 1rem',
+            border: 'none',
+            fontWeight: mode === 'auto' ? 600 : 500,
+            backgroundColor: mode === 'auto' ? 'var(--accent-primary, #0070f3)' : 'transparent',
+            color: mode === 'auto' ? '#ffffff' : 'var(--text-secondary, #a3a3a3)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            fontSize: '0.92rem',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Sparkles size={16} />
+          <span>Auto Apply With AI</span>
+        </button>
+      </div>
+
+      {/* Easy Apply Banner if role requires personal sign in */}
+      {isEasyApply && (
         <div
           style={{
-            padding: '1.25rem 1.5rem',
-            background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
+            padding: '1rem 1.25rem',
+            background: 'rgba(2, 132, 199, 0.08)',
+            border: '1px solid rgba(2, 132, 199, 0.25)',
+            borderRadius: '10px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '1rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Zap size={16} /> Easy Apply on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'Job Platform'}
+              </span>
+              <span style={{ fontSize: '0.7rem', background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Personal Account</span>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4, maxWidth: '580px' }}>
+              This role is hosted directly on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'the platform'}&apos;s internal network and requires signing into your personal account.
+            </p>
+          </div>
+
+          <a
+            href={activeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.6rem 1.15rem',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              textDecoration: 'none',
+              background: '#0284c7',
+              borderColor: '#0284c7',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Easy Apply on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'Platform'} <ExternalLink size={15} />
+          </a>
+        </div>
+      )}
+
+      {/* Tab 1 Content: Apply Now (Manual Apply) */}
+      {mode === 'manual' && (
+        <div
+          style={{
+            borderRadius: '12px',
+            border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+            background: 'var(--card, #111111)',
+            padding: '1.5rem',
             display: 'flex',
             flexDirection: 'column',
             gap: '1rem',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Zap size={16} /> Easy Apply on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'Job Platform'}
-                </span>
-                <span style={{ fontSize: '0.7rem', background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Personal Account</span>
-              </div>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4, maxWidth: '580px' }}>
-                This role is hosted directly on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'the platform'}&apos;s internal network and requires signing into your personal account.
-              </p>
-            </div>
+          {/* Explanation Header */}
+          <div>
+            <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Apply directly on the employer&apos;s website
+            </h4>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Download your tailored resume and cover letter from Step 2, then click below to open the job application on the company career page or job board.
+            </p>
+          </div>
 
-            <a
-              href={activeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.65rem 1.25rem',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                textDecoration: 'none',
-                background: '#0284c7',
-                borderColor: '#0284c7',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Easy Apply on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'Platform'} <ExternalLink size={15} />
-            </a>
+          {/* Full-width Action Button */}
+          <div style={{ marginTop: '0.5rem', width: '100%' }}>
+            <AutofillButton
+              jobId={jobId}
+              jobUrl={activeUrl}
+              jobTitle={jobTitle}
+              jobCompany={jobCompany}
+              isPro={isPro}
+              appliesThisWeek={appliesThisWeek}
+              hasAssets={localHasAssets}
+              generationsLeftThisWeek={generationsLeftThisWeek}
+            />
           </div>
         </div>
-      ) : (
-        <>
-          {/* Accordion Header */}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            style={{
-              width: '100%',
-              background: '#2663eb22',
-              border: 'none',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              textAlign: 'left',
-              transition: 'background 0.2s',
-            }}
-            className="accordion-header step-card-header-padding"
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              <Sparkles size={16} color="var(--accent-primary)" />
-              Auto apply with AI
-              {!isPro && (
-                <span style={{ fontSize: '0.7rem', background: 'var(--accent-primary)', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '0.5rem' }}>PRO</span>
-              )}
-            </span>
-            {isExpanded ? <ChevronUp size={18} color="var(--text-secondary)" /> : <ChevronDown size={18} color="var(--text-secondary)" />}
-          </button>
-        </>
       )}
 
-      {/* Accordion Content */}
-      {isExpanded && (
+      {/* Tab 2 Content: Auto Apply With AI */}
+      {mode === 'auto' && (
         <div
-          className="step-card-content-padding auto-apply-accordion-content"
           style={{
-            borderTop: '1px solid var(--border-glass)',
-            background: 'var(--bg-secondary)',
+            borderRadius: '14px',
+            border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+            background: 'var(--bg-secondary, rgba(255, 255, 255, 0.02))',
+            padding: '1.35rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1.5rem',
+            gap: '1.25rem',
           }}
         >
-          {/* Direct URL Input Sub-Card — only shown before application is submitted */}
+          {/* Inner Header Row: Badges (AI Auto Apply + Confidence) & How it works link */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.02em',
+                  padding: '4px 10px',
+                  borderRadius: '9999px',
+                  background: 'rgba(0, 112, 243, 0.12)',
+                  color: 'var(--accent-primary, #0070f3)',
+                  border: '1px solid rgba(0, 112, 243, 0.25)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <Sparkles size={12} /> AI Auto Apply
+              </span>
+
+              {/* Confidence Badge with Info Trigger */}
+              {effectiveConfidenceData && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <AutoApplyConfidenceBadge confidence={effectiveConfidenceData.confidence} showLabel />
+                  <button
+                    type="button"
+                    onClick={() => setIsHowItWorksOpen(true)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    title="Learn how automation confidence works"
+                  >
+                    <HelpCircle size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsHowItWorksOpen(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--accent-primary, #0070f3)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '2px 6px',
+              }}
+            >
+              <HelpCircle size={15} /> How it works
+            </button>
+          </div>
+
+          {/* Section Headline */}
+          <div>
+            <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Let AI handle your application
+            </h4>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+              We will locate the application form, tailor your assets, and submit on your behalf.
+            </p>
+          </div>
+
+          {/* Application URL Card */}
           {!isApplied && (
             <div
               style={{
-                border: '1px solid var(--border-glass, #e2e8f0)',
+                border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
                 borderRadius: '12px',
-                padding: '1.25rem 1.35rem 1.15rem',
+                padding: '1.25rem 1.35rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.85rem',
-                background: 'var(--bg-primary, #ffffff)',
+                gap: '1rem',
+                background: 'var(--card, #111111)',
               }}
             >
-              {/* Header: Label + Confidence Badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <label
-                  style={{
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    color: 'var(--text-secondary, #475569)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                  }}
-                >
-                  <LinkIcon size={15} /> Direct Job Application URL
-                </label>
-                {effectiveConfidenceData && (
-                  <AutoApplyConfidenceBadge confidence={effectiveConfidenceData.confidence} showLabel />
-                )}
-              </div>
+              <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-secondary, #a3a3a3)', margin: 0 }}>
+                Application URL
+              </label>
 
-              {/* Input Row + Update URL Button */}
-              <div className="auto-apply-input-group" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              {/* Input + Update URL */}
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <input
                   type="url"
                   value={customUrl}
@@ -450,12 +539,12 @@ export function ApplyStepAccordion({
                   placeholder={activeUrl || 'https://company.com/careers/job/12345'}
                   style={{
                     flex: 1,
-                    padding: '0.65rem 0.95rem',
-                    borderRadius: '6px',
-                    border: '1px solid var(--border-glass, #e2e8f0)',
-                    background: 'var(--bg-secondary, #f8fafc)',
-                    color: 'var(--text-primary, #334155)',
-                    fontSize: '0.88rem',
+                    padding: '0.7rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
+                    background: 'var(--bg-secondary, rgba(255, 255, 255, 0.03))',
+                    color: 'var(--text-primary, #ededed)',
+                    fontSize: '0.9rem',
                     outline: 'none',
                   }}
                 />
@@ -467,23 +556,15 @@ export function ApplyStepAccordion({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.4rem',
-                    fontSize: '0.85rem',
-                    padding: '0.65rem 1.15rem',
-                    borderRadius: '6px',
-                    border: savedSuccess
-                      ? '1px solid #16a34a'
-                      : '1px solid var(--border-glass, #e2e8f0)',
-                    background: savedSuccess
-                      ? 'rgba(22, 163, 74, 0.08)'
-                      : 'var(--bg-primary, #ffffff)',
-                    color: savedSuccess
-                      ? '#16a34a'
-                      : customUrl.trim() && customUrl.trim() !== activeUrl
-                      ? '#2563eb'
-                      : 'var(--text-secondary, #475569)',
+                    fontSize: '0.88rem',
+                    padding: '0.7rem 1.25rem',
+                    borderRadius: '8px',
+                    border: savedSuccess ? '1px solid #16a34a' : '1px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
+                    background: savedSuccess ? 'rgba(22, 163, 74, 0.12)' : 'var(--bg-primary, rgba(255, 255, 255, 0.05))',
+                    color: savedSuccess ? '#16a34a' : customUrl.trim() && customUrl.trim() !== activeUrl ? 'var(--accent-primary, #0070f3)' : 'var(--text-primary, #ededed)',
                     fontWeight: 600,
                     cursor: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 'not-allowed' : 'pointer',
-                    opacity: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 0.65 : 1,
+                    opacity: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 0.6 : 1,
                     transition: 'all 0.2s ease',
                   }}
                 >
@@ -500,70 +581,17 @@ export function ApplyStepAccordion({
                   )}
                 </button>
               </div>
-            </div>
-          )}
 
-          {/* Finding & paste the direct application form (compact dismissed state) */}
-          {!isApplied && !isInterventionOrRunning && isHelpDismissed && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.65rem',
-                flexWrap: 'wrap',
-                padding: '0.1rem 0.2rem',
-              }}
-            >
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.92rem' }}>
-                Finding &amp; paste the direct application form
-              </span>
-              {activeUrl ? (
-                <a
-                  href={activeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    color: '#2563eb',
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.88rem',
-                  }}
-                  title="Open original job listing in a new tab"
-                >
-                  <ExternalLink size={15} style={{ flexShrink: 0 }} />
-                  <span>Open Original Job Post</span>
-                </a>
-              ) : null}
-            </div>
-          )}
-
-          {/* Finding the Direct Application Form Info Card (full state with close X) */}
-          {!isApplied && !isInterventionOrRunning && !isHelpDismissed && (
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.85rem',
-                background: 'rgba(59, 130, 246, 0.05)',
-                border: '1px solid rgba(59, 130, 246, 0.22)',
-                borderRadius: '12px',
-                padding: '1.1rem 1.25rem',
-                alignItems: 'flex-start',
-                position: 'relative',
-              }}
-            >
-              <Sparkles size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: '2px' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.86rem', flex: 1, paddingRight: '1.5rem' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+              {/* Direct application form guidance */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.15rem' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary, #ededed)' }}>
                   Finding the direct application form
                 </span>
-                <div style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  <span>
-                    When you click Auto Apply, the AI will follow this job listing to locate the company&apos;s direct application form. You can also paste the direct application URL, from the job post, above.
-                  </span>
-                  {activeUrl ? (
+                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-secondary, #a3a3a3)', lineHeight: 1.5 }}>
+                  Auto Apply will try to find the company&apos;s direct application form, or you can paste the direct link above.
+                </p>
+                {activeUrl ? (
+                  <div style={{ marginTop: '0.2rem' }}>
                     <a
                       href={activeUrl}
                       target="_blank"
@@ -571,55 +599,30 @@ export function ApplyStepAccordion({
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '0.3rem',
-                        marginLeft: '0.45rem',
-                        color: '#1d4ed8',
+                        gap: '0.35rem',
+                        color: 'var(--accent-primary, #0070f3)',
                         textDecoration: 'none',
                         fontWeight: 600,
-                        fontSize: '0.85rem',
-                        verticalAlign: 'baseline',
+                        fontSize: '0.86rem',
                       }}
                       title="Open original job listing in a new tab"
                     >
-                      <ExternalLink size={14} style={{ display: 'inline', verticalAlign: '-2px', flexShrink: 0 }} />
+                      <ExternalLink size={14} />
                       <span>Open Original Job Post</span>
                     </a>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </div>
-
-              {/* Upper-right Close X button */}
-              <button
-                onClick={handleDismissHelp}
-                aria-label="Dismiss help message"
-                title="Dismiss help message"
-                style={{
-                  position: 'absolute',
-                  top: '10px',
-                  right: '10px',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary, #64748b)',
-                  padding: '4px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-              >
-                <X size={16} />
-              </button>
             </div>
           )}
 
-          {/* Main Auto Apply Panel with Stepper, Receipt, and Inline Interventions (No top border) */}
+          {/* Auto Apply Panel with Stepper, Receipt, Quota Bar, and Actions */}
           <AutoApplyPanel
             jobId={jobId}
             jobUrl={effectiveUrl}
             hasAssets={localHasAssets}
             hasResume={hasResume}
+            onApplyManually={() => setMode('manual')}
             onStatusChange={(sess, active) => {
               setActiveSession(sess);
               setIsSessionActive(active);
@@ -627,6 +630,12 @@ export function ApplyStepAccordion({
           />
         </div>
       )}
+
+      {/* How It Works Modal */}
+      <AutoApplyHowItWorksModal
+        isOpen={isHowItWorksOpen}
+        onClose={() => setIsHowItWorksOpen(false)}
+      />
     </div>
   );
 }

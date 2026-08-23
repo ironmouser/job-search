@@ -129,7 +129,7 @@ export async function GET(
           }).catch(() => {});
         }
 
-        const status = userJob.status;
+        const status = (job.status === 'closed' || userJob.status === 'closed') ? 'closed' : userJob.status;
         const appliedAt = userJob.appliedAt;
         const scores = job.opportunityScores?.[0] || null;
         const assets = job.applicationAssets?.[0] || null;

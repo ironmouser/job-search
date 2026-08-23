@@ -2,7 +2,7 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText, MoreVertical } from 'lucide-react';
+import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText, MoreVertical, AlertOctagon } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
@@ -755,6 +755,7 @@ export default function DashboardClient({
   };
 
   const getEffectiveStatus = (job: any) => {
+    if (job.status === 'closed' || job.job_status === 'closed') return 'closed';
     if (job.status === 'applied' || job.applied_at) return 'applied';
     if (job.status === 'interviewing') return 'interviewing';
     if (job.is_archived) return 'saved';
@@ -2075,6 +2076,10 @@ export default function DashboardClient({
                           <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <CheckCircle2 size={14} /> Applied {safeFormatDate(job.applied_at)}
                           </span>
+                        ) : getEffectiveStatus(job) === 'closed' ? (
+                          <span className="badge badge-closed" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <AlertOctagon size={14} /> Closed
+                          </span>
                         ) : (
                           <span className={`badge badge-${getEffectiveStatus(job)}`}>{getEffectiveStatus(job).replace('_', ' ')}</span>
                         )}
@@ -2222,7 +2227,12 @@ export default function DashboardClient({
                       />
                       {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Email</span>}
                       {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Easy Apply</span>}
-                      {job.status === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.68rem', padding: '1px 5px' }}>Applied</span>}
+                      {getEffectiveStatus(job) === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.68rem', padding: '1px 5px' }}>Applied</span>}
+                      {getEffectiveStatus(job) === 'closed' && (
+                        <span className="badge badge-closed" style={{ fontSize: '0.68rem', padding: '1px 5px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <AlertOctagon size={11} /> Closed
+                        </span>
+                      )}
                     </div>
 
                     {/* Lower Right Corner: Date + More Icon */}
@@ -2487,6 +2497,11 @@ export default function DashboardClient({
                       {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Email</span>}
                       {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Easy Apply</span>}
                       {getEffectiveStatus(job) === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.68rem', padding: '1px 5px' }}>Applied</span>}
+                      {getEffectiveStatus(job) === 'closed' && (
+                        <span className="badge badge-closed" style={{ fontSize: '0.68rem', padding: '1px 5px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <AlertOctagon size={11} /> Closed
+                        </span>
+                      )}
                     </div>
 
                     {/* Lower Right Corner: Date + More Icon */}
@@ -2711,6 +2726,10 @@ export default function DashboardClient({
                     {getEffectiveStatus(job) === 'applied' ? (
                       <span className="badge badge-applied" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(0, 112, 243, 0.1)', border: '1px solid rgba(0, 112, 243, 0.3)', color: 'var(--accent-primary)', fontSize: '0.85rem', fontWeight: 500 }}>
                         <CheckCircle2 size={15} /> Applied {safeFormatDate(job.applied_at)}
+                      </span>
+                    ) : getEffectiveStatus(job) === 'closed' ? (
+                      <span className="badge badge-closed" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.85rem', borderRadius: '9999px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '0.85rem', fontWeight: 500 }}>
+                        <AlertOctagon size={15} /> Closed
                       </span>
                     ) : (
                       <span className={`badge badge-${getEffectiveStatus(job)}`} style={{ padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.85rem', fontWeight: 500 }}>

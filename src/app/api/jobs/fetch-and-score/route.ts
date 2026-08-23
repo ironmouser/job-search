@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { isDescriptionAdequate, fetchJobDescription, extractUrlFromStubDescription } from '@/lib/jobFetcher';
+import { isDescriptionAdequate, fetchJobDescription, fetchJobDescriptionDetailed, extractUrlFromStubDescription } from '@/lib/jobFetcher';
 import { scoreJob } from '@/lib/scoring';
 import { getEffectiveTier } from '@/lib/tier';
 import { getUserSettings } from '@/lib/settings';
@@ -108,9 +108,14 @@ export async function POST(request: Request) {
 
             for (const tryUrl of urlsToTry) {
               try {
-                const downloaded = await withTimeout(fetchJobDescription(tryUrl), 15000, null);
-                if (downloaded && isDescriptionAdequate(downloaded)) {
-                  description = downloaded + `\n\nApply at: ${tryUrl}`;
+                const detailRes = await withTimeout(fetchJobDescriptionDetailed(tryUrl), 15000, null);
+                if (detailRes?.isClosed) {
+                  await prisma.job.update({ where: { id: job.id }, data: { status: 'closed' } });
+                  await prisma.userJob.updateMany({ where: { jobId: job.id }, data: { status: 'closed' } });
+                  return { jobId: job.id, status: 'closed', reason: detailRes.closedReason || 'Position closed' };
+                }
+                if (detailRes?.description && isDescriptionAdequate(detailRes.description)) {
+                  description = detailRes.description + `\n\nApply at: ${tryUrl}`;
                   await prisma.job.update({
                     where: { id: job.id },
                     data: { description }
