@@ -208,7 +208,7 @@ export default function PrepareApplicationFlow({
   };
 
   return (
-    <div className="animate-fade-in" style={{ paddingBottom: '6rem', maxWidth: '1080px', margin: '0 auto' }}>
+    <div className="animate-fade-in prepare-flow-container">
       {/* Top Breadcrumb Navigation */}
       <div style={{ marginBottom: '1.25rem' }}>
         <Link 
@@ -256,17 +256,10 @@ export default function PrepareApplicationFlow({
       </PageHeader>
 
       {/* Two Column Layout: Main Input Panel + Value Proposition Highlights */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'minmax(0, 1.45fr) minmax(0, 1fr)', 
-        gap: '2rem',
-        alignItems: 'start'
-      }} className="responsive-prepare-grid">
+      <div className="responsive-prepare-grid">
         
         {/* Left Column: Interactive Input Container */}
-        <div className="glass-card" style={{
-          padding: '1.75rem',
-          borderRadius: '16px',
+        <div className="glass-card prepare-form-card" style={{
           border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
           background: 'var(--card, rgba(15, 23, 42, 0.6))',
           boxShadow: '0 12px 32px rgba(0, 0, 0, 0.2)'
@@ -329,13 +322,12 @@ export default function PrepareApplicationFlow({
               >
                 <button
                   type="button"
+                  className="prepare-tab-btn"
                   onClick={() => handleTabChange('url')}
                   disabled={isLoading || isSubmittingManual}
                   style={{
-                    padding: '0.65rem 0.75rem',
                     borderRadius: '8px',
                     border: 'none',
-                    fontSize: '0.88rem',
                     fontWeight: activeTab === 'url' ? 600 : 500,
                     backgroundColor: activeTab === 'url' ? 'var(--accent-primary, #6366f1)' : 'transparent',
                     color: activeTab === 'url' ? '#ffffff' : 'var(--text-secondary)',
@@ -353,13 +345,12 @@ export default function PrepareApplicationFlow({
 
                 <button
                   type="button"
+                  className="prepare-tab-btn"
                   onClick={() => handleTabChange('manual')}
                   disabled={isLoading || isSubmittingManual}
                   style={{
-                    padding: '0.65rem 0.75rem',
                     borderRadius: '8px',
                     border: 'none',
-                    fontSize: '0.88rem',
                     fontWeight: activeTab === 'manual' ? 600 : 500,
                     backgroundColor: activeTab === 'manual' ? 'var(--accent-primary, #6366f1)' : 'transparent',
                     color: activeTab === 'manual' ? '#ffffff' : 'var(--text-secondary)',
@@ -467,7 +458,7 @@ export default function PrepareApplicationFlow({
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <div className="prepare-submit-row">
                     <button
                       type="submit"
                       disabled={isLoading || !url.trim()}
@@ -551,7 +542,7 @@ export default function PrepareApplicationFlow({
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="prepare-form-row">
                     <div>
                       <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem', color: 'var(--text-primary)' }}>
                         Company Name <span style={{ color: 'var(--danger, #ef4444)' }}>*</span>
@@ -668,7 +659,7 @@ export default function PrepareApplicationFlow({
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <div className="prepare-submit-row">
                     <button
                       type="submit"
                       disabled={isSubmittingManual || !manualDescription.trim() || !manualTitle.trim() || !manualCompany.trim()}
@@ -706,9 +697,7 @@ export default function PrepareApplicationFlow({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           
           {/* Value Card */}
-          <div className="glass-card" style={{
-            padding: '1.5rem',
-            borderRadius: '16px',
+          <div className="glass-card prepare-form-card" style={{
             border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
             background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(56, 189, 248, 0.04) 100%)'
           }}>
