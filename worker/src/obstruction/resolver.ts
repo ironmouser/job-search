@@ -715,12 +715,15 @@ export class UIObstructionResolver {
    */
   static async recoverScrollPosition(
     pageOrFrame: PageOrFrame,
-    target: Locator,
+    target: any,
     maxScrollAttempts = 3
   ): Promise<boolean> {
+    const firstTarget = typeof target?.first === 'function' ? target.first() : target;
     for (let i = 0; i < maxScrollAttempts; i++) {
       try {
-        await target.first().scrollIntoViewIfNeeded({ timeout: 2000 });
+        if (typeof firstTarget?.scrollIntoViewIfNeeded === 'function') {
+          await firstTarget.scrollIntoViewIfNeeded({ timeout: 2000 });
+        }
         await this.waitForActionabilitySettle(pageOrFrame, 200);
 
         const check = await UIObstructionDetector.checkActionability(pageOrFrame, target);
@@ -729,8 +732,8 @@ export class UIObstructionResolver {
         }
 
         // Try centered scroll
-        if (i === 1) {
-          await target.first().evaluate((el: HTMLElement) => {
+        if (i === 1 && typeof firstTarget?.evaluate === 'function') {
+          await firstTarget.evaluate((el: HTMLElement) => {
             el.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
           });
           await this.waitForActionabilitySettle(pageOrFrame, 200);

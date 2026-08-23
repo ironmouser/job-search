@@ -217,9 +217,52 @@ export class WorkflowEngine {
       // and the ATS is still UNKNOWN, we failed to extract the application destination.
       // Do NOT proceed to ATS detection — surface a clear failure reason instead.
       if (plugin.platform === ATSPlatform.UNKNOWN) {
-        const { isLegitimateApplicationDestination } = await import('./utils/destination-validator');
+        const { isLegitimateApplicationDestination, CandidateClassification } = await import('./utils/destination-validator');
         const destinationValidation = isLegitimateApplicationDestination(currentUrl, session.jobUrl);
         if (!destinationValidation.valid) {
+          // Check if the current page is blocked by login / auth wall
+          try {
+            const { UIObstructionDetector, ObstructionType } = await import('./obstruction');
+            const pageObs = await UIObstructionDetector.detectObstruction(browser.page);
+            if (
+              pageObs.detected &&
+              (pageObs.classification.type === ObstructionType.LOGIN_MODAL ||
+               pageObs.classification.type === ObstructionType.AUTHENTICATION_REQUIRED)
+            ) {
+              throw new InterventionError(
+                InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,
+                `Application page requires candidate login (${pageObs.classification.reason}).`,
+                currentUrl
+              );
+            }
+          } catch (e) {
+            if (e instanceof InterventionError) throw e;
+          }
+
+          const hasAuthSignals = allCandidateReports.some(
+            (r) =>
+              r.classification === CandidateClassification.AUTH_LINK &&
+              (r.href.includes('signin') ||
+               r.href.includes('login') ||
+               r.href.includes('checkpoint') ||
+               r.href.includes('conversion-modal') ||
+               r.href.includes('signup'))
+          );
+          const lowerUrl = currentUrl.toLowerCase();
+          if (
+            hasAuthSignals ||
+            lowerUrl.includes('linkedin.com/jobs/view') ||
+            lowerUrl.includes('indeed.com/viewjob') ||
+            lowerUrl.includes('ziprecruiter.com/jobs') ||
+            lowerUrl.includes('dice.com/jobs/detail')
+          ) {
+            throw new InterventionError(
+              InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,
+              'This job posting requires signing in to your candidate account to continue.',
+              currentUrl
+            );
+          }
+
           throw new InterventionError(
             InterventionReason.APPLICATION_DESTINATION_NOT_FOUND,
             'We were unable to determine this application\'s destination from the job posting. Please open the job posting to apply directly.',

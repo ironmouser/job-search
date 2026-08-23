@@ -49,9 +49,13 @@ export async function safeInteract(
   const maxAttempts = options?.maxRecoveryAttempts || 3;
   const allowForce = options?.allowForceFallback ?? false;
 
-  // Resolve locator
-  const locator: Locator =
-    typeof target === 'string' ? pageOrFrame.locator(target).first() : target.first();
+  // Resolve locator or target element
+  const locator: any =
+    typeof target === 'string'
+      ? pageOrFrame.locator(target).first()
+      : typeof (target as any)?.first === 'function'
+      ? target.first()
+      : target;
 
   // ─── Phase 1: Fast Path ───────────────────────────────────────────────────
   try {

@@ -386,6 +386,24 @@ export class AggregatorHandler {
           );
           if (modalResult) return { navigated: true, candidateReports: allCandidateReports };
 
+          // Check if modal or page is an authentication wall
+          try {
+            const modalObs = await UIObstructionDetector.detectObstruction(page);
+            if (
+              modalObs.detected &&
+              (modalObs.classification.type === ObstructionType.LOGIN_MODAL ||
+               modalObs.classification.type === ObstructionType.AUTHENTICATION_REQUIRED)
+            ) {
+              throw new InterventionError(
+                InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,
+                `Application page requires candidate login (${modalObs.classification.reason}).`,
+                currentUrl
+              );
+            }
+          } catch (e) {
+            if (e instanceof InterventionError) throw e;
+          }
+
           // Multi-step modal: if only auth gates encountered, dismiss and re-scan
           const onlyAuthCandidates = allCandidateReports.length > 0 &&
             allCandidateReports.every(r => !r.accepted && (r.classification === CandidateClassification.AUTH_LINK || r.classification === CandidateClassification.NAV_LINK));
@@ -405,6 +423,13 @@ export class AggregatorHandler {
               );
               if (secondModalResult) return { navigated: true, candidateReports: allCandidateReports };
             }
+
+            // If only auth gates were found, raise candidate login intervention
+            throw new InterventionError(
+              InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,
+              'Application page requires candidate login to continue.',
+              currentUrl
+            );
           }
         }
 
@@ -417,6 +442,7 @@ export class AggregatorHandler {
 
       } catch (err: any) {
         page.off('response', () => {});
+        if (err instanceof InterventionError) throw err;
         await logger.warn('application_navigation', `Click + Observe fallback encountered error: ${err.message}`);
       }
     }

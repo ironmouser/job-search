@@ -112,7 +112,7 @@ export interface RecoveryResult {
 // ─── Safe Interaction Options & Results ─────────────────────────────────────
 
 export type PageOrFrame = Page | Frame;
-export type InteractTarget = Locator | string;
+export type InteractTarget = Locator | any | string;
 
 export interface SafeInteractOptions {
   timeoutMs?: number;

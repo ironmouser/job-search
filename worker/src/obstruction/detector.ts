@@ -23,10 +23,11 @@ export class UIObstructionDetector {
    */
   static async checkActionability(
     pageOrFrame: PageOrFrame,
-    target: Locator
+    target: any
   ): Promise<TargetActionabilityResult> {
     try {
-      const count = await target.count().catch(() => 0);
+      const isLocator = typeof target?.count === 'function';
+      const count = isLocator ? await target.count().catch(() => 0) : 1;
       if (count === 0) {
         return {
           exists: false,
@@ -37,7 +38,7 @@ export class UIObstructionDetector {
         };
       }
 
-      const firstTarget = target.first();
+      const firstTarget = typeof target?.first === 'function' ? target.first() : target;
       const isVisible = await firstTarget.isVisible().catch(() => false);
       const isEnabled = await firstTarget.isEnabled().catch(() => false);
 
@@ -279,6 +280,11 @@ export class UIObstructionDetector {
           'div[class*="signup-modal" i]',
           'div[class*="marketing-modal" i]',
           'div[class*="job-alert-modal" i]',
+          'div[class*="sign-in-modal" i]',
+          'div[class*="contextual-sign-in" i]',
+          'div[class*="signin-modal" i]',
+          '[data-tracking-control-name*="conversion-modal" i]',
+          '[data-tracking-control-name*="sign-in" i]',
         ];
 
         let activeModalEl: Element | null = null;
