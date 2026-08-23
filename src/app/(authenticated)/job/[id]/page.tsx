@@ -386,14 +386,14 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 <h3 style={{ marginBottom: '1.5rem' }}>AI Opportunity Score</h3>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <ScoreRow label="Company Fit (20%)" score={scores.productFitScore} />
-                  <ScoreRow label="Compensation (20%)" score={scores.compensationScore} />
-                  <ScoreRow label="Remote Flex (15%)" score={scores.remoteFlexibilityScore} />
-                  <ScoreRow label="AI Maturity (10%)" score={scores.aiMaturityScore} />
-                  <ScoreRow label="Leadership (10%)" score={scores.leadershipScore} />
-                  <ScoreRow label="Growth (10%)" score={scores.growthScore} />
-                  <ScoreRow label="Culture (10%)" score={scores.cultureScore} />
-                  <ScoreRow label="Tech Stack (5%)" score={scores.techStackScore} />
+                  <ScoreRow label="Company Fit" score={scores.productFitScore} />
+                  <ScoreRow label="Compensation" score={scores.compensationScore} />
+                  <ScoreRow label="Remote Flex" score={scores.remoteFlexibilityScore} />
+                  <ScoreRow label="AI Maturity" score={scores.aiMaturityScore} />
+                  <ScoreRow label="Leadership" score={scores.leadershipScore} />
+                  <ScoreRow label="Growth" score={scores.growthScore} />
+                  <ScoreRow label="Culture" score={scores.cultureScore} />
+                  <ScoreRow label="Tech Stack" score={scores.techStackScore} />
                 </div>
 
                 <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-glass)' }}>
@@ -458,11 +458,12 @@ function ScoreRow({ label, score }: { label: string, score: number }) {
   const isHigh = score >= 80;
   const isMed = score >= 50 && score < 80;
   const color = isHigh ? 'var(--success)' : isMed ? 'var(--warning)' : 'var(--danger)';
-  
+  const cleanLabel = label.replace(/\s*\(\d+%\)/, '');
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
-        <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
+        <span style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 700 }}>{cleanLabel}</span>
         <span style={{ fontWeight: 600, color }}>{score}/100</span>
       </div>
       <div style={{ width: '100%', height: '6px', background: '#eceded', borderRadius: '99px', overflow: 'hidden' }}>
