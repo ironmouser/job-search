@@ -503,16 +503,16 @@ export function ApplyStepAccordion({
           {!isApplied && (
             <div
               style={{
-                border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+                border: '1px solid var(--border-subtle-blue, rgba(2, 132, 199, 0.15))',
                 borderRadius: '12px',
                 padding: '1.25rem 1.35rem',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1rem',
-                background: 'var(--card, #111111)',
+                background: 'var(--bg-subtle-blue, rgba(2, 132, 199, 0.04))',
               }}
             >
-              <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-secondary, #a3a3a3)', margin: 0 }}>
+              <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-secondary, #64748b)', margin: 0 }}>
                 Application URL
               </label>
 
@@ -541,11 +541,12 @@ export function ApplyStepAccordion({
                     flex: 1,
                     padding: '0.7rem 1rem',
                     borderRadius: '8px',
-                    border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
-                    background: 'var(--bg-secondary, rgba(255, 255, 255, 0.03))',
-                    color: 'var(--text-primary, #ededed)',
+                    border: '1px solid var(--border-glass, rgba(0, 0, 0, 0.08))',
+                    background: 'var(--bg-primary, #ffffff)',
+                    color: 'var(--text-primary, #0f172a)',
                     fontSize: '0.9rem',
                     outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
                   }}
                 />
                 <button
@@ -559,13 +560,14 @@ export function ApplyStepAccordion({
                     fontSize: '0.88rem',
                     padding: '0.7rem 1.25rem',
                     borderRadius: '8px',
-                    border: savedSuccess ? '1px solid #16a34a' : '1px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
-                    background: savedSuccess ? 'rgba(22, 163, 74, 0.12)' : 'var(--bg-primary, rgba(255, 255, 255, 0.05))',
-                    color: savedSuccess ? '#16a34a' : customUrl.trim() && customUrl.trim() !== activeUrl ? 'var(--accent-primary, #0070f3)' : 'var(--text-primary, #ededed)',
+                    border: savedSuccess ? '1px solid #16a34a' : '1px solid var(--border-subtle-blue, rgba(2, 132, 199, 0.25))',
+                    background: savedSuccess ? 'rgba(22, 163, 74, 0.12)' : 'var(--bg-primary, #ffffff)',
+                    color: savedSuccess ? '#16a34a' : customUrl.trim() && customUrl.trim() !== activeUrl ? 'var(--accent-primary, #0070f3)' : 'var(--text-secondary, #475569)',
                     fontWeight: 600,
                     cursor: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 'not-allowed' : 'pointer',
                     opacity: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 0.6 : 1,
                     transition: 'all 0.2s ease',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
                   }}
                 >
                   {isSavingUrl ? (
