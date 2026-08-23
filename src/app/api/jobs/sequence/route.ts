@@ -133,17 +133,22 @@ export async function GET(request: Request) {
       result = result.filter(j => new Date(j.created_at) <= end);
     }
 
+    const getAiScore = (j: any): number | null => {
+      const s = j.opportunity_scores?.[0]?.totalScore;
+      if (typeof s === 'number' && !isNaN(s)) return s;
+      return null;
+    };
+
+    const isLowScore = (j: any): boolean => {
+      const s = getAiScore(j);
+      return s !== null && s < 50;
+    };
+
     // Status Filter
     if (activeFilter === 'archived') {
-      result = result.filter(j => j.is_archived);
+      result = result.filter(j => j.is_archived && !isLowScore(j));
     } else {
-      result = result.filter(j => {
-        if (j.is_archived) return false;
-        const score = j.opportunity_scores?.[0]?.totalScore;
-        // Auto-filter out low-match jobs (score < 25) from active feed
-        if (score !== undefined && score !== null && score < 25) return false;
-        return true;
-      });
+      result = result.filter(j => !j.is_archived);
       if (activeFilter === 'scored') {
         result = result.filter(j => j.isScored);
       } else if (activeFilter === 'high_fit') {
@@ -168,13 +173,14 @@ export async function GET(request: Request) {
     }
 
     // Sorting
-    const getAiScore = (j: any): number | null => {
-      const s = j.opportunity_scores?.[0]?.totalScore;
-      if (typeof s === 'number' && !isNaN(s)) return s;
-      return null;
-    };
-
     result.sort((a, b) => {
+      if (sortOption !== 'score_asc') {
+        const aLow = isLowScore(a);
+        const bLow = isLowScore(b);
+        if (aLow && !bLow) return 1;
+        if (!aLow && bLow) return -1;
+      }
+
       if (sortOption === 'role_match') {
         if (targetRole) {
           const matchA = computeRoleMatchScore(a.title, targetRole, a.description);

@@ -205,7 +205,7 @@ export default function DashboardClient({
 
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
-  const [minScoreFilter, setMinScoreFilter] = useState<number>(25);
+  const [minScoreFilter, setMinScoreFilter] = useState<number>(50);
   const [viewMode, setViewMode] = useState<'grid' | 'table' | 'columns'>(() => {
     if (typeof window !== 'undefined') {
       const isMobile = window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -377,7 +377,7 @@ export default function DashboardClient({
     endDate ||
     locationFilter.length > 0 ||
     sortOption !== 'role_match' ||
-    minScoreFilter !== 25
+    minScoreFilter !== 50
   );
 
   const searchParams = useSearchParams();
@@ -513,7 +513,11 @@ export default function DashboardClient({
         if (stateFromStorage.endDate !== undefined) setEndDate(stateFromStorage.endDate);
         if (stateFromStorage.keywordFilter !== undefined) setKeywordFilter(stateFromStorage.keywordFilter);
         if (stateFromStorage.searchRole !== undefined) setSearchRole(stateFromStorage.searchRole);
-        if (stateFromStorage.minScoreFilter !== undefined) setMinScoreFilter(stateFromStorage.minScoreFilter);
+        if (stateFromStorage.minScoreFilter !== undefined) {
+          // Migrate legacy default of 25 to 50
+          const restoredScore = stateFromStorage.minScoreFilter === 25 ? 50 : stateFromStorage.minScoreFilter;
+          setMinScoreFilter(restoredScore);
+        }
       } catch (e) {
         console.error('Failed to parse dashboard state from local storage', e);
       }
@@ -763,18 +767,16 @@ export default function DashboardClient({
     return job.status || 'discovered';
   };
 
-  const unarchivedJobs = jobList?.filter(j => {
-    if (j.is_archived) return false;
-    const scoreVal = j.opportunity_scores?.[0]?.total_score;
-    if (minScoreFilter > 0 && scoreVal !== undefined && scoreVal !== null && scoreVal < minScoreFilter) {
-      return false;
-    }
-    return true;
-  }) || [];
+  const isJobLowScore = (j: any): boolean => {
+    const s = j.opportunity_scores?.[0]?.total_score;
+    return typeof s === 'number' && !isNaN(s) && s < 50;
+  };
+
+  const unarchivedJobs = jobList?.filter(j => !j.is_archived) || [];
   const totalDiscovered = unarchivedJobs.length;
   const totalScored = unarchivedJobs.filter(j => hasJobScore(j)).length;
-  const highlyScored = unarchivedJobs.filter(j => j.opportunity_scores?.[0]?.total_score >= 80).length;
-  const totalArchived = jobList?.filter(j => j.is_archived).length || 0;
+  const highlyScored = unarchivedJobs.filter(j => (j.opportunity_scores?.[0]?.total_score ?? 0) >= 80).length;
+  const totalArchived = jobList?.filter(j => j.is_archived && !isJobLowScore(j)).length || 0;
 
   const handleEmailSync = async () => {
     if (userPlanTier !== 'PRO' && !trialEndsAt) {
@@ -1067,14 +1069,25 @@ export default function DashboardClient({
       result = result.filter(j => new Date(j.created_at) <= end);
     }
 
-    // 1. Apply Status Filter & Minimum Score Threshold
+    // 1. Apply Status Filter
+    const getAiScore = (j: any): number | null => {
+      const s = j.opportunity_scores?.[0]?.total_score;
+      if (typeof s === 'number' && !isNaN(s)) return s;
+      return null;
+    };
+
+    const isLowScore = (j: any): boolean => {
+      const s = getAiScore(j);
+      return s !== null && s < 50;
+    };
+
     if (activeFilter === 'archived') {
-      result = result.filter(j => j.is_archived);
+      result = result.filter(j => j.is_archived && !isLowScore(j));
     } else {
       result = result.filter(j => {
         if (j.is_archived) return false;
         const scoreVal = j.opportunity_scores?.[0]?.total_score;
-        // Auto-hide low-match jobs (score < minScoreFilter, default 25)
+        // If a specific minimum score filter is active, respect it
         if (minScoreFilter > 0 && scoreVal !== undefined && scoreVal !== null && scoreVal < minScoreFilter) {
           return false;
         }
@@ -1084,7 +1097,7 @@ export default function DashboardClient({
       if (activeFilter === 'scored') {
         result = result.filter(j => hasJobScore(j));
       } else if (activeFilter === 'high_fit') {
-        result = result.filter(j => j.opportunity_scores?.[0]?.total_score >= 80);
+        result = result.filter(j => (j.opportunity_scores?.[0]?.total_score ?? 0) >= 80);
       }
     }
 
@@ -1108,13 +1121,16 @@ export default function DashboardClient({
     // 3. Apply Sorting
     const roleTarget = (searchRole || searchKeyword || '').trim();
 
-    const getAiScore = (j: any): number | null => {
-      const s = j.opportunity_scores?.[0]?.total_score;
-      if (typeof s === 'number' && !isNaN(s)) return s;
-      return null;
-    };
-
     result.sort((a, b) => {
+      // Place low score jobs (< 50) at the end of the list when filters are applied,
+      // EXCEPT when explicitly sorting from lowest score to highest score ('score_asc').
+      if (sortOption !== 'score_asc') {
+        const aLow = isLowScore(a);
+        const bLow = isLowScore(b);
+        if (aLow && !bLow) return 1;
+        if (!aLow && bLow) return -1;
+      }
+
       if (sortOption === 'role_match') {
         if (roleTarget) {
           const matchA = computeRoleMatchScore(a.title, roleTarget, a.description);
@@ -1188,7 +1204,7 @@ export default function DashboardClient({
 
     // 4. Ensure the first job listed on the dashboard has a usable description
     if (result.length > 1 && !isDescriptionAdequate(result[0]?.description)) {
-      const firstAdequateIndex = result.findIndex(j => isDescriptionAdequate(j.description));
+      const firstAdequateIndex = result.findIndex(j => isDescriptionAdequate(j.description) && !isLowScore(j));
       if (firstAdequateIndex > 0) {
         const [firstAdequateJob] = result.splice(firstAdequateIndex, 1);
         result.unshift(firstAdequateJob);

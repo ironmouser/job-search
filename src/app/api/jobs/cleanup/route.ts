@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     if (lowScore) {
       conditions.push({
         ...protectedExclusion,
-        job: { opportunityScores: { some: { userId, totalScore: { lt: 25 } } } }
+        job: { opportunityScores: { some: { userId, totalScore: { lt: 50 } } } }
       });
     }
 

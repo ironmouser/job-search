@@ -47,7 +47,7 @@ export default function DashboardFilterModal({
   setSortOption,
   activeFilter = 'all',
   setActiveFilter,
-  minScore = 25,
+  minScore = 50,
   setMinScore
 }: DashboardFilterModalProps) {
   const setPresetDateRange = (preset: 'all' | 'today' | 7 | 30) => {
@@ -74,7 +74,7 @@ export default function DashboardFilterModal({
     setLocationFilter([]);
     if (setSortOption) setSortOption('role_match');
     if (setActiveFilter) setActiveFilter('all');
-    if (setMinScore) setMinScore(25);
+    if (setMinScore) setMinScore(50);
   };
 
   return (
@@ -189,12 +189,12 @@ export default function DashboardFilterModal({
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                   {[
-                    { val: 25, label: 'Hide < 25 (Default)' },
+                    { val: 50, label: 'Hide < 50 (Default)' },
                     { val: 0, label: 'Show All (0+)' },
-                    { val: 50, label: '50%+' },
+                    { val: 25, label: '25%+' },
                     { val: 80, label: '80%+ (High Fit)' }
                   ].map(opt => {
-                    const isSelected = (minScore ?? 25) === opt.val;
+                    const isSelected = (minScore ?? 50) === opt.val;
                     return (
                       <button
                         key={opt.val}

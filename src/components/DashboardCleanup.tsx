@@ -136,7 +136,7 @@ export default function DashboardCleanup({
                   onChange={(e) => setFilters(prev => ({ ...prev, lowScore: e.target.checked }))}
                   style={{ width: '18px', height: '18px' }}
                 />
-                <span>Remove jobs with <strong>low match score (&lt; 25)</strong></span>
+                <span>Remove jobs with <strong>low match score (&lt; 50)</strong></span>
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>

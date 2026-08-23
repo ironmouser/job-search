@@ -408,7 +408,7 @@ export async function normalizeAndSaveJobs(
     // Bulk fetch all relevant Job records by URL
     const dbJobs = await prisma.job.findMany({
         where: { url: { in: processedUrls } },
-        select: { id: true, url: true, description: true, applicationUrl: true, isEasyApply: true }
+        select: { id: true, url: true, title: true, description: true, applicationUrl: true, isEasyApply: true }
     });
     const dbJobByUrl = new Map(dbJobs.map(j => [j.url, j]));
 
@@ -445,18 +445,34 @@ export async function normalizeAndSaveJobs(
     const candidateJobIds = candidateDbJobsToLink.map(j => j.id);
 
     if (candidateJobIds.length > 0) {
-        const existingUserJobs = await prisma.userJob.findMany({
-            where: {
-                userId,
-                jobId: { in: candidateJobIds }
-            },
-            select: { jobId: true, status: true }
-        });
+        const [existingUserJobs, existingScores] = await Promise.all([
+            prisma.userJob.findMany({
+                where: {
+                    userId,
+                    jobId: { in: candidateJobIds }
+                },
+                select: { jobId: true, status: true }
+            }),
+            prisma.opportunityScore.findMany({
+                where: {
+                    userId,
+                    jobId: { in: candidateJobIds }
+                },
+                select: { jobId: true, totalScore: true }
+            })
+        ]);
         const existingUserJobMap = new Map(existingUserJobs.map(uj => [uj.jobId, uj.status]));
+        const lowScoreJobIds = new Set(
+            existingScores.filter(s => s.totalScore !== null && s.totalScore < 50).map(s => s.jobId)
+        );
 
         const newUserJobsToCreate: { userId: string; jobId: string; status: string }[] = [];
 
         for (const job of candidateDbJobsToLink) {
+            if (lowScoreJobIds.has(job.id)) {
+                console.log(`[Job Ingestion] Skipping job ${job.id} ("${job.title}") due to existing low match score (<50).`);
+                continue;
+            }
             const currentStatus = existingUserJobMap.get(job.id);
             if (currentStatus === undefined) {
                 newUserJobsToCreate.push({
