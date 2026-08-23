@@ -144,7 +144,7 @@ export default function DualTrackHero({
               </span>
             </div>
             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-              Already found a job somewhere else? Bring it to Jahq and we will help tailor your application.
+              Already found a job somewhere else? Bring it to JAHQ and we will help tailor your application.
             </p>
           </div>
         </div>

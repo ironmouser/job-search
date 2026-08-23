@@ -202,7 +202,7 @@ export function ConnectJobBoardModal({
           >
             <ShieldCheck size={18} style={{ color: '#22c55e', flexShrink: 0, marginTop: '2px' }} />
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
-              <strong style={{ color: '#22c55e' }}>Zero Password Storage:</strong> Jahq never asks for or stores your password. Authentication uses encrypted, temporary session tokens protected with AES-256-GCM encryption.
+              <strong style={{ color: '#22c55e' }}>Zero Password Storage:</strong> JAHQ never asks for or stores your password. Authentication uses encrypted, temporary session tokens protected with AES-256-GCM encryption.
             </div>
           </div>
 

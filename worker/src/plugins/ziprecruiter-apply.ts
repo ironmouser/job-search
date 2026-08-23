@@ -81,7 +81,7 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
     if (!context.connectedSession && isLoggedOut) {
       throw new InterventionError(
         InterventionReason.JOB_BOARD_AUTH_REQUIRED,
-        'ZipRecruiter requires you to connect your account before Jahq can automate 1-Click applications.',
+        'ZipRecruiter requires you to connect your account before JAHQ can automate 1-Click applications.',
         page.url()
       );
     }

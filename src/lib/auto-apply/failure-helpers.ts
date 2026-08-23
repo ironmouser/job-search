@@ -338,7 +338,7 @@ export function getFailureNextSteps(
   ) {
     return [
       'Review your Profile Settings to make sure work authorization, demographics, and phone number are filled in.',
-      'When you start auto-apply again, answer the question in the intervention prompt so Jahq can save it and proceed.',
+      'When you start auto-apply again, answer the question in the intervention prompt so JAHQ can save it and proceed.',
     ];
   }
 
@@ -349,7 +349,7 @@ export function getFailureNextSteps(
   ) {
     return [
       'When you click Try Again, watch for the verification prompt and solve the security challenge.',
-      'Once verified, click Resume Automation to allow Jahq to submit your application.',
+      'Once verified, click Resume Automation to allow JAHQ to submit your application.',
     ];
   }
 
@@ -359,7 +359,7 @@ export function getFailureNextSteps(
   ) {
     return [
       'Ensure you have tailored your resume and cover letter in Steps 1 and 2.',
-      'Click 1-Click Auto Apply to let Jahq generate the assets and submit.',
+      'Click 1-Click Auto Apply to let JAHQ generate the assets and submit.',
     ];
   }
 

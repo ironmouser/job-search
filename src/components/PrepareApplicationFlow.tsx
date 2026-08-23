@@ -250,7 +250,7 @@ export default function PrepareApplicationFlow({
             </PageHeaderHeading>
           </div>
           <PageHeaderDescription style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', maxWidth: '780px', lineHeight: 1.5, marginTop: '0.25rem' }}>
-            Already found a job somewhere else? Bring any job posting URL or description to Jahq. We will analyze what the employer is looking for, evaluate your match, and help you tailor your resume and cover letter for maximum impact.
+            Already found a job somewhere else? Bring any job posting URL or description to JAHQ. We will analyze what the employer is looking for, evaluate your match, and help you tailor your resume and cover letter for maximum impact.
           </PageHeaderDescription>
         </div>
       </PageHeader>
@@ -703,7 +703,7 @@ export default function PrepareApplicationFlow({
           }}>
             <h3 style={{ margin: '0 0 0.85rem 0', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Zap size={18} style={{ color: 'var(--accent-primary, #6366f1)' }} />
-              What Jahq will do for this job
+              What JAHQ will do for this job
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
@@ -819,7 +819,7 @@ export default function PrepareApplicationFlow({
             color: 'var(--text-secondary)',
             lineHeight: 1.45
           }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Private & Secure:</strong> Jobs brought into Jahq belong to your personal workspace. You can revisit, tailor, or export your application assets anytime from your dashboard and tracker.
+            <strong style={{ color: 'var(--text-primary)' }}>Private & Secure:</strong> Jobs brought into JAHQ belong to your personal workspace. You can revisit, tailor, or export your application assets anytime from your dashboard and tracker.
           </div>
 
         </div>

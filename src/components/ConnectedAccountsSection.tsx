@@ -108,7 +108,7 @@ export default function ConnectedAccountsSection() {
             Connected Job Boards for 1-Click & Easy Apply
           </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Connect your job board profiles so Jahq can automate applications on ZipRecruiter 1-Click, Dice Easy Apply, and LinkedIn. Sessions are encrypted using AES-256-GCM and refreshed automatically.
+            Connect your job board profiles so JAHQ can automate applications on ZipRecruiter 1-Click, Dice Easy Apply, and LinkedIn. Sessions are encrypted using AES-256-GCM and refreshed automatically.
           </div>
         </div>
       </div>

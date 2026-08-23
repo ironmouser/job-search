@@ -77,7 +77,7 @@ export class DiceApplyPlugin extends ATSPlugin {
     if (!context.connectedSession && isLoggedOut) {
       throw new InterventionError(
         InterventionReason.JOB_BOARD_AUTH_REQUIRED,
-        'Dice requires you to connect your account before Jahq can automate applications.',
+        'Dice requires you to connect your account before JAHQ can automate applications.',
         page.url()
       );
     }

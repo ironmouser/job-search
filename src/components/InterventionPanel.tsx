@@ -351,7 +351,7 @@ export function InterventionPanel({
       {(() => {
         let displayDesc = cleanDescription;
         if (isAuthReason) {
-          displayDesc = `${portalDisplayName} requires you to sign in or create a candidate account before Jahq can continue your application.`;
+          displayDesc = `${portalDisplayName} requires you to sign in or create a candidate account before JAHQ can continue your application.`;
         } else if (reason === 'unknown_question') {
           const match = cleanDescription.match(/(?:requires your input|question):\s*["'“]?([^"'”\n]+)["'”]?/i);
           if (match && match[1]) {
@@ -645,7 +645,7 @@ export function InterventionPanel({
                   <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
                     {isJobBoardConnected
                       ? `${providerInfo.name} session connected! Click Resume Automation below to continue.`
-                      : `${providerInfo.name} requires an account connection before Jahq can submit your application.`}
+                      : `${providerInfo.name} requires an account connection before JAHQ can submit your application.`}
                   </p>
                 </div>
                 <button
@@ -740,12 +740,12 @@ export function InterventionPanel({
                   {accountMode === 'sign_in' ? (
                     <>
                       <li>Enter the email and password for your existing candidate account on {portalDisplayName}.</li>
-                      <li>Jahq will sign in securely to complete and submit your job application.</li>
+                      <li>JAHQ will sign in securely to complete and submit your job application.</li>
                     </>
                   ) : (
                     <>
                       <li>{portalDisplayName} requires a candidate account before continuing.</li>
-                      <li>Enter your email and desired password. Jahq will register the account and resume automation.</li>
+                      <li>Enter your email and desired password. JAHQ will register the account and resume automation.</li>
                       <li>Passwords typically require 8+ characters including an uppercase letter, lowercase letter, number, and special character.</li>
                     </>
                   )}
@@ -779,8 +779,8 @@ export function InterventionPanel({
                   ? 'This site is protected by bot verification (Cloudflare / CAPTCHA). Click "Finish Manually" to open the job application directly in your browser.'
                   : isAuthReason
                   ? (accountMode === 'sign_in'
-                      ? 'Enter the credentials for your existing account so Jahq can sign in and continue your application.'
-                      : `${portalDisplayName} requires a candidate account before you can continue. Jahq will create the account using the credentials you provide, then resume your application.`)
+                      ? 'Enter the credentials for your existing account so JAHQ can sign in and continue your application.'
+                      : `${portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using the credentials you provide, then resume your application.`)
                   : showAuthForm 
                   ? 'Fill out your missing authorization details below or complete verification directly on the company site.' 
                   : 'Complete the verification or login directly on the job application page.'}
@@ -796,8 +796,8 @@ export function InterventionPanel({
                   ? 'Cloudflare protection blocks automated server sessions. Completing your application manually in your browser ensures it gets submitted without wasting automated retries.'
                   : isAuthReason
                   ? (accountMode === 'sign_in'
-                      ? <>Click <strong>Sign In & Resume Application</strong> so Jahq can authenticate and continue filling your application.</>
-                      : <>Click <strong>Create Account & Resume</strong> so Jahq can register your profile and submit your application.</>)
+                      ? <>Click <strong>Sign In & Resume Application</strong> so JAHQ can authenticate and continue filling your application.</>
+                      : <>Click <strong>Create Account & Resume</strong> so JAHQ can register your profile and submit your application.</>)
                   : <>Once verified, click <strong>Resume Automation</strong> so the AI agent can automatically fill out and submit your application.</>}
               </span>
             </div>
@@ -825,9 +825,9 @@ export function InterventionPanel({
                 <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
                   {isAuthReason
                     ? (accountMode === 'sign_in'
-                        ? 'Enter the credentials for your existing account so Jahq can sign in and continue your application.'
-                        : `${portalDisplayName} requires a candidate account before you can continue. Jahq will create the account using these credentials, then resume your application.`)
-                    : 'Please provide missing authorization and demographic details so Jahq can answer required application questions. These will be saved to your profile for future applications.'}
+                        ? 'Enter the credentials for your existing account so JAHQ can sign in and continue your application.'
+                        : `${portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using these credentials, then resume your application.`)
+                    : 'Please provide missing authorization and demographic details so JAHQ can answer required application questions. These will be saved to your profile for future applications.'}
                 </p>
               </div>
               
