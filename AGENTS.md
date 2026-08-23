@@ -25,3 +25,7 @@ When writing or rewriting content for resumes, cover letters, networking message
 - **Production Server & Services**: The Next.js web app, database, and background auto-apply worker are all hosted as services on **Railway**.
 - **Deployment**: Pushes to `main` automatically trigger builds and deployments across Railway services.
 
+# Engineering Integrity & Implementation Standards
+- **No Unannounced Simulations or Stubs**: NEVER present simulated solutions, mock tokens, stubs, or fake verifications without explicitly highlighting them as simulated, stubs, or placeholders.
+- **Explicit Permission Required**: NEVER include simulated, stubbed, or mock solutions in implementation plans or proposed architectures without first asking the user for permission and receiving explicit approval. Real, functioning implementations must always be the default standard.
+

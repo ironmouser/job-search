@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { encryptSession, sanitizeStorageState } from '@/lib/session-vault';
+import { verifySessionState, probeSessionWithScraperAPI, normalizeSessionInput, PROVIDER_CONFIGS } from '@/lib/session-verifier';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,12 +38,15 @@ export async function GET() {
 
     const accounts = SUPPORTED_PROVIDERS.map((prov) => {
       const existing = boardMap.get(prov.id);
+      const isExpired = existing?.expiresAt ? new Date(existing.expiresAt).getTime() < Date.now() : false;
+      const status = isExpired ? 'expired' : (existing?.status || 'disconnected');
+
       return {
         id: prov.id,
         name: prov.name,
         description: prov.description,
-        connected: Boolean(existing && existing.status === 'connected'),
-        status: existing?.status || 'disconnected',
+        connected: Boolean(existing && status === 'connected'),
+        status,
         profileName: existing?.profileName || null,
         profileEmail: existing?.profileEmail || null,
         lastUsedAt: existing?.lastUsedAt || null,
@@ -66,7 +70,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { provider, storageState, profileName, profileEmail } = body;
+    const { provider, storageState, authToken, profileName, profileEmail } = body;
 
     if (!provider || typeof provider !== 'string') {
       return NextResponse.json({ error: 'Provider is required' }, { status: 400 });
@@ -77,19 +81,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Unsupported provider: ${provider}` }, { status: 400 });
     }
 
-    if (!storageState || typeof storageState !== 'object') {
-      return NextResponse.json({ error: 'Valid storageState payload is required' }, { status: 400 });
+    const sessionPayload = storageState || authToken;
+    if (!sessionPayload) {
+      return NextResponse.json({ error: 'Session credentials or authentication token required' }, { status: 400 });
     }
 
-    const sanitized = sanitizeStorageState(storageState, normProvider);
+    const normalizedState = normalizeSessionInput(sessionPayload, normProvider);
+
+    // Run ScraperAPI live residential probe
+    const verification = await probeSessionWithScraperAPI(normalizedState, normProvider);
+    if (!verification.valid || !verification.storageState) {
+      return NextResponse.json(
+        { error: verification.error || 'Session validation failed. Please provide valid cookies.' },
+        { status: 400 }
+      );
+    }
+
+    const sanitized = sanitizeStorageState(verification.storageState, normProvider);
     if (!sanitized.cookies || sanitized.cookies.length === 0) {
       return NextResponse.json({ error: `No valid authentication cookies found for ${provider}` }, { status: 400 });
     }
 
     const { encryptedSession, iv, authTag } = encryptSession(sanitized);
-
-    // Default expiration: 30 days from now
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const expiresAt = verification.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const resolvedName = profileName || verification.profileName || null;
+    const resolvedEmail = profileEmail || verification.profileEmail || null;
 
     const saved = await prisma.connectedJobBoard.upsert({
       where: {
@@ -103,8 +119,8 @@ export async function POST(request: Request) {
         iv,
         authTag,
         status: 'connected',
-        profileName: profileName || null,
-        profileEmail: profileEmail || null,
+        profileName: resolvedName,
+        profileEmail: resolvedEmail,
         expiresAt,
         updatedAt: new Date(),
       },
@@ -115,8 +131,8 @@ export async function POST(request: Request) {
         iv,
         authTag,
         status: 'connected',
-        profileName: profileName || null,
-        profileEmail: profileEmail || null,
+        profileName: resolvedName,
+        profileEmail: resolvedEmail,
         expiresAt,
       },
     });
@@ -128,6 +144,8 @@ export async function POST(request: Request) {
         status: saved.status,
         profileName: saved.profileName,
         profileEmail: saved.profileEmail,
+        expiresAt: saved.expiresAt,
+        daysRemaining: verification.daysRemaining,
         updatedAt: saved.updatedAt,
       },
     });

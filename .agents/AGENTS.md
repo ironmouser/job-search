@@ -10,3 +10,9 @@
 - **Production Server & Services**: The Next.js web app, database, and background auto-apply worker are all hosted as services on **Railway**.
 - **Database**: PostgreSQL via Prisma on Railway (`tokaido.proxy.rlwy.net`). Use the Railway dashboard or Railway CLI (`railway logs` / `railway run`) for production queries and logs.
 - **Auto Apply Worker**: The background auto-apply worker is hosted as a dedicated Railway service.
+
+# Engineering Integrity & Implementation Standards
+
+- **No Unannounced Simulations or Stubs**: NEVER present simulated solutions, mock tokens, stubs, or fake verifications without explicitly highlighting them as simulated, stubs, or placeholders.
+- **Explicit Permission Required**: NEVER include simulated, stubbed, or mock solutions in implementation plans or proposed architectures without first asking the user for permission and receiving explicit approval. Real, functioning implementations must always be the default standard.
+

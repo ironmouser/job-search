@@ -1,9 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Key, ExternalLink } from 'lucide-react';
+import {
+  X,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Key,
+  ExternalLink,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  FileCode,
+  Radio,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PROVIDER_CONFIGS, verifySessionState, SessionVerificationResult } from '@/lib/session-verifier';
 
 interface ConnectJobBoardModalProps {
   isOpen: boolean;
@@ -23,16 +37,36 @@ export function ConnectJobBoardModal({
   onConnected,
 }: ConnectJobBoardModalProps) {
   const [mounted, setMounted] = useState(false);
-  const [sessionInput, setSessionInput] = useState('');
+  const [activeTab, setActiveTab] = useState<'token' | 'json'>('token');
+  const [inputValue, setInputValue] = useState('');
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'quick' | 'manual'>('quick');
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setInputValue('');
+      setError(null);
+      setShowGuide(false);
+    }
+  }, [isOpen, provider?.id]);
+
+  const providerConfig = useMemo(() => {
+    if (!provider) return null;
+    return PROVIDER_CONFIGS[provider.id.toLowerCase()] || null;
+  }, [provider]);
+
+  // Real-time Option C client evaluation
+  const localVerification = useMemo<SessionVerificationResult | null>(() => {
+    if (!provider || !inputValue.trim()) return null;
+    return verifySessionState(inputValue.trim(), provider.id);
+  }, [inputValue, provider]);
 
   if (!isOpen || !provider || !mounted) return null;
 
@@ -43,30 +77,28 @@ export function ConnectJobBoardModal({
     dice: 'https://www.dice.com/dashboard/login',
   };
 
-  const handleConnect = async (storageStateObj?: any) => {
+  const handleConnect = async () => {
+    if (!inputValue.trim()) {
+      setError(`Please enter your ${providerConfig?.helpLabel || 'session credentials'}.`);
+      return;
+    }
+
+    if (localVerification && !localVerification.valid) {
+      setError(localVerification.error || 'Invalid session format.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
     try {
-      let statePayload = storageStateObj;
-      if (!statePayload && sessionInput.trim()) {
-        try {
-          statePayload = JSON.parse(sessionInput.trim());
-        } catch {
-          throw new Error('Invalid JSON format for session tokens. Please ensure valid Playwright storageState or cookie JSON.');
-        }
-      }
-
-      if (!statePayload) {
-        throw new Error('Please provide session authentication state or use guided sign in.');
-      }
-
       const res = await fetch('/api/connected-accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider: provider.id,
-          storageState: statePayload,
+          authToken: activeTab === 'token' ? inputValue.trim() : undefined,
+          storageState: activeTab === 'json' ? inputValue.trim() : undefined,
           profileName: profileName.trim() || undefined,
           profileEmail: profileEmail.trim() || undefined,
         }),
@@ -74,7 +106,7 @@ export function ConnectJobBoardModal({
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to save connected session.');
+        throw new Error(data.error || 'Live verification failed. Please check your credentials.');
       }
 
       onConnected();
@@ -84,30 +116,6 @@ export function ConnectJobBoardModal({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleQuickSimulationConnect = () => {
-    // Generates a mock verified session state for testing / development
-    const sampleMockState = {
-      cookies: [
-        {
-          name: `${provider.id}_session`,
-          value: `mock_authenticated_token_${Date.now()}`,
-          domain: `.${provider.id}.com`,
-          path: '/',
-          httpOnly: true,
-          secure: true,
-          sameSite: 'Lax' as const,
-        },
-        {
-          name: `${provider.id}_user_id`,
-          value: 'user_active_session',
-          domain: `.${provider.id}.com`,
-          path: '/',
-        },
-      ],
-    };
-    handleConnect(sampleMockState);
   };
 
   const modalContent = (
@@ -122,7 +130,7 @@ export function ConnectJobBoardModal({
         backgroundColor: 'rgba(0, 0, 0, 0.65)',
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && !submitting) onClose();
       }}
     >
       <div
@@ -143,7 +151,7 @@ export function ConnectJobBoardModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '20px 24px',
+            padding: '18px 24px',
             borderBottom: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.08)))',
           }}
         >
@@ -153,11 +161,11 @@ export function ConnectJobBoardModal({
                 width: '40px',
                 height: '40px',
                 borderRadius: '10px',
-                backgroundColor: 'var(--accent-glow, rgba(0, 112, 243, 0.1))',
+                backgroundColor: 'var(--accent-glow, rgba(99, 102, 241, 0.1))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--primary)',
+                color: 'var(--primary, #6366f1)',
               }}
             >
               <Key size={20} />
@@ -173,6 +181,8 @@ export function ConnectJobBoardModal({
           </div>
           <button
             onClick={onClose}
+            disabled={submitting}
+            aria-label="Close"
             style={{
               background: 'transparent',
               border: 'none',
@@ -187,183 +197,277 @@ export function ConnectJobBoardModal({
         </div>
 
         {/* Body */}
-        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Security Notice Banner */}
+        <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          {/* Security Banner */}
           <div
             style={{
               padding: '12px 16px',
               borderRadius: '10px',
-              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid rgba(34, 197, 94, 0.25)',
+              backgroundColor: 'rgba(34, 197, 94, 0.08)',
+              border: '1px solid rgba(34, 197, 94, 0.2)',
               display: 'flex',
               alignItems: 'flex-start',
               gap: '12px',
             }}
           >
             <ShieldCheck size={18} style={{ color: '#22c55e', flexShrink: 0, marginTop: '2px' }} />
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.5 }}>
-              <strong style={{ color: '#22c55e' }}>Zero Password Storage:</strong> JAHQ never asks for or stores your password. Authentication uses encrypted, temporary session tokens protected with AES-256-GCM encryption.
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.45 }}>
+              <strong style={{ color: '#22c55e' }}>Zero Password Storage:</strong> Authentication uses encrypted, temporary session tokens tested live through residential proxies and protected with AES-256-GCM.
             </div>
           </div>
 
-          {/* Navigation Tabs */}
+          {/* Navigation Segmented Tabs */}
           <div
             className="app-segmented-tabs"
             role="tablist"
-            aria-label="Connect Method"
+            aria-label="Input Method"
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: '6px',
-              marginBottom: '1rem',
             }}
           >
             <button
               type="button"
               role="tab"
-              aria-selected={activeTab === 'quick'}
-              onClick={() => setActiveTab('quick')}
-              className={`app-tab-btn ${activeTab === 'quick' ? 'active' : ''}`}
+              aria-selected={activeTab === 'token'}
+              onClick={() => {
+                setActiveTab('token');
+                setError(null);
+              }}
+              className={`app-tab-btn ${activeTab === 'token' ? 'active' : ''}`}
               style={{
-                padding: '0.6rem 1rem',
-                fontSize: '0.88rem',
+                padding: '0.65rem 1rem',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
               }}
             >
-              Interactive Connect
+              <Key size={15} />
+              <span>Single Cookie Token</span>
             </button>
             <button
               type="button"
               role="tab"
-              aria-selected={activeTab === 'manual'}
-              onClick={() => setActiveTab('manual')}
-              className={`app-tab-btn ${activeTab === 'manual' ? 'active' : ''}`}
+              aria-selected={activeTab === 'json'}
+              onClick={() => {
+                setActiveTab('json');
+                setError(null);
+              }}
+              className={`app-tab-btn ${activeTab === 'json' ? 'active' : ''}`}
               style={{
-                padding: '0.6rem 1rem',
-                fontSize: '0.88rem',
+                padding: '0.65rem 1rem',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
               }}
             >
-              Session State (JSON)
+              <FileCode size={15} />
+              <span>Session State (JSON)</span>
             </button>
           </div>
 
-          {activeTab === 'quick' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.6 }}>
-                1. Make sure you are logged into your {provider.name} account in your browser.<br />
-                2. Click below to verify and save your authenticated session for auto-apply submissions.
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <a
-                  href={providerUrls[provider.id] || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '0.825rem',
-                    color: 'var(--primary, #6366f1)',
-                    textDecoration: 'none',
-                  }}
-                >
-                  <span>Open {provider.name} in new tab</span>
-                  <ExternalLink size={14} />
-                </a>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                    Profile Name (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Jane Doe"
-                    value={profileName}
-                    onChange={(e) => setProfileName(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      backgroundColor: 'var(--input, var(--background))',
-                      border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.85rem',
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                    Account Email (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="e.g. jane@example.com"
-                    value={profileEmail}
-                    onChange={(e) => setProfileEmail(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      backgroundColor: 'var(--input, var(--background))',
-                      border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.85rem',
-                    }}
-                  />
-                </div>
-              </div>
-
-              <Button
-                onClick={handleQuickSimulationConnect}
-                disabled={submitting}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {activeTab === 'token'
+                  ? `Paste ${providerConfig?.helpLabel || 'Session Cookie'}`
+                  : 'Paste Cookie JSON / Playwright StorageState'}
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowGuide(!showGuide)}
                 style={{
-                  width: '100%',
-                  marginTop: '8px',
-                  backgroundColor: 'var(--primary, #6366f1)',
-                  color: '#ffffff',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--primary, #6366f1)',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: 500,
                 }}
               >
-                {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                <span>{submitting ? 'Connecting...' : `Verify & Connect ${provider.name}`}</span>
-              </Button>
+                <HelpCircle size={13} />
+                <span>{showGuide ? 'Hide Guide' : 'How to find this? (10s)'}</span>
+                {showGuide ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              </button>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-                Paste the exported Playwright `storageState` JSON or cookie array:
+
+            {/* Expandable 4-Step Instructions */}
+            {showGuide && providerConfig && (
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--secondary, var(--muted, rgba(0, 0, 0, 0.04)))',
+                  border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.08)))',
+                  fontSize: '0.78rem',
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                  Quick 4-Step Instructions:
+                </div>
+                <ol style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {providerConfig.guideSteps.map((step, idx) => (
+                    <li key={idx}>{step}</li>
+                  ))}
+                </ol>
+                <div style={{ marginTop: '8px' }}>
+                  <a
+                    href={providerUrls[provider.id] || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      color: 'var(--primary, #6366f1)',
+                      textDecoration: 'none',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <span>Open {provider.name} in browser</span>
+                    <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
+            )}
+
+            {/* Input textarea */}
+            <div style={{ position: 'relative' }}>
               <textarea
-                rows={6}
-                value={sessionInput}
-                onChange={(e) => setSessionInput(e.target.value)}
-                placeholder='{ "cookies": [ { "name": "...", "value": "...", "domain": ".ziprecruiter.com" } ] }'
+                rows={activeTab === 'token' ? 3 : 5}
+                value={inputValue}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  setError(null);
+                }}
+                placeholder={
+                  activeTab === 'token'
+                    ? providerConfig?.placeholder || 'Paste cookie value here...'
+                    : '[ { "name": "li_at", "value": "...", "domain": ".linkedin.com" } ]'
+                }
                 style={{
                   width: '100%',
-                  padding: '10px',
+                  padding: '10px 12px',
                   borderRadius: '8px',
                   backgroundColor: 'var(--input, var(--background))',
-                  border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
+                  border: localVerification
+                    ? localVerification.valid
+                      ? '1px solid #22c55e'
+                      : '1px solid #ef4444'
+                    : '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
                   color: 'var(--text-primary)',
                   fontSize: '0.8rem',
                   fontFamily: 'monospace',
                 }}
               />
-              <Button
-                onClick={() => handleConnect()}
-                className="btn-primary"
-                disabled={submitting || !sessionInput.trim()}
+            </div>
+
+            {/* Option C preview */}
+            {localVerification && (
+              <div
                 style={{
-                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '0.78rem',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  backgroundColor: localVerification.valid ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  color: localVerification.valid ? '#22c55e' : '#ef4444',
                 }}
               >
-                {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                <span>{submitting ? 'Saving Encrypted Session...' : 'Save & Connect Session'}</span>
-              </Button>
-            </div>
-          )}
+                {localVerification.valid ? (
+                  <>
+                    <CheckCircle2 size={14} />
+                    <span>
+                      Valid token format detected • Valid for ~{localVerification.daysRemaining} days
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle size={14} />
+                    <span>{localVerification.error}</span>
+                  </>
+                )}
+              </div>
+            )}
 
+            {/* Optional profile overrides */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Profile Name (Auto-detected if empty)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Jane Doe"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--input, var(--background))',
+                    border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.85rem',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Account Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. jane@example.com"
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--input, var(--background))',
+                    border: '1px solid var(--border-glass, var(--border, rgba(0, 0, 0, 0.1)))',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.85rem',
+                  }}
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleConnect}
+              disabled={submitting || !inputValue.trim()}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                marginTop: '4px',
+                padding: '10px',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+              }}
+            >
+              {submitting ? <Loader2 size={16} className="animate-spin" /> : <Radio size={16} />}
+              <span>
+                {submitting
+                  ? `Testing ${provider.name} via Residential Proxy...`
+                  : `Verify & Connect ${provider.name}`}
+              </span>
+            </Button>
+          </div>
+
+          {/* Global Error Banner */}
           {error && (
             <div
               style={{
@@ -378,7 +482,7 @@ export function ConnectJobBoardModal({
                 fontSize: '0.825rem',
               }}
             >
-              <AlertCircle size={16} />
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
               <span>{error}</span>
             </div>
           )}

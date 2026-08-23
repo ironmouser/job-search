@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, Key, ExternalLink, RefreshCw, Trash2, Zap } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { ShieldCheck, CheckCircle2, AlertTriangle, Key, RefreshCw, Trash2, Zap, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ConnectJobBoardModal } from '@/components/ConnectJobBoardModal';
 
 export interface JobBoardAccount {
@@ -23,9 +21,11 @@ export interface JobBoardAccount {
 export default function ConnectedAccountsSection() {
   const [accounts, setAccounts] = useState<JobBoardAccount[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<{ id: string; name: string; description: string } | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -48,9 +48,45 @@ export default function ConnectedAccountsSection() {
     fetchAccounts();
   }, [fetchAccounts]);
 
+  const handleRefresh = async (provider: JobBoardAccount) => {
+    try {
+      setRefreshing(provider.id);
+      setActionNotice(null);
+      const res = await fetch(`/api/connected-accounts/${provider.id}/verify`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.verified) {
+          setActionNotice({
+            type: 'success',
+            message: `${provider.name} session verified active (${data.daysRemaining || 30} days remaining).`,
+          });
+        } else {
+          setActionNotice({
+            type: 'error',
+            message: `${provider.name} session expired or invalid. Please reconnect.`,
+          });
+        }
+        await fetchAccounts();
+      } else {
+        setActionNotice({
+          type: 'error',
+          message: data.error || `Failed to verify ${provider.name} session.`,
+        });
+      }
+    } catch (err: any) {
+      console.error('[ConnectedAccounts] Refresh failed:', err);
+      setActionNotice({ type: 'error', message: `Verification failed for ${provider.name}.` });
+    } finally {
+      setRefreshing(null);
+    }
+  };
+
   const handleDisconnect = async (providerId: string) => {
     try {
       setDisconnecting(providerId);
+      setActionNotice(null);
       const res = await fetch(`/api/connected-accounts/${providerId}`, {
         method: 'DELETE',
       });
@@ -88,6 +124,12 @@ export default function ConnectedAccountsSection() {
     }
   };
 
+  const getDaysRemaining = (expiresAt: string | null): number | null => {
+    if (!expiresAt) return null;
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Intro & Security Banner */}
@@ -108,10 +150,30 @@ export default function ConnectedAccountsSection() {
             Connected Job Boards for 1-Click & Easy Apply
           </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Connect your job board profiles so JAHQ can automate applications on ZipRecruiter 1-Click, Dice Easy Apply, and LinkedIn. Sessions are encrypted using AES-256-GCM and refreshed automatically.
+            Connect your job board profiles so JAHQ can automate applications on ZipRecruiter 1-Click, Dice Easy Apply, and LinkedIn. Sessions are encrypted using AES-256-GCM and checked for validity.
           </div>
         </div>
       </div>
+
+      {/* Action Notification Banner */}
+      {actionNotice && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: '8px',
+            backgroundColor: actionNotice.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+            border: actionNotice.type === 'success' ? '1px solid rgba(34, 197, 94, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
+            color: actionNotice.type === 'success' ? '#22c55e' : '#ef4444',
+            fontSize: '0.825rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          {actionNotice.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+          <span>{actionNotice.message}</span>
+        </div>
+      )}
 
       {/* Grid of Accounts */}
       <div
@@ -124,6 +186,8 @@ export default function ConnectedAccountsSection() {
         {accounts.map((acc) => {
           const isConnected = acc.status === 'connected';
           const isExpired = acc.status === 'expired';
+          const daysRemaining = getDaysRemaining(acc.expiresAt);
+          const isRefreshing = refreshing === acc.id;
 
           return (
             <div
@@ -216,26 +280,43 @@ export default function ConnectedAccountsSection() {
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
                     {acc.profileName && <div>Profile: <strong style={{ color: 'var(--text-primary)' }}>{acc.profileName}</strong></div>}
                     {acc.profileEmail && <div>Email: {acc.profileEmail}</div>}
-                    {acc.lastUsedAt && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        Last used: {new Date(acc.lastUsedAt).toLocaleDateString()}
+                    {daysRemaining !== null && (
+                      <div
+                        style={{
+                          fontSize: '0.75rem',
+                          color: daysRemaining <= 3 ? '#eab308' : 'var(--text-secondary)',
+                          marginTop: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <Clock size={12} />
+                        <span>Valid for ~{daysRemaining} more days</span>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {isExpired && (
+                  <div style={{ fontSize: '0.78rem', color: '#eab308', marginTop: '6px', lineHeight: 1.4 }}>
+                    Session expired or authentication cookies need renewal. Click Refresh or Reconnect.
                   </div>
                 )}
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-                {isConnected ? (
+                {isConnected || isExpired ? (
                   <>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleOpenConnect(acc)}
+                      disabled={isRefreshing}
+                      onClick={() => handleRefresh(acc)}
                       style={{ flex: 1, fontSize: '0.8rem' }}
                     >
-                      <RefreshCw size={13} style={{ marginRight: '6px' }} />
-                      Refresh
+                      <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} style={{ marginRight: '6px' }} />
+                      {isRefreshing ? 'Checking...' : 'Refresh'}
                     </Button>
                     <Button
                       variant="ghost"
