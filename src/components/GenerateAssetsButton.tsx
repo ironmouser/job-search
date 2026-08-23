@@ -152,6 +152,7 @@ export default function GenerateAssetsButton({
         title="Tailoring Application"
         syncMessage="Crafting personalized cover letter and resume..."
         subtext={"This could take up to 30 seconds to complete.\nPlease do not close or refresh this page."}
+        onClose={() => setIsGenerating(false)}
       />
     </>
   );

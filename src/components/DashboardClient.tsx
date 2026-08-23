@@ -2969,6 +2969,7 @@ export default function DashboardClient({
         isRefining={isRefiningJobs}
         title="Syncing in Progress"
         subtext="This could take up to 3 minutes to complete. Please do not close or refresh this page."
+        onClose={() => setIsSyncing(false)}
       />
       </div>
 

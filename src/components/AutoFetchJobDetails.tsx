@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Edit3, Save, ExternalLink, Copy, Check } from 'lucide-react';
 import SyncOverlay from './SyncOverlay';
@@ -16,6 +16,16 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
   const [manualText, setManualText] = useState(initialDescription || '');
   const [savingManual, setSavingManual] = useState(false);
   const [copied, setCopied] = useState(false);
+  const controllerRef = useRef<AbortController | null>(null);
+
+  const handleCancelFetch = () => {
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+    setErrorMessage('Fetching job details was cancelled.');
+    setStatus('error');
+    setShowManual(true);
+  };
 
   const handleCopyUrl = async () => {
     if (jobUrl) {
@@ -53,6 +63,7 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
+    controllerRef.current = controller;
     const timeoutId = setTimeout(() => {
       controller.abort();
     }, 25000); // 25-second timeout ceiling
@@ -273,14 +284,13 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
         isSyncing={true} 
         syncMessage={syncMessage} 
         title="Fetching Details"
+        onClose={handleCancelFetch}
         subtext={
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem' }}>
             <span>We are currently extracting the full job description. This usually takes about 10-25 seconds.</span>
             <button
               type="button"
-              onClick={() => {
-                setShowManual(true);
-              }}
+              onClick={handleCancelFetch}
               style={{
                 background: 'transparent',
                 border: '1px solid rgba(255, 255, 255, 0.25)',

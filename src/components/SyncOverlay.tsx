@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 
 const ANIMATION_SEQUENCE = ['thumbs.mp4', 'lasso.mp4', 'head.mp4', 'fly.mp4'];
 
@@ -23,7 +24,8 @@ export default function SyncOverlay({
   jobsFoundCount,
   isRefining = false,
   title = "Syncing in Progress",
-  subtext = "This could take up to 3 minutes to complete.\nPlease do not close or refresh this page."
+  subtext = "This could take up to 3 minutes to complete.\nPlease do not close or refresh this page.",
+  onClose
 }: { 
   isSyncing: boolean; 
   syncMessage: string;
@@ -31,6 +33,7 @@ export default function SyncOverlay({
   isRefining?: boolean;
   title?: string;
   subtext?: React.ReactNode;
+  onClose?: () => void;
 }) {
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -96,7 +99,42 @@ export default function SyncOverlay({
 
   return createPortal(
     <div className={`sync-overlay-backdrop ${isSyncing ? 'active' : ''}`}>
-      <div className="sync-overlay-content">
+      <div className="sync-overlay-content" style={{ position: 'relative' }}>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close sync overlay"
+            title="Cancel and close"
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: 'none',
+              background: 'rgba(0, 0, 0, 0.08)',
+              color: '#555555',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 20,
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.16)';
+              e.currentTarget.style.color = '#111111';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)';
+              e.currentTarget.style.color = '#555555';
+            }}
+          >
+            <X size={18} />
+          </button>
+        )}
         <div className="sync-overlay-header">
           <h2>{title}</h2>
           
