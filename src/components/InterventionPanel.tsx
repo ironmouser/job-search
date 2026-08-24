@@ -266,7 +266,11 @@ export function InterventionPanel({
     setResolution(res);
     try {
       if (res === 'completed' && settings) {
-        const extraPayload: Record<string, any> = { accountAuthMode: accountMode };
+        const extraPayload: Record<string, any> = {
+          accountAuthMode: accountMode,
+          emailAddress: settings.emailAddress,
+          defaultAccountPassword: settings.defaultAccountPassword,
+        };
         if (customAnswer && questionData?.fieldKey) {
           extraPayload.customAnswers = {
             ...(settings?.customAnswers || {}),
@@ -276,10 +280,21 @@ export function InterventionPanel({
         }
         await saveSettings(extraPayload);
       }
+
+      const resolvePayload: Record<string, any> = { resolution: res };
+      if (res === 'completed' && emailVerificationCode && emailVerificationCode.trim()) {
+        const trimmed = emailVerificationCode.trim();
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          resolvePayload.verificationUrl = trimmed;
+        } else {
+          resolvePayload.otp = trimmed;
+        }
+      }
+
       await fetch(`/api/auto-apply/interventions/${interventionId}/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resolution: res }),
+        body: JSON.stringify(resolvePayload),
       });
       onResolved();
     } finally {

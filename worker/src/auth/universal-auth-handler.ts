@@ -138,63 +138,155 @@ export class UniversalAuthHandler {
 
     await logger.info('auth_gate_detected', `Candidate auth gate detected. Mode: ${authMode}, Email: ${emailToUse}`);
 
-    // Switch tabs if necessary (Sign In vs Create Account)
+    // Switch tabs if necessary (Sign In vs Create Account) — strictly target switch links, avoiding submit buttons
     if (authMode === 'create_account') {
-      const createAccountTab = targetContext.locator('button, a, [role="tab"]').filter({
-        hasText: /create account|sign up|register|new user|don't have an account/i,
-      }).first();
+      const hasVerifyPass = (await targetContext.locator('input[data-automation-id="verifyPassword"], input[data-automation-id="confirmPassword"], input[name*="verify" i], input[name*="confirm" i]').count().catch(() => 0)) > 0;
+      if (!hasVerifyPass) {
+        const createSwitchSelectors = [
+          '[data-automation-id="createAccountLink"]',
+          'a[data-automation-id="createAccountLink"]',
+          'button[data-automation-id="createAccountLink"]',
+          'a[data-automation-id*="createAccount" i]:not([data-automation-id*="Submit" i])',
+          'a:has-text("Create Account")',
+          'a:has-text("Create an account")',
+          'a:has-text("Create an Account")',
+          'a:has-text("Register")',
+          'a:has-text("Sign Up")',
+          'a:has-text("Don\'t have an account")',
+          'button:has-text("Don\'t have an account")',
+          '[role="tab"]:has-text("Create Account")',
+          '[role="tab"]:has-text("Register")',
+          '[role="tab"]:has-text("Sign Up")',
+        ];
 
-      if ((await createAccountTab.count().catch(() => 0)) > 0 && (await createAccountTab.isVisible().catch(() => false))) {
-        await createAccountTab.click().catch(() => {});
-        await page.waitForTimeout(1500);
+        for (const sel of createSwitchSelectors) {
+          const tabEl = targetContext.locator(sel).first();
+          if ((await tabEl.count().catch(() => 0)) > 0 && (await tabEl.isVisible().catch(() => false))) {
+            await tabEl.scrollIntoViewIfNeeded().catch(() => {});
+            await tabEl.click({ force: true }).catch(() => {});
+            await page.waitForTimeout(1500);
+            break;
+          }
+        }
       }
     } else {
-      const signInTab = targetContext.locator('button, a, [role="tab"]').filter({
-        hasText: /sign in|log in|already have an account/i,
-      }).first();
+      const hasVerifyPass = (await targetContext.locator('input[data-automation-id="verifyPassword"], input[data-automation-id="confirmPassword"], input[name*="verify" i], input[name*="confirm" i]').count().catch(() => 0)) > 0;
+      if (hasVerifyPass) {
+        const signInSwitchSelectors = [
+          '[data-automation-id="signInLink"]',
+          'a[data-automation-id="signInLink"]',
+          'button[data-automation-id="signInLink"]',
+          'a[data-automation-id*="signIn" i]:not([data-automation-id*="Submit" i])',
+          'a:has-text("Sign In")',
+          'a:has-text("Log In")',
+          'a:has-text("Already have an account")',
+          'button:has-text("Already have an account")',
+          '[role="tab"]:has-text("Sign In")',
+          '[role="tab"]:has-text("Log In")',
+        ];
 
-      if ((await signInTab.count().catch(() => 0)) > 0 && (await signInTab.isVisible().catch(() => false))) {
-        await signInTab.click().catch(() => {});
-        await page.waitForTimeout(1500);
+        for (const sel of signInSwitchSelectors) {
+          const tabEl = targetContext.locator(sel).first();
+          if ((await tabEl.count().catch(() => 0)) > 0 && (await tabEl.isVisible().catch(() => false))) {
+            await tabEl.scrollIntoViewIfNeeded().catch(() => {});
+            await tabEl.click({ force: true }).catch(() => {});
+            await page.waitForTimeout(1500);
+            break;
+          }
+        }
       }
     }
 
-    // Fill Email
-    if (emailInput && emailToUse) {
-      await emailInput.fill(emailToUse);
+    // Helper to fill input and commit React/SPA state events
+    const fillAndCommit = async (loc: Locator, val: string) => {
+      await loc.scrollIntoViewIfNeeded().catch(() => {});
+      await loc.click({ force: true }).catch(() => {});
+      await loc.fill(val).catch(async () => {
+        await loc.pressSequentially(val, { delay: 20 }).catch(() => {});
+      });
+      await loc.dispatchEvent('input').catch(() => {});
+      await loc.dispatchEvent('change').catch(() => {});
+      await loc.dispatchEvent('blur').catch(() => {});
+    };
+
+    // Re-locate email & password inputs
+    const freshEmail = targetContext.locator('input[data-automation-id="email"], input[data-automation-id="userName"], input[data-automation-id="username"], input[type="email"], input[name*="email" i], input[id*="email" i], input[name*="user" i]').first();
+    const freshPass = targetContext.locator('input[data-automation-id="password"], input[type="password"], input[name*="password" i]').first();
+
+    if ((await freshEmail.count().catch(() => 0)) > 0 && emailToUse) {
+      await fillAndCommit(freshEmail, emailToUse);
       await logger.info('auth_email_entered', `Filled candidate email`);
     }
 
-    // Fill Password(s)
-    const passCount = await passwordInputs.count();
-    for (let i = 0; i < passCount; i++) {
-      const passField = passwordInputs.nth(i);
-      if (await passField.isVisible().catch(() => false)) {
-        await passField.fill(passwordToUse);
-      }
+    if ((await freshPass.count().catch(() => 0)) > 0 && passwordToUse) {
+      await fillAndCommit(freshPass, passwordToUse);
+      await logger.info('auth_password_entered', `Filled candidate password field`);
     }
-    await logger.info('auth_password_entered', `Filled candidate password field(s)`);
 
-    // Handle required consent/terms checkboxes if creating account
-    const consentCheckboxes = targetContext.locator('input[type="checkbox"], [role="checkbox"]');
-    const cbCount = await consentCheckboxes.count().catch(() => 0);
-    for (let i = 0; i < cbCount; i++) {
-      const cb = consentCheckboxes.nth(i);
-      const isChecked = await cb.isChecked().catch(() => false);
-      if (!isChecked && (await cb.isVisible().catch(() => false))) {
-        await cb.check().catch(async () => {
-          await cb.click({ force: true }).catch(() => {});
-        });
+    // Handle verify password and consent checkboxes if creating account
+    if (authMode === 'create_account') {
+      const verifyInput = targetContext.locator('input[data-automation-id="verifyPassword"], input[data-automation-id="confirmPassword"], input[name*="verify" i], input[name*="confirm" i]').first();
+      if ((await verifyInput.count().catch(() => 0)) > 0 && (await verifyInput.isVisible().catch(() => false))) {
+        await fillAndCommit(verifyInput, passwordToUse);
+      }
+
+      const consentCheckboxes = targetContext.locator('input[data-automation-id="createAccountCheckbox"], div[data-automation-id="createAccountCheckbox"] input, input[type="checkbox"], [role="checkbox"]');
+      const cbCount = await consentCheckboxes.count().catch(() => 0);
+      for (let i = 0; i < cbCount; i++) {
+        const cb = consentCheckboxes.nth(i);
+        const isChecked = await cb.isChecked().catch(() => false);
+        if (!isChecked && (await cb.isVisible().catch(() => false))) {
+          await cb.check({ force: true }).catch(async () => {
+            await cb.click({ force: true }).catch(() => {});
+          });
+          break;
+        }
       }
     }
 
     // Submit Auth Form
-    const submitAuthBtn = targetContext.locator('button[type="submit"], input[type="submit"], button, a').filter({
-      hasText: authMode === 'create_account' ? /create account|sign up|register|continue/i : /sign in|log in|continue/i,
-    }).first();
+    let submitAuthBtn: Locator | null = null;
+    if (authMode === 'create_account') {
+      const createSubmitLocators = [
+        targetContext.locator('button[data-automation-id="createAccountSubmitButton"]').first(),
+        targetContext.locator('[data-automation-id="createAccountSubmitButton"]').first(),
+        targetContext.locator('button[data-automation-id="createAccount"]').first(),
+        targetContext.locator('button[type="submit"]:has-text("Create Account")').first(),
+        targetContext.locator('button[type="submit"]:has-text("Register")').first(),
+        targetContext.locator('button[type="submit"]:has-text("Sign Up")').first(),
+        targetContext.locator('button:has-text("Create Account")').first(),
+        targetContext.locator('button:has-text("Register")').first(),
+        targetContext.locator('button:has-text("Sign Up")').first(),
+        targetContext.locator('button[type="submit"]').first(),
+      ];
+      for (const loc of createSubmitLocators) {
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          submitAuthBtn = loc;
+          break;
+        }
+      }
+    } else {
+      const signInSubmitLocators = [
+        targetContext.locator('button[data-automation-id="signInSubmitButton"]').first(),
+        targetContext.locator('[data-automation-id="signInSubmitButton"]').first(),
+        targetContext.locator('button[data-automation-id="signInButton"]').first(),
+        targetContext.locator('button[type="submit"]:has-text("Sign In")').first(),
+        targetContext.locator('button[type="submit"]:has-text("Log In")').first(),
+        targetContext.locator('button:has-text("Sign In")').first(),
+        targetContext.locator('button:has-text("Log In")').first(),
+        targetContext.locator('button[type="submit"]').first(),
+      ];
+      for (const loc of signInSubmitLocators) {
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          submitAuthBtn = loc;
+          break;
+        }
+      }
+    }
 
-    if ((await submitAuthBtn.count().catch(() => 0)) > 0) {
-      await submitAuthBtn.click().catch(() => {});
+    if (submitAuthBtn) {
+      await submitAuthBtn.scrollIntoViewIfNeeded().catch(() => {});
+      await submitAuthBtn.click({ force: true }).catch(() => {});
       await logger.info('auth_submitted', `Submitted ${authMode} credentials`);
       await page.waitForTimeout(3000);
     }

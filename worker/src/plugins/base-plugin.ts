@@ -93,7 +93,7 @@ export abstract class ATSPlugin {
     platformDisplayName: string,
     context?: WorkflowContext
   ): Promise<void> {
-    const currentUrl = page.url();
+    const currentUrl = page.url() || '';
     const lowerUrl = currentUrl.toLowerCase();
     const pageTitle = (await page.title().catch(() => '')) || '';
     const lowerTitle = pageTitle.toLowerCase();
@@ -118,14 +118,14 @@ export abstract class ATSPlugin {
       lowerTitle.includes('create an account') ||
       lowerTitle.includes('register');
 
-    const hasPasswordField = (await page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]').count().catch(() => 0)) > 0;
+    const hasPasswordField = (await page.locator('input[type="password"], input[data-automation-id*="password" i], input[name*="password" i]').count().catch(() => 0)) > 0;
     const domPasswordReq = (await page.locator(':has-text("Password Requirements"), :has-text("Verify New Password"), :has-text("Verify Password")').count().catch(() => 0)) > 0;
 
-    const authModal = page.locator('[role="dialog"], [aria-modal="true"], [data-automation-id*="auth" i], [data-automation-id*="modal" i], form[action*="login" i], form[action*="auth" i]').first();
+    const authModal = page.locator('[role="dialog"], [aria-modal="true"], [data-automation-id*="auth" i], [data-automation-id*="modal" i], [data-automation-id="signInPage"], [data-automation-id="createAccountPage"], form[action*="login" i], form[action*="auth" i]').first();
     const hasAuthModal = (await authModal.count().catch(() => 0)) > 0 && 
-      (await authModal.locator('input[type="password"], input[type="email"], input[name*="user" i], [data-automation-id*="password" i]').count().catch(() => 0)) > 0;
+      (await authModal.locator('input[type="password"], input[type="email"], input[name*="user" i], input[data-automation-id*="password" i]').count().catch(() => 0)) > 0;
 
-    const hasAuthInputs = (await page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').count().catch(() => 0)) > 0;
+    const hasAuthInputs = (await page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], input[data-automation-id="email"], input[data-automation-id="userName"], input[data-automation-id="username"], input[name*="user" i]').count().catch(() => 0)) > 0;
 
     const guestBtn = page.locator('button, a').filter({ hasText: /apply as guest|continue as guest|apply without account/i }).first();
     const isGuestOption = (await guestBtn.count().catch(() => 0)) > 0;
@@ -147,210 +147,272 @@ export abstract class ATSPlugin {
     if (isGateActive) {
       const email = context?.userProfile?.accountEmail || context?.userProfile?.email;
       const password = context?.userProfile?.accountPassword;
-      const authMode = context?.userProfile?.accountAuthMode || 'sign_in';
+      const authMode = context?.userProfile?.accountAuthMode || 'create_account';
 
       if (email && password) {
         try {
-          // 1. Tab / View switching
-          if (authMode === 'create_account') {
-            const createTabSelectors = [
-              '[data-automation-id="createAccountLink"]',
-              '[data-automation-id="createAccountButton"]',
-              '[data-automation-id*="createAccount" i]',
-              '[data-automation-id*="register" i]',
-              'a:has-text("Create Account")',
-              'button:has-text("Create Account")',
-              'a:has-text("Create an account")',
-              'button:has-text("Create an account")',
-              'a:has-text("Register")',
-              'button:has-text("Register")',
-              'a:has-text("Sign Up")',
-              'button:has-text("Sign Up")',
-              'a:has-text("Don\'t have an account")',
-              'button:has-text("Don\'t have an account")',
-              'a:has-text("New User")',
-              'button:has-text("New User")',
-            ];
+          // Identify active frame (main page or nested iframe)
+          let targetCtx: import('playwright').Page | import('playwright').Frame = page;
+          for (const frame of page.frames()) {
+            if (frame === page.mainFrame()) continue;
+            const framePassCount = await frame.locator('input[type="password"], input[data-automation-id*="password" i]').count().catch(() => 0);
+            if (framePassCount > 0) {
+              targetCtx = frame;
+              break;
+            }
+          }
 
-            for (const sel of createTabSelectors) {
-              const tabEl = page.locator(sel).first();
-              if ((await tabEl.count().catch(() => 0)) > 0 && (await tabEl.isVisible().catch(() => false))) {
-                await tabEl.scrollIntoViewIfNeeded().catch(() => {});
-                await tabEl.click({ force: true }).catch(() => {});
-                await page.waitForTimeout(1500);
-                break;
+          // 1. Tab / View switching — accurately locate switch links WITHOUT clicking submit buttons
+          if (authMode === 'create_account') {
+            const hasVerifyPass = (await targetCtx.locator('input[data-automation-id="verifyPassword"], input[data-automation-id="confirmPassword"], input[name*="verify" i], input[name*="confirm" i]').count().catch(() => 0)) > 0;
+            if (!hasVerifyPass) {
+              const createSwitchSelectors = [
+                '[data-automation-id="createAccountLink"]',
+                'a[data-automation-id="createAccountLink"]',
+                'button[data-automation-id="createAccountLink"]',
+                'a[data-automation-id*="createAccount" i]:not([data-automation-id*="Submit" i])',
+                'a:has-text("Create Account")',
+                'a:has-text("Create an account")',
+                'a:has-text("Create an Account")',
+                'a:has-text("Register")',
+                'a:has-text("Sign Up")',
+                'a:has-text("Don\'t have an account")',
+                'button:has-text("Don\'t have an account")',
+                '[role="tab"]:has-text("Create Account")',
+                '[role="tab"]:has-text("Register")',
+                '[role="tab"]:has-text("Sign Up")',
+              ];
+
+              for (const sel of createSwitchSelectors) {
+                const switchEl = targetCtx.locator(sel).first();
+                if ((await switchEl.count().catch(() => 0)) > 0 && (await switchEl.isVisible().catch(() => false))) {
+                  await switchEl.scrollIntoViewIfNeeded().catch(() => {});
+                  await switchEl.click({ force: true }).catch(() => {});
+                  await page.waitForTimeout(1500);
+                  break;
+                }
               }
             }
           } else if (authMode === 'sign_in') {
-            const signInTabSelectors = [
-              '[data-automation-id="signInLink"]',
-              '[data-automation-id="signInButton"]',
-              'a:has-text("Sign In")',
-              'button:has-text("Sign In")',
-              'a:has-text("Log In")',
-              'button:has-text("Log In")',
-              'a:has-text("Already have an account")',
-              'button:has-text("Already have an account")',
-            ];
+            const hasVerifyPass = (await targetCtx.locator('input[data-automation-id="verifyPassword"], input[data-automation-id="confirmPassword"], input[name*="verify" i], input[name*="confirm" i]').count().catch(() => 0)) > 0;
+            if (hasVerifyPass) {
+              const signInSwitchSelectors = [
+                '[data-automation-id="signInLink"]',
+                'a[data-automation-id="signInLink"]',
+                'button[data-automation-id="signInLink"]',
+                'a[data-automation-id*="signIn" i]:not([data-automation-id*="Submit" i])',
+                'a:has-text("Sign In")',
+                'a:has-text("Log In")',
+                'a:has-text("Already have an account")',
+                'button:has-text("Already have an account")',
+                '[role="tab"]:has-text("Sign In")',
+                '[role="tab"]:has-text("Log In")',
+              ];
 
-            for (const sel of signInTabSelectors) {
-              const tabEl = page.locator(sel).first();
-              if ((await tabEl.count().catch(() => 0)) > 0 && (await tabEl.isVisible().catch(() => false))) {
-                await tabEl.scrollIntoViewIfNeeded().catch(() => {});
-                await tabEl.click({ force: true }).catch(() => {});
-                await page.waitForTimeout(1500);
-                break;
+              for (const sel of signInSwitchSelectors) {
+                const switchEl = targetCtx.locator(sel).first();
+                if ((await switchEl.count().catch(() => 0)) > 0 && (await switchEl.isVisible().catch(() => false))) {
+                  await switchEl.scrollIntoViewIfNeeded().catch(() => {});
+                  await switchEl.click({ force: true }).catch(() => {});
+                  await page.waitForTimeout(1500);
+                  break;
+                }
               }
             }
           }
 
-          // 2. Poll/wait for Email & Password inputs to render in SPA DOM
-          let emailInput = page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
-          let passwordInputs = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
+          // 2. Poll/wait for actual <input> elements to render
+          const emailInputLocators = [
+            targetCtx.locator('input[data-automation-id="email"]').first(),
+            targetCtx.locator('input[data-automation-id="userName"]').first(),
+            targetCtx.locator('input[data-automation-id="username"]').first(),
+            targetCtx.locator('input[type="email"]').first(),
+            targetCtx.locator('input[name="email" i]').first(),
+            targetCtx.locator('input[id*="email" i]').first(),
+            targetCtx.locator('input[name*="user" i]').first(),
+            targetCtx.locator('input[id*="user" i]').first(),
+            targetCtx.locator('input[autocomplete="username"]').first(),
+            targetCtx.locator('input[autocomplete="email"]').first(),
+          ];
 
-          for (let waitCount = 0; waitCount < 5; waitCount++) {
-            if ((await emailInput.count().catch(() => 0)) > 0 && (await passwordInputs.count().catch(() => 0)) > 0) {
-              break;
-            }
-            for (const frame of page.frames()) {
-              if (frame === page.mainFrame()) continue;
-              const frameEmail = frame.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
-              const framePass = frame.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
-              if ((await frameEmail.count().catch(() => 0)) > 0 && (await framePass.count().catch(() => 0)) > 0) {
-                emailInput = frameEmail;
-                passwordInputs = framePass;
+          const passwordInputLocators = [
+            targetCtx.locator('input[data-automation-id="password"]').first(),
+            targetCtx.locator('input[type="password"]').first(),
+            targetCtx.locator('input[name*="password" i]').first(),
+            targetCtx.locator('input[id*="password" i]').first(),
+          ];
+
+          let emailInput: import('playwright').Locator | null = null;
+          let passwordInput: import('playwright').Locator | null = null;
+
+          for (let waitCount = 0; waitCount < 6; waitCount++) {
+            for (const loc of emailInputLocators) {
+              if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+                emailInput = loc;
                 break;
               }
             }
-            if ((await emailInput.count().catch(() => 0)) > 0 && (await passwordInputs.count().catch(() => 0)) > 0) {
-              break;
+            for (const loc of passwordInputLocators) {
+              if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+                passwordInput = loc;
+                break;
+              }
             }
+            if (emailInput && passwordInput) break;
             await page.waitForTimeout(1000);
-            emailInput = page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
-            passwordInputs = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
           }
 
-          // 3. Fallback: If inputs still not visible, try option buttons (e.g. "Apply Manually", "Sign In to Apply", "Autofill with Resume")
-          if ((await emailInput.count().catch(() => 0)) === 0 || (await passwordInputs.count().catch(() => 0)) === 0) {
-            const optionBtns = page.locator('button, a, [role="button"]').filter({ hasText: /apply manually|autofill with resume|sign in to apply|log in to apply|sign up to apply|create account to apply/i });
-            if ((await optionBtns.count().catch(() => 0)) > 0) {
-              await optionBtns.first().scrollIntoViewIfNeeded().catch(() => {});
-              await optionBtns.first().click({ force: true }).catch(() => {});
-              await page.waitForTimeout(2000);
+          if (emailInput && passwordInput) {
+            // Helper to fill input and commit React/SPA state events
+            const fillAndCommit = async (loc: import('playwright').Locator, val: string) => {
+              await loc.scrollIntoViewIfNeeded().catch(() => {});
+              await loc.click({ force: true }).catch(() => {});
+              await loc.fill(val).catch(async () => {
+                await loc.pressSequentially(val, { delay: 20 }).catch(() => {});
+              });
+              await loc.dispatchEvent('input').catch(() => {});
+              await loc.dispatchEvent('change').catch(() => {});
+              await loc.dispatchEvent('blur').catch(() => {});
+            };
 
-              // Re-check tab switching after opening auth view
-              if (authMode === 'create_account') {
-                const createTabSelectors = [
-                  '[data-automation-id="createAccountLink"]',
-                  '[data-automation-id="createAccountButton"]',
-                  '[data-automation-id*="createAccount" i]',
-                  '[data-automation-id*="register" i]',
-                  'a:has-text("Create Account")',
-                  'button:has-text("Create Account")',
-                  'a:has-text("Create an account")',
-                  'button:has-text("Create an account")',
-                  'a:has-text("Register")',
-                  'button:has-text("Register")',
-                  'a:has-text("Sign Up")',
-                  'button:has-text("Sign Up")',
-                  'a:has-text("Don\'t have an account")',
-                  'button:has-text("Don\'t have an account")',
-                  'a:has-text("New User")',
-                  'button:has-text("New User")',
-                ];
-                for (const sel of createTabSelectors) {
-                  const tabEl = page.locator(sel).first();
-                  if ((await tabEl.count().catch(() => 0)) > 0 && (await tabEl.isVisible().catch(() => false))) {
-                    await tabEl.scrollIntoViewIfNeeded().catch(() => {});
-                    await tabEl.click({ force: true }).catch(() => {});
-                    await page.waitForTimeout(1500);
-                    break;
-                  }
+            // Fill Email
+            await fillAndCommit(emailInput, email);
+
+            // Fill Primary Password
+            await fillAndCommit(passwordInput, password);
+
+            // If Create Account mode: fill verify password & check terms checkbox
+            if (authMode === 'create_account') {
+              const verifyPasswordLocators = [
+                targetCtx.locator('input[data-automation-id="verifyPassword"]').first(),
+                targetCtx.locator('input[data-automation-id="confirmPassword"]').first(),
+                targetCtx.locator('input[name*="verify" i]').first(),
+                targetCtx.locator('input[name*="confirm" i]').first(),
+                targetCtx.locator('input[id*="verify" i]').first(),
+                targetCtx.locator('input[id*="confirm" i]').first(),
+              ];
+
+              for (const loc of verifyPasswordLocators) {
+                if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+                  await fillAndCommit(loc, password);
+                  break;
                 }
               }
 
-              emailInput = page.locator('input[type="email"], input[name*="email" i], input[id*="email" i], [data-automation-id*="email" i], [data-automation-id="username"], input[name*="user" i]').first();
-              passwordInputs = page.locator('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
+              // Check consent / terms checkbox
+              const consentLocators = [
+                targetCtx.locator('input[data-automation-id="createAccountCheckbox"]').first(),
+                targetCtx.locator('div[data-automation-id="createAccountCheckbox"] input').first(),
+                targetCtx.locator('input[type="checkbox"][name*="term" i]').first(),
+                targetCtx.locator('input[type="checkbox"][name*="privacy" i]').first(),
+                targetCtx.locator('input[type="checkbox"][name*="consent" i]').first(),
+                targetCtx.locator('input[type="checkbox"]').first(),
+              ];
+
+              for (const loc of consentLocators) {
+                if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+                  const isChecked = await loc.isChecked().catch(() => false);
+                  if (!isChecked) {
+                    await loc.check({ force: true }).catch(async () => {
+                      await loc.click({ force: true }).catch(() => {});
+                    });
+                  }
+                  break;
+                }
+              }
             }
-          }
 
-          if ((await emailInput.count().catch(() => 0)) > 0 && (await passwordInputs.count().catch(() => 0)) > 0) {
-            await emailInput.fill('').catch(() => {});
-            await this.typeHumanized(page, emailInput, email);
-            
-            // Fill primary password
-            await passwordInputs.nth(0).fill('').catch(() => {});
-            await this.typeHumanized(page, passwordInputs.nth(0), password);
-
-            // Fill verify password if a second password field exists
-            if (await passwordInputs.count() > 1) {
-              await passwordInputs.nth(1).fill('').catch(() => {});
-              await this.typeHumanized(page, passwordInputs.nth(1), password);
+            // Locate submit button
+            let submitBtn: import('playwright').Locator | null = null;
+            if (authMode === 'create_account') {
+              const createSubmitSelectors = [
+                targetCtx.locator('button[data-automation-id="createAccountSubmitButton"]').first(),
+                targetCtx.locator('[data-automation-id="createAccountSubmitButton"]').first(),
+                targetCtx.locator('button[data-automation-id="createAccount"]').first(),
+                targetCtx.locator('button[type="submit"]:has-text("Create Account")').first(),
+                targetCtx.locator('button[type="submit"]:has-text("Register")').first(),
+                targetCtx.locator('button[type="submit"]:has-text("Sign Up")').first(),
+                targetCtx.locator('button:has-text("Create Account")').first(),
+                targetCtx.locator('button:has-text("Create an Account")').first(),
+                targetCtx.locator('button:has-text("Register")').first(),
+                targetCtx.locator('button:has-text("Sign Up")').first(),
+                targetCtx.locator('button[type="submit"]').first(),
+              ];
+              for (const loc of createSubmitSelectors) {
+                if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+                  submitBtn = loc;
+                  break;
+                }
+              }
             } else {
-              const confirmInput = page.locator('input[name*="confirm" i], input[name*="verify" i], [data-automation-id*="verifyPassword" i], [data-automation-id*="confirmPassword" i]').first();
-              if (await confirmInput.count() > 0) {
-                await confirmInput.fill('').catch(() => {});
-                await this.typeHumanized(page, confirmInput, password);
+              const signInSubmitSelectors = [
+                targetCtx.locator('button[data-automation-id="signInSubmitButton"]').first(),
+                targetCtx.locator('[data-automation-id="signInSubmitButton"]').first(),
+                targetCtx.locator('button[data-automation-id="signInButton"]').first(),
+                targetCtx.locator('button[type="submit"]:has-text("Sign In")').first(),
+                targetCtx.locator('button[type="submit"]:has-text("Log In")').first(),
+                targetCtx.locator('button:has-text("Sign In")').first(),
+                targetCtx.locator('button:has-text("Log In")').first(),
+                targetCtx.locator('button[type="submit"]').first(),
+              ];
+              for (const loc of signInSubmitSelectors) {
+                if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+                  submitBtn = loc;
+                  break;
+                }
               }
             }
 
-            const termsCheckbox = page.locator('input[type="checkbox"][name*="term" i], input[type="checkbox"][name*="privacy" i], [data-automation-id*="agree" i], [data-automation-id*="createAccountCheckbox" i], [data-automation-id*="checkbox" i], [data-automation-id*="consent" i], input[type="checkbox"]').first();
-            if (await termsCheckbox.count() > 0) {
-              const isChecked = await termsCheckbox.isChecked().catch(() => false);
-              if (!isChecked) {
-                await termsCheckbox.check({ force: true }).catch(async () => {
-                  await termsCheckbox.click({ force: true }).catch(() => {});
-                });
-              }
-            }
-
-            let submitBtn = authMode === 'create_account'
-              ? page.locator('[data-automation-id="createAccountSubmitButton"], [data-automation-id*="createAccount" i], button:has-text("Create Account"), button:has-text("Register"), button:has-text("Sign Up"), button:has-text("Create")').first()
-              : page.locator('[data-automation-id="signInSubmitButton"], [data-automation-id*="signIn" i], button:has-text("Sign In"), button:has-text("Log In")').first();
-
-            if (await submitBtn.count() === 0) {
-              submitBtn = page.locator('button[type="submit"], input[type="submit"], [data-automation-id="createAccountSubmitButton"], [data-automation-id="signInSubmitButton"], [data-automation-id*="createAccount" i], [data-automation-id*="signIn" i], [data-automation-id*="submit" i], button:has-text("Create Account"), button:has-text("Sign In"), button:has-text("Register"), button:has-text("Log In"), button:has-text("Submit"), button:has-text("Continue")').first();
-            }
-
-            if (await submitBtn.count() > 0) {
+            if (submitBtn) {
+              await submitBtn.scrollIntoViewIfNeeded().catch(() => {});
               await submitBtn.click({ force: true }).catch(() => {});
-              
-              // Wait up to 10 seconds for navigation or password field disappearance
+
+              // Wait up to 10 seconds for modal disappearance or page navigation
               for (let i = 0; i < 10; i++) {
                 await page.waitForTimeout(1000);
                 const isPasswordStillVisible = (await page.locator('input[type="password"]').count().catch(() => 0)) > 0;
                 if (!isPasswordStillVisible) {
-                  return; // Gate successfully cleared!
+                  // Check if page transitioned to an email verification prompt
+                  const pageText = await page.innerText('body').catch(() => '');
+                  const isEmailVerifyGate = /verify your email|verification email sent|check your inbox|activation link|enter the code|security code/i.test(pageText);
+                  if (isEmailVerifyGate) {
+                    throw new InterventionError(
+                      InterventionReason.LOGIN_REQUIRED,
+                      'A verification link or OTP code was sent to your email. Please click the link or paste the code in the drawer to resume.',
+                      currentUrl || fallbackUrl
+                    );
+                  }
+                  return; // Auth gate cleared!
                 }
               }
 
-              // Check if an error message is visible on the page
-              const errorEl = page.locator('[data-automation-id*="error" i], [data-automation-id="alert"], .error-msg, [aria-invalid="true"], [role="alert"], :has-text("already exists"), :has-text("Invalid user name"), :has-text("Password Requirements")').first();
+              // Check for explicit error message from portal
+              const errorEl = targetCtx.locator('[data-automation-id*="error" i], [data-automation-id="alert"], .error-msg, [aria-invalid="true"], [role="alert"], :has-text("already exists"), :has-text("Invalid user name"), :has-text("Password Requirements")').first();
               let errorDetails = '';
-              if (await errorEl.count() > 0) {
+              if (await errorEl.count() > 0 && (await errorEl.isVisible().catch(() => false))) {
                 const text = await errorEl.textContent().catch(() => '');
                 if (text && text.trim().length > 0) {
                   const cleanText = text.trim().slice(0, 150);
                   if (/already exists/i.test(cleanText)) {
-                    errorDetails = ` An account with this email already exists on ${platformDisplayName}. Please select "Yes, sign me in" to use your existing password.`;
+                    errorDetails = `An account with this email already exists on ${platformDisplayName}. Please select "Yes, Sign In" to enter your existing password.`;
                   } else if (/invalid|incorrect/i.test(cleanText)) {
-                    errorDetails = ` Invalid email or password reported by ${platformDisplayName}. Please check your credentials.`;
+                    errorDetails = `Invalid email or password reported by ${platformDisplayName}. Please check your credentials.`;
                   } else {
-                    errorDetails = ` Portal notice: "${cleanText}"`;
+                    errorDetails = `Portal message: "${cleanText}"`;
                   }
                 }
               }
 
               throw new InterventionError(
                 InterventionReason.LOGIN_REQUIRED,
-                errorDetails ? `Authentication issue: ${errorDetails.trim()}` : `Attempted candidate account entry, but the account gate on ${platformDisplayName} is still active. Please verify your credentials or finish manually.`,
+                errorDetails || `Attempted ${authMode === 'create_account' ? 'account creation' : 'sign in'}, but the account gate on ${platformDisplayName} is still active. Please verify your credentials or complete manually.`,
                 currentUrl || fallbackUrl
               );
             }
           }
         } catch (authErr) {
           if (authErr instanceof InterventionError) throw authErr;
-          // Automated credential entry encountered error — fallback to intervention
+          console.warn('[checkAccountGate] Automated entry attempt error:', authErr);
         }
       }
 
