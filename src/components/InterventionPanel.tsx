@@ -155,6 +155,7 @@ export function InterventionPanel({
 
   const cleanDescription = (description || '').replace(/\[QUESTION_DATA:.*?\]\s*/g, '').trim();
   const [customAnswer, setCustomAnswer] = useState<string>('');
+  const [emailVerificationCode, setEmailVerificationCode] = useState<string>('');
 
   useEffect(() => {
     setMounted(true);
@@ -219,8 +220,8 @@ export function InterventionPanel({
           ...extraData,
         }),
       });
-    } catch (e) {
-      console.error('[InterventionPanel] Failed to save settings:', e);
+    } catch {
+      // Non-fatal
     }
   }
 
@@ -847,6 +848,30 @@ export function InterventionPanel({
                         </button>
                       </div>
                     </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Email Verification Link or OTP Code (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={emailVerificationCode}
+                      onChange={(e) => setEmailVerificationCode(e.target.value)}
+                      placeholder="Paste activation URL or enter 6-digit code..."
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        width: '100%',
+                      }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      If {portalDisplayName} sent a verification link or code to your email, paste it here to automatically complete verification.
+                    </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>

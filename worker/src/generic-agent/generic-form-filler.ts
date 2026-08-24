@@ -417,18 +417,55 @@ export class GenericFormFiller {
   /**
    * Checks if application is multi-step and clicks Next/Continue.
    */
+  /**
+   * Checks if application is multi-step and iteratively advances steps up to 6 times.
+   */
   private async advanceMultiStepWizardIfPresent(
     browser: BrowserSession,
     context: WorkflowContext,
     logger: ExecutionLogger
   ): Promise<void> {
     const page = browser.page;
-    const nextBtn = page.locator('button:has-text("Save and Continue"), button:has-text("Save & Continue"), button:has-text("Next Step"), button:has-text("Next")').first();
+    let stepCount = 1;
+    const maxSteps = 6;
 
-    if ((await nextBtn.count().catch(() => 0)) > 0 && (await nextBtn.isVisible().catch(() => false))) {
-      await logger.info('wizard_step', 'Multi-step wizard next button detected — advancing step');
-      await safeClick(page, nextBtn, { actionName: 'wizard_advance' }, logger);
-      await page.waitForTimeout(2000);
+    while (stepCount <= maxSteps) {
+      // Check if a final submit button is already visible and enabled
+      const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:has-text("Submit Application"), button:has-text("Submit"), button:has-text("Finish")').first();
+      const hasFinalSubmit = (await submitBtn.count().catch(() => 0)) > 0 && (await submitBtn.isVisible().catch(() => false));
+
+      const nextBtn = page.locator('button, a[role="button"], input[type="button"]').filter({
+        hasText: /save and continue|save & continue|next step|next|continue to next|proceed to next/i,
+      }).first();
+
+      const hasNext = (await nextBtn.count().catch(() => 0)) > 0 && (await nextBtn.isVisible().catch(() => false));
+
+      if (hasFinalSubmit && !hasNext) {
+        await logger.info('wizard_reached_final', `Reached final submission step of application wizard`);
+        break;
+      }
+
+      if (!hasNext) {
+        break;
+      }
+
+      await logger.info('wizard_step_advancing', `Advancing multi-step wizard (Step ${stepCount} -> ${stepCount + 1})`);
+      await safeClick(page, nextBtn, { actionName: `wizard_advance_step_${stepCount}` }, logger);
+      await page.waitForTimeout(2500);
+
+      // Re-scan and fill any new screening questions on subsequent step
+      const formCtx = await browser.findFormFrame(['input', 'select', 'textarea', 'form']);
+      await this.fillPersonalDetails(formCtx, context.userProfile, logger);
+      await this.answerStandardQuestions(formCtx, context.userProfile, logger);
+      await UniversalQuestionResolver.resolveAndFillQuestions(
+        formCtx,
+        browser,
+        context,
+        logger,
+        logger.getApiClient()
+      );
+
+      stepCount++;
     }
   }
 

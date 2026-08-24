@@ -23,7 +23,12 @@ export async function POST(
   const { id: interventionId } = await params;
   const userId = session.user.id;
 
-  let body: { resolution: 'completed' | 'skipped' | 'cancelled' };
+  let body: {
+    resolution: 'completed' | 'skipped' | 'cancelled';
+    verificationUrl?: string;
+    otp?: string;
+    token?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -93,11 +98,30 @@ export async function POST(
 
     // Update autoApplySession status accordingly
     if (body.resolution === 'completed') {
+      const sessionRec = await prisma.autoApplySession.findUnique({
+        where: { id: intervention.sessionId },
+        select: { browserMetadata: true },
+      });
+      const existingMetadata = (sessionRec?.browserMetadata as Record<string, any>) || {};
+      const updatedMetadata = (body.verificationUrl || body.otp || body.token)
+        ? {
+            ...existingMetadata,
+            emailVerification: {
+              receivedAt: new Date().toISOString(),
+              primaryUrl: body.verificationUrl || null,
+              otp: body.otp || null,
+              token: body.token || null,
+              source: 'intervention_resolve_ui',
+            },
+          }
+        : existingMetadata;
+
       await prisma.autoApplySession.update({
         where: { id: intervention.sessionId },
         data: {
           status: 'applying',
           currentStep: 'resuming',
+          browserMetadata: updatedMetadata,
         },
       });
     } else {

@@ -156,6 +156,28 @@ export class RailwayAPIClient {
     return res.json() as Promise<InterventionStatus>;
   }
 
+  // ─── Email Verification ───────────────────────────────────────────────────
+
+  /**
+   * Check if an email verification link or OTP has been intercepted.
+   */
+  async checkEmailToken(sessionId: string): Promise<{
+    received: boolean;
+    verificationData?: {
+      primaryUrl?: string | null;
+      urls?: string[];
+      otp?: string | null;
+      token?: string | null;
+    } | null;
+  }> {
+    const res = await this.request(
+      'GET',
+      `/api/worker/sessions/${sessionId}/email-token`
+    );
+    if (!res.ok) throw new APIError('checkEmailToken', res.status, await res.text());
+    return res.json();
+  }
+
   // ─── Heartbeat ────────────────────────────────────────────────────────────
 
   /**
