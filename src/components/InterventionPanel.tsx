@@ -625,54 +625,8 @@ export function InterventionPanel({
         </>
       ) : (
         <>
-          {/* Job Board Session Required: Inline Connect Flow */}
-          {isJobBoardAuthReason && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                background: 'var(--accent-glow, rgba(0, 112, 243, 0.08))',
-                border: '1px solid var(--border-glass)',
-                borderRadius: '10px',
-                padding: '1.15rem 1.25rem',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-                <div>
-                  <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Key size={18} color="var(--accent-primary, #0070f3)" /> Connect {providerInfo.name} Account
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                    {isJobBoardConnected
-                      ? `${providerInfo.name} session connected! Click Resume Automation below to continue.`
-                      : `${providerInfo.name} requires an account connection before JAHQ can submit your application.`}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => setIsConnectModalOpen(true)}
-                  style={{
-                    padding: '0.6rem 1.1rem',
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    background: isJobBoardConnected ? 'var(--success, #10b981)' : 'var(--primary)',
-                  }}
-                  id={`intervention-connect-${providerInfo.id}-${interventionId}`}
-                >
-                  {isJobBoardConnected ? <Check size={16} /> : <Key size={16} />}
-                  {isJobBoardConnected ? 'Session Connected' : `Connect ${providerInfo.name} Account`}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Candidate Account Required: User Choice Flow */}
-          {isAtsAuthReason && (
+          {/* Candidate / Job Board Account Required: User Choice Flow */}
+          {isAuthReason && (
             <div
               style={{
                 display: 'flex',
@@ -686,7 +640,7 @@ export function InterventionPanel({
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <Key size={16} color="var(--accent-primary, #3b82f6)" /> Candidate Account Option
+                  <Key size={16} color="var(--accent-primary, #3b82f6)" /> {providerInfo ? `${providerInfo.name} Account Option` : 'Candidate Account Option'}
                 </label>
                 <div className="auto-apply-button-group" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
@@ -740,17 +694,16 @@ export function InterventionPanel({
                 <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                   {accountMode === 'sign_in' ? (
                     <>
-                      <li>Enter the email and password for your existing candidate account on {portalDisplayName}.</li>
-                      <li>JAHQ will sign in securely to complete and submit your job application.</li>
+                      <li>Enter the email and password for your account on {providerInfo ? providerInfo.name : portalDisplayName}.</li>
+                      <li>JAHQ will sign in securely on a residential proxy connection to complete and submit your application.</li>
                     </>
                   ) : (
                     <>
-                      <li>{portalDisplayName} requires a candidate account before continuing.</li>
+                      <li>{providerInfo ? providerInfo.name : portalDisplayName} requires a candidate account before continuing.</li>
                       <li>Enter your email and desired password. JAHQ will register the account and resume automation.</li>
-                      <li>Passwords typically require 8+ characters including an uppercase letter, lowercase letter, number, and special character.</li>
                     </>
                   )}
-                  <li>Credentials are stored securely in your profile for future applications on {portalDisplayName}.</li>
+                  <li>Credentials are stored securely in your profile for future 1-click applications.</li>
                 </ul>
               </div>
             </div>
@@ -804,7 +757,7 @@ export function InterventionPanel({
             </div>
           </div>
 
-          {(isAtsAuthReason || showAuthForm) && !loadingSettings && (
+          {(isAuthReason || showAuthForm) && !loadingSettings && (
             <div
               style={{
                 background: 'var(--secondary, var(--card-header-bg))',
@@ -820,14 +773,14 @@ export function InterventionPanel({
                 <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
                   <Key size={17} color="var(--accent-primary, #3b82f6)" />
                   {isAuthReason
-                    ? (accountMode === 'sign_in' ? 'Sign in to Candidate Account' : 'Create Candidate Account')
+                    ? (accountMode === 'sign_in' ? `Sign in to ${providerInfo ? providerInfo.name : 'Candidate'} Account` : `Create ${providerInfo ? providerInfo.name : 'Candidate'} Account`)
                     : 'Complete Application Settings'}
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
                   {isAuthReason
                     ? (accountMode === 'sign_in'
-                        ? 'Enter the credentials for your existing account so JAHQ can sign in and continue your application.'
-                        : `${portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using these credentials, then resume your application.`)
+                        ? `Enter the credentials for your ${providerInfo ? providerInfo.name : portalDisplayName} account so JAHQ can sign in and continue your application.`
+                        : `${providerInfo ? providerInfo.name : portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using these credentials, then resume your application.`)
                     : 'Please provide missing authorization and demographic details so JAHQ can answer required application questions. These will be saved to your profile for future applications.'}
                 </p>
               </div>
@@ -1397,7 +1350,7 @@ export function InterventionPanel({
                 <button
                   className="btn-primary"
                   onClick={() => resolve('completed')}
-                  disabled={resolving || (isAtsAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress))}
+                  disabled={resolving || (isAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress))}
                   style={{
                     flex: 2,
                     minWidth: '180px',
