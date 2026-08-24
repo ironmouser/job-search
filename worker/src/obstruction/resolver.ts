@@ -240,6 +240,123 @@ export class UIObstructionResolver {
     '.popup-close',
   ];
 
+  public static readonly RESUME_CHOICE_POSITIVE_SELECTORS = [
+    'button:has-text("I have a resume")',
+    'button:has-text("I have an updated resume")',
+    '[role="button"]:has-text("I have a resume")',
+    '[role="button"]:has-text("I have an updated resume")',
+    'a:has-text("I have a resume")',
+    'a:has-text("I have an updated resume")',
+    'button:has-text("Continue with resume")',
+    'button:has-text("Upload resume")',
+    'button:has-text("Upload my resume")',
+    '[role="button"]:has-text("Upload resume")',
+    'button:has-text("Continue without documents")',
+    '[role="button"]:has-text("Continue without documents")',
+    'a:has-text("Continue without documents")',
+    'button:has-text("Continue without resume")',
+    'button:has-text("Continue application")',
+    '[role="button"]:has-text("Continue application")',
+    'button:has-text("Apply with resume")',
+    'button:has-text("Yes, I have a resume")',
+    'button:has-text("Use existing resume")',
+    '[aria-label*="I have a resume" i]',
+    '[aria-label*="Upload resume" i]',
+    '[data-testid*="have-resume" i]',
+    '[data-action*="have-resume" i]',
+    // Clickable container card fallback
+    'div:has-text("I have a resume"):not(:has(div:has-text("I have a resume")))',
+  ];
+
+  /**
+   * Attempts to dismiss any active modal on screen (Close button -> Escape -> Backdrop).
+   * Used when the bot is stuck inside an unknown or unfillable modal before failing.
+   */
+  static async dismissAnyOpenModal(
+    pageOrFrame: PageOrFrame,
+    logger?: ExecutionLogger
+  ): Promise<boolean> {
+    const page =
+      typeof (pageOrFrame as any).page === 'function'
+        ? (pageOrFrame as any).page()
+        : pageOrFrame;
+
+    if (logger) {
+      await logger.info('modal_stuck_recovery', 'Attempting fallback dismissal of stuck/blocking modal...');
+    }
+
+    // 1. Try finding and clicking close controls inside the modal
+    const closeClicked = await this.findAndClickSelectors(pageOrFrame, this.GENERIC_CLOSE_SELECTORS);
+    if (closeClicked) {
+      await this.waitForActionabilitySettle(pageOrFrame, 500);
+      if (logger) await logger.info('modal_stuck_recovery', 'Successfully clicked close button in modal.');
+      return true;
+    }
+
+    // 2. Try modal header/corner close buttons specifically
+    const modalCloseSelectors = [
+      '[role="dialog"] button:has(svg)',
+      '[role="dialog"] [class*="close" i]',
+      '[role="dialog"] [aria-label*="close" i]',
+      '[role="dialog"] button:has-text("✕")',
+      '[role="dialog"] button:has-text("×")',
+      '.modal button:has(svg)',
+      '.modal [class*="close" i]',
+    ];
+    const headerCloseClicked = await this.findAndClickSelectors(pageOrFrame, modalCloseSelectors);
+    if (headerCloseClicked) {
+      await this.waitForActionabilitySettle(pageOrFrame, 500);
+      if (logger) await logger.info('modal_stuck_recovery', 'Successfully clicked modal close button.');
+      return true;
+    }
+
+    // 3. Try keyboard Escape
+    try {
+      if ('keyboard' in page) {
+        await page.keyboard.press('Escape');
+      } else if ('evaluate' in pageOrFrame) {
+        await pageOrFrame.evaluate(() => {
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+          window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', bubbles: true }));
+        });
+      }
+      await this.waitForActionabilitySettle(pageOrFrame, 400);
+      if (logger) await logger.info('modal_stuck_recovery', 'Sent Escape key to dismiss modal.');
+      return true;
+    } catch {}
+
+    return false;
+  }
+
+  /**
+   * Checks if an application onboarding resume choice modal is present on screen
+   * and automatically clicks the positive "I have a resume" option to progress the application.
+   */
+  static async handleResumeChoiceModalIfPresent(
+    pageOrFrame: PageOrFrame,
+    logger?: ExecutionLogger
+  ): Promise<boolean> {
+    try {
+      for (const sel of this.RESUME_CHOICE_POSITIVE_SELECTORS) {
+        try {
+          const loc = pageOrFrame.locator(sel).first();
+          if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+            if (logger) {
+              await logger.info('resume_choice_modal', `Detected application onboarding resume choice modal — selecting positive option: "${sel}"`);
+            }
+            await loc.scrollIntoViewIfNeeded().catch(() => {});
+            await loc.click({ timeout: 3000 }).catch(async () => {
+              await loc.evaluate((el: HTMLElement) => el.click());
+            });
+            await this.waitForActionabilitySettle(pageOrFrame, 500);
+            return true;
+          }
+        } catch {}
+      }
+    } catch {}
+    return false;
+  }
+
   /**
    * Attempts to resolve an obstruction on a target element using
    * approved user-equivalent actions within a bounded attempt budget.
@@ -252,6 +369,36 @@ export class UIObstructionResolver {
     maxAttempts = 3
   ): Promise<RecoveryResult> {
     const obstructionType = obstruction.classification.type;
+
+    // ─── Special Dedicated Handling for Application Flow / Onboarding Modals ─
+    if (obstructionType === ObstructionType.APPLICATION_FLOW_MODAL) {
+      if (logger) {
+        await logger.info(
+          'ui_obstruction_detected',
+          `Target control is obstructed by an Application Flow / Onboarding modal (${obstruction.classification.reason}). Selecting positive option...`
+        );
+      }
+      const choiceClicked = await this.handleResumeChoiceModalIfPresent(pageOrFrame, logger);
+      if (choiceClicked) {
+        await this.waitForActionabilitySettle(pageOrFrame, 500);
+        const check = await UIObstructionDetector.checkActionability(pageOrFrame, target);
+        return {
+          success: check.visible && check.enabled && !check.isObstructed,
+          actionTaken: ObstructionDismissalAction.SELECT_POSITIVE_OPTION,
+          attemptsCount: 1,
+          obstructionType,
+          finalActionable: check.visible && check.enabled && !check.isObstructed,
+        };
+      }
+      return {
+        success: false,
+        actionTaken: ObstructionDismissalAction.NONE,
+        attemptsCount: 1,
+        obstructionType,
+        finalActionable: false,
+        error: 'Application flow modal requires selection but positive resume option could not be located',
+      };
+    }
 
     // Strict boundary: Never attempt to dismiss or bypass security or authentication barriers
     if (!obstruction.classification.isSafeToDismiss) {

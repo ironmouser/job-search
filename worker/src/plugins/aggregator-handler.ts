@@ -157,13 +157,22 @@ export class AggregatorHandler {
             currentUrl
           );
         }
-        if (pageObstruction.classification.isSafeToDismiss) {
+        if (type === ObstructionType.APPLICATION_FLOW_MODAL) {
+          await logger.info(
+            'destination_discovery',
+            `Application flow / resume choice modal detected: ${pageObstruction.classification.reason}. Selecting positive option...`
+          );
+          await UIObstructionResolver.handleResumeChoiceModalIfPresent(page, logger);
+        } else if (pageObstruction.classification.isSafeToDismiss) {
           await logger.info(
             'destination_discovery',
             `Active non-critical obstruction detected on page: ${type}. Attempting safe recovery...`
           );
           await UIObstructionResolver.resolveObstruction(page, page.locator('body'), pageObstruction, logger);
         }
+      } else {
+        // Proactively check if a resume choice modal is present without explicit obstruction flag
+        await UIObstructionResolver.handleResumeChoiceModalIfPresent(page, logger);
       }
     } catch (err: any) {
       if (err instanceof InterventionError) throw err;
@@ -475,7 +484,7 @@ export class AggregatorHandler {
     reports: CandidateReport[]
   ): Promise<DomDiscoveryResult> {
     const page = browser.page;
-    const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|submit application|easy apply|quick apply|apply with resume|apply online|continue to application|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
+    const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|start your application|start my application|begin application|submit application|easy apply|quick apply|apply with resume|apply online|continue to (application|employer|company)|proceed to application|i'm interested|i am interested|interested in (this )?(job|role|position)?|express interest|i have a resume|i have an updated resume|continue with resume|upload resume|yes,? i have a resume|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
     const BUTTON_BLOCKLIST_REGEX = /\b(next|back|previous|save|cancel|skip|draft|create alert|share|report|follow|bookmark|return to search|back to search)\b/i;
 
     const candidateSelector = 'a, button, [role="button"], [role="link"], input[type="button"], input[type="submit"], [data-automation-id*="apply" i], [data-tracking-control-name*="apply" i], [id*="apply" i], [class*="apply" i], [data-url], [data-href], [data-apply-url], [data-job-url]';
@@ -571,8 +580,8 @@ export class AggregatorHandler {
             }
           } else {
             // Candidate has no extractable URL — save for Click + Observe fallback with priority ranking
-            const hasExactApplyText = /^(apply(\s+now)?|apply for this job|apply directly|apply on (employer|company) site|easy apply|quick apply)\b/i.test(text) ||
-              /^(apply(\s+now)?|apply for this job)\b/i.test(ariaLabel);
+            const hasExactApplyText = /^(apply(\s+now)?|apply for this job|apply directly|apply on (employer|company) site|easy apply|quick apply|i'm interested|i am interested|interested|i have a resume)\b/i.test(text) ||
+              /^(apply(\s+now)?|apply for this job|i'm interested|i am interested)\b/i.test(ariaLabel);
             const hasApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
             const hasApplyAttr = /apply/i.test(`${id} ${className} ${dataTracking}`);
 
@@ -612,6 +621,15 @@ export class AggregatorHandler {
     const modalReports: CandidateReport[] = [];
 
     await logger.info('destination_discovery', `${passLabel}: Scanning modal for application destinations...`);
+
+    // Proactively check if this modal is a resume choice / onboarding dialog ("I have a resume" vs "I need a resume")
+    const resumeChoiceClicked = await UIObstructionResolver.handleResumeChoiceModalIfPresent(page, logger);
+    if (resumeChoiceClicked) {
+      await logger.info('application_navigation', `${passLabel}: Successfully selected 'I have a resume' in onboarding modal.`);
+      await page.waitForTimeout(1000);
+      const newUrl = browser.page.url();
+      if (newUrl !== sourceBoardUrl) return true;
+    }
 
     const modalSelector = 'div[role="dialog"], [aria-modal="true"], .sign-up-modal, [class*="modal"], .popup, [class*="dialog"]';
     const modalElements = await page.$$(modalSelector).catch(() => []);
@@ -744,6 +762,14 @@ export class AggregatorHandler {
         await page.close().catch(() => {});
         return true;
       }
+      await page.waitForTimeout(1000);
+      const newUrl = browser.page.url();
+      if (newUrl !== sourceBoardUrl) return true;
+    }
+
+    // Fallback: If no action or link in modal succeeded, attempt dismissal to reveal underlying page
+    const dismissed = await UIObstructionResolver.dismissAnyOpenModal(page, logger);
+    if (dismissed) {
       await page.waitForTimeout(1000);
       const newUrl = browser.page.url();
       if (newUrl !== sourceBoardUrl) return true;

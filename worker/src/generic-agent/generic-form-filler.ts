@@ -37,6 +37,9 @@ export class GenericFormFiller {
     // Dismiss any active cookie or privacy banner before finding form controls
     await UIObstructionResolver.dismissCookieBannerIfPresent(page, logger);
 
+    // Resolve any active onboarding resume selection modal if present
+    await UIObstructionResolver.handleResumeChoiceModalIfPresent(page, logger);
+
     const formCtx = await browser.findFormFrame([
       'input[type="file"]',
       'input[name*="email" i]',

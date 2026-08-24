@@ -273,4 +273,28 @@ describe('UIObstructionClassifier', () => {
     assert.strictEqual(res.type, ObstructionType.UNKNOWN_OVERLAY);
     assert.strictEqual(res.isSafeToDismiss, false);
   });
+
+  it('classifies application onboarding / resume choice modals as APPLICATION_FLOW_MODAL (must not dismiss via X/Escape)', () => {
+    const res = UIObstructionClassifier.classify({
+      blockingElement: {
+        tag: 'div',
+        role: 'dialog',
+        id: 'start-app-modal',
+        className: 'modal-dialog focus-modal',
+        text: 'Start your application\nI have a resume >\nI need a resume >',
+        zIndex: 9999,
+        position: 'fixed',
+        opacity: 1,
+        pointerEvents: 'auto',
+        ariaModal: true,
+        isDialog: true,
+        isInViewport: true,
+        boundingBox: { x: 200, y: 200, width: 400, height: 250 },
+      },
+    });
+
+    assert.strictEqual(res.type, ObstructionType.APPLICATION_FLOW_MODAL);
+    assert.strictEqual(res.isSafeToDismiss, false);
+    assert.strictEqual(UIObstructionClassifier.isSafe(res.type), false);
+  });
 });

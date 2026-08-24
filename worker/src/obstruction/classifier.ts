@@ -302,7 +302,34 @@ export class UIObstructionClassifier {
       };
     }
 
-    // ─── 7. Non-Critical Dialogs vs Unknown Overlays ─────────────────────────
+    // ─── 7. Application Flow / Resume Choice Dialogs (MUST NOT CLOSE VIA X/ESCAPE) ──
+    const appFlowKeywords = [
+      'start your application',
+      'start my application',
+      'start application',
+      'i have a resume',
+      'i have an updated resume',
+      'i need a resume',
+      'how would you like to apply',
+      'choose how to apply',
+      'choose application method',
+      'apply with resume',
+      'upload resume to apply',
+      'do you have a resume',
+      'continue with resume',
+    ];
+    const matchedAppFlow = appFlowKeywords.filter((kw) => combinedText.includes(kw));
+    if (matchedAppFlow.length > 0) {
+      return {
+        type: ObstructionType.APPLICATION_FLOW_MODAL,
+        isSafeToDismiss: false,
+        confidence: 95,
+        reason: `Detected application flow / resume selection dialog: ${matchedAppFlow.join(', ')}`,
+        detectedKeywords: matchedAppFlow,
+      };
+    }
+
+    // ─── 8. Non-Critical Dialogs vs Unknown Overlays ─────────────────────────
     const isDialogStructure =
       blockingElement?.isDialog ||
       modalContainer?.isDialog ||

@@ -12,6 +12,9 @@ import { Frame, Locator, Page } from 'playwright';
 export enum ObstructionType {
   NONE = 'NONE',
 
+  // Application flow / Onboarding dialogs (must NOT be dismissed via escape/close; proceed via positive selection)
+  APPLICATION_FLOW_MODAL = 'APPLICATION_FLOW_MODAL',
+
   // Safe dismissible modals & overlays
   MARKETING_MODAL = 'MARKETING_MODAL',
   NEWSLETTER_MODAL = 'NEWSLETTER_MODAL',
@@ -44,6 +47,7 @@ export enum ObstructionDismissalAction {
   NECESSARY_ONLY = 'NECESSARY_ONLY',
   FUNCTIONAL_ONLY = 'FUNCTIONAL_ONLY',
   ACCEPT_FALLBACK = 'ACCEPT_FALLBACK',
+  SELECT_POSITIVE_OPTION = 'SELECT_POSITIVE_OPTION',
   DOM_NEUTRALIZED = 'DOM_NEUTRALIZED',
 }
 

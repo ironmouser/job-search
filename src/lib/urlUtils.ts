@@ -237,6 +237,19 @@ export const AGGREGATOR_DOMAINS = [
   'builtinchicago.com',
   'builtincolorado.com',
   'builtintexas.com',
+  'jobleads.com',
+  'jobleads.co',
+  'jobleads.de',
+  'jobleads.co.uk',
+  'jobleads.fr',
+  'jobleads.ch',
+  'jobleads.at',
+  'jobleads.be',
+  'jobleads.nl',
+  'jobleads.es',
+  'jobleads.it',
+  'jobleads.ca',
+  'jobleads.com.au',
 ];
 
 export function isAggregatorUrl(url?: string | null): boolean {

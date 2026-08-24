@@ -19,7 +19,7 @@ import {
 import { ExecutionLogger } from '../execution-logger';
 import { normalizeUrl } from '../utils/destination-validator';
 
-const POSITIVE_APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company site|apply directly|start application|begin application|submit application|continue to application|proceed to application|apply with resume|apply online|go to application|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
+const POSITIVE_APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company site|apply directly|start application|start your application|start my application|begin application|submit application|continue to application|proceed to application|apply with resume|apply online|go to application|i'm interested|i am interested|interested in (this )?(job|role|position)?|express interest|i have a resume|i have an updated resume|continue with resume|continue without documents|continue without (a )?resume|continue application|upload resume|upload your resume|yes,? i have a resume|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
 
 const NEGATIVE_TEXT_REGEX = /\b(apply (filter|filters|coupon|promo|code|discount|search|changes|settings|preferences|sort|tags)|clear filters|reset filters|save search|subscribe|job alerts?)\b/i;
 
@@ -475,7 +475,7 @@ export class GenericPageAnalyzer {
 
       // 1. Positive semantic text check
       if (POSITIVE_APPLY_TEXT_REGEX.test(allText)) {
-        if (/apply now|start application|begin application|apply for this job|apply directly/i.test(allText)) {
+        if (/apply now|start application|start your application|start my application|begin application|apply for this job|apply directly|i'm interested|i am interested|interested|i have a resume|i have an updated resume|continue without documents|continue without resume|continue application/i.test(allText)) {
           score += 65;
           positiveSignals.push('text:explicit_apply_action');
         } else {

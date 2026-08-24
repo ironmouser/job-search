@@ -67,6 +67,52 @@ function runTests() {
   console.assert(nonApplyApiValidation.valid === false, `Expected non-apply API endpoint to be rejected, got ${nonApplyApiValidation.valid}`);
   console.log('✓ Test 5 Passed: Non-apply internal API endpoint correctly rejected');
 
+  // Test 6: Recognition of JobLeads as an aggregator domain
+  const { isAggregatorDomain, classifyCandidate, CandidateClassification } = require('../src/utils/destination-validator');
+  console.assert(isAggregatorDomain('https://www.jobleads.com/job/senior-product-owner-123') === true, 'Expected jobleads.com to be aggregator domain');
+  console.log('✓ Test 6 Passed: jobleads.com recognized as aggregator domain');
+
+  // Test 7: Classification of "I'm interested" apply button
+  const interestedCandidate = classifyCandidate({
+    text: "I'm interested",
+    href: '',
+    ariaLabel: "I'm interested",
+    title: '',
+    dataTracking: 'job-apply-cta',
+    id: 'btn-interest',
+    className: 'btn-primary apply-action',
+    tagName: 'button',
+    role: 'button',
+  }, 'https://www.jobleads.com/job/123');
+
+  console.assert(interestedCandidate.accepted === true, 'Expected I\'m interested button to be accepted');
+  console.assert(
+    interestedCandidate.classification === CandidateClassification.APPLICATION_ACTION_BUTTON,
+    `Expected APPLICATION_ACTION_BUTTON, got ${interestedCandidate.classification}`
+  );
+  console.log('✓ Test 7 Passed: "I\'m interested" button correctly accepted and classified as APPLICATION_ACTION_BUTTON');
+
+  // Test 8: Classification of "I have a resume" onboarding card
+  const resumeChoiceCandidate = classifyCandidate({
+    text: 'I have a resume >',
+    href: '',
+    ariaLabel: 'I have a resume',
+    title: '',
+    dataTracking: 'resume-choice-have',
+    id: 'option-have-resume',
+    className: 'choice-card',
+    tagName: 'button',
+    role: 'button',
+  }, 'https://www.jobleads.com/job/123');
+
+  console.assert(resumeChoiceCandidate.accepted === true, 'Expected I have a resume card to be accepted');
+  console.assert(
+    resumeChoiceCandidate.classification === CandidateClassification.APPLICATION_ACTION_BUTTON ||
+    resumeChoiceCandidate.classification === CandidateClassification.MODAL_CONTINUE_BUTTON,
+    `Expected application action/continue button, got ${resumeChoiceCandidate.classification}`
+  );
+  console.log('✓ Test 8 Passed: "I have a resume" option correctly accepted as application trigger');
+
   console.log('All destination extractor tests passed successfully!');
 }
 

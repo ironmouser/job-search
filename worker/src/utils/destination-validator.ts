@@ -108,6 +108,19 @@ const AGGREGATOR_DOMAINS = [
   'otta.com',
   'hiring.cafe',
   'levels.fyi',
+  'jobleads.com',
+  'jobleads.co',
+  'jobleads.de',
+  'jobleads.co.uk',
+  'jobleads.fr',
+  'jobleads.ch',
+  'jobleads.at',
+  'jobleads.be',
+  'jobleads.nl',
+  'jobleads.es',
+  'jobleads.it',
+  'jobleads.ca',
+  'jobleads.com.au',
 ];
 
 const LEGAL_PATHS = [
@@ -166,7 +179,7 @@ const NAV_PATHS = [
 
 const NAV_TEXT_REGEX = /\b(about us|contact us|home|pricing|our team|our story|browse jobs|view all jobs|back to jobs|back to search|create job alert|share this job|report this job|follow company|bookmark)\b/i;
 
-const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|submit application|continue to (application|employer|company)|proceed to application|apply with resume|apply online|go to application|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
+const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|start your application|start my application|begin application|submit application|continue to (application|employer|company)|proceed to application|apply with resume|apply online|go to application|i'm interested|i am interested|interested in (this )?(job|role|position)?|express interest|i have a resume|i have an updated resume|continue with resume|continue without documents|continue without (a )?resume|continue application|upload resume|upload your resume|yes,? i have a resume|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
 
 const AGGREGATOR_REDIRECT_URL_REGEX = /(externalApply|\/apply-redirect|\/rc\/clk|\/job\/apply|apply-link-offsite|\/jobs\/view\/apply|\/api\/jobs\/v\d+\/\d+\/apply|\/api\/jobs\/[^/]+\/apply)/i;
 const APPLICATION_INDICATOR_REGEX = /(\/apply|\/application|\/jobs\/apply|\/careers\/apply|\/job-application|\/job\/apply)/i;
@@ -336,7 +349,7 @@ export function classifyCandidate(
   }
 
   // ── 8. Continue to application buttons ───────────────────────────────────
-  const continueApplyRegex = /\b(continue to (application|employer|company|apply)|proceed to application|go to application|take me to application)\b/i;
+  const continueApplyRegex = /\b(continue to (application|employer|company|apply)|proceed to application|go to application|take me to application|continue without (documents|resume)|continue application)\b/i;
   if (continueApplyRegex.test(allText)) {
     if (resolvedHref && !isAggregatorDomain(resolvedHref) && resolvedHref.startsWith('http')) {
       return { classification: CandidateClassification.APPLICATION_LINK, accepted: true, reason: 'Continue link with external application URL', resolvedHref };

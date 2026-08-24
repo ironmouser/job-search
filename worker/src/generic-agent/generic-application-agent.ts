@@ -392,6 +392,26 @@ export class GenericApplicationAgent {
       }
 
       if (!controlSelected || !controlSelected.candidate || !controlSelected.locator) {
+        // If a modal or overlay is open, try dismissing it before declaring failure (many modals are dismissible)
+        const hasOpenModal = await page.evaluate(() => {
+          const modals = document.querySelectorAll('[role="dialog"], [aria-modal="true"], .modal, [class*="modal" i]');
+          for (const m of Array.from(modals)) {
+            const rect = m.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) return true;
+          }
+          return false;
+        }).catch(() => false);
+
+        if (hasOpenModal) {
+          await logger.info('stuck_modal_fallback', 'No controls found while a modal is visible — attempting to dismiss modal via close button or Escape...');
+          const dismissed = await UIObstructionResolver.dismissAnyOpenModal(page, logger);
+          if (dismissed) {
+            await page.waitForTimeout(600);
+            hop++;
+            continue;
+          }
+        }
+
         await telemetry.record(telemetry.buildEntry({
           currentState: stateMachine.current,
           previousState: stateMachine.previous,
@@ -450,7 +470,10 @@ export class GenericApplicationAgent {
             );
           }
 
-          if (obstruction.classification.isSafeToDismiss) {
+          if (obsType === ObstructionType.APPLICATION_FLOW_MODAL) {
+            await logger.info('obstruction_recovery', 'Application flow / resume choice modal detected. Selecting positive option...');
+            await UIObstructionResolver.resolveObstruction(page, targetLocator, obstruction, logger);
+          } else if (obstruction.classification.isSafeToDismiss) {
             await logger.info('obstruction_recovery', `Obstruction classified as ${obsType} (Safe to dismiss). Attempting recovery...`);
             const recovery = await UIObstructionResolver.resolveObstruction(page, targetLocator, obstruction, logger);
             if (!recovery.success) {
@@ -508,6 +531,9 @@ export class GenericApplicationAgent {
         await page.waitForTimeout(600);
       }
 
+      // Proactively handle resume choice onboarding modal if it opened upon clicking the button
+      await UIObstructionResolver.handleResumeChoiceModalIfPresent(page, logger);
+
       hop++;
     }
 
@@ -528,8 +554,16 @@ export class GenericApplicationAgent {
       `button:has-text("${textEscaped}")`,
       `a:has-text("${textEscaped}")`,
       `[role="button"]:has-text("${textEscaped}")`,
+      `div:has-text("${textEscaped}"):not(:has(div:has-text("${textEscaped}")))`,
       `input[type="submit"][value*="${textEscaped}" i]`,
       `input[type="button"][value*="${textEscaped}" i]`,
+      `button:has-text("I have a resume")`,
+      `[role="button"]:has-text("I have a resume")`,
+      `a:has-text("I have a resume")`,
+      `div:has-text("I have a resume"):not(:has(div:has-text("I have a resume")))`,
+      `button:has-text("I'm interested")`,
+      `[role="button"]:has-text("I'm interested")`,
+      `a:has-text("I'm interested")`,
       `button:has-text("Apply Now")`,
       `button:has-text("Apply")`,
       `a:has-text("Apply Now")`,
