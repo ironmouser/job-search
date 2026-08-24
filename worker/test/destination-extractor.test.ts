@@ -51,13 +51,21 @@ function runTests() {
   console.assert(validation.valid === true, `Expected validation to be true, got ${validation.valid}`);
   console.log('✓ Test 3 Passed: Datadog Greenhouse URL validated as legitimate application destination');
 
-  // Test 4: Rejection of internal SnagAJob API endpoint
+  // Test 4: Acceptance of SnagAJob apply redirect endpoint
   const snagApiValidation = isLegitimateApplicationDestination(
     'https://www.snagajob.com/api/jobs/v1/1278090288/apply',
     'https://snagajob.com/jobs/1278090288?searchResponseId=957f7ee2-a40f-4dde-83be-d1b57c8623ff'
   );
-  console.assert(snagApiValidation.valid === false, `Expected SnagAJob API endpoint to be rejected, got ${snagApiValidation.valid}`);
-  console.log('✓ Test 4 Passed: SnagAJob internal API endpoint correctly rejected as application destination');
+  console.assert(snagApiValidation.valid === true, `Expected SnagAJob apply redirect endpoint to be accepted, got ${snagApiValidation.valid}`);
+  console.log('✓ Test 4 Passed: SnagAJob apply redirect endpoint correctly recognized as application destination');
+
+  // Test 5: Rejection of non-apply internal API endpoint
+  const nonApplyApiValidation = isLegitimateApplicationDestination(
+    'https://www.snagajob.com/api/v1/user/tracking',
+    'https://snagajob.com/jobs/1278090288?searchResponseId=957f7ee2-a40f-4dde-83be-d1b57c8623ff'
+  );
+  console.assert(nonApplyApiValidation.valid === false, `Expected non-apply API endpoint to be rejected, got ${nonApplyApiValidation.valid}`);
+  console.log('✓ Test 5 Passed: Non-apply internal API endpoint correctly rejected');
 
   console.log('All destination extractor tests passed successfully!');
 }

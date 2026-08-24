@@ -168,7 +168,7 @@ const NAV_TEXT_REGEX = /\b(about us|contact us|home|pricing|our team|our story|b
 
 const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|submit application|continue to (application|employer|company)|proceed to application|apply with resume|apply online|go to application|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
 
-const AGGREGATOR_REDIRECT_URL_REGEX = /(externalApply|\/apply-redirect|\/rc\/clk|\/job\/apply|apply-link-offsite|\/jobs\/view\/apply)/i;
+const AGGREGATOR_REDIRECT_URL_REGEX = /(externalApply|\/apply-redirect|\/rc\/clk|\/job\/apply|apply-link-offsite|\/jobs\/view\/apply|\/api\/jobs\/v\d+\/\d+\/apply|\/api\/jobs\/[^/]+\/apply)/i;
 const APPLICATION_INDICATOR_REGEX = /(\/apply|\/application|\/jobs\/apply|\/careers\/apply|\/job-application|\/job\/apply)/i;
 const REDIRECT_PARAM_NAMES = ['url', 'redirect_url', 'redirect', 'dest', 'destination', 'to', 'continue', 'next', 'target', 'link', 'href'];
 
@@ -317,7 +317,12 @@ export function classifyCandidate(
   }
 
   // ── 7. Application action buttons (with or without extractable URL) ──────
-  if (APPLY_TEXT_REGEX.test(allText) || /apply/i.test(allAttrs)) {
+  // ── 7. Application action buttons (with or without extractable URL) ──────
+  const isExplicitApplyText = APPLY_TEXT_REGEX.test(allText);
+  const isApplyAttrOnly = !isExplicitApplyText && /apply/i.test(allAttrs);
+  const isBlocklistedText = /^(share|save|report|follow|bookmark|flag|close|back|cancel|return)\b/i.test(text);
+
+  if (isExplicitApplyText || (isApplyAttrOnly && !isBlocklistedText && text.length < 60)) {
     // If it has an external href pointing away from the job board, it's an APPLICATION_LINK
     if (resolvedHref && !isAggregatorDomain(resolvedHref) && resolvedHref.startsWith('http')) {
       return { classification: CandidateClassification.APPLICATION_LINK, accepted: true, reason: 'External link with apply-context text', resolvedHref };
@@ -385,9 +390,9 @@ export function isLegitimateApplicationDestination(
     return { valid: false, reason: 'URL points to a social media profile' };
   }
 
-  // Reject raw API endpoints (e.g. /api/jobs/..., /graphql) that are not web pages
+  // Reject raw API endpoints (e.g. /api/jobs/..., /graphql) that are not web pages, unless recognized aggregator redirect
   if (pathname.startsWith('/api/') || pathname.startsWith('/graphql') || targetHostname.startsWith('api.')) {
-    if (!isKnownATSDomain(targetUrl)) {
+    if (!isKnownATSDomain(targetUrl) && !AGGREGATOR_REDIRECT_URL_REGEX.test(targetUrl)) {
       return { valid: false, reason: `URL points to an internal API endpoint (${pathname}) rather than a web page` };
     }
   }

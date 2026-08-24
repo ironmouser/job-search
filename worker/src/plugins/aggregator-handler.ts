@@ -484,6 +484,7 @@ export class AggregatorHandler {
     let directUrl: string | null = null;
     let directUrlPriority = 0; // 3: DIRECT_ATS_LINK, 2: APPLICATION_LINK, 1: AGGREGATOR_REDIRECT
     let bestClickTarget: any = null;
+    let bestClickPriority = 0; // 3: Exact Apply button, 2: Apply text/aria, 1: Apply attribute
     let inPageAnchorTarget: any = null;
     let candidateIndex = reports.length;
 
@@ -569,11 +570,20 @@ export class AggregatorHandler {
               }
             }
           } else {
-            // Candidate has no extractable URL — save for Click + Observe fallback
+            // Candidate has no extractable URL — save for Click + Observe fallback with priority ranking
+            const hasExactApplyText = /^(apply(\s+now)?|apply for this job|apply directly|apply on (employer|company) site|easy apply|quick apply)\b/i.test(text) ||
+              /^(apply(\s+now)?|apply for this job)\b/i.test(ariaLabel);
             const hasApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
             const hasApplyAttr = /apply/i.test(`${id} ${className} ${dataTracking}`);
-            if ((hasApplyText || hasApplyAttr) && !bestClickTarget) {
+
+            let clickPriority = 0;
+            if (hasExactApplyText) clickPriority = 3;
+            else if (hasApplyText) clickPriority = 2;
+            else if (hasApplyAttr && !BUTTON_BLOCKLIST_REGEX.test(text) && text.length < 60) clickPriority = 1;
+
+            if (clickPriority > bestClickPriority) {
               bestClickTarget = el;
+              bestClickPriority = clickPriority;
             }
           }
         }
