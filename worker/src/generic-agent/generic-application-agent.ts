@@ -1,9 +1,14 @@
 /**
  * worker/src/generic-agent/generic-application-agent.ts
  *
- * GenericApplicationAgent — autonomous agent for unknown ATS platforms and custom employer portals.
- * Coordinates page analysis, control ranking, UI obstruction recovery, actionability validation,
- * security boundary enforcement, and application transition.
+ * GenericApplicationAgent — autonomous hybrid agent for unknown ATS platforms and custom employer portals.
+ *
+ * Architecture:
+ *  Tier 0: Strategy Memory (re-uses proven selectors/flows for known domains)
+ *  Tier 1: Deterministic DOM Analysis & Candidate Ranking
+ *  Tier 2: DeepSeek V4 Flash Semantic AXTree Reasoning (structured JSON actions)
+ *  Tier 3: Gemini Flash-Lite Visual Multimodal Fallback (screenshot coordinate validation)
+ *  Tier 4: Manual Intervention (unresolvable state, CAPTCHA, login walls)
  */
 
 import { Locator, Page } from 'playwright';
@@ -17,6 +22,29 @@ import {
   WorkflowResult,
 } from '../types';
 import { InterventionError, ATSPlugin } from '../plugins/base-plugin';
+import { agentConfig } from '../config';
+import {
+  ActionSource,
+  AgentActionType,
+  AgentDecision,
+  AgentState,
+  ApplicationControlCandidate,
+  PageAnalysisResult,
+  PageClassification,
+} from './types';
+import { GenericPageAnalyzer } from './page-analyzer';
+import { AXTreeBuilder } from './axtree-builder';
+import { DeepSeekNavigator } from './deepseek-navigator';
+import { GeminiVisualFallback } from './gemini-visual-fallback';
+import { AgentStateMachine } from './agent-state-machine';
+import { AgentTelemetry } from './agent-telemetry';
+import { StrategyMemory } from './strategy-memory';
+import {
+  UIObstructionDetector,
+  UIObstructionResolver,
+  ObstructionType,
+  safeClick,
+} from '../obstruction';
 
 class GenericAuthHelper extends ATSPlugin {
   readonly platform = ATSPlatform.UNKNOWN;
@@ -38,21 +66,9 @@ class GenericAuthHelper extends ATSPlugin {
     };
   }
 }
-import {
-  ApplicationControlCandidate,
-  PageAnalysisResult,
-  PageClassification,
-} from './types';
-import { GenericPageAnalyzer } from './page-analyzer';
-import {
-  UIObstructionDetector,
-  UIObstructionResolver,
-  ObstructionType,
-  safeClick,
-} from '../obstruction';
 
 export class GenericApplicationAgent {
-  private readonly MAX_INTERACTION_HOPS = 4;
+  private readonly maxHops: number = agentConfig.maxNavigationHops;
 
   /**
    * Analyzes the current page using deterministic multi-signal inspection.
@@ -83,12 +99,19 @@ export class GenericApplicationAgent {
     let page = browser.page;
     let hop = 0;
 
-    while (hop < this.MAX_INTERACTION_HOPS) {
-      const currentUrl = page.url();
-      await logger.info('agent_analysis', `Generic Application Agent inspecting page (Hop ${hop + 1}): ${currentUrl}`);
+    const stateMachine = new AgentStateMachine(AgentState.INITIALIZING);
+    const telemetry = new AgentTelemetry(context.sessionId, logger);
+    telemetry.markApplicationAttempted();
 
-      // 1. Analyze page structure & security boundaries
+    while (hop < this.maxHops) {
+      const hopStartTime = Date.now();
+      const currentUrl = page.url() || context.jobUrl || '';
+      await logger.info('agent_analysis', `Generic Application Agent inspecting page (Hop ${hop + 1}/${this.maxHops}): ${currentUrl}`);
+
+      // ─── Step 1: Analyze page structure & security boundaries ──────────────
       const analysis = await GenericPageAnalyzer.analyze(page, logger);
+      const classifiedState = AgentStateMachine.classifyFromPageAnalysis(analysis);
+      stateMachine.forceTransition(classifiedState, currentUrl, `Analysis classified as ${analysis.classification}`);
 
       await logger.info('page_classified', `Page classified as: ${analysis.classification} (Confidence: ${analysis.confidence}%)`, {
         classification: analysis.classification,
@@ -96,11 +119,20 @@ export class GenericApplicationAgent {
         reasons: analysis.reasons,
       });
 
-      // 2. Security & Auth boundary checks — MUST NOT BYPASS
+      // ─── Step 2: Security & Auth boundary checks — MUST NOT BYPASS ─────────
       if (analysis.securityBlocker) {
         const blocker = analysis.securityBlocker;
         if (blocker.type === 'CAPTCHA') {
-          await logger.warn('security_challenge', `Security challenge detected: CAPTCHA (${blocker.reason})`);
+          await telemetry.record(telemetry.buildEntry({
+            currentState: AgentState.CAPTCHA_REQUIRED,
+            previousState: stateMachine.previous,
+            url: currentUrl,
+            action: 'stop',
+            actionSource: 'deterministic',
+            reason: `Security challenge detected: CAPTCHA (${blocker.reason})`,
+            result: 'failed',
+            latencyMs: Date.now() - hopStartTime,
+          }));
           throw new InterventionError(
             InterventionReason.APPLICATION_BLOCKED_BY_CAPTCHA,
             `This application is blocked by a CAPTCHA security challenge (${blocker.reason}). Please solve the challenge in the browser window.`,
@@ -109,7 +141,16 @@ export class GenericApplicationAgent {
         }
 
         if (blocker.type === 'BOT_CHALLENGE') {
-          await logger.warn('security_challenge', `Security challenge detected: Bot Protection (${blocker.reason})`);
+          await telemetry.record(telemetry.buildEntry({
+            currentState: AgentState.BOT_CHALLENGE,
+            previousState: stateMachine.previous,
+            url: currentUrl,
+            action: 'stop',
+            actionSource: 'deterministic',
+            reason: `Security challenge detected: Bot Protection (${blocker.reason})`,
+            result: 'failed',
+            latencyMs: Date.now() - hopStartTime,
+          }));
           throw new InterventionError(
             InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
             `This portal is protected by a bot verification system (${blocker.reason}). Please complete verification manually.`,
@@ -134,7 +175,16 @@ export class GenericApplicationAgent {
             }
           }
 
-          await logger.warn('login_required', `Authentication required: ${blocker.reason}`);
+          await telemetry.record(telemetry.buildEntry({
+            currentState: AgentState.LOGIN_REQUIRED,
+            previousState: stateMachine.previous,
+            url: currentUrl,
+            action: 'stop',
+            actionSource: 'deterministic',
+            reason: `Authentication required: ${blocker.reason}`,
+            result: 'failed',
+            latencyMs: Date.now() - hopStartTime,
+          }));
           throw new InterventionError(
             InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,
             `This employer portal requires candidate sign in or account creation to apply (${blocker.reason}).`,
@@ -143,19 +193,215 @@ export class GenericApplicationAgent {
         }
       }
 
-      // 3. Check if we have arrived at an active application form or wizard
+      // ─── Step 3: Check if we have arrived at active application form ───────
       if (
         analysis.classification === PageClassification.APPLICATION_FORM ||
         analysis.classification === PageClassification.APPLICATION_CONTINUATION ||
         analysis.formPresence.hasForm ||
         (analysis.formPresence.hasResumeUpload && analysis.formPresence.inputCount >= 2)
       ) {
+        stateMachine.forceTransition(AgentState.APPLICATION_FORM, currentUrl, 'Application form reached');
+        await telemetry.record(telemetry.buildEntry({
+          currentState: AgentState.APPLICATION_FORM,
+          previousState: stateMachine.previous,
+          url: currentUrl,
+          action: 'classify',
+          actionSource: 'deterministic',
+          reason: 'Active application form confirmed',
+          result: 'success',
+          latencyMs: Date.now() - hopStartTime,
+        }));
         await logger.info('application_form_ready', 'Active application form confirmed — handing off to form filler');
+        
+        // Record learned strategy for this domain
+        await StrategyMemory.recordSuccess(currentUrl, {
+          flow: ['job_page', 'application_form'],
+        });
+
+        await telemetry.flushSessionMetrics();
         return { success: true, reachedForm: true };
       }
 
-      // 4. If no credible application controls found
-      if (!analysis.bestControl || analysis.bestControl.confidence < 45) {
+      // ─── Step 4: Tier 0 — Strategy Memory Lookup ────────────────────────────
+      let controlSelected: {
+        source: ActionSource;
+        candidate?: ApplicationControlCandidate;
+        locator?: Locator;
+        decision?: AgentDecision;
+      } | null = null;
+
+      const memoryEntry = await StrategyMemory.get(currentUrl);
+      if (memoryEntry && memoryEntry.applicationTriggerSelector) {
+        try {
+          const memLoc = page.locator(memoryEntry.applicationTriggerSelector).first();
+          if ((await memLoc.count()) > 0 && (await memLoc.isVisible())) {
+            await logger.info('strategy_memory_hit', `Reusing saved strategy for domain ${memoryEntry.domain}: selector "${memoryEntry.applicationTriggerSelector}"`);
+            controlSelected = {
+              source: 'strategy_memory',
+              locator: memLoc,
+              candidate: {
+                index: 0,
+                text: memoryEntry.applicationTriggerText || 'Apply',
+                ariaLabel: '',
+                role: 'button',
+                tagName: 'button',
+                href: null,
+                resolvedHref: null,
+                confidence: 95,
+                confidenceTier: 'HIGH',
+                positiveSignals: ['memory:domain_strategy'],
+                negativeSignals: [],
+                isButton: true,
+                isVisible: true,
+                isEnabled: true,
+                isInViewport: true,
+              },
+            };
+          }
+        } catch {
+          // Fall through to deterministic
+        }
+      }
+
+      // ─── Step 5: Tier 1 — Deterministic Selection ──────────────────────────
+      if (!controlSelected && analysis.bestControl && analysis.bestControl.confidence >= 75) {
+        const best = analysis.bestControl;
+        const loc = await this.locateTargetElement(page, best);
+        if (loc) {
+          controlSelected = {
+            source: 'deterministic',
+            candidate: best,
+            locator: loc,
+          };
+        }
+      }
+
+      // ─── Step 6: Tier 2 — DeepSeek AXTree Reasoning ────────────────────────
+      if (!controlSelected && agentConfig.aiNavigationEnabled && agentConfig.deepseekApiKey) {
+        await logger.info('ai_reasoning', 'Deterministic confidence is moderate/ambiguous — invoking DeepSeek AXTree navigation engine...');
+        const snapshot = await AXTreeBuilder.build(page);
+
+        const dsResult = await DeepSeekNavigator.decideAction(snapshot, stateMachine.current, {
+          jobTitle: analysis.pageMetadata.schemaJobTitle,
+        });
+
+        if (dsResult.decision.action === 'click' && dsResult.decision.target_id) {
+          const targetEl = AXTreeBuilder.findElementById(snapshot, dsResult.decision.target_id);
+          if (targetEl) {
+            const loc = await AXTreeBuilder.resolveLocator(page, targetEl);
+            if (loc && (await loc.isVisible().catch(() => false))) {
+              await logger.info('deepseek_decision', `DeepSeek selected ${targetEl.id} ("${targetEl.name}") with confidence ${dsResult.decision.confidence}`);
+              controlSelected = {
+                source: 'deepseek',
+                locator: loc,
+                decision: dsResult.decision,
+                candidate: {
+                  index: 0,
+                  text: targetEl.name,
+                  ariaLabel: targetEl.ariaLabel,
+                  role: targetEl.role,
+                  tagName: targetEl.tag,
+                  href: targetEl.href || null,
+                  resolvedHref: targetEl.href || null,
+                  confidence: Math.round(dsResult.decision.confidence * 100),
+                  confidenceTier: dsResult.decision.confidence >= 0.75 ? 'HIGH' : 'MEDIUM',
+                  positiveSignals: ['deepseek:axtree_reasoning'],
+                  negativeSignals: [],
+                  isButton: targetEl.role === 'button' || targetEl.tag === 'button',
+                  isVisible: true,
+                  isEnabled: targetEl.enabled,
+                  isInViewport: targetEl.inViewport,
+                },
+              };
+            }
+          }
+        } else if (dsResult.decision.action === 'manual_intervention' || dsResult.decision.action === 'stop') {
+          await telemetry.record(telemetry.buildEntry({
+            currentState: stateMachine.current,
+            previousState: stateMachine.previous,
+            url: currentUrl,
+            action: dsResult.decision.action,
+            actionSource: 'deepseek',
+            model: agentConfig.primaryAgentModel,
+            modelConfidence: dsResult.decision.confidence,
+            reason: dsResult.decision.reason,
+            result: 'failed',
+            latencyMs: Date.now() - hopStartTime,
+            deepseekPromptTokens: dsResult.promptTokens,
+            deepseekCompletionTokens: dsResult.completionTokens,
+          }));
+
+          throw new InterventionError(
+            InterventionReason.APPLICATION_NOT_FOUND,
+            `Navigation stopped by AI reasoning: ${dsResult.decision.reason}`,
+            currentUrl
+          );
+        }
+      }
+
+      // ─── Step 7: Tier 3 — Gemini Visual Multimodal Fallback ────────────────
+      if (!controlSelected && agentConfig.visionFallbackEnabled && agentConfig.geminiApiKey) {
+        await logger.info('gemini_visual_fallback', 'Semantic reasoning unresolved — invoking Gemini visual screenshot fallback...');
+        const geminiResult = await GeminiVisualFallback.decideVisualAction(page, stateMachine.current, {
+          jobTitle: analysis.pageMetadata.schemaJobTitle,
+        });
+
+        if (geminiResult.decision.action === 'click' && geminiResult.decision.x && geminiResult.decision.y) {
+          const clickRes = await GeminiVisualFallback.validateAndClickCoordinates(
+            page,
+            geminiResult.decision.x,
+            geminiResult.decision.y
+          );
+
+          if (clickRes.success) {
+            await telemetry.record(telemetry.buildEntry({
+              currentState: stateMachine.current,
+              previousState: stateMachine.previous,
+              url: currentUrl,
+              action: 'click',
+              actionSource: 'gemini',
+              model: agentConfig.visionFallbackModel,
+              modelConfidence: geminiResult.decision.confidence,
+              reason: geminiResult.decision.reason,
+              result: 'success',
+              latencyMs: Date.now() - hopStartTime,
+              geminiPromptTokens: geminiResult.promptTokens,
+              geminiCompletionTokens: geminiResult.completionTokens,
+            }));
+
+            await page.waitForTimeout(1000);
+            hop++;
+            continue;
+          }
+        }
+      }
+
+      // ─── Step 8: If still no credible control selected ────────────────────
+      if (!controlSelected || !controlSelected.candidate || !controlSelected.locator) {
+        // Fall back to lower confidence deterministic candidate if available
+        if (analysis.bestControl && analysis.bestControl.confidence >= 45) {
+          const loc = await this.locateTargetElement(page, analysis.bestControl);
+          if (loc) {
+            controlSelected = {
+              source: 'deterministic',
+              candidate: analysis.bestControl,
+              locator: loc,
+            };
+          }
+        }
+      }
+
+      if (!controlSelected || !controlSelected.candidate || !controlSelected.locator) {
+        await telemetry.record(telemetry.buildEntry({
+          currentState: stateMachine.current,
+          previousState: stateMachine.previous,
+          url: currentUrl,
+          action: 'stop',
+          actionSource: 'deterministic',
+          reason: 'No actionable application controls detected on this page',
+          result: 'failed',
+          latencyMs: Date.now() - hopStartTime,
+        }));
         await logger.warn('application_not_found', 'No actionable application controls detected on this page');
         throw new InterventionError(
           InterventionReason.APPLICATION_NOT_FOUND,
@@ -164,25 +410,16 @@ export class GenericApplicationAgent {
         );
       }
 
-      const best = analysis.bestControl;
-      await logger.info('control_selected', `Selected application control: "${best.text}" (Confidence: ${best.confidence}%, Tier: ${best.confidenceTier})`, {
+      const best = controlSelected.candidate;
+      const targetLocator = controlSelected.locator;
+
+      await logger.info('control_selected', `[${controlSelected.source}] Selected control: "${best.text}" (Confidence: ${best.confidence}%)`, {
         text: best.text,
         confidence: best.confidence,
-        signals: best.positiveSignals,
+        actionSource: controlSelected.source,
       });
 
-      // 5. Locate target element
-      const targetLocator = await this.locateTargetElement(page, best);
-      if (!targetLocator) {
-        await logger.warn('control_not_found', `Could not construct locator for control "${best.text}"`);
-        throw new InterventionError(
-          InterventionReason.APPLICATION_FOUND_BUT_NOT_ACTIONABLE,
-          `Found candidate Apply button ("${best.text}"), but could not interact with it.`,
-          currentUrl
-        );
-      }
-
-      // 6. Actionability & UI obstruction handling
+      // ─── Step 9: Actionability & UI Obstruction Handling ──────────────────
       await targetLocator.scrollIntoViewIfNeeded().catch(() => {});
 
       const actionability = await UIObstructionDetector.checkActionability(page, targetLocator);
@@ -223,7 +460,9 @@ export class GenericApplicationAgent {
         }
       }
 
-      // 7. Interact with target control (tracking new tab or SPA navigation)
+      // ─── Step 10: Interact with target control ─────────────────────────────
+      stateMachine.forceTransition(AgentState.CLICKING_APPLICATION_TRIGGER, currentUrl, `Clicking "${best.text}"`);
+
       const browserContext = page.context();
       const pagePromise = browserContext.waitForEvent('page', { timeout: 1500 }).catch(() => null);
       const navPromise = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 2000 }).catch(() => null);
@@ -244,7 +483,21 @@ export class GenericApplicationAgent {
         await targetLocator.evaluate((node: HTMLElement) => node.click()).catch(() => {});
       }
 
-      // 8. Detect resulting progress
+      await telemetry.record(telemetry.buildEntry({
+        currentState: AgentState.CLICKING_APPLICATION_TRIGGER,
+        previousState: stateMachine.previous,
+        url: currentUrl,
+        action: 'click',
+        actionSource: controlSelected.source,
+        modelConfidence: best.confidence,
+        deterministicScore: best.confidence,
+        targetElement: best.text,
+        reason: `Clicked application control: "${best.text}"`,
+        result: 'success',
+        latencyMs: Date.now() - hopStartTime,
+      }));
+
+      // ─── Step 11: Detect resulting progress ────────────────────────────────
       const newPage = await Promise.race([pagePromise, navPromise.then(() => null)]);
       if (newPage) {
         await logger.info('tab_switched', 'Application opened in a new browser tab — switching context');
@@ -258,7 +511,7 @@ export class GenericApplicationAgent {
       hop++;
     }
 
-    // Hand off to form filler after interaction loop
+    await telemetry.flushSessionMetrics();
     return { success: true, reachedForm: true };
   }
 

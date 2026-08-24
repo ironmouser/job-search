@@ -380,9 +380,15 @@ export class GenericPageAnalyzer {
         isInsideFooter: boolean;
         isInsideNav: boolean;
         isInsideHeader: boolean;
+        isInsideModal: boolean;
+        isInsideAd: boolean;
+        isInsideRelatedJobs: boolean;
+        isInsideSidebar: boolean;
+        isInsideJobContent: boolean;
         className: string;
         id: string;
         dataAutomation: string;
+        bbox: { x: number; y: number; width: number; height: number } | null;
       }> = [];
 
       const elements = Array.from(document.querySelectorAll('button, a, input[type="button"], input[type="submit"], [role="button"]'));
@@ -404,6 +410,11 @@ export class GenericPageAnalyzer {
         const isInsideFooter = !!el.closest('footer, .footer, #footer');
         const isInsideNav = !!el.closest('nav, .nav, .navigation, .navbar, #nav, #navigation');
         const isInsideHeader = !!el.closest('header, .header, #header');
+        const isInsideModal = !!el.closest('[role="dialog"], [aria-modal="true"], .modal, [class*="modal" i]');
+        const isInsideAd = !!el.closest('[class*="ad-" i], [id*="advertisement" i], [data-ad], .advertisement');
+        const isInsideRelatedJobs = !!el.closest('[class*="related" i][class*="job" i], [id*="related" i][id*="job" i], [class*="similar" i][class*="job" i]');
+        const isInsideSidebar = !!el.closest('aside, [role="complementary"], .sidebar, #sidebar');
+        const isInsideJobContent = !!el.closest('[class*="job" i], [class*="position" i], [class*="posting" i], [class*="description" i], main, [role="main"]');
 
         const className = el.className || '';
         const id = el.id || '';
@@ -411,6 +422,14 @@ export class GenericPageAnalyzer {
 
         // Ignore empty elements with no text and no aria-label
         if (!text && !ariaLabel && !dataAutomation && !href) return;
+
+        const rect = el.getBoundingClientRect();
+        const bbox = rect.width > 0 && rect.height > 0 ? {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        } : null;
 
         results.push({
           index: idx,
@@ -424,9 +443,15 @@ export class GenericPageAnalyzer {
           isInsideFooter,
           isInsideNav,
           isInsideHeader,
+          isInsideModal,
+          isInsideAd,
+          isInsideRelatedJobs,
+          isInsideSidebar,
+          isInsideJobContent,
           className: typeof className === 'string' ? className : '',
           id,
           dataAutomation,
+          bbox,
         });
       });
 
@@ -494,14 +519,39 @@ export class GenericPageAnalyzer {
         }
       }
 
-      // 5. Layout penalties (footer/nav/header)
+      // 5. Region signals & penalties
+      let region: import('./types').PageRegion = 'unknown';
+      if (c.isInsideHeader) {
+        region = 'job-header';
+        score += 10;
+        positiveSignals.push('region:job_header');
+      } else if (c.isInsideJobContent) {
+        region = 'job-content';
+        score += 10;
+        positiveSignals.push('region:job_content');
+      } else if (c.isInsideModal) {
+        region = 'modal';
+      }
+
       if (c.isInsideFooter) {
-        score -= 40;
+        region = 'footer';
+        score -= 50;
         negativeSignals.push('layout:inside_footer');
       }
       if (c.isInsideNav && !POSITIVE_APPLY_TEXT_REGEX.test(allText)) {
+        region = 'navigation';
         score -= 30;
         negativeSignals.push('layout:inside_nav');
+      }
+      if (c.isInsideAd) {
+        region = 'advertisement';
+        score -= 50;
+        negativeSignals.push('layout:inside_ad');
+      }
+      if (c.isInsideRelatedJobs) {
+        region = 'related-jobs';
+        score -= 35;
+        negativeSignals.push('layout:inside_related_jobs');
       }
 
       // If no positive apply signals were found at all, skip
@@ -528,6 +578,8 @@ export class GenericPageAnalyzer {
         isVisible: true,
         isEnabled: true,
         isInViewport: true,
+        region,
+        boundingBox: c.bbox,
       });
     }
 
