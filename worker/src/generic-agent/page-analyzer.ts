@@ -271,6 +271,12 @@ export class GenericPageAnalyzer {
 
     for (const frame of frames) {
       const presence = await frame.evaluate(() => {
+        const isObstructionOrNav = (el: Element) => {
+          return !!el.closest(
+            '#onetrust-consent-sdk, #onetrust-banner-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [class*="consent" i], [id*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy-banner" i], [id*="privacy-banner" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i], [class*="subscribe" i]'
+          );
+        };
+
         let totalInputs = 0;
         let hasResume = false;
         let hasCL = false;
@@ -279,25 +285,26 @@ export class GenericPageAnalyzer {
         let hasSubmit = false;
         let hasNext = false;
 
-        const fileInputs = document.querySelectorAll('input[type="file"]');
+        const fileInputs = Array.from(document.querySelectorAll('input[type="file"]')).filter(el => !isObstructionOrNav(el));
         if (fileInputs.length > 0) {
           hasResume = true;
           if (fileInputs.length > 1) hasCL = true;
         }
 
-        const emailInputs = document.querySelectorAll('input[type="email"], input[name*="email" i], input[id*="email" i]');
+        const emailInputs = Array.from(document.querySelectorAll('input[type="email"], input[name*="email" i], input[id*="email" i]')).filter(el => !isObstructionOrNav(el));
         if (emailInputs.length > 0) hasEmail = true;
 
-        const nameInputs = document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="name" i]');
+        const nameInputs = Array.from(document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="name" i]')).filter(el => !isObstructionOrNav(el));
         if (nameInputs.length > 0) hasName = true;
 
-        const allInputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea');
+        const allInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, textarea')).filter(el => !isObstructionOrNav(el));
         totalInputs = allInputs.length;
 
-        const submits = document.querySelectorAll('button[type="submit"], input[type="submit"]');
+        const submits = Array.from(document.querySelectorAll('button[type="submit"], input[type="submit"]')).filter(el => !isObstructionOrNav(el));
         if (submits.length > 0) hasSubmit = true;
         else {
           document.querySelectorAll('button, a[role="button"]').forEach(b => {
+            if (isObstructionOrNav(b)) return;
             const t = (b.textContent || '').trim().toLowerCase();
             if (t.includes('submit') || t.includes('complete application')) hasSubmit = true;
             if (t.includes('next') || t.includes('continue') || t.includes('save and continue')) hasNext = true;
@@ -381,6 +388,11 @@ export class GenericPageAnalyzer {
       const elements = Array.from(document.querySelectorAll('button, a, input[type="button"], input[type="submit"], [role="button"]'));
 
       elements.forEach((el, idx) => {
+        const isInsideCookieBanner = !!el.closest(
+          '#onetrust-consent-sdk, #onetrust-banner-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [class*="consent" i], [id*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy-banner" i], [id*="privacy-banner" i]'
+        );
+        if (isInsideCookieBanner) return;
+
         const text = (el.textContent || (el as HTMLInputElement).value || '').trim();
         const ariaLabel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
         const role = el.getAttribute('role') || '';

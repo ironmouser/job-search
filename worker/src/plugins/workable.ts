@@ -60,11 +60,13 @@ export class WorkablePlugin extends ATSPlugin {
     await browser.navigate(applyUrl, 'domcontentloaded');
     await logger.info('page_navigated', `Loaded Workable URL: ${applyUrl}`);
     await browser.page.waitForTimeout(2000);
+    await this.dismissCookieBannerIfPresent(browser.page, logger);
     await this.checkClosedJob(browser, logger, applyUrl);
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
     await logger.info('apply_started', 'Locating Workable form fields...');
+    await this.dismissCookieBannerIfPresent(browser.page, logger);
     const targetContext: Frame | Page = await browser.findFormFrame([
       'input[name="firstname"]',
       'input[name="first_name"]',

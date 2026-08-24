@@ -94,6 +94,7 @@ export class WorkdayPlugin extends ATSPlugin {
     // Navigate to the job posting
     await browser.navigate(context.jobUrl);
     await logger.info('page_navigated', 'Navigated to Workday job posting');
+    await this.dismissCookieBannerIfPresent(page, logger);
 
     // Check for login/create account page before clicking Apply (if URL is already on a dedicated auth gate)
     await this.checkLoginOrCreateAccount(page, context.jobUrl, context);

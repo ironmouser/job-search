@@ -67,6 +67,7 @@ export class AshbyPlugin extends ATSPlugin {
 
     // Allow dynamic iframe or SPA form components to load
     await browser.page.waitForTimeout(2000);
+    await this.dismissCookieBannerIfPresent(browser.page, logger);
     await this.checkClosedJob(browser, logger, context.jobUrl);
   }
 

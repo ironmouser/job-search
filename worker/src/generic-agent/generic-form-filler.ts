@@ -19,6 +19,7 @@ import {
 } from '../types';
 import { InterventionError } from '../plugins/base-plugin';
 import { safeClick } from '../obstruction/safe-interact';
+import { UIObstructionResolver } from '../obstruction/resolver';
 import { UniversalQuestionResolver } from '../plugins/question-resolver';
 
 export class GenericFormFiller {
@@ -32,6 +33,9 @@ export class GenericFormFiller {
   ): Promise<void> {
     const page = browser.page;
     await logger.info('form_filling', 'Beginning generic application form automation');
+
+    // Dismiss any active cookie or privacy banner before finding form controls
+    await UIObstructionResolver.dismissCookieBannerIfPresent(page, logger);
 
     const formCtx = await browser.findFormFrame([
       'input[type="file"]',

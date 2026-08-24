@@ -101,6 +101,7 @@ export class GreenhousePlugin extends ATSPlugin {
       await browser.navigate(context.jobUrl);
     }
 
+    await this.dismissCookieBannerIfPresent(page, logger);
     await this.checkAccountGate(page, context.jobUrl, this.displayName, context);
 
     // Wait for the Greenhouse app container or the application form fields
@@ -113,19 +114,17 @@ export class GreenhousePlugin extends ATSPlugin {
       'form[action*="greenhouse" i]',
       'form[data-testid*="application" i]',
       'div[class*="application-form" i]',
-      'div[class*="ApplicationForm" i]',
-      'form',
+      'div[id*="application-form" i]',
+      '#app_body',
     ];
 
     let formFound = false;
-    for (const selector of formSelectors) {
-      try {
-        await page.waitForSelector(selector, { timeout: 8_000 });
+    for (const sel of formSelectors) {
+      const el = page.locator(sel).first();
+      if ((await el.count().catch(() => 0)) > 0) {
         formFound = true;
-        await logger.info('form_located', `Greenhouse application form found via: ${selector}`);
+        await logger.info('form_located', `Located Greenhouse form container via: ${sel}`);
         break;
-      } catch {
-        // try next selector
       }
     }
 
@@ -142,11 +141,16 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     if (!formFound) {
-      // Check if page has general form inputs with resume upload
+      // Check if page has general form inputs with resume upload (excluding cookie banners/nav)
       const hasInputs = await page.evaluate(() => {
-        const hasFile = !!document.querySelector('input[type="file"]');
-        const hasEmail = !!document.querySelector('input[type="email"], input[name*="email" i]');
-        return hasFile && hasEmail;
+        const isObstructionOrNav = (el: Element) => {
+          return !!el.closest(
+            '#onetrust-consent-sdk, #onetrust-banner-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [class*="consent" i], [id*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy-banner" i], [id*="privacy-banner" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i], [class*="subscribe" i]'
+          );
+        };
+        const fileInputs = Array.from(document.querySelectorAll('input[type="file"]')).filter(el => !isObstructionOrNav(el));
+        const emailInputs = Array.from(document.querySelectorAll('input[type="email"], input[name*="email" i]')).filter(el => !isObstructionOrNav(el));
+        return fileInputs.length > 0 && emailInputs.length > 0;
       }).catch(() => false);
       if (hasInputs) {
         formFound = true;

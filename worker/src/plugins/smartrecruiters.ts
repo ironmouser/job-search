@@ -71,6 +71,7 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     await logger.info('plugin_loaded', `SmartRecruiters plugin active — navigating to ${context.jobUrl}`);
     await browser.navigate(context.jobUrl, 'domcontentloaded');
     await browser.page.waitForTimeout(1500);
+    await this.dismissCookieBannerIfPresent(browser.page, logger);
 
     // Check for access restriction or closed position early
     await this.checkAccessRestriction(browser, logger, context.jobUrl);

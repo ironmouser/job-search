@@ -51,6 +51,14 @@ function runTests() {
   console.assert(validation.valid === true, `Expected validation to be true, got ${validation.valid}`);
   console.log('✓ Test 3 Passed: Datadog Greenhouse URL validated as legitimate application destination');
 
+  // Test 4: Rejection of internal SnagAJob API endpoint
+  const snagApiValidation = isLegitimateApplicationDestination(
+    'https://www.snagajob.com/api/jobs/v1/1278090288/apply',
+    'https://snagajob.com/jobs/1278090288?searchResponseId=957f7ee2-a40f-4dde-83be-d1b57c8623ff'
+  );
+  console.assert(snagApiValidation.valid === false, `Expected SnagAJob API endpoint to be rejected, got ${snagApiValidation.valid}`);
+  console.log('✓ Test 4 Passed: SnagAJob internal API endpoint correctly rejected as application destination');
+
   console.log('All destination extractor tests passed successfully!');
 }
 

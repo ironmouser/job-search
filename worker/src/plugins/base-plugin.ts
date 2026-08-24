@@ -591,6 +591,13 @@ export abstract class ATSPlugin {
     return UIObstructionResolver.dismissCookieBannerIfPresent(ctx, logger);
   }
 
+  protected async dismissCookieBannerIfPresent(
+    ctx: import('playwright').Frame | import('playwright').Page,
+    logger?: ExecutionLogger
+  ): Promise<boolean> {
+    return UIObstructionResolver.dismissCookieBannerIfPresent(ctx, logger);
+  }
+
   /**
    * Types text into a form input with randomized human-like character latency
    * and dispatches necessary DOM events to avoid anti-bot velocity triggers.

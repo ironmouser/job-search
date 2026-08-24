@@ -88,6 +88,7 @@ export class LeverPlugin extends ATSPlugin {
     // Use domcontentloaded — Lever's SPA keeps persistent connections that prevent networkidle
     await browser.navigate(applyUrl, 'domcontentloaded');
     await logger.info('page_navigated', `Navigated to Lever apply page: ${applyUrl}`);
+    await this.dismissCookieBannerIfPresent(page, logger);
 
     // If we landed on the job listing instead of the apply form, click the Apply button
     const currentUrl = page.url();

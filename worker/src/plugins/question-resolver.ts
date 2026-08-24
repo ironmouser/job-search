@@ -150,6 +150,14 @@ export class UniversalQuestionResolver {
       const isVisible = await container.isVisible().catch(() => false);
       if (!isVisible) continue;
 
+      // Ignore containers inside cookie banners, privacy dialogs, or nav/footer
+      const isInsideObstruction = await container.evaluate((el) => {
+        return !!el.closest(
+          '#onetrust-consent-sdk, #onetrust-banner-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [class*="consent" i], [id*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy-banner" i], [id*="privacy-banner" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i]'
+        );
+      }).catch(() => false);
+      if (isInsideObstruction) continue;
+
       // Extract label
       const labelEl = container.locator('label, legend, .field-label, .question-label, h3, h4, .text').first();
       let label = '';
@@ -162,6 +170,13 @@ export class UniversalQuestionResolver {
       if (!label || label.length < 3) continue;
 
       const lowerLabel = label.toLowerCase();
+
+      // Skip cookie settings, privacy preferences, and legal disclaimers
+      if (
+        /cookie|cookies|privacy\s*preference|consent\s*preference|cookie\s*setting|strictly\s*necessary|targeting\s*cookies|functional\s*cookies|performance\s*cookies|analytics\s*cookies|manage\s*consent|privacy\s*choices|advertising\s*preferences|gdpr|ccpa|terms\s*of\s*service|privacy\s*policy/i.test(lowerLabel)
+      ) {
+        continue;
+      }
 
       // Skip standard personal contact fields already handled by main plugins
       if (

@@ -91,6 +91,14 @@ const AGGREGATOR_DOMAINS = [
   'monster.com',
   'careerbuilder.com',
   'simplyhired.com',
+  'snagajob.com',
+  'jooble.org',
+  'linkup.com',
+  'lensa.com',
+  'talent.com',
+  'salary.com',
+  'usajobs.gov',
+  'adzuna.com',
   'wellfound.com',
   'angel.co',
   'remote.co',
@@ -375,6 +383,13 @@ export function isLegitimateApplicationDestination(
   }
   if (isSocialDomain(targetUrl)) {
     return { valid: false, reason: 'URL points to a social media profile' };
+  }
+
+  // Reject raw API endpoints (e.g. /api/jobs/..., /graphql) that are not web pages
+  if (pathname.startsWith('/api/') || pathname.startsWith('/graphql') || targetHostname.startsWith('api.')) {
+    if (!isKnownATSDomain(targetUrl)) {
+      return { valid: false, reason: `URL points to an internal API endpoint (${pathname}) rather than a web page` };
+    }
   }
 
   // Reject same-domain URLs when starting from an aggregator (unless it's an explicit redirect endpoint)
