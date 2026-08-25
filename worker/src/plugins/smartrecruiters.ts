@@ -150,12 +150,17 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     }
 
     // 4. Resume File Upload
-    const fileInput = await targetContext.$('input[type="file"]');
-    if (fileInput && context.resumeMarkdown) {
-      const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
-      await fileInput.setInputFiles(pdfPath);
-      await logger.info('file_uploaded', 'Uploaded PDF resume to SmartRecruiters');
-      await browser.page.waitForTimeout(500);
+    await this.uploadResumeFile(browser, targetContext, context, logger);
+
+    // 4b. Cover Letter Upload / Message to Hiring Manager (optional)
+    if (context.coverLetterMarkdown) {
+      await this.uploadCoverLetterFile(browser, targetContext, context, logger, {
+        specificTextAreaSelectors: [
+          '#hiring-manager-message-input',
+          'textarea[name*="message" i]',
+          'textarea[name*="cover" i]',
+        ],
+      });
     }
 
     // 5. Consent & Privacy Checkboxes

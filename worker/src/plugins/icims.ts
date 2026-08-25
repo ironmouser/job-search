@@ -139,11 +139,11 @@ export class ICIMSPlugin extends ATSPlugin {
         }
 
         // 2. Resume File Upload
-        const fileInput = await targetContext.$('input[type="file"]');
-        if (fileInput && context.resumeMarkdown) {
-          const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
-          await fileInput.setInputFiles(pdfPath).catch(() => {});
-          await logger.info('file_uploaded', 'Uploaded PDF resume to iCIMS form');
+        await this.uploadResumeFile(browser, targetContext, context, logger);
+
+        // 2b. Cover Letter Upload (optional)
+        if (context.coverLetterMarkdown) {
+          await this.uploadCoverLetterFile(browser, targetContext, context, logger);
         }
 
         // 3. Consent & Talent Community Checkboxes

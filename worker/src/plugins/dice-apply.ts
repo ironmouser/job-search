@@ -118,15 +118,11 @@ export class DiceApplyPlugin extends ATSPlugin {
     await logger.info('dice_apply', 'Processing Dice application drawer');
 
     // 1. Upload or select resume
-    const fileInput = await page.$('input[type="file"]').catch(() => null);
-    if (fileInput && context.resumeMarkdown) {
-      try {
-        const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'resume.pdf');
-        await fileInput.setInputFiles(pdfPath);
-        await logger.info('dice_resume_uploaded', 'Uploaded tailored resume PDF to Dice');
-      } catch (err: any) {
-        await logger.warn('dice_resume_failed', `Resume upload note: ${err.message}`);
-      }
+    await this.uploadResumeFile(browser, page, context, logger);
+
+    // 1b. Cover letter (optional)
+    if (context.coverLetterMarkdown) {
+      await this.uploadCoverLetterFile(browser, page, context, logger);
     }
 
     // 2. Fill standard work authorization questions if present

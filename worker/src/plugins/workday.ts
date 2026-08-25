@@ -204,16 +204,9 @@ export class WorkdayPlugin extends ATSPlugin {
       await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
       // Step 1: Upload resume (if upload input exists on current step)
-      const resumeInput = page.locator('[data-automation-id="file-upload-input-ref"]').first();
-      if (await resumeInput.count() > 0) {
-        const resumePath = await browser.writeMarkdownToPdf(
-          context.resumeMarkdown,
-          `resume_${context.sessionId}.pdf`
-        );
-        await resumeInput.setInputFiles(resumePath).catch(() => {});
-        await logger.info('resume_uploaded', 'Resume uploaded to Workday');
-        await page.waitForTimeout(3000);
-      }
+      await this.uploadResumeFile(browser, page, context, logger, {
+        specificSelectors: ['[data-automation-id="file-upload-input-ref"]'],
+      });
 
       // Step 2: Fill standard fields (Name, Phone, Address, City, Postal)
       await this.fillStandardFields(browser, context, logger);
@@ -232,15 +225,11 @@ export class WorkdayPlugin extends ATSPlugin {
         logger.getApiClient()
       );
 
-      // Step 4: Upload cover letter if second upload field exists
-      const clInputs = page.locator('[data-automation-id="file-upload-input-ref"]');
-      if (await clInputs.count() > 1) {
-        const clPath = await browser.writeMarkdownToPdf(
-          context.coverLetterMarkdown,
-          `cover_letter_${context.sessionId}.pdf`
-        );
-        await clInputs.nth(1).setInputFiles(clPath).catch(() => {});
-        await logger.info('cover_letter_uploaded', 'Cover letter uploaded to Workday');
+      // Step 4: Upload cover letter (if cover letter input or field exists on this step)
+      if (context.coverLetterMarkdown) {
+        await this.uploadCoverLetterFile(browser, page, context, logger, {
+          specificSelectors: ['[data-automation-id="file-upload-input-ref"]'],
+        });
       }
 
       // Look for "Save and Continue" / "Next" button to advance to the next step

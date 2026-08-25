@@ -229,7 +229,7 @@ export class GenericFormFiller {
   }
 
   /**
-   * Uploads resume PDF converted from markdown.
+   * Uploads resume PDF converted from markdown with container-scoped matching.
    */
   private async uploadResume(
     browser: BrowserSession,
@@ -245,25 +245,58 @@ export class GenericFormFiller {
         `resume_${context.sessionId}.pdf`
       );
 
-      const fileInputs = ctx.locator('input[type="file"]');
-      const count = await fileInputs.count().catch(() => 0);
+      // 1. Scoped container search (Resume / CV containers, excluding Cover Letter)
+      const resumeContainers = ctx.locator('div, section, fieldset, .form-group, [class*="upload" i]').filter({
+        hasText: /resume|curriculum\s*vitae|\bcv\b/i,
+      });
 
-      if (count > 0) {
-        // Try specific resume input first
-        const resumeInput = ctx.locator(
-          'input[type="file"][name*="resume" i], input[type="file"][id*="resume" i], input[type="file"][accept*="pdf" i]'
-        ).first();
+      const containerCount = await resumeContainers.count().catch(() => 0);
+      for (let i = 0; i < containerCount; i++) {
+        const container = resumeContainers.nth(i);
+        const hasCoverText = await container.evaluate((el) => /cover\s*letter/i.test(el.textContent || '')).catch(() => false);
+        if (hasCoverText) continue;
 
-        if ((await resumeInput.count().catch(() => 0)) > 0) {
-          await resumeInput.setInputFiles(resumePath);
-          await logger.info('resume_uploaded', 'Resume PDF uploaded via targeted selector');
+        const fileInput = container.locator('input[type="file"]').first();
+        if ((await fileInput.count().catch(() => 0)) > 0) {
+          await fileInput.setInputFiles(resumePath);
+          await logger.info('resume_uploaded', 'Resume PDF uploaded via scoped Resume container');
           return;
         }
+      }
 
-        // Fallback to first file input
-        const firstFileInput = fileInputs.first();
-        await firstFileInput.setInputFiles(resumePath);
-        await logger.info('resume_uploaded', 'Resume PDF uploaded to first file input');
+      // 2. Targeted attribute selectors
+      const targetedResumeInput = ctx.locator(
+        'input[type="file"][name*="resume" i], input[type="file"][id*="resume" i], input[type="file"][aria-label*="resume" i], input[type="file"][data-automation*="resume" i]'
+      ).first();
+
+      if ((await targetedResumeInput.count().catch(() => 0)) > 0) {
+        await targetedResumeInput.setInputFiles(resumePath);
+        await logger.info('resume_uploaded', 'Resume PDF uploaded via targeted selector');
+        return;
+      }
+
+      // 3. Fallback to first file input not inside a cover letter container
+      const allFileInputs = ctx.locator('input[type="file"]');
+      const totalInputs = await allFileInputs.count().catch(() => 0);
+
+      for (let i = 0; i < totalInputs; i++) {
+        const input = allFileInputs.nth(i);
+        const isCoverInput = await input.evaluate((el) => {
+          const parent = el.closest('div, section, fieldset') || el.parentElement;
+          const nameOrId = `${el.getAttribute('name') || ''} ${el.id || ''}`;
+          return /cover\s*letter/i.test(parent?.textContent || '') || /cover|letter/i.test(nameOrId);
+        }).catch(() => false);
+
+        if (!isCoverInput) {
+          await input.setInputFiles(resumePath);
+          await logger.info('resume_uploaded', 'Resume PDF uploaded to primary file input');
+          return;
+        }
+      }
+
+      if (totalInputs > 0) {
+        await allFileInputs.first().setInputFiles(resumePath);
+        await logger.info('resume_uploaded', 'Resume PDF uploaded to first available file input');
       } else {
         await logger.warn('resume_upload_skipped', 'No file upload inputs detected on application form');
       }
@@ -273,7 +306,8 @@ export class GenericFormFiller {
   }
 
   /**
-   * Uploads cover letter PDF converted from markdown if optional field exists.
+   * Uploads cover letter PDF converted from markdown with container-scoped matching
+   * and text area fallback.
    */
   private async uploadCoverLetter(
     browser: BrowserSession,
@@ -284,18 +318,58 @@ export class GenericFormFiller {
     if (!context.coverLetterMarkdown) return;
 
     try {
+      // 1. Check for text area cover letter fields
+      const clTextArea = ctx.locator(
+        'textarea[name*="cover" i], textarea[id*="cover" i], textarea[placeholder*="Cover Letter" i], textarea[aria-label*="Cover Letter" i]'
+      ).first();
+
+      if ((await clTextArea.count().catch(() => 0)) > 0 && (await clTextArea.isVisible().catch(() => false))) {
+        await clTextArea.fill(context.coverLetterMarkdown);
+        await clTextArea.dispatchEvent('input').catch(() => {});
+        await clTextArea.dispatchEvent('change').catch(() => {});
+        await logger.info('cover_letter_filled', 'Cover letter populated into text area field');
+        return;
+      }
+
       const clPath = await browser.writeMarkdownToPdf(
         context.coverLetterMarkdown,
         `cover_letter_${context.sessionId}.pdf`
       );
 
+      // 2. Check container-scoped upload widgets (e.g. Phenom People "Cover Letter" section)
+      const clContainers = ctx.locator('div, section, fieldset, .form-group, [class*="upload" i]').filter({
+        hasText: /cover\s*letter/i,
+      });
+
+      const containerCount = await clContainers.count().catch(() => 0);
+      for (let i = 0; i < containerCount; i++) {
+        const container = clContainers.nth(i);
+        const fileInput = container.locator('input[type="file"]').first();
+        if ((await fileInput.count().catch(() => 0)) > 0) {
+          await fileInput.setInputFiles(clPath);
+          await logger.info('cover_letter_uploaded', 'Cover letter uploaded via scoped Cover Letter container');
+          return;
+        }
+      }
+
+      // 3. Targeted attribute selectors
       const clInput = ctx.locator(
-        'input[type="file"][name*="cover" i], input[type="file"][id*="cover" i], input[type="file"][name*="letter" i]'
+        'input[type="file"][name*="cover" i], input[type="file"][id*="cover" i], input[type="file"][name*="letter" i], input[type="file"][id*="letter" i], input[type="file"][aria-label*="cover" i], input[type="file"][data-automation*="cover" i]'
       ).first();
 
       if ((await clInput.count().catch(() => 0)) > 0) {
         await clInput.setInputFiles(clPath);
         await logger.info('cover_letter_uploaded', 'Cover letter uploaded via targeted selector');
+        return;
+      }
+
+      // 4. If multiple file inputs exist on the page, check for the second one (e.g. Input 1 = Resume, Input 2 = Cover Letter)
+      const allFileInputs = ctx.locator('input[type="file"]');
+      const totalInputs = await allFileInputs.count().catch(() => 0);
+      if (totalInputs >= 2) {
+        const secondInput = allFileInputs.nth(1);
+        await secondInput.setInputFiles(clPath);
+        await logger.info('cover_letter_uploaded', 'Cover letter uploaded to secondary file input');
       }
     } catch (err: any) {
       await logger.warn('cover_letter_upload_failed', `Could not upload cover letter: ${err.message}`);
@@ -382,7 +456,8 @@ export class GenericFormFiller {
   }
 
   /**
-   * Checks if application is multi-step and iteratively advances steps up to 6 times.
+   * Checks if application is multi-step and iteratively advances steps up to 6 times,
+   * verifying step transitions and intercepting inline validation errors.
    */
   private async advanceMultiStepWizardIfPresent(
     browser: BrowserSession,
@@ -394,6 +469,25 @@ export class GenericFormFiller {
     const maxSteps = 6;
 
     while (stepCount <= maxSteps) {
+      // Check for active blocking validation errors on the current view before clicking Next
+      const inlineErrors = page.locator(
+        '[aria-invalid="true"], .error-message, .invalid-feedback, .field-error, .has-error, [class*="ph-error" i], span.error, p.error'
+      );
+      const errorCount = await inlineErrors.count().catch(() => 0);
+      for (let e = 0; e < errorCount; e++) {
+        const errEl = inlineErrors.nth(e);
+        if (await errEl.isVisible().catch(() => false)) {
+          const errTxt = (await errEl.textContent().catch(() => ''))?.trim();
+          if (errTxt && errTxt.length > 3 && !/cookie|privacy/i.test(errTxt)) {
+            await logger.warn('wizard_step_blocked_by_error', `Detected inline validation error prior to advance: "${errTxt.slice(0, 100)}"`);
+            // Attempt to re-fill personal details / location to clear error
+            const formCtx = await browser.findFormFrame(['input', 'select', 'textarea', 'form']);
+            await this.fillPersonalDetails(formCtx, context.userProfile, logger);
+            break;
+          }
+        }
+      }
+
       // 1. Look for explicit step-advance buttons (Next, Continue, Save and continue)
       const nextBtn = page.locator('button, a[role="button"], input[type="button"], input[type="submit"]').filter({
         hasText: /^(?:save\s+(?:&|and)\s+continue|save\s+and\s+next|next(?:\s+step)?|continue(?:\s+to\s+next)?|proceed(?:\s+to\s+next)?)$/i,
@@ -409,12 +503,31 @@ export class GenericFormFiller {
       const hasFinalSubmit = (await submitBtn.count().catch(() => 0)) > 0 && (await submitBtn.isVisible().catch(() => false));
 
       if (hasNext) {
+        const urlBefore = page.url();
         await logger.info('wizard_step_advancing', `Advancing multi-step wizard (Step ${stepCount} -> ${stepCount + 1})`);
         await safeClick(page, nextBtn, { actionName: `wizard_advance_step_${stepCount}` }, logger);
         await page.waitForTimeout(2500);
 
-        // Re-scan and fill any new screening questions on subsequent step
+        // Verify if step actually advanced or stayed stuck
         const formCtx = await browser.findFormFrame(['input', 'select', 'textarea', 'form']);
+        const requiredError = formCtx.locator(':has-text("Is a required property"), :has-text("This field is required"), [aria-invalid="true"]').first();
+        if (await requiredError.isVisible().catch(() => false)) {
+          await logger.warn('wizard_step_stuck', 'Form validation prevented wizard from advancing. Re-attempting field completion.');
+          await this.fillPersonalDetails(formCtx, context.userProfile, logger);
+          await this.answerStandardQuestions(formCtx, context.userProfile, logger);
+          await UniversalQuestionResolver.resolveAndFillQuestions(
+            formCtx,
+            browser,
+            context,
+            logger,
+            logger.getApiClient()
+          );
+          // Try clicking advance once more after remediation
+          await safeClick(page, nextBtn, { actionName: `wizard_advance_retry_${stepCount}` }, logger);
+          await page.waitForTimeout(2000);
+        }
+
+        // Re-scan and fill any new screening questions on subsequent step
         await this.fillPersonalDetails(formCtx, context.userProfile, logger);
         await this.answerStandardQuestions(formCtx, context.userProfile, logger);
         await UniversalQuestionResolver.resolveAndFillQuestions(
@@ -470,7 +583,7 @@ export class GenericFormFiller {
               (await el.getAttribute('aria-autocomplete').catch(() => '')) !== null;
 
             if (isAutocomplete) {
-              await page.waitForTimeout(350);
+              await page.waitForTimeout(500);
 
               const suggestionSelectors = [
                 '[role="listbox"] [role="option"]',
@@ -479,6 +592,8 @@ export class GenericFormFiller {
                 '.suggestions > *',
                 '.typeahead > *',
                 'ul.dropdown-menu > li',
+                '[class*="ph-autocomplete" i] li',
+                '[class*="ph-form" i] [role="option"]',
                 '[class*="autocomplete" i] li',
                 '[class*="autocomplete" i] div[role="option"]',
                 '[class*="suggestion" i]',
@@ -493,17 +608,27 @@ export class GenericFormFiller {
                   if ((await opt.count().catch(() => 0)) > 0 && (await opt.isVisible().catch(() => false))) {
                     await opt.click().catch(() => null);
                     clicked = true;
-                    await page.waitForTimeout(200);
+                    await page.waitForTimeout(300);
                     break;
                   }
                 } catch {}
               }
 
               if (!clicked) {
+                // Keyboard dropdown selection sequence
                 await el.press('ArrowDown').catch(() => null);
-                await page.waitForTimeout(100);
-                await el.press('Enter').catch(() => null);
                 await page.waitForTimeout(150);
+                await el.press('Enter').catch(() => null);
+                await page.waitForTimeout(200);
+              }
+
+              // Also check for "Locate me" option if location field still has validation issue
+              const locateMeBtn = page.locator('a:has-text("Locate me"), button:has-text("Locate me"), [aria-label*="locate me" i]').first();
+              if ((await locateMeBtn.count().catch(() => 0)) > 0 && (await locateMeBtn.isVisible().catch(() => false))) {
+                // Blur first to let framework register
+                await el.dispatchEvent('blur').catch(() => {});
+              } else {
+                await el.dispatchEvent('blur').catch(() => {});
               }
             }
 
@@ -532,8 +657,13 @@ export class GenericFormFiller {
       '.invalid-feedback',
       '.field-error',
       '.has-error',
+      '[class*="ph-error" i]',
+      '[class*="error-text" i]',
+      '[class*="form-error" i]',
       'span.error',
       'p.error',
+      ':has-text("Is a required property")',
+      ':has-text("This field is required")',
     ];
 
     for (const sel of errorSelectors) {
@@ -542,7 +672,7 @@ export class GenericFormFiller {
         for (const el of els) {
           if (await el.isVisible().catch(() => false)) {
             const text = (await el.textContent().catch(() => ''))?.trim();
-            if (text && text.length > 3 && !issues.includes(text)) {
+            if (text && text.length > 3 && !issues.includes(text) && !/cookie|privacy/i.test(text)) {
               issues.push(text);
             }
           }

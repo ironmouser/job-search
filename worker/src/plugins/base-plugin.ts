@@ -876,6 +876,214 @@ export abstract class ATSPlugin {
   }
 
   /**
+   * Universal helper to upload a resume file converted from markdown with multi-tier
+   * container scoping and fallback strategies across any ATS.
+   */
+  protected async uploadResumeFile(
+    browser: BrowserSession,
+    ctx: import('playwright').Frame | import('playwright').Page,
+    context: WorkflowContext,
+    logger: ExecutionLogger,
+    options?: { specificSelectors?: string[] }
+  ): Promise<boolean> {
+    if (!context.resumeMarkdown) {
+      await logger.info('resume_upload_skipped', 'No resume markdown available — skipping resume upload');
+      return false;
+    }
+
+    try {
+      const resumePath = await browser.writeMarkdownToPdf(
+        context.resumeMarkdown,
+        `resume_${context.sessionId}.pdf`
+      );
+
+      // 1. Platform-specific selector overrides
+      if (options?.specificSelectors) {
+        for (const sel of options.specificSelectors) {
+          const el = ctx.locator(sel).first();
+          if ((await el.count().catch(() => 0)) > 0) {
+            await el.setInputFiles(resumePath).catch(() => {});
+            await logger.info('resume_uploaded', `Resume uploaded via specific selector: "${sel}"`);
+            await browser.page.waitForTimeout(1000);
+            return true;
+          }
+        }
+      }
+
+      // 2. Scoped container search (Resume / CV containers, excluding Cover Letter)
+      const resumeContainers = ctx.locator('div, section, fieldset, .form-group, [class*="upload" i], [data-automation-id*="file" i]').filter({
+        hasText: /resume|curriculum\s*vitae|\bcv\b/i,
+      });
+
+      const containerCount = await resumeContainers.count().catch(() => 0);
+      for (let i = 0; i < containerCount; i++) {
+        const container = resumeContainers.nth(i);
+        const hasCoverText = await container.evaluate((el) => /cover\s*letter/i.test(el.textContent || '')).catch(() => false);
+        if (hasCoverText) continue;
+
+        const fileInput = container.locator('input[type="file"]').first();
+        if ((await fileInput.count().catch(() => 0)) > 0) {
+          await fileInput.setInputFiles(resumePath).catch(() => {});
+          await logger.info('resume_uploaded', `Resume uploaded via scoped Resume container on ${this.displayName}`);
+          await browser.page.waitForTimeout(1000);
+          return true;
+        }
+      }
+
+      // 3. Targeted attribute selectors
+      const targetedResumeInput = ctx.locator(
+        'input[type="file"][name*="resume" i], input[type="file"][id*="resume" i], input[type="file"][aria-label*="resume" i], input[type="file"][data-automation*="resume" i], input[type="file"][accept*="pdf" i]'
+      ).first();
+
+      if ((await targetedResumeInput.count().catch(() => 0)) > 0) {
+        await targetedResumeInput.setInputFiles(resumePath).catch(() => {});
+        await logger.info('resume_uploaded', `Resume uploaded via targeted attribute selector on ${this.displayName}`);
+        await browser.page.waitForTimeout(1000);
+        return true;
+      }
+
+      // 4. Fallback to first file input not inside a cover letter container
+      const allFileInputs = ctx.locator('input[type="file"]');
+      const totalInputs = await allFileInputs.count().catch(() => 0);
+
+      for (let i = 0; i < totalInputs; i++) {
+        const input = allFileInputs.nth(i);
+        const isCoverInput = await input.evaluate((el) => {
+          const parent = el.closest('div, section, fieldset, li') || el.parentElement;
+          const nameOrId = `${el.getAttribute('name') || ''} ${el.id || ''}`;
+          return /cover\s*letter/i.test(parent?.textContent || '') || /cover|letter/i.test(nameOrId);
+        }).catch(() => false);
+
+        if (!isCoverInput) {
+          try {
+            await input.setInputFiles(resumePath);
+          } catch (frameErr: any) {
+            const mainPageInput = browser.page.locator('input[type="file"]').first();
+            await mainPageInput.setInputFiles(resumePath).catch(() => {});
+          }
+          await logger.info('resume_uploaded', `Resume uploaded to primary file input on ${this.displayName}`);
+          await browser.page.waitForTimeout(1000);
+          return true;
+        }
+      }
+
+      if (totalInputs > 0) {
+        await allFileInputs.first().setInputFiles(resumePath).catch(() => {});
+        await logger.info('resume_uploaded', `Resume uploaded to first available file input on ${this.displayName}`);
+        return true;
+      }
+
+      await logger.warn('resume_upload_skipped', `No file upload inputs detected on ${this.displayName}`);
+      return false;
+    } catch (err: any) {
+      await logger.warn('resume_upload_failed', `Could not upload resume on ${this.displayName}: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Universal helper to upload a cover letter file converted from markdown or populate
+   * a cover letter textarea field across any ATS.
+   */
+  protected async uploadCoverLetterFile(
+    browser: BrowserSession,
+    ctx: import('playwright').Frame | import('playwright').Page,
+    context: WorkflowContext,
+    logger: ExecutionLogger,
+    options?: { specificSelectors?: string[]; specificTextAreaSelectors?: string[] }
+  ): Promise<boolean> {
+    if (!context.coverLetterMarkdown) {
+      return false;
+    }
+
+    try {
+      // 1. Check for text area cover letter fields
+      const taSelectors = [
+        ...(options?.specificTextAreaSelectors || []),
+        'textarea[name*="cover" i]',
+        'textarea[id*="cover" i]',
+        'textarea[placeholder*="Cover Letter" i]',
+        'textarea[aria-label*="Cover Letter" i]',
+        'textarea[name="comments"]',
+        '#cover_letter_text',
+      ];
+
+      for (const taSel of taSelectors) {
+        const clTextArea = ctx.locator(taSel).first();
+        if ((await clTextArea.count().catch(() => 0)) > 0 && (await clTextArea.isVisible().catch(() => false))) {
+          await clTextArea.fill(context.coverLetterMarkdown);
+          await clTextArea.dispatchEvent('input').catch(() => {});
+          await clTextArea.dispatchEvent('change').catch(() => {});
+          await logger.info('cover_letter_filled', `Cover letter populated into text area field: "${taSel}"`);
+          return true;
+        }
+      }
+
+      const clPath = await browser.writeMarkdownToPdf(
+        context.coverLetterMarkdown,
+        `cover_letter_${context.sessionId}.pdf`
+      );
+
+      // 2. Specific selectors override
+      if (options?.specificSelectors) {
+        for (const sel of options.specificSelectors) {
+          const el = ctx.locator(sel).first();
+          if ((await el.count().catch(() => 0)) > 0) {
+            await el.setInputFiles(clPath).catch(() => {});
+            await logger.info('cover_letter_uploaded', `Cover letter uploaded via specific selector: "${sel}"`);
+            await browser.page.waitForTimeout(1000);
+            return true;
+          }
+        }
+      }
+
+      // 3. Check container-scoped upload widgets (e.g. "Cover Letter" section / li.application-question)
+      const clContainers = ctx.locator('div, section, fieldset, .form-group, li.application-question, [class*="upload" i], [data-automation-id*="file" i]').filter({
+        hasText: /cover\s*letter|coverletter/i,
+      });
+
+      const containerCount = await clContainers.count().catch(() => 0);
+      for (let i = 0; i < containerCount; i++) {
+        const container = clContainers.nth(i);
+        const fileInput = container.locator('input[type="file"]').first();
+        if ((await fileInput.count().catch(() => 0)) > 0) {
+          await fileInput.setInputFiles(clPath).catch(() => {});
+          await logger.info('cover_letter_uploaded', `Cover letter uploaded via scoped Cover Letter container on ${this.displayName}`);
+          await browser.page.waitForTimeout(1000);
+          return true;
+        }
+      }
+
+      // 4. Targeted attribute selectors
+      const clInput = ctx.locator(
+        'input[type="file"][name*="cover" i], input[type="file"][id*="cover" i], input[type="file"][name*="letter" i], input[type="file"][id*="letter" i], input[type="file"][aria-label*="cover" i], input[type="file"][data-automation*="cover" i], input[name="coverLetter"], input[name="cover_letter"], #cover_letter'
+      ).first();
+
+      if ((await clInput.count().catch(() => 0)) > 0) {
+        await clInput.setInputFiles(clPath).catch(() => {});
+        await logger.info('cover_letter_uploaded', `Cover letter uploaded via targeted selector on ${this.displayName}`);
+        await browser.page.waitForTimeout(1000);
+        return true;
+      }
+
+      // 5. If multiple file inputs exist on the page (e.g. Input 1 = Resume, Input 2 = Cover Letter)
+      const allFileInputs = ctx.locator('input[type="file"]');
+      const totalInputs = await allFileInputs.count().catch(() => 0);
+      if (totalInputs >= 2) {
+        const secondInput = allFileInputs.nth(1);
+        await secondInput.setInputFiles(clPath).catch(() => {});
+        await logger.info('cover_letter_uploaded', `Cover letter uploaded to secondary file input on ${this.displayName}`);
+        return true;
+      }
+
+      return false;
+    } catch (err: any) {
+      await logger.warn('cover_letter_upload_failed', `Could not upload cover letter on ${this.displayName}: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
    * Universal helper to verify application submission results across any ATS.
    * Actively scans for anti-bot spam flags, employer limits, validation errors,
    * and requires positive confirmation before allowing APPLIED status.

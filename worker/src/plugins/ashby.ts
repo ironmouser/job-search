@@ -136,28 +136,16 @@ export class AshbyPlugin extends ATSPlugin {
     }
 
     // 5. Resume Upload
-    try {
-      const fileInput = await targetContext.$('input[type="file"]');
-      if (fileInput && context.resumeMarkdown) {
-        const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
-        try {
-          // Primary: use the frame/page context directly
-          await fileInput.setInputFiles(pdfPath);
-          await logger.info('file_uploaded', `Uploaded generated PDF resume: Resume.pdf`);
-        } catch (frameErr: any) {
-          // Fallback: cross-origin iframes block setInputFiles — use the main page locator instead
-          await logger.warn('file_upload_retry', `Frame upload failed (${frameErr.message}) — retrying via main page context`);
-          const mainPageInput = browser.page.locator('input[type="file"]').first();
-          await mainPageInput.setInputFiles(pdfPath);
-          await logger.info('file_uploaded', 'Uploaded generated PDF resume via main page context fallback');
-        }
-      } else if (!context.resumeMarkdown) {
-        await logger.warn('file_skipped', 'No resume markdown available — skipping file upload');
-      } else {
-        await logger.warn('file_skipped', 'No file input found in form — skipping resume upload');
-      }
-    } catch (err: any) {
-      await logger.warn('file_error', `Resume upload failed: ${err.message} — continuing without upload`);
+    await this.uploadResumeFile(browser, targetContext, context, logger, {
+      specificSelectors: [
+        '.ashby-application-form-file-upload input[type="file"]',
+        'input[type="file"][accept*="pdf"]',
+      ],
+    });
+
+    // 5b. Cover Letter Upload (optional)
+    if (context.coverLetterMarkdown) {
+      await this.uploadCoverLetterFile(browser, targetContext, context, logger);
     }
 
     // 6. Consent & Future Opportunity Checkboxes (e.g. "Do you agree to allow Mural to contact you...")

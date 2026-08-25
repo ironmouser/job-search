@@ -295,57 +295,28 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     // ── Resume upload ────────────────────────────────────────────────────────
-    const resumePath = await browser.writeMarkdownToPdf(
-      context.resumeMarkdown,
-      `resume_${context.sessionId}.pdf`
-    );
-
-    const resumeSelectors = [
-      'input[name="resume"]',
-      'input[name="job_application[resume]"]',
-      '#resume',
-      'input[type="file"][accept*="pdf"]',
-      'input[type="file"]',
-    ];
-
-    let resumeUploaded = false;
-    for (const sel of resumeSelectors) {
-      const el = targetContext.locator(sel).first();
-      if (await el.count() > 0) {
-        await el.setInputFiles(resumePath);
-        resumeUploaded = true;
-        await logger.info('resume_uploaded', `Resume uploaded via: ${sel}`);
-        await browser.page.waitForTimeout(1500);
-        break;
-      }
-    }
-
-    if (!resumeUploaded) {
-      await logger.warn('resume_upload_skipped', 'Could not locate resume upload input');
-    }
+    await this.uploadResumeFile(browser, targetContext, context, logger, {
+      specificSelectors: [
+        'input[name="resume"]',
+        'input[name="job_application[resume]"]',
+        '#resume',
+        'input[type="file"][accept*="pdf"]',
+      ],
+    });
 
     // ── Cover letter upload (optional field) ─────────────────────────────────
     if (context.coverLetterMarkdown) {
-      const clPath = await browser.writeMarkdownToPdf(
-        context.coverLetterMarkdown,
-        `cover_letter_${context.sessionId}.pdf`
-      );
-
-      const clSelectors = [
-        'input[name="cover_letter"]',
-        'input[name="job_application[cover_letter]"]',
-        '#cover_letter',
-      ];
-
-      for (const sel of clSelectors) {
-        const el = targetContext.locator(sel).first();
-        if (await el.count() > 0) {
-          await el.setInputFiles(clPath);
-          await logger.info('cover_letter_uploaded', 'Cover letter uploaded');
-          await browser.page.waitForTimeout(1000);
-          break;
-        }
-      }
+      await this.uploadCoverLetterFile(browser, targetContext, context, logger, {
+        specificSelectors: [
+          'input[name="cover_letter"]',
+          'input[name="job_application[cover_letter]"]',
+          '#cover_letter',
+        ],
+        specificTextAreaSelectors: [
+          '#cover_letter_text',
+          'textarea[name*="cover" i]',
+        ],
+      });
     }
 
     // ── Custom questions & Demographics ─────────────────────────────────────

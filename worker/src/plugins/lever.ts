@@ -213,43 +213,25 @@ export class LeverPlugin extends ATSPlugin {
     }
 
     // ── Resume upload ────────────────────────────────────────────────────────
-    const resumePath = await browser.writeMarkdownToPdf(
-      context.resumeMarkdown,
-      `resume_${context.sessionId}.pdf`
-    );
-
-    const resumeSelectors = [
-      'input[name="resume"]',
-      'input[type="file"][name*="resume"]',
-      'input[type="file"]',
-    ];
-
-    let resumeUploaded = false;
-    for (const sel of resumeSelectors) {
-      const el = page.locator(sel).first();
-      if (await el.count() > 0) {
-        await el.setInputFiles(resumePath);
-        resumeUploaded = true;
-        await logger.info('resume_uploaded', `Resume uploaded via: ${sel}`);
-        await page.waitForTimeout(1000);
-        break;
-      }
-    }
-
-    if (!resumeUploaded) {
-      await logger.warn('resume_upload_skipped', 'Could not locate resume upload input on Lever form');
-    }
+    await this.uploadResumeFile(browser, page, context, logger, {
+      specificSelectors: [
+        'input[name="resume"]',
+        'input[type="file"][name*="resume"]',
+      ],
+    });
 
     // ── Cover letter upload (optional) ───────────────────────────────────────
-    const clField = page.locator('input[name="coverLetter"]').first();
-    if (await clField.count() > 0) {
-      const clPath = await browser.writeMarkdownToPdf(
-        context.coverLetterMarkdown,
-        `cover_letter_${context.sessionId}.pdf`
-      );
-      await clField.setInputFiles(clPath);
-      await logger.info('cover_letter_uploaded', 'Cover letter uploaded');
-      await page.waitForTimeout(1000);
+    if (context.coverLetterMarkdown) {
+      await this.uploadCoverLetterFile(browser, page, context, logger, {
+        specificSelectors: [
+          'input[name="coverLetter"]',
+          'input[name="cover_letter"]',
+        ],
+        specificTextAreaSelectors: [
+          'textarea[name="comments"]',
+          'textarea[name*="cover" i]',
+        ],
+      });
     }
 
     // ── Custom questions & Demographics ─────────────────────────────────────

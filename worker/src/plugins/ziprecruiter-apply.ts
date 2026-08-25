@@ -155,15 +155,11 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
     }
 
     // 3. Upload resume if file input is presented
-    const fileInput = await page.$('input[type="file"]').catch(() => null);
-    if (fileInput && context.resumeMarkdown) {
-      try {
-        const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'resume.pdf');
-        await fileInput.setInputFiles(pdfPath);
-        await logger.info('ziprecruiter_resume_uploaded', 'Attached customized resume PDF');
-      } catch (err: any) {
-        await logger.warn('ziprecruiter_resume_failed', `Resume upload note: ${err.message}`);
-      }
+    await this.uploadResumeFile(browser, page, context, logger);
+
+    // 3b. Upload cover letter (optional)
+    if (context.coverLetterMarkdown) {
+      await this.uploadCoverLetterFile(browser, page, context, logger);
     }
 
     // 4. Consent & Talent Community Checkboxes

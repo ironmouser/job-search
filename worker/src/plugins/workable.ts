@@ -132,11 +132,11 @@ export class WorkablePlugin extends ATSPlugin {
     }
 
     // 5. Resume File Upload
-    const fileInput = await targetContext.$('input[type="file"]');
-    if (fileInput && context.resumeMarkdown) {
-      const pdfPath = await browser.writeMarkdownToPdf(context.resumeMarkdown, 'Resume.pdf');
-      await fileInput.setInputFiles(pdfPath);
-      await logger.info('file_uploaded', 'Uploaded PDF resume to Workable form');
+    await this.uploadResumeFile(browser, targetContext, context, logger);
+
+    // 5b. Cover Letter Upload (optional)
+    if (context.coverLetterMarkdown) {
+      await this.uploadCoverLetterFile(browser, targetContext, context, logger);
     }
 
     // 6. Consent & Talent Community Checkboxes
