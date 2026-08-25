@@ -108,6 +108,13 @@ export class GenericApplicationAgent {
       const currentUrl = page.url() || context.jobUrl || '';
       await logger.info('agent_analysis', `Generic Application Agent inspecting page (Hop ${hop + 1}/${this.maxHops}): ${currentUrl}`);
 
+      // ─── SPA Hydration Wait ─────────────────────────────────────────────────
+      // Many ATS portals (Phenom, iCIMS, SmartRecruiters) are JS-rendered SPAs.
+      // Playwright's domcontentloaded fires before React/Vue mounts, leaving the
+      // DOM as an empty shell. Wait for network to settle and a visible interactive
+      // element to appear before analyzing — both timeouts are graceful best-effort.
+      await this.waitForSPAHydration(page, logger);
+
       // ─── Step 1: Analyze page structure & security boundaries ──────────────
       const analysis = await GenericPageAnalyzer.analyze(page, logger);
       const classifiedState = AgentStateMachine.classifyFromPageAnalysis(analysis);
@@ -278,64 +285,82 @@ export class GenericApplicationAgent {
 
       // ─── Step 6: Tier 2 — DeepSeek AXTree Reasoning ────────────────────────
       if (!controlSelected && agentConfig.aiNavigationEnabled && agentConfig.deepseekApiKey) {
-        await logger.info('ai_reasoning', 'Deterministic confidence is moderate/ambiguous — invoking DeepSeek AXTree navigation engine...');
         const snapshot = await AXTreeBuilder.build(page);
 
-        const dsResult = await DeepSeekNavigator.decideAction(snapshot, stateMachine.current, {
-          jobTitle: analysis.pageMetadata.schemaJobTitle,
-        });
+        if (snapshot.elements.length < 3) {
+          // AXTree is too sparse — DOM likely not hydrated yet or page is bot-blocked.
+          // DeepSeek cannot reason about an empty tree; skip to Gemini visual fallback.
+          await logger.warn('axtree_sparse',
+            `AXTree has only ${snapshot.elements.length} element(s) — DOM may not be fully hydrated or page is bot-blocked. Skipping DeepSeek, falling through to Gemini visual fallback.`);
+        } else {
+          await logger.info('ai_reasoning', 'Deterministic confidence is moderate/ambiguous — invoking DeepSeek AXTree navigation engine...');
 
-        if (dsResult.decision.action === 'click' && dsResult.decision.target_id) {
-          const targetEl = AXTreeBuilder.findElementById(snapshot, dsResult.decision.target_id);
-          if (targetEl) {
-            const loc = await AXTreeBuilder.resolveLocator(page, targetEl);
-            if (loc && (await loc.isVisible().catch(() => false))) {
-              await logger.info('deepseek_decision', `DeepSeek selected ${targetEl.id} ("${targetEl.name}") with confidence ${dsResult.decision.confidence}`);
-              controlSelected = {
-                source: 'deepseek',
-                locator: loc,
-                decision: dsResult.decision,
-                candidate: {
-                  index: 0,
-                  text: targetEl.name,
-                  ariaLabel: targetEl.ariaLabel,
-                  role: targetEl.role,
-                  tagName: targetEl.tag,
-                  href: targetEl.href || null,
-                  resolvedHref: targetEl.href || null,
-                  confidence: Math.round(dsResult.decision.confidence * 100),
-                  confidenceTier: dsResult.decision.confidence >= 0.75 ? 'HIGH' : 'MEDIUM',
-                  positiveSignals: ['deepseek:axtree_reasoning'],
-                  negativeSignals: [],
-                  isButton: targetEl.role === 'button' || targetEl.tag === 'button',
-                  isVisible: true,
-                  isEnabled: targetEl.enabled,
-                  isInViewport: targetEl.inViewport,
-                },
-              };
+          const dsResult = await DeepSeekNavigator.decideAction(snapshot, stateMachine.current, {
+            jobTitle: analysis.pageMetadata.schemaJobTitle,
+          });
+
+          if (dsResult.decision.action === 'click' && dsResult.decision.target_id) {
+            const targetEl = AXTreeBuilder.findElementById(snapshot, dsResult.decision.target_id);
+            if (targetEl) {
+              const loc = await AXTreeBuilder.resolveLocator(page, targetEl);
+              if (loc && (await loc.isVisible().catch(() => false))) {
+                await logger.info('deepseek_decision', `DeepSeek selected ${targetEl.id} ("${targetEl.name}") with confidence ${dsResult.decision.confidence}`);
+                controlSelected = {
+                  source: 'deepseek',
+                  locator: loc,
+                  decision: dsResult.decision,
+                  candidate: {
+                    index: 0,
+                    text: targetEl.name,
+                    ariaLabel: targetEl.ariaLabel,
+                    role: targetEl.role,
+                    tagName: targetEl.tag,
+                    href: targetEl.href || null,
+                    resolvedHref: targetEl.href || null,
+                    confidence: Math.round(dsResult.decision.confidence * 100),
+                    confidenceTier: dsResult.decision.confidence >= 0.75 ? 'HIGH' : 'MEDIUM',
+                    positiveSignals: ['deepseek:axtree_reasoning'],
+                    negativeSignals: [],
+                    isButton: targetEl.role === 'button' || targetEl.tag === 'button',
+                    isVisible: true,
+                    isEnabled: targetEl.enabled,
+                    isInViewport: targetEl.inViewport,
+                  },
+                };
+              }
             }
-          }
-        } else if (dsResult.decision.action === 'manual_intervention' || dsResult.decision.action === 'stop') {
-          await telemetry.record(telemetry.buildEntry({
-            currentState: stateMachine.current,
-            previousState: stateMachine.previous,
-            url: currentUrl,
-            action: dsResult.decision.action,
-            actionSource: 'deepseek',
-            model: agentConfig.primaryAgentModel,
-            modelConfidence: dsResult.decision.confidence,
-            reason: dsResult.decision.reason,
-            result: 'failed',
-            latencyMs: Date.now() - hopStartTime,
-            deepseekPromptTokens: dsResult.promptTokens,
-            deepseekCompletionTokens: dsResult.completionTokens,
-          }));
+          } else if (dsResult.decision.action === 'manual_intervention' || dsResult.decision.action === 'stop') {
+            if (dsResult.decision.confidence > 0.5) {
+              // High-confidence model reasoning — the model genuinely determined there
+              // is no applicable action. Trust the stop decision.
+              await telemetry.record(telemetry.buildEntry({
+                currentState: stateMachine.current,
+                previousState: stateMachine.previous,
+                url: currentUrl,
+                action: dsResult.decision.action,
+                actionSource: 'deepseek',
+                model: agentConfig.primaryAgentModel,
+                modelConfidence: dsResult.decision.confidence,
+                reason: dsResult.decision.reason,
+                result: 'failed',
+                latencyMs: Date.now() - hopStartTime,
+                deepseekPromptTokens: dsResult.promptTokens,
+                deepseekCompletionTokens: dsResult.completionTokens,
+              }));
 
-          throw new InterventionError(
-            InterventionReason.APPLICATION_NOT_FOUND,
-            `Navigation stopped by AI reasoning: ${dsResult.decision.reason}`,
-            currentUrl
-          );
+              throw new InterventionError(
+                InterventionReason.APPLICATION_NOT_FOUND,
+                `Navigation stopped by AI reasoning: ${dsResult.decision.reason}`,
+                currentUrl
+              );
+            }
+
+            // confidence ≤ 0.5 = parse failure or low-confidence uncertainty.
+            // Do NOT throw — fall through so Gemini visual fallback can attempt
+            // to find the apply button via screenshot coordinate reasoning.
+            await logger.warn('deepseek_low_confidence_stop',
+              `DeepSeek returned '${dsResult.decision.action}' with low confidence (${dsResult.decision.confidence}) — falling through to Gemini visual fallback. Reason: ${dsResult.decision.reason}`);
+          }
         }
       }
 
@@ -580,5 +605,36 @@ export class GenericApplicationAgent {
     }
 
     return null;
+  }
+
+  /**
+   * Waits for a JS-rendered SPA to finish hydrating before DOM analysis.
+   *
+   * Many ATS portals (Phenom People, iCIMS, SmartRecruiters) are React/Vue SPAs
+   * where `domcontentloaded` fires on an empty shell before the framework mounts.
+   * This method waits for:
+   *  1. Network idle (SPA API calls that populate job content settle)
+   *  2. At least one visible interactive element to appear in the DOM
+   *
+   * Both waits are best-effort — timeouts are graceful and analysis proceeds
+   * with whatever is available if the conditions are not met in time.
+   */
+  private async waitForSPAHydration(page: Page, logger: ExecutionLogger): Promise<void> {
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 8000 });
+      await logger.info('spa_hydration', 'Network idle — SPA hydration likely complete');
+    } catch {
+      // networkidle timeout is acceptable; proceed with what's rendered
+      await logger.info('spa_hydration', 'Network idle wait timed out — proceeding with available DOM');
+    }
+
+    try {
+      await page.waitForSelector(
+        'button:visible, a[href]:visible, [role="button"]:visible',
+        { timeout: 5000 }
+      );
+    } catch {
+      // No interactive element appeared — page analyzer will handle gracefully
+    }
   }
 }

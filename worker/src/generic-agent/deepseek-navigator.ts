@@ -91,8 +91,10 @@ Analyze the above snapshot and return the single best JSON action.`;
         return {
           decision: {
             action: 'stop',
-            confidence: 0.2,
-            reason: `Invalid JSON response from DeepSeek: ${result.content.slice(0, 100)}`,
+            // confidence=0 marks this as a parse error (not model-reasoned),
+            // allowing the caller to fall through to Gemini visual fallback.
+            confidence: 0,
+            reason: `[PARSE_FAILURE] Invalid JSON from DeepSeek: ${result.content.slice(0, 100)}`,
           },
           promptTokens: result.promptTokens,
           completionTokens: result.completionTokens,
