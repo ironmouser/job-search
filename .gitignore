@@ -65,10 +65,11 @@ result.json
 # local storage
 /storage/
 
-# editor
+# editor / tooling
 *.swp
 *.swo
 .page.tsx.swp
+.ox/
 
 # agent config
 CLAUDE.md
