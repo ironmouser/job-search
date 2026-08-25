@@ -4,6 +4,8 @@ import fs from 'fs';
 import { chromium } from 'playwright';
 import { WorkerProcess } from './worker';
 import { RailwayAPIClient } from './api-client';
+import { validateAIConfig } from './config';
+import { StrategyMemory } from './generic-agent/strategy-memory';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { version: WORKER_VERSION } = require('../package.json') as { version: string };
 
@@ -177,6 +179,15 @@ async function runStartupTests(apiClient: RailwayAPIClient, workerId: string) {
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 console.info(`[Worker] Starting — ID: ${WORKER_ID}, poll interval: ${POLL_INTERVAL_MS}ms`);
+
+// Log AI reasoning engine availability at startup
+const aiStatus = validateAIConfig();
+console.info(`[Worker] AI Navigation: deepseek=${aiStatus.deepseekAvailable ? 'READY' : 'DISABLED'}, gemini=${aiStatus.geminiAvailable ? 'READY' : 'DISABLED'}`);
+
+// Pre-load strategy memory from disk so it's available from the first session
+StrategyMemory.load().catch(err =>
+  console.warn('[Worker] Strategy memory failed to pre-load (non-fatal):', err)
+);
 
 runStartupTests(apiClient, WORKER_ID).then(() => {
   worker.start().catch((err) => {
