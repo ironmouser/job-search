@@ -162,6 +162,7 @@ export async function GET() {
             coverLetterPdfTextColor: (prefs as any).coverLetterPdfTextColor || '#111827',
             coverLetterPdfMargin: (prefs as any).coverLetterPdfMargin || '0.5in',
             coverLetterPdfHeaderLayout: (prefs as any).coverLetterPdfHeaderLayout || 'left',
+            customAnswers: (prefs?.sources as any)?.customAnswers || {},
             globalSettings
         });
     } catch (e: any) {
@@ -221,6 +222,52 @@ export async function POST(request: Request) {
         }
 
 
+        const existingPrefs = await prisma.userPreferences.findUnique({
+            where: { userId: session.user.id },
+            select: { sources: true, streetAddress: true, city: true, state: true, postalCode: true }
+        });
+
+        const existingSources = (existingPrefs?.sources as Record<string, any>) || {};
+        const incomingCustomAnswers = (data.customAnswers && typeof data.customAnswers === 'object') ? data.customAnswers : {};
+        const mergedCustomAnswers = {
+            ...(existingSources.customAnswers || {}),
+            ...incomingCustomAnswers,
+        };
+
+        const resolvedStreetAddress = data.streetAddress ||
+            incomingCustomAnswers['addressLine1'] ||
+            incomingCustomAnswers['Address Line 1'] ||
+            incomingCustomAnswers['streetAddress'] ||
+            existingPrefs?.streetAddress ||
+            undefined;
+
+        const resolvedCity = data.city ||
+            incomingCustomAnswers['city'] ||
+            incomingCustomAnswers['City'] ||
+            existingPrefs?.city ||
+            undefined;
+
+        const resolvedState = data.state ||
+            incomingCustomAnswers['state'] ||
+            incomingCustomAnswers['State'] ||
+            existingPrefs?.state ||
+            undefined;
+
+        const resolvedPostalCode = data.postalCode ||
+            incomingCustomAnswers['postalCode'] ||
+            incomingCustomAnswers['postal_code'] ||
+            incomingCustomAnswers['Postal Code'] ||
+            incomingCustomAnswers['zipCode'] ||
+            incomingCustomAnswers['Zip Code'] ||
+            existingPrefs?.postalCode ||
+            undefined;
+
+        const sourcesToSave = {
+            ...(typeof data.sources === 'object' && data.sources !== null ? data.sources : existingSources),
+            customAnswers: mergedCustomAnswers,
+            ...(data.accountAuthMode ? { accountAuthMode: data.accountAuthMode } : {}),
+        };
+
         let updateData: any = {
             jobLevel: data.jobLevel || 'Mid-level',
             searchLocation: data.searchLocation,
@@ -247,20 +294,17 @@ export async function POST(request: Request) {
             willingToRelocate: data.willingToRelocate,
             defaultAccountPassword: data.defaultAccountPassword && data.defaultAccountPassword !== '********' ? encrypt(data.defaultAccountPassword) : data.defaultAccountPassword,
             phone: data.phone,
-            location: data.location || ([data.city, data.state].filter(Boolean).join(', ') || undefined),
-            streetAddress: data.streetAddress,
-            city: data.city,
-            state: data.state,
-            postalCode: data.postalCode,
+            location: data.location || ([resolvedCity, resolvedState].filter(Boolean).join(', ') || undefined),
+            streetAddress: resolvedStreetAddress,
+            city: resolvedCity,
+            state: resolvedState,
+            postalCode: resolvedPostalCode,
             linkedinUrl: data.linkedinUrl,
             githubUrl: data.githubUrl,
             websiteUrl: data.websiteUrl,
             resumeCustomizationMaxPercentage: data.resumeCustomizationMaxPercentage,
             customCareerPages: data.customCareerPages,
-            sources: data.accountAuthMode ? {
-                ...(typeof data.sources === 'object' && data.sources !== null ? data.sources : {}),
-                accountAuthMode: data.accountAuthMode,
-            } : data.sources,
+            sources: sourcesToSave,
             profile: data.profile,
             resumeMarkdown: data.resumeMarkdown,
             emailAddress: data.emailAddress,
@@ -323,17 +367,17 @@ export async function POST(request: Request) {
                 willingToTravel: data.willingToTravel || '',
                 isOver18: data.isOver18 || '',
                 phone: data.phone || '',
-                location: data.location || ([data.city, data.state].filter(Boolean).join(', ') || ''),
-                streetAddress: data.streetAddress || '',
-                city: data.city || '',
-                state: data.state || '',
-                postalCode: data.postalCode || '',
+                location: data.location || ([resolvedCity, resolvedState].filter(Boolean).join(', ') || ''),
+                streetAddress: resolvedStreetAddress || '',
+                city: resolvedCity || '',
+                state: resolvedState || '',
+                postalCode: resolvedPostalCode || '',
                 linkedinUrl: data.linkedinUrl || '',
                 githubUrl: data.githubUrl || '',
                 websiteUrl: data.websiteUrl || '',
                 resumeCustomizationMaxPercentage: data.resumeCustomizationMaxPercentage || 50,
                 customCareerPages: data.customCareerPages || [],
-                sources: data.sources || DEFAULT_PRO_SOURCES,
+                sources: sourcesToSave,
                 profile: data.profile || '',
                 resumeMarkdown: data.resumeMarkdown || '',
                 emailAddress: data.emailAddress || '',

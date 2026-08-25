@@ -118,6 +118,7 @@ export interface UserProfile {
   phone?: string;
   location?: string;
   streetAddress?: string;
+  streetAddress2?: string;
   city?: string;
   state?: string;
   postalCode?: string;
@@ -140,6 +141,7 @@ export interface UserProfile {
   accountPassword?: string;
   accountEmail?: string;
   accountAuthMode?: 'sign_in' | 'create_account';
+  customAnswers?: Record<string, string>;
 }
 
 export interface WorkflowContext {

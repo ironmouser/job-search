@@ -91,16 +91,20 @@ export class WorkdayPlugin extends ATSPlugin {
     const page = browser.page;
     await logger.info('plugin_loaded', `Workday plugin active for ${context.jobUrl}`);
 
-    // Navigate to the job posting
-    await browser.navigate(context.jobUrl);
-    await logger.info('page_navigated', 'Navigated to Workday job posting');
-    await this.dismissCookieBannerIfPresent(page, logger);
+    const currentUrl = page.url() || '';
+    const isOnWorkdaySite = currentUrl.includes('myworkdayjobs.com') || currentUrl.includes('workday.com');
+
+    // Only perform full navigation if not already on the Workday job/portal page
+    if (!isOnWorkdaySite || currentUrl === 'about:blank') {
+      await browser.navigate(context.jobUrl);
+      await logger.info('page_navigated', 'Navigated to Workday job posting');
+      await this.dismissCookieBannerIfPresent(page, logger);
+    }
 
     // Check for login/create account page before clicking Apply (if URL is already on a dedicated auth gate)
     await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
-    // Wait for and click the Apply button
-    // Workday uses data-automation-id for most interactive elements
+    // Wait for and click the Apply button if still on job posting overview
     const applySelectors = [
       '[data-automation-id="applyButton"]',
       '[data-automation-id="Apply"]',
@@ -116,18 +120,20 @@ export class WorkdayPlugin extends ATSPlugin {
     let clicked = false;
     for (const selector of applySelectors) {
       try {
-        await page.waitForSelector(selector, { timeout: 4000 });
-        await page.click(selector);
-        clicked = true;
-        await logger.info('apply_button_clicked', `Clicked apply button via: ${selector}`);
-        break;
+        const btn = page.locator(selector).first();
+        if ((await btn.count().catch(() => 0)) > 0 && (await btn.isVisible().catch(() => false))) {
+          await btn.click();
+          clicked = true;
+          await logger.info('apply_button_clicked', `Clicked apply button via: ${selector}`);
+          break;
+        }
       } catch {
         // Try next selector
       }
     }
 
     // Give page time to load after click
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(2000);
 
     // If clicking "Apply" opened a popover menu (e.g. "Autofill with Resume", "Apply Manually"), click "Autofill with Resume"
     const subOptionSelectors = [
@@ -148,12 +154,18 @@ export class WorkdayPlugin extends ATSPlugin {
       if ((await subOption.count().catch(() => 0)) > 0 && (await subOption.isVisible().catch(() => false))) {
         await subOption.click().catch(() => {});
         await logger.info('sub_option_clicked', `Selected Workday application mode via: ${sel}`);
-        await page.waitForTimeout(2500);
+        await page.waitForTimeout(2000);
         break;
       }
     }
 
-    if (!clicked) {
+    // Check for login/create account page after clicking Apply and selecting application mode
+    await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
+
+    // If wizard or form inputs are present, mark ready
+    const hasWizard = (await page.locator('[data-automation-id="bottom-navigation-next-button"], [data-automation-id="file-upload-input-ref"], [data-automation-id="legalNameSection_firstName"], [data-automation-id="myInformationPage"]').count().catch(() => 0)) > 0;
+
+    if (!clicked && !hasWizard && !page.url().includes('/apply')) {
       await this.checkClosedJob(browser, logger, context.jobUrl);
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
@@ -161,9 +173,6 @@ export class WorkdayPlugin extends ATSPlugin {
         context.jobUrl
       );
     }
-
-    // Check for login/create account page after clicking Apply and selecting application mode
-    await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
     await logger.info('form_located', 'Workday application form ready');
   }
@@ -386,49 +395,305 @@ export class WorkdayPlugin extends ATSPlugin {
   ): Promise<void> {
     const page = browser.page;
     const profile = context.userProfile;
+    const customAnswers = profile.customAnswers || {};
 
-    // Workday pre-fills from the resume parse — just verify/correct key fields
-    const nameField = page.locator('[data-automation-id="legalNameSection_firstName"]');
-    if (await nameField.count() > 0) {
-      const firstName = profile.name.split(' ')[0] ?? '';
-      const lastName = profile.name.split(' ').slice(1).join(' ') ?? '';
-      await this.typeHumanized(page, nameField, firstName);
-      await this.typeHumanized(page, page.locator('[data-automation-id="legalNameSection_lastName"]'), lastName);
-      await logger.info('field_filled', 'Name fields populated', { hasName: true });
-    }
-
-    if (profile.phone) {
-      const phoneField = page.locator('[data-automation-id="phone-number"]');
-      if (await phoneField.count() > 0) {
-        await this.typeHumanized(page, phoneField, profile.phone);
-        await logger.info('field_filled', 'Phone field populated');
+    // 1. Country Selection (First, because Country changes dependent State/Subdivision fields)
+    const countryVal = profile.country || customAnswers['country'] || customAnswers['Country'] || 'United States';
+    const countryDropdownSelectors = [
+      'button[data-automation-id="addressSection_countryRegion"]',
+      'button[data-automation-id="countryRegion"]',
+      '[data-automation-id="addressSection_countryRegion"] button',
+      '[data-automation-id="countryRegion"] button',
+      'button[data-automation-id="country"]',
+      'div[data-automation-id="formLabel"]:has-text("Country") ~ div button',
+      'div[data-automation-id="formLabel"]:has-text("Country") ~ div [role="combobox"]',
+    ];
+    for (const sel of countryDropdownSelectors) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+        const selected = await this.selectWorkdayDropdown(page, loc, countryVal);
+        if (selected) {
+          await logger.info('field_filled', `Country selected: ${countryVal}`);
+          await page.waitForTimeout(1000); // Allow country subdivision cascade to settle
+        }
+        break;
       }
     }
 
-    const cityVal = profile.city || (profile.location ? profile.location.split(',')[0]?.trim() : '');
+    // 2. First & Last Name
+    const firstName = profile.name ? profile.name.split(' ')[0] ?? '' : '';
+    const lastName = profile.name ? profile.name.split(' ').slice(1).join(' ') ?? '' : '';
+
+    if (firstName) {
+      const firstNameSelectors = [
+        '[data-automation-id="legalNameSection_firstName"]',
+        '[data-automation-id="nameSection_firstName"]',
+        '[data-automation-id="firstName"]',
+        'input[data-automation-id*="firstName" i]',
+        'input[name*="firstName" i]',
+        'input[id*="firstName" i]',
+        'label:has-text("First Name") ~ div input',
+        'div[data-automation-id="formLabel"]:has-text("First Name") ~ div input',
+      ];
+      for (const sel of firstNameSelectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.typeHumanized(page, loc, firstName);
+          await logger.info('field_filled', `First name populated: ${firstName}`);
+          break;
+        }
+      }
+    }
+
+    if (lastName) {
+      const lastNameSelectors = [
+        '[data-automation-id="legalNameSection_lastName"]',
+        '[data-automation-id="nameSection_lastName"]',
+        '[data-automation-id="lastName"]',
+        'input[data-automation-id*="lastName" i]',
+        'input[name*="lastName" i]',
+        'input[id*="lastName" i]',
+        'label:has-text("Last Name") ~ div input',
+        'div[data-automation-id="formLabel"]:has-text("Last Name") ~ div input',
+      ];
+      for (const sel of lastNameSelectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.typeHumanized(page, loc, lastName);
+          await logger.info('field_filled', `Last name populated: ${lastName}`);
+          break;
+        }
+      }
+    }
+
+    // 3. Address Line 1
+    const address1Val = profile.streetAddress ||
+      customAnswers['addressLine1'] ||
+      customAnswers['Address Line 1'] ||
+      customAnswers['streetAddress'] ||
+      profile.location ||
+      '';
+
+    if (address1Val) {
+      const address1Selectors = [
+        '[data-automation-id="addressSection_addressLine1"]',
+        '[data-automation-id="addressSection_primaryAddress_addressLine1"]',
+        '[data-automation-id="addressLine1"]',
+        'input[data-automation-id*="addressLine1" i]',
+        'input[id*="addressLine1" i]',
+        'input[name*="addressLine1" i]',
+        'label:has-text("Address Line 1") ~ div input',
+        'div[data-automation-id="formLabel"]:has-text("Address Line 1") ~ div input',
+      ];
+      for (const sel of address1Selectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.typeHumanized(page, loc, address1Val);
+          await logger.info('field_filled', `Address Line 1 populated: ${address1Val}`);
+          break;
+        }
+      }
+    }
+
+    // 4. Address Line 2
+    const address2Val = profile.streetAddress2 || customAnswers['addressLine2'] || customAnswers['Address Line 2'] || '';
+    if (address2Val) {
+      const address2Selectors = [
+        '[data-automation-id="addressSection_addressLine2"]',
+        '[data-automation-id="addressLine2"]',
+        'input[data-automation-id*="addressLine2" i]',
+        'input[id*="addressLine2" i]',
+      ];
+      for (const sel of address2Selectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.typeHumanized(page, loc, address2Val);
+          break;
+        }
+      }
+    }
+
+    // 5. City
+    const cityVal = profile.city ||
+      customAnswers['city'] ||
+      customAnswers['City'] ||
+      (profile.location ? profile.location.split(',')[0]?.trim() : '');
+
     if (cityVal) {
-      const locationField = page.locator('[data-automation-id="city"]');
-      if (await locationField.count() > 0) {
-        await this.typeHumanized(page, locationField, cityVal);
-        await logger.info('field_filled', 'City field populated');
+      const citySelectors = [
+        '[data-automation-id="addressSection_city"]',
+        '[data-automation-id="city"]',
+        'input[data-automation-id*="city" i]',
+        'input[id*="city" i]',
+        'input[name*="city" i]',
+        'label:has-text("City") ~ div input',
+        'div[data-automation-id="formLabel"]:has-text("City") ~ div input',
+      ];
+      for (const sel of citySelectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.typeHumanized(page, loc, cityVal);
+          await logger.info('field_filled', `City field populated: ${cityVal}`);
+          break;
+        }
       }
     }
 
-    if (profile.streetAddress) {
-      const addressField = page.locator('[data-automation-id="addressSection_addressLine1"]');
-      if (await addressField.count() > 0) {
-        await this.typeHumanized(page, addressField, profile.streetAddress);
-        await logger.info('field_filled', 'Street address field populated');
+    // 6. State / Country Subdivision Code
+    const stateVal = profile.state ||
+      customAnswers['state'] ||
+      customAnswers['State'] ||
+      (profile.location ? profile.location.split(',')[1]?.trim() : '');
+
+    if (stateVal) {
+      const stateDropdownSelectors = [
+        'button[data-automation-id="addressSection_countrySubdivisionCode"]',
+        'button[data-automation-id="countrySubdivisionCode"]',
+        'button[data-automation-id="state"]',
+        '[data-automation-id="addressSection_countrySubdivisionCode"] button',
+        'div[data-automation-id="formLabel"]:has-text("State") ~ div button',
+        'div[data-automation-id="formLabel"]:has-text("Province") ~ div button',
+      ];
+      for (const sel of stateDropdownSelectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.selectWorkdayDropdown(page, loc, stateVal);
+          await logger.info('field_filled', `State selected: ${stateVal}`);
+          break;
+        }
+      }
+
+      // Input fallback for state text inputs
+      const stateInput = page.locator('input[data-automation-id*="countrySubdivisionCode" i], input[id*="state" i]').first();
+      if ((await stateInput.count().catch(() => 0)) > 0 && (await stateInput.isVisible().catch(() => false))) {
+        await this.typeHumanized(page, stateInput, stateVal);
       }
     }
 
-    if (profile.postalCode) {
-      const postalField = page.locator('[data-automation-id="postalCode"]');
-      if (await postalField.count() > 0) {
-        await this.typeHumanized(page, postalField, profile.postalCode);
-        await logger.info('field_filled', 'Postal code field populated');
+    // 7. Postal Code / Zip Code
+    const postalVal = profile.postalCode ||
+      customAnswers['postalCode'] ||
+      customAnswers['postal_code'] ||
+      customAnswers['Postal Code'] ||
+      customAnswers['zipCode'] ||
+      '';
+
+    if (postalVal) {
+      const postalSelectors = [
+        '[data-automation-id="addressSection_postalCode"]',
+        '[data-automation-id="postalCode"]',
+        'input[data-automation-id*="postalCode" i]',
+        'input[id*="postalCode" i]',
+        'input[name*="postalCode" i]',
+        'label:has-text("Postal Code") ~ div input',
+        'label:has-text("Zip Code") ~ div input',
+        'div[data-automation-id="formLabel"]:has-text("Postal Code") ~ div input',
+      ];
+      for (const sel of postalSelectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.typeHumanized(page, loc, postalVal);
+          await logger.info('field_filled', `Postal code field populated: ${postalVal}`);
+          break;
+        }
       }
     }
+
+    // 8. Phone Number
+    if (profile.phone) {
+      const phoneSelectors = [
+        '[data-automation-id="phone-number"]',
+        '[data-automation-id="phoneNumber"]',
+        '[data-automation-id="phoneSection_phoneNumber"]',
+        'input[data-automation-id*="phone" i]',
+        'input[type="tel"]',
+        'label:has-text("Phone") ~ div input',
+        'div[data-automation-id="formLabel"]:has-text("Phone") ~ div input',
+      ];
+      for (const sel of phoneSelectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.typeHumanized(page, loc, profile.phone);
+          await logger.info('field_filled', 'Phone field populated');
+          break;
+        }
+      }
+
+      // Phone Device Type (Mobile)
+      const phoneTypeSelectors = [
+        'button[data-automation-id="phone-device-type"]',
+        'button[data-automation-id="phoneDeviceType"]',
+        '[data-automation-id="phone-device-type"] button',
+        'div[data-automation-id="formLabel"]:has-text("Phone Device Type") ~ div button',
+        'div[data-automation-id="formLabel"]:has-text("Device Type") ~ div button',
+      ];
+      for (const sel of phoneTypeSelectors) {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await this.selectWorkdayDropdown(page, loc, 'Mobile');
+          break;
+        }
+      }
+    }
+
+    // 9. Source / "How Did You Hear About Us"
+    const sourceSelectors = [
+      'button[data-automation-id="source"]',
+      'button[data-automation-id="howDidYouHearAboutUs"]',
+      '[data-automation-id="source"] button',
+      'div[data-automation-id="formLabel"]:has-text("How Did You Hear") ~ div button',
+      'div[data-automation-id="formLabel"]:has-text("Source") ~ div button',
+    ];
+    for (const sel of sourceSelectors) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+        const selected = await this.selectWorkdayDropdown(page, loc, 'Job Board') ||
+          await this.selectWorkdayDropdown(page, loc, 'LinkedIn') ||
+          await this.selectWorkdayDropdown(page, loc, 'Other');
+        if (selected) {
+          await logger.info('field_filled', 'Source / referral selected');
+        }
+        break;
+      }
+    }
+  }
+
+  private async selectWorkdayDropdown(
+    page: import('playwright').Page,
+    triggerLocator: import('playwright').Locator,
+    targetText: string
+  ): Promise<boolean> {
+    try {
+      if ((await triggerLocator.count()) === 0 || !(await triggerLocator.isVisible().catch(() => false))) {
+        return false;
+      }
+
+      const currentText = ((await triggerLocator.textContent().catch(() => '')) || '').trim();
+      if (currentText.toLowerCase().includes(targetText.toLowerCase())) {
+        return true; // Already selected
+      }
+
+      await triggerLocator.click().catch(() => {});
+      await page.waitForTimeout(400);
+
+      // Check for search input in popup
+      const searchInput = page.locator('[data-automation-id="searchBox"], input[type="search"], div[role="listbox"] input').first();
+      if ((await searchInput.count().catch(() => 0)) > 0 && (await searchInput.isVisible().catch(() => false))) {
+        await searchInput.fill(targetText).catch(() => {});
+        await page.waitForTimeout(400);
+      }
+
+      const option = page.locator(`[role="option"], [data-automation-id*="promptOption"], li`).filter({ hasText: new RegExp(targetText, 'i') }).first();
+      if ((await option.count().catch(() => 0)) > 0 && (await option.isVisible().catch(() => false))) {
+        await option.click().catch(() => {});
+        await page.waitForTimeout(400);
+        return true;
+      }
+
+      // Close dropdown if nothing selected
+      await page.keyboard.press('Escape').catch(() => {});
+    } catch {}
+    return false;
   }
 
   private async answerDynamicQuestions(

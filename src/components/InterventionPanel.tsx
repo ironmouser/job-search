@@ -271,12 +271,27 @@ export function InterventionPanel({
           emailAddress: settings.emailAddress,
           defaultAccountPassword: settings.defaultAccountPassword,
         };
-        if (customAnswer && questionData?.fieldKey) {
+        if (customAnswer) {
+          const qKey = questionData?.fieldKey || questionData?.label || 'answer';
+          const qLabel = questionData?.label || qKey;
+          const lowerLabel = qLabel.toLowerCase();
+          const lowerKey = String(qKey).toLowerCase();
+
           extraPayload.customAnswers = {
             ...(settings?.customAnswers || {}),
-            [questionData.fieldKey]: customAnswer,
-            [questionData.label]: customAnswer,
+            [qKey]: customAnswer,
+            [qLabel]: customAnswer,
           };
+
+          if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel) || /address\s*line\s*1|street\s*address/i.test(lowerKey)) {
+            extraPayload.streetAddress = customAnswer;
+          } else if (/^city\b|\bcity\b/i.test(lowerLabel) || /^city\b|\bcity\b/i.test(lowerKey)) {
+            extraPayload.city = customAnswer;
+          } else if (/^state\b|\bstate\b|province|region/i.test(lowerLabel) || /^state\b|\bstate\b/i.test(lowerKey)) {
+            extraPayload.state = customAnswer;
+          } else if (/postal|zip\s*code/i.test(lowerLabel) || /postal|zip/i.test(lowerKey)) {
+            extraPayload.postalCode = customAnswer;
+          }
         }
         await saveSettings(extraPayload);
       }

@@ -73,10 +73,17 @@ export class UniversalQuestionResolver {
       let answer = match?.answer;
       let requiresHuman = match?.requiresHumanInput || !answer;
 
-      // Profile-based fallback if AI did not return an answer
+      // Profile and customAnswers fallback if AI did not return an answer
       if (!answer) {
         const lowerQ = q.label.toLowerCase();
-        if (/salary|compensation|desired pay|expected pay|pay expectation|target salary/i.test(lowerQ) && context.userProfile.expectedSalary) {
+        const lowerKey = q.fieldKey.toLowerCase();
+        const customAnswers = context.userProfile.customAnswers || {};
+        const customVal = customAnswers[q.fieldKey] || customAnswers[q.label] || customAnswers[q.label.trim()];
+
+        if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
+          answer = String(customVal).trim();
+          requiresHuman = false;
+        } else if (/salary|compensation|desired pay|expected pay|pay expectation|target salary/i.test(lowerQ) && context.userProfile.expectedSalary) {
           answer = context.userProfile.expectedSalary;
           requiresHuman = false;
         } else if (/start date|availability|notice period|available to start|when can you start/i.test(lowerQ) && (context.userProfile as any).startDate) {
@@ -84,6 +91,67 @@ export class UniversalQuestionResolver {
           requiresHuman = false;
         } else if (/relocat/i.test(lowerQ) && (context.userProfile as any).willingToRelocate) {
           answer = (context.userProfile as any).willingToRelocate;
+          requiresHuman = false;
+        } else if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerQ) || /address\s*line\s*1|street\s*address|address1/i.test(lowerKey)) {
+          const addr = context.userProfile.streetAddress || context.userProfile.location;
+          if (addr) {
+            answer = addr;
+            requiresHuman = false;
+          }
+        } else if (/address\s*line\s*2|apt|suite|unit/i.test(lowerQ) || /address\s*line\s*2|address2/i.test(lowerKey)) {
+          answer = context.userProfile.streetAddress2 || '';
+          requiresHuman = false;
+        } else if (/^city\b|\bcity\b/i.test(lowerQ) || /^city\b/i.test(lowerKey)) {
+          const c = context.userProfile.city || (context.userProfile.location ? context.userProfile.location.split(',')[0]?.trim() : '');
+          if (c) {
+            answer = c;
+            requiresHuman = false;
+          }
+        } else if (/^state\b|\bstate\b|province|region/i.test(lowerQ) || /^state\b/i.test(lowerKey)) {
+          const s = context.userProfile.state || (context.userProfile.location ? context.userProfile.location.split(',')[1]?.trim() : '');
+          if (s) {
+            answer = s;
+            requiresHuman = false;
+          }
+        } else if (/postal|zip\s*code/i.test(lowerQ) || /postal|zip/i.test(lowerKey)) {
+          if (context.userProfile.postalCode) {
+            answer = context.userProfile.postalCode;
+            requiresHuman = false;
+          }
+        } else if (/^country\b|\bcountry\b/i.test(lowerQ) || /^country\b/i.test(lowerKey)) {
+          answer = context.userProfile.country || 'United States';
+          requiresHuman = false;
+        } else if (/first\s*name/i.test(lowerQ) || /first\s*name/i.test(lowerKey)) {
+          answer = context.userProfile.name?.split(' ')[0] || '';
+          if (answer) requiresHuman = false;
+        } else if (/last\s*name/i.test(lowerQ) || /last\s*name/i.test(lowerKey)) {
+          answer = context.userProfile.name?.split(' ').slice(1).join(' ') || '';
+          if (answer) requiresHuman = false;
+        } else if (/phone|mobile|tel/i.test(lowerQ) || /phone|mobile/i.test(lowerKey)) {
+          if (context.userProfile.phone) {
+            answer = context.userProfile.phone;
+            requiresHuman = false;
+          }
+        } else if (/email/i.test(lowerQ) || /email/i.test(lowerKey)) {
+          if (context.userProfile.email) {
+            answer = context.userProfile.email;
+            requiresHuman = false;
+          }
+        } else if (/linkedin/i.test(lowerQ) || /linkedin/i.test(lowerKey)) {
+          if (context.userProfile.linkedinUrl) {
+            answer = context.userProfile.linkedinUrl;
+            requiresHuman = false;
+          }
+        } else if (/website|portfolio/i.test(lowerQ) || /website|portfolio/i.test(lowerKey)) {
+          if (context.userProfile.websiteUrl) {
+            answer = context.userProfile.websiteUrl;
+            requiresHuman = false;
+          }
+        } else if (/authorized to work|work authorization/i.test(lowerQ)) {
+          answer = context.userProfile.usWorkAuthorization === 'No' ? 'No' : 'Yes';
+          requiresHuman = false;
+        } else if (/require sponsorship|visa sponsorship/i.test(lowerQ)) {
+          answer = context.userProfile.visaSponsorship === 'Yes' ? 'Yes' : 'No';
           requiresHuman = false;
         }
       }

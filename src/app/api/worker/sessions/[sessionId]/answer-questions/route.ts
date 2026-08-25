@@ -78,10 +78,74 @@ export async function POST(
     const company = session.job?.company || 'Company';
     const jobDescription = session.job?.description || '';
 
-    const answers: AnswerItem[] = [];
+    const customAnswers = ((prefs?.sources as any)?.customAnswers as Record<string, string>) || {};
+    const streetAddress = prefs?.streetAddress || customAnswers['addressLine1'] || customAnswers['Address Line 1'] || customAnswers['streetAddress'] || '';
+    const city = prefs?.city || customAnswers['city'] || customAnswers['City'] || (prefs?.location ? prefs.location.split(',')[0]?.trim() : '');
+    const state = prefs?.state || customAnswers['state'] || customAnswers['State'] || (prefs?.location ? prefs.location.split(',')[1]?.trim() : '');
+    const postalCode = prefs?.postalCode || customAnswers['postalCode'] || customAnswers['Postal Code'] || customAnswers['zipCode'] || '';
 
-    // Process questions in a batch prompt to callAI for efficiency and consistency
-    const questionsPromptList = body.questions.map((q, idx) => {
+    const answers: AnswerItem[] = [];
+    const questionsForAI: QuestionItem[] = [];
+
+    // Pre-resolve from customAnswers or profile attributes
+    for (const q of body.questions) {
+      const lowerLabel = q.label.toLowerCase();
+      const customVal = customAnswers[q.id] || customAnswers[q.label] || customAnswers[q.label.trim()];
+
+      if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
+        answers.push({
+          id: q.id,
+          answer: String(customVal).trim(),
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel) && streetAddress) {
+        answers.push({
+          id: q.id,
+          answer: streetAddress,
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else if (/address\s*line\s*2|apt|suite|unit/i.test(lowerLabel)) {
+        const addr2 = customAnswers['addressLine2'] || customAnswers['Address Line 2'] || '';
+        answers.push({
+          id: q.id,
+          answer: addr2,
+          confidence: 90,
+          requiresHumanInput: false,
+        });
+      } else if (/^city\b|\bcity\b/i.test(lowerLabel) && city) {
+        answers.push({
+          id: q.id,
+          answer: city,
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else if (/^state\b|\bstate\b|province|region/i.test(lowerLabel) && state) {
+        answers.push({
+          id: q.id,
+          answer: state,
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else if (/postal|zip\s*code/i.test(lowerLabel) && postalCode) {
+        answers.push({
+          id: q.id,
+          answer: postalCode,
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else {
+        questionsForAI.push(q);
+      }
+    }
+
+    if (questionsForAI.length === 0) {
+      return NextResponse.json({ answers });
+    }
+
+    // Process remaining questions in a batch prompt to callAI
+    const questionsPromptList = questionsForAI.map((q, idx) => {
       let details = `Question ${idx + 1} (ID: ${q.id}):\n- Prompt: "${q.label}"\n- Field Type: ${q.type}\n- Required: ${q.required ? 'Yes' : 'No'}`;
       if (q.options && q.options.length > 0) {
         details += `\n- Allowed Options: [${q.options.map((o) => `"${o}"`).join(', ')}]`;
@@ -95,7 +159,11 @@ CANDIDATE INFORMATION:
 Name: ${session.user.name || 'Candidate'}
 Email: ${session.user.email}
 Phone: ${prefs?.phone || ''}
-Location: ${prefs?.location || ''}
+Street Address: ${streetAddress}
+City: ${city}
+State: ${state}
+Postal Code: ${postalCode}
+Location: ${prefs?.location || [city, state].filter(Boolean).join(', ')}
 US Work Authorization: ${prefs?.usWorkAuthorization || 'Authorized to work in US'}
 Visa Sponsorship Required: ${prefs?.visaSponsorship || 'No'}
 Country: ${prefs?.country || 'United States'}

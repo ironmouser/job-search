@@ -303,6 +303,7 @@ export abstract class ATSPlugin {
               const consentLocators = [
                 targetCtx.locator('input[data-automation-id="createAccountCheckbox"]').first(),
                 targetCtx.locator('div[data-automation-id="createAccountCheckbox"] input').first(),
+                targetCtx.locator('div[data-automation-id*="createAccountCheckbox" i]').first(),
                 targetCtx.locator('input[type="checkbox"][name*="term" i]').first(),
                 targetCtx.locator('input[type="checkbox"][name*="privacy" i]').first(),
                 targetCtx.locator('input[type="checkbox"][name*="consent" i]').first(),
@@ -316,6 +317,14 @@ export abstract class ATSPlugin {
                     await loc.check({ force: true }).catch(async () => {
                       await loc.click({ force: true }).catch(() => {});
                     });
+                    // Also trigger click on label / container for custom React checkboxes
+                    await loc.evaluate((el) => {
+                      const label = el.closest('label') || el.parentElement;
+                      if (label && !(el as HTMLInputElement).checked) {
+                        (label as HTMLElement).click();
+                      }
+                    }).catch(() => {});
+                    await page.waitForTimeout(300);
                   }
                   break;
                 }
@@ -367,11 +376,18 @@ export abstract class ATSPlugin {
               await submitBtn.scrollIntoViewIfNeeded().catch(() => {});
               await submitBtn.click({ force: true }).catch(() => {});
 
-              // Wait up to 10 seconds for modal disappearance or page navigation
-              for (let i = 0; i < 10; i++) {
+              // Wait up to 15 seconds for modal disappearance, page navigation, or wizard readiness
+              for (let i = 0; i < 15; i++) {
                 await page.waitForTimeout(1000);
-                const isPasswordStillVisible = (await page.locator('input[type="password"]').count().catch(() => 0)) > 0;
-                if (!isPasswordStillVisible) {
+
+                // Check if application wizard or next step elements are already visible
+                const isWizardReady = (await page.locator(
+                  '[data-automation-id="bottom-navigation-next-button"]:visible, [data-automation-id="legalNameSection_firstName"]:visible, [data-automation-id="myInformationPage"]:visible, [data-automation-id="applyOptionAutofill"]:visible, [data-automation-id="file-upload-input-ref"]:visible, button:has-text("Autofill with Resume"):visible, button:has-text("Apply Manually"):visible, button:has-text("Save and Continue"):visible'
+                ).count().catch(() => 0)) > 0;
+
+                const isPasswordStillVisible = (await page.locator('input[type="password"]:visible').count().catch(() => 0)) > 0;
+
+                if (isWizardReady || !isPasswordStillVisible) {
                   // Check if page transitioned to an email verification prompt
                   const pageText = await page.innerText('body').catch(() => '');
                   const isEmailVerifyGate = /verify your email|verification email sent|check your inbox|activation link|enter the code|security code/i.test(pageText);
@@ -386,19 +402,22 @@ export abstract class ATSPlugin {
                 }
               }
 
-              // Check for explicit error message from portal
-              const errorEl = targetCtx.locator('[data-automation-id*="error" i], [data-automation-id="alert"], .error-msg, [aria-invalid="true"], [role="alert"], :has-text("already exists"), :has-text("Invalid user name"), :has-text("Password Requirements")').first();
+              // Check for explicit error message from portal (avoid false positives on logos / JSON-LD / password requirements text)
+              const errorEl = targetCtx.locator('[data-automation-id*="error" i], .error-msg, .error-message, [aria-invalid="true"]').first();
               let errorDetails = '';
               if (await errorEl.count() > 0 && (await errorEl.isVisible().catch(() => false))) {
                 const text = await errorEl.textContent().catch(() => '');
                 if (text && text.trim().length > 0) {
                   const cleanText = text.trim().slice(0, 150);
-                  if (/already exists/i.test(cleanText)) {
-                    errorDetails = `An account with this email already exists on ${platformDisplayName}. Please select "Yes, Sign In" to enter your existing password.`;
-                  } else if (/invalid|incorrect/i.test(cleanText)) {
-                    errorDetails = `Invalid email or password reported by ${platformDisplayName}. Please check your credentials.`;
-                  } else {
-                    errorDetails = `Portal message: "${cleanText}"`;
+                  // Ensure it's not structured JSON or logo data
+                  if (!cleanText.includes('{') && !cleanText.toLowerCase().includes('logo')) {
+                    if (/already exists/i.test(cleanText)) {
+                      errorDetails = `An account with this email already exists on ${platformDisplayName}. Please select "Yes, Sign In" to enter your existing password.`;
+                    } else if (/invalid|incorrect/i.test(cleanText)) {
+                      errorDetails = `Invalid email or password reported by ${platformDisplayName}. Please check your credentials.`;
+                    } else if (/error|required|failed|must contain/i.test(cleanText)) {
+                      errorDetails = `Portal message: "${cleanText}"`;
+                    }
                   }
                 }
               }
