@@ -245,23 +245,33 @@ export class GenericFormFiller {
         `resume_${context.sessionId}.pdf`
       );
 
-      // 1. Scoped container search (Resume / CV containers, excluding Cover Letter)
-      const resumeContainers = ctx.locator('div, section, fieldset, .form-group, [class*="upload" i]').filter({
+      // 1. Scoped container search (Resume / CV containers, excluding Cover Letter).
+      //    Use smallest matching container to avoid picking up cover-letter text from page headers.
+      const resumeContainers = ctx.locator('div, section, fieldset, .form-group, li, [class*="upload" i], [class*="resume" i]').filter({
         hasText: /resume|curriculum\s*vitae|\bcv\b/i,
       });
 
       const containerCount = await resumeContainers.count().catch(() => 0);
+      // Collect candidates: pick the one with the smallest textContent (most specific)
+      let bestResumeContainer: ReturnType<typeof ctx.locator> | null = null;
+      let bestResumeTextLen = Infinity;
       for (let i = 0; i < containerCount; i++) {
         const container = resumeContainers.nth(i);
-        const hasCoverText = await container.evaluate((el) => /cover\s*letter/i.test(el.textContent || '')).catch(() => false);
-        if (hasCoverText) continue;
-
+        const txt = await container.evaluate((el) => (el.textContent || '').trim()).catch(() => '');
+        // Skip containers that also contain "cover letter" — they are combined upload widgets
+        if (/cover\s*letter/i.test(txt)) continue;
         const fileInput = container.locator('input[type="file"]').first();
-        if ((await fileInput.count().catch(() => 0)) > 0) {
-          await fileInput.setInputFiles(resumePath);
-          await logger.info('resume_uploaded', 'Resume PDF uploaded via scoped Resume container');
-          return;
+        if ((await fileInput.count().catch(() => 0)) === 0) continue;
+        if (txt.length < bestResumeTextLen) {
+          bestResumeTextLen = txt.length;
+          bestResumeContainer = container;
         }
+      }
+      if (bestResumeContainer) {
+        const fileInput = bestResumeContainer.locator('input[type="file"]').first();
+        await fileInput.setInputFiles(resumePath);
+        await logger.info('resume_uploaded', 'Resume PDF uploaded via scoped Resume container');
+        return;
       }
 
       // 2. Targeted attribute selectors
@@ -336,19 +346,56 @@ export class GenericFormFiller {
         `cover_letter_${context.sessionId}.pdf`
       );
 
-      // 2. Check container-scoped upload widgets (e.g. Phenom People "Cover Letter" section)
-      const clContainers = ctx.locator('div, section, fieldset, .form-group, [class*="upload" i]').filter({
+      // 2. Check container-scoped upload widgets (e.g. Phenom People "Cover Letter" section).
+      //    Pick the smallest container that exclusively matches cover-letter content.
+      const clContainers = ctx.locator('div, section, fieldset, .form-group, li, [class*="upload" i], [class*="cover" i]').filter({
         hasText: /cover\s*letter/i,
       });
 
       const containerCount = await clContainers.count().catch(() => 0);
+      let bestClContainer: ReturnType<typeof ctx.locator> | null = null;
+      let bestClTextLen = Infinity;
       for (let i = 0; i < containerCount; i++) {
         const container = clContainers.nth(i);
-        const fileInput = container.locator('input[type="file"]').first();
+        const txt = await container.evaluate((el) => (el.textContent || '').trim()).catch(() => '');
+        const hasInput = (await container.locator('input[type="file"]').count().catch(() => 0)) > 0;
+        // Also accept containers with a custom upload button if no direct file input
+        const hasUploadBtn = (await container.locator('button:has-text("Upload"), a:has-text("Upload"), label:has-text("Upload")').count().catch(() => 0)) > 0;
+        if (!hasInput && !hasUploadBtn) continue;
+        if (txt.length < bestClTextLen) {
+          bestClTextLen = txt.length;
+          bestClContainer = container;
+        }
+      }
+      if (bestClContainer) {
+        // Try direct file input first
+        const fileInput = bestClContainer.locator('input[type="file"]').first();
         if ((await fileInput.count().catch(() => 0)) > 0) {
           await fileInput.setInputFiles(clPath);
           await logger.info('cover_letter_uploaded', 'Cover letter uploaded via scoped Cover Letter container');
           return;
+        }
+        // Phenom People custom upload button: click it to expose the hidden file chooser
+        const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+        const uploadBtn = bestClContainer.locator('button:has-text("Upload"), a:has-text("Upload"), label:has-text("Upload")').first();
+        if ((await uploadBtn.count().catch(() => 0)) > 0) {
+          try {
+            const [fileChooser] = await Promise.all([
+              page.waitForEvent('filechooser', { timeout: 3000 }),
+              uploadBtn.click({ force: true }),
+            ]);
+            await fileChooser.setFiles(clPath);
+            await logger.info('cover_letter_uploaded', 'Cover letter uploaded via Phenom People custom Upload button');
+            return;
+          } catch {
+            // File chooser didn't open — try setting on any newly-revealed input
+            const hiddenInput = bestClContainer.locator('input[type="file"]').first();
+            if ((await hiddenInput.count().catch(() => 0)) > 0) {
+              await hiddenInput.setInputFiles(clPath);
+              await logger.info('cover_letter_uploaded', 'Cover letter uploaded via revealed hidden file input');
+              return;
+            }
+          }
         }
       }
 
@@ -583,14 +630,21 @@ export class GenericFormFiller {
               (await el.getAttribute('aria-autocomplete').catch(() => '')) !== null;
 
             if (isAutocomplete) {
-              await page.waitForTimeout(500);
+              await page.waitForTimeout(700);
 
               const suggestionSelectors = [
+                // react-bootstrap-typeahead (Phenom People)
+                '.rbt-menu > li a',
+                '.rbt-menu > li',
+                // Generic ARIA
                 '[role="listbox"] [role="option"]',
                 '[role="option"]',
+                // Google Places
                 '.pac-item',
+                // Generic suggestion lists
                 '.suggestions > *',
                 '.typeahead > *',
+                'ul.dropdown-menu > li a',
                 'ul.dropdown-menu > li',
                 '[class*="ph-autocomplete" i] li',
                 '[class*="ph-form" i] [role="option"]',
