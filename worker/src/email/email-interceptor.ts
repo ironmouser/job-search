@@ -9,6 +9,7 @@ import { Page } from 'playwright';
 import { BrowserSession } from '../browser-session';
 import { RailwayAPIClient } from '../api-client';
 import { ExecutionLogger } from '../execution-logger';
+import { replaceValue } from '../utils/form-commit';
 
 export interface EmailVerificationResult {
   success: boolean;
@@ -96,7 +97,7 @@ export class EmailInterceptor {
       for (const sel of otpInputSelectors) {
         const input = page.locator(sel).first();
         if ((await input.count().catch(() => 0)) > 0 && (await input.isVisible().catch(() => false))) {
-          await input.fill(tokenData.otp).catch(() => {});
+          await replaceValue(input, tokenData.otp).catch(() => {});
           await logger.info('otp_filled', `Filled OTP verification code into ${sel}`);
 
           // Look for submit / verify button

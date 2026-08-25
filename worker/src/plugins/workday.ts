@@ -4,6 +4,7 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
 import { UniversalQuestionResolver } from './question-resolver';
+import { replaceValue } from '../utils/form-commit';
 
 /**
  * WorkdayPlugin — automation plugin for Workday ATS.
@@ -668,7 +669,7 @@ export class WorkdayPlugin extends ATSPlugin {
       // Check for search input in popup
       const searchInput = page.locator('[data-automation-id="searchBox"], input[type="search"], div[role="listbox"] input').first();
       if ((await searchInput.count().catch(() => 0)) > 0 && (await searchInput.isVisible().catch(() => false))) {
-        await searchInput.fill(targetText).catch(() => {});
+        await replaceValue(searchInput, targetText).catch(() => {});
         await page.waitForTimeout(400);
       }
 
