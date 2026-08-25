@@ -1220,7 +1220,7 @@ export function GlobalAutoApplyBar() {
               >
                 <button
                   type="button"
-                  onClick={() => router.push('/jobs')}
+                  onClick={() => router.push('/dashboard?autoSync=true')}
                   className="command-bar-btn command-bar-btn-primary"
                 >
                   <Sparkles size={14} />
