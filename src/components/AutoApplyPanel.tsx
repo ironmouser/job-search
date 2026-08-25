@@ -61,6 +61,8 @@ interface AutoApplyPanelProps {
   hasResume?: boolean;
   onApplyManually?: () => void;
   onStatusChange?: (session: SessionData | null, isActive: boolean) => void;
+  /** Fired when the worker auto-generates tailored assets so parents can refresh Step 2 */
+  onAssetsGenerated?: () => void;
 }
 
 interface SessionData {
@@ -157,6 +159,7 @@ export function AutoApplyPanel({
   hasResume,
   onApplyManually,
   onStatusChange,
+  onAssetsGenerated,
 }: AutoApplyPanelProps) {
   const router = useRouter();
   const { data: authSession } = useSession();
@@ -221,6 +224,44 @@ export function AutoApplyPanel({
       router.refresh();
     }
   }, [session?.status, jobId, router, session?.atsPlatform]);
+
+  // Fire onAssetsGenerated (and the global window event) when the session transitions
+  // out of GENERATING_ASSETS/PREPARING into a later stage. This signals that assets
+  // are now saved in the DB and Step 2 in the Job Details view should refresh.
+  const prevStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    const status = session?.status as string | undefined;
+    if (!status) return;
+
+    const wasGenerating =
+      prevStatusRef.current === AutoApplyStatus.GENERATING_ASSETS ||
+      prevStatusRef.current === 'generating_assets' ||
+      prevStatusRef.current === AutoApplyStatus.PREPARING ||
+      prevStatusRef.current === 'preparing';
+
+    const isNowPastAssets =
+      status === AutoApplyStatus.APPLYING ||
+      status === 'applying' ||
+      status === AutoApplyStatus.DETECTING_ATS ||
+      status === 'detecting_ats' ||
+      status === AutoApplyStatus.NAVIGATING_TO_ATS ||
+      status === 'navigating_to_ats' ||
+      status === AutoApplyStatus.NEEDS_INTERVENTION ||
+      status === 'needs_intervention' ||
+      status === AutoApplyStatus.VALIDATING ||
+      status === 'validating' ||
+      status === AutoApplyStatus.APPLIED ||
+      status === 'applied' ||
+      status === AutoApplyStatus.SIMULATED ||
+      status === 'simulated';
+
+    if (wasGenerating && isNowPastAssets) {
+      onAssetsGenerated?.();
+      window.dispatchEvent(new CustomEvent('job-assets-updated', { detail: { jobId } }));
+    }
+
+    prevStatusRef.current = status;
+  }, [session?.status, jobId, onAssetsGenerated]);
 
   const hasScrolledToIssueRef = useRef(false);
   const lastScrolledInterventionIdRef = useRef<string | null>(null);

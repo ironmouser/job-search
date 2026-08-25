@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { isAggregatorUrl, isKnownATSUrl, fetchWithScraperAPI, extractATSUrlFromHtml } from '@/lib/scraperapi';
 import { getAutoApplyQuota } from '@/lib/auto-apply/quota';
+import { resolveEmbeddedAtsUrl } from '@/lib/auto-apply/ats-url-resolver';
 
 /**
  * POST /api/auto-apply/[jobId]/start
@@ -85,13 +86,14 @@ export async function POST(
       return NextResponse.json({ error: 'Job not found for this user' }, { status: 404 });
     }
 
-    // If a direct applicationUrl was provided in the start request, update the job record immediately
+    // If a direct applicationUrl was provided in the start request, check for embedded ATS tokens and update
     if (customApplicationUrl && customApplicationUrl !== userJob.job.applicationUrl) {
+      const resolvedDirect = resolveEmbeddedAtsUrl(customApplicationUrl, userJob.job.company) || customApplicationUrl;
       await prisma.job.update({
         where: { id: jobId },
-        data: { applicationUrl: customApplicationUrl, consecutiveAutoFailures: 0 },
+        data: { applicationUrl: resolvedDirect, consecutiveAutoFailures: 0 },
       });
-      userJob.job.applicationUrl = customApplicationUrl;
+      userJob.job.applicationUrl = resolvedDirect;
     }
 
     // 2. Check for assets; if missing, auto-generate assets for seamless 1-click apply
@@ -170,11 +172,26 @@ export async function POST(
       );
     }
 
-    // 4. Pre-flight: Resolve aggregator URL to direct ATS portal URL via ScraperAPI.
-    //    If applicationUrl is already a direct ATS link, skip this step entirely.
+    // 4. Pre-flight: Resolve aggregator or embedded URL to direct ATS portal URL
+    //    If URL contains embedded ATS parameters (e.g. ?gh_jid=...), resolve directly to ATS.
     //    This ensures the worker navigates straight to the ATS form, bypassing bot walls.
     const jobUrl = userJob.job.url;
-    const existingApplicationUrl = userJob.job.applicationUrl;
+    let existingApplicationUrl = userJob.job.applicationUrl;
+
+    // Check if existing applicationUrl or listing jobUrl has embedded ATS tokens
+    const embeddedFromAppUrl = existingApplicationUrl ? resolveEmbeddedAtsUrl(existingApplicationUrl, userJob.job.company) : null;
+    const embeddedFromJobUrl = jobUrl ? resolveEmbeddedAtsUrl(jobUrl, userJob.job.company) : null;
+    const embeddedDirectUrl = embeddedFromAppUrl || embeddedFromJobUrl;
+
+    if (embeddedDirectUrl && embeddedDirectUrl !== existingApplicationUrl) {
+      console.info(`[auto-apply/start] Resolved embedded ATS URL: ${embeddedDirectUrl}`);
+      await prisma.job.update({
+        where: { id: jobId },
+        data: { applicationUrl: embeddedDirectUrl },
+      });
+      existingApplicationUrl = embeddedDirectUrl;
+      userJob.job.applicationUrl = embeddedDirectUrl;
+    }
 
     const needsResolution =
       !existingApplicationUrl &&
@@ -192,41 +209,41 @@ export async function POST(
           resolvedUrl = html ? extractATSUrlFromHtml(html) : null;
         }
 
-        if (html) {
-          if (resolvedUrl) {
-            console.info(`[auto-apply/start] Resolved direct ATS URL: ${resolvedUrl}`);
+        if (resolvedUrl) {
+          // Also check if ScraperAPI resolved URL has embedded ATS tokens
+          const resolvedEmbedded = resolveEmbeddedAtsUrl(resolvedUrl, userJob.job.company) || resolvedUrl;
+          console.info(`[auto-apply/start] Resolved direct ATS URL: ${resolvedEmbedded}`);
+          await prisma.job.update({
+            where: { id: jobId },
+            data: { applicationUrl: resolvedEmbedded },
+          });
+        } else if (html) {
+          // Check if page is an in-network Easy Apply / sign-in wall
+          const htmlLower = html.toLowerCase();
+          const isInNetworkEasyApply =
+            htmlLower.includes('cold-join') ||
+            htmlLower.includes('join to apply') ||
+            htmlLower.includes('sign-in-modal') ||
+            htmlLower.includes('ia-directapply') ||
+            htmlLower.includes('indeed-apply-widget') ||
+            htmlLower.includes('1-click apply');
+
+          if (isInNetworkEasyApply) {
+            console.info(`[auto-apply/start] Identified in-network Easy Apply role. Updating job ${jobId} to isEasyApply=true.`);
             await prisma.job.update({
               where: { id: jobId },
-              data: { applicationUrl: resolvedUrl },
+              data: { isEasyApply: true },
             });
-          } else {
-            // Check if page is an in-network Easy Apply / sign-in wall
-            const htmlLower = html.toLowerCase();
-            const isInNetworkEasyApply =
-              htmlLower.includes('cold-join') ||
-              htmlLower.includes('join to apply') ||
-              htmlLower.includes('sign-in-modal') ||
-              htmlLower.includes('ia-directapply') ||
-              htmlLower.includes('indeed-apply-widget') ||
-              htmlLower.includes('1-click apply');
-
-            if (isInNetworkEasyApply) {
-              console.info(`[auto-apply/start] Identified in-network Easy Apply role. Updating job ${jobId} to isEasyApply=true.`);
-              await prisma.job.update({
-                where: { id: jobId },
-                data: { isEasyApply: true },
-              });
-              const sourceName = userJob.job.source || 'the job board';
-              return NextResponse.json(
-                {
-                  error: `This position is hosted on ${sourceName} 'Easy Apply' and requires your personal account. Please click the link to apply directly.`,
-                  isEasyApply: true,
-                },
-                { status: 400 }
-              );
-            }
-            console.info(`[auto-apply/start] ScraperAPI rendered the page but no direct ATS URL found — worker will attempt aggregator navigation.`);
+            const sourceName = userJob.job.source || 'the job board';
+            return NextResponse.json(
+              {
+                error: `This position is hosted on ${sourceName} 'Easy Apply' and requires your personal account. Please click the link to apply directly.`,
+                isEasyApply: true,
+              },
+              { status: 400 }
+            );
           }
+          console.info(`[auto-apply/start] ScraperAPI rendered the page but no direct ATS URL found — worker will attempt aggregator navigation.`);
         }
       } catch (resolveErr: any) {
         // Non-fatal — worker will attempt aggregator navigation as fallback

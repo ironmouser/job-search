@@ -36,6 +36,8 @@ interface ApplyStepAccordionProps {
   generationsLeftThisWeek?: number;
   isEasyApply?: boolean;
   jobSource?: string;
+  /** Called after Auto Apply auto-generates assets so the parent can refresh Step 2 */
+  onAssetsGenerated?: () => void;
 }
 
 export function ApplyStepAccordion({
@@ -51,6 +53,7 @@ export function ApplyStepAccordion({
   generationsLeftThisWeek,
   isEasyApply,
   jobSource,
+  onAssetsGenerated,
 }: ApplyStepAccordionProps) {
   const router = useRouter();
   const [activeUrl, setActiveUrl] = useState(applicationUrl || initialUrl);
@@ -613,6 +616,7 @@ export function ApplyStepAccordion({
             hasAssets={localHasAssets}
             hasResume={hasResume}
             onApplyManually={() => setMode('manual')}
+            onAssetsGenerated={onAssetsGenerated}
             onStatusChange={(sess, active) => {
               setActiveSession(sess);
               setIsSessionActive(active);

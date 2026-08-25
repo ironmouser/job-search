@@ -135,6 +135,21 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
     }
   }, [jobId, fetchJobData]);
 
+  // Listen for auto-apply asset generation events and refresh Step 2 without a full page reload.
+  // Fired by AutoApplyPanel/AutoApplyButton when the worker auto-generates tailored assets.
+  useEffect(() => {
+    const handleAssetsUpdated = (e: Event) => {
+      const detail = (e as CustomEvent<{ jobId?: string }>).detail;
+      if (!detail?.jobId || detail.jobId === jobId) {
+        // Invalidate cache entry and silently re-fetch in background
+        jobDetailCache.delete(jobId);
+        fetchJobData(jobId, true);
+      }
+    };
+    window.addEventListener('job-assets-updated', handleAssetsUpdated);
+    return () => window.removeEventListener('job-assets-updated', handleAssetsUpdated);
+  }, [jobId, fetchJobData]);
+
   if (loading && !data) {
     return (
       <div 
@@ -542,6 +557,11 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
               generationsLeftThisWeek={assetGenerationsLeft}
               isEasyApply={!!job.isEasyApply}
               jobSource={job.source || undefined}
+              onAssetsGenerated={() => {
+                // Invalidate cache and re-fetch so Step 2 shows newly generated assets
+                jobDetailCache.delete(job.id);
+                fetchJobData(job.id, true);
+              }}
             />
           </section>
 

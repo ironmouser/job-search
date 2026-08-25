@@ -22,6 +22,7 @@ import {
   CandidateInfo,
   ClassificationResult,
 } from '../utils/destination-validator';
+import { resolveEmbeddedAtsUrl } from '../utils/ats-url-resolver';
 
 export interface CandidateReport {
   index: number;
@@ -221,6 +222,28 @@ export class AggregatorHandler {
 
       for (const rawUrl of candidateUrls) {
         if (!rawUrl || (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://'))) continue;
+
+        // ── Embedded ATS token resolution ────────────────────────────────────
+        // If the URL embeds an ATS job ID (e.g. ?gh_jid=... on an employer portal),
+        // resolve it to a direct ATS endpoint to bypass bot-blocked portals.
+        const resolvedAtsUrl = resolveEmbeddedAtsUrl(rawUrl);
+        if (resolvedAtsUrl && resolvedAtsUrl !== rawUrl) {
+          await logger.info(
+            'destination_discovery',
+            `Embedded ATS token detected in script metadata URL: ${rawUrl} → resolved to direct ATS endpoint: ${resolvedAtsUrl}`
+          );
+          const normalizedResolved = normalizeUrl(resolvedAtsUrl);
+          if (visitedUrls && visitedUrls.has(normalizedResolved)) {
+            await logger.info('destination_discovery', `Resolved ATS URL (${resolvedAtsUrl}) already visited — skipping.`);
+          } else {
+            visitedUrls?.add(normalizedResolved);
+            await logger.info('application_navigation', `Phase 3: Direct navigation to resolved ATS endpoint (bypassing employer portal): ${resolvedAtsUrl}`);
+            await page.goto(resolvedAtsUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+            return { navigated: true, candidateReports: [] };
+          }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         const normalizedCandidateUrl = normalizeUrl(rawUrl);
 
         // Convergence check: if destination URL matches current URL, do not navigate again
