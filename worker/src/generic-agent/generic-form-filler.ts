@@ -197,13 +197,17 @@ export class GenericFormFiller {
     // Location / City, State (common in Phenom People, Workday, SmartRecruiters)
     const locationVal = (profile as any).location || (profile.city && profile.state ? `${profile.city}, ${profile.state}` : profile.city) || '';
     if (locationVal) {
-      await this.tryFillInput(ctx, [
-        'input[name*="location" i]',
-        'input[id*="location" i]',
-        'input[placeholder*="Location" i]',
-        'input[aria-label*="Location" i]',
-        'input[data-automation*="location" i]',
-      ], locationVal);
+      // Try dedicated Phenom People rbt-typeahead handler first
+      const phenomHandled = await this.fillPhenomTypeaheadLocation(ctx, locationVal, logger);
+      if (!phenomHandled) {
+        await this.tryFillInput(ctx, [
+          'input[name*="location" i]',
+          'input[id*="location" i]',
+          'input[placeholder*="Location" i]',
+          'input[aria-label*="Location" i]',
+          'input[data-automation*="location" i]',
+        ], locationVal);
+      }
     }
 
     // LinkedIn URL
@@ -225,6 +229,74 @@ export class GenericFormFiller {
         'input[placeholder*="Website" i]',
         'input[placeholder*="Portfolio" i]',
       ], profile.websiteUrl);
+    }
+  }
+
+  /**
+   * Handles Phenom People react-bootstrap-typeahead Location field.
+   * Clears any stale text, types fresh, waits for .rbt-menu, and clicks the first option.
+   * Returns true if the Phenom typeahead was found and handled.
+   */
+  private async fillPhenomTypeaheadLocation(
+    ctx: Page | Frame,
+    locationVal: string,
+    logger: ExecutionLogger
+  ): Promise<boolean> {
+    const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+    try {
+      // Phenom People wraps the typeahead in .rbt-input-multi or uses aria-autocomplete="list"
+      const rbtInput = ctx.locator(
+        '.rbt-input-main, input[aria-autocomplete="list"][placeholder*="Location" i], input[aria-autocomplete="list"][aria-label*="Location" i]'
+      ).first();
+      if ((await rbtInput.count().catch(() => 0)) === 0 || !(await rbtInput.isVisible().catch(() => false))) {
+        return false;
+      }
+
+      // Always clear first — triple-click selects all, then type replaces it
+      await rbtInput.click({ clickCount: 3 }).catch(() => {});
+      await page.keyboard.press('Backspace').catch(() => {});
+      await page.waitForTimeout(200);
+
+      // Type the location value with human-like cadence
+      for (const char of locationVal) {
+        const delay = Math.floor(Math.random() * 25) + 15;
+        await rbtInput.pressSequentially(char, { delay }).catch(() => {});
+      }
+      await rbtInput.dispatchEvent('input').catch(() => {});
+      await rbtInput.dispatchEvent('change').catch(() => {});
+
+      // Wait longer for Phenom's AJAX suggestion fetch to populate the rbt-menu
+      await page.waitForTimeout(1500);
+
+      // Try clicking the first visible option in the rbt dropdown
+      const optionSelectors = [
+        '.rbt-menu > li a',
+        '.rbt-menu > li',
+        '[role="listbox"] [role="option"]',
+        '[role="option"]',
+      ];
+
+      for (const sSel of optionSelectors) {
+        try {
+          const opt = page.locator(sSel).first();
+          if ((await opt.count().catch(() => 0)) > 0 && (await opt.isVisible().catch(() => false))) {
+            await opt.click().catch(() => null);
+            await page.waitForTimeout(400);
+            await logger.info('field_filled', `Location populated via Phenom typeahead: ${locationVal}`);
+            return true;
+          }
+        } catch {}
+      }
+
+      // Keyboard fallback: ArrowDown → Enter
+      await rbtInput.press('ArrowDown').catch(() => null);
+      await page.waitForTimeout(200);
+      await rbtInput.press('Enter').catch(() => null);
+      await page.waitForTimeout(300);
+      await logger.info('field_filled', `Location populated via keyboard selection: ${locationVal}`);
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -630,7 +702,8 @@ export class GenericFormFiller {
               (await el.getAttribute('aria-autocomplete').catch(() => '')) !== null;
 
             if (isAutocomplete) {
-              await page.waitForTimeout(700);
+              // Wait up to 1.5s for AJAX suggestions to load (increased from 700ms)
+              await page.waitForTimeout(1500);
 
               const suggestionSelectors = [
                 // react-bootstrap-typeahead (Phenom People)
