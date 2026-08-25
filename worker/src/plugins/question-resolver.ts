@@ -404,6 +404,56 @@ export class UniversalQuestionResolver {
         if (await input.count() > 0) {
           await input.click().catch(() => null);
           await input.fill(answer);
+          await input.dispatchEvent('input').catch(() => null);
+          await input.dispatchEvent('change').catch(() => null);
+
+          // Handle autocomplete dropdowns (e.g. Location, City, Country, Address)
+          const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+          await page.waitForTimeout(400);
+
+          const isLocationOrAutocomplete =
+            /location|city|address|state|country|region|place/i.test(question.label) ||
+            (await input.getAttribute('role').catch(() => '')) === 'combobox' ||
+            (await input.getAttribute('aria-autocomplete').catch(() => '')) !== null;
+
+          if (isLocationOrAutocomplete) {
+            // 1. Check if dropdown options appeared on the page/container
+            const suggestionSelectors = [
+              '[role="listbox"] [role="option"]',
+              '[role="option"]',
+              '.pac-item',
+              '.suggestions > *',
+              '.typeahead > *',
+              'ul.dropdown-menu > li',
+              '[class*="autocomplete" i] li',
+              '[class*="autocomplete" i] div[role="option"]',
+              '[class*="suggestion" i]',
+              '[class*="dropdown-item" i]',
+              'div[id*="-option-"]',
+            ];
+
+            let clickedSuggestion = false;
+            for (const sSel of suggestionSelectors) {
+              try {
+                const opt = page.locator(sSel).first();
+                if ((await opt.count().catch(() => 0)) > 0 && (await opt.isVisible().catch(() => false))) {
+                  await opt.click().catch(() => null);
+                  clickedSuggestion = true;
+                  await page.waitForTimeout(200);
+                  break;
+                }
+              } catch {}
+            }
+
+            // 2. If no suggestion clicked directly, send ArrowDown + Enter
+            if (!clickedSuggestion) {
+              await input.press('ArrowDown').catch(() => null);
+              await page.waitForTimeout(150);
+              await input.press('Enter').catch(() => null);
+              await page.waitForTimeout(200);
+            }
+          }
+
           return true;
         }
       } else if (question.type === 'select') {

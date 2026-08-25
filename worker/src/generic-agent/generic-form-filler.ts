@@ -194,6 +194,18 @@ export class GenericFormFiller {
       ], profile.state);
     }
 
+    // Location / City, State (common in Phenom People, Workday, SmartRecruiters)
+    const locationVal = (profile as any).location || (profile.city && profile.state ? `${profile.city}, ${profile.state}` : profile.city) || '';
+    if (locationVal) {
+      await this.tryFillInput(ctx, [
+        'input[name*="location" i]',
+        'input[id*="location" i]',
+        'input[placeholder*="Location" i]',
+        'input[aria-label*="Location" i]',
+        'input[data-automation*="location" i]',
+      ], locationVal);
+    }
+
     // LinkedIn URL
     if (profile.linkedinUrl) {
       await this.tryFillInput(ctx, [
@@ -248,8 +260,9 @@ export class GenericFormFiller {
           return;
         }
 
-        // Otherwise use first available file input
-        await fileInputs.first().setInputFiles(resumePath);
+        // Fallback to first file input
+        const firstFileInput = fileInputs.first();
+        await firstFileInput.setInputFiles(resumePath);
         await logger.info('resume_uploaded', 'Resume PDF uploaded to first file input');
       } else {
         await logger.warn('resume_upload_skipped', 'No file upload inputs detected on application form');
@@ -260,7 +273,7 @@ export class GenericFormFiller {
   }
 
   /**
-   * Uploads cover letter PDF if cover letter input exists.
+   * Uploads cover letter PDF converted from markdown if optional field exists.
    */
   private async uploadCoverLetter(
     browser: BrowserSession,
@@ -268,18 +281,21 @@ export class GenericFormFiller {
     context: WorkflowContext,
     logger: ExecutionLogger
   ): Promise<void> {
+    if (!context.coverLetterMarkdown) return;
+
     try {
+      const clPath = await browser.writeMarkdownToPdf(
+        context.coverLetterMarkdown,
+        `cover_letter_${context.sessionId}.pdf`
+      );
+
       const clInput = ctx.locator(
-        'input[type="file"][name*="cover" i], input[type="file"][id*="cover" i], input[type="file"][aria-label*="cover" i]'
+        'input[type="file"][name*="cover" i], input[type="file"][id*="cover" i], input[type="file"][name*="letter" i]'
       ).first();
 
       if ((await clInput.count().catch(() => 0)) > 0) {
-        const clPath = await browser.writeMarkdownToPdf(
-          context.coverLetterMarkdown,
-          `cover_letter_${context.sessionId}.pdf`
-        );
         await clInput.setInputFiles(clPath);
-        await logger.info('cover_letter_uploaded', 'Cover letter PDF uploaded');
+        await logger.info('cover_letter_uploaded', 'Cover letter uploaded via targeted selector');
       }
     } catch (err: any) {
       await logger.warn('cover_letter_upload_failed', `Could not upload cover letter: ${err.message}`);
@@ -287,52 +303,45 @@ export class GenericFormFiller {
   }
 
   /**
-   * Answers common questions (work authorization, terms and conditions, sponsorship, consent, EEOC demographics).
+   * Answers standard EEO, work authorization, and legal questions deterministically.
    */
   private async answerStandardQuestions(
     ctx: Page | Frame,
     profile: UserProfile,
     logger: ExecutionLogger
   ): Promise<void> {
-    // 1. Terms, Privacy, and Future Opportunity Consent Checkboxes
+    // 1. Legal / Agreement Checkboxes
     try {
       const checkboxes = await ctx.$$('input[type="checkbox"]');
       for (const cb of checkboxes) {
         const isVisible = await cb.isVisible().catch(() => false);
         if (!isVisible) continue;
 
-        const isChecked = await cb.isChecked().catch(() => false);
-        if (isChecked) continue;
-
         const labelText = await cb.evaluate((el) => {
-          const parentLabel = el.closest('label') || el.parentElement;
-          const surroundingDiv = el.closest('div');
-          const fieldset = el.closest('fieldset');
-          return `${parentLabel?.textContent || ''} ${surroundingDiv?.textContent || ''} ${fieldset?.textContent || ''}`;
+          const parent = el.closest('label') || el.closest('div');
+          return parent?.textContent || '';
         }).catch(() => '');
 
         const lower = labelText.toLowerCase();
         if (
           lower.includes('agree') ||
-          lower.includes('accept') ||
           lower.includes('consent') ||
-          lower.includes('contact you') ||
-          lower.includes('contact me') ||
-          lower.includes('future opportunit') ||
-          lower.includes('talent pool') ||
-          lower.includes('talent community') ||
-          lower.includes('privacy policy') ||
+          lower.includes('acknowledge') ||
+          lower.includes('certify') ||
           lower.includes('terms') ||
-          lower.includes('data processing') ||
-          lower.includes('acknowledge')
+          lower.includes('privacy') ||
+          lower.includes('understand')
         ) {
-          await cb.check({ force: true }).catch(() => {});
-          await logger.info('terms_accepted', 'Agreed to terms/consent/future opportunity checkbox');
+          const isChecked = await cb.isChecked().catch(() => false);
+          if (!isChecked) {
+            await cb.check({ force: true }).catch(() => {});
+            await logger.info('checkbox_checked', `Accepted standard term/consent checkbox: "${labelText.trim().slice(0, 60)}"`);
+          }
         }
       }
     } catch {}
 
-    // 2. US Work Authorization & Sponsorship & EEOC Radios
+    // 2. Work Authorization Radio Buttons
     try {
       const radios = await ctx.$$('input[type="radio"]');
       for (const radio of radios) {
@@ -340,44 +349,28 @@ export class GenericFormFiller {
         if (!isVisible) continue;
 
         const labelText = await radio.evaluate((el) => {
-          const parent = el.closest('label') || el.parentElement;
-          const section = el.closest('fieldset') || el.closest('[role="group"]') || el.closest('div');
-          return `${section?.textContent || ''} :: ${parent?.textContent || ''}`;
+          const parent = el.closest('label') || el.closest('div');
+          return parent?.textContent || '';
         }).catch(() => '');
-        const lower = labelText.toLowerCase();
 
-        // Work Auth / Sponsorship
-        if (/legally authorized|eligible to work/i.test(lower) && /yes/i.test(lower)) {
-          await radio.check({ force: true }).catch(() => {});
-        } else if (/require sponsorship|sponsorship now or in the future/i.test(lower) && /no/i.test(lower)) {
-          await radio.check({ force: true }).catch(() => {});
-        }
-        // Veteran Status
-        else if (/veteran/i.test(lower)) {
-          if (profile.eeocVeteran && lower.includes(profile.eeocVeteran.toLowerCase())) {
-            await radio.check({ force: true }).catch(() => {});
-          } else if (/not a protected veteran|not a veteran|decline|prefer not/i.test(lower)) {
+        const lower = labelText.toLowerCase();
+        if (/authorized to work|legally authorized|eligible to work/i.test(lower)) {
+          if (profile.usWorkAuthorization && /yes|authorized/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
-        }
-        // Disability Status
-        else if (/disability/i.test(lower)) {
-          if (profile.eeocDisability && lower.includes(profile.eeocDisability.toLowerCase())) {
+        } else if (/require sponsorship|sponsorship.*now or in the future|visa sponsorship/i.test(lower)) {
+          if (profile.visaSponsorship && /yes/i.test(lower) && /yes/i.test(profile.visaSponsorship)) {
             await radio.check({ force: true }).catch(() => {});
-          } else if (/no, i (do not|don't) have a disability|do not have a disability|decline|do not wish to answer|prefer not/i.test(lower)) {
+          } else if (profile.visaSponsorship && /no/i.test(lower) && /no/i.test(profile.visaSponsorship)) {
             await radio.check({ force: true }).catch(() => {});
           }
-        }
-        // Gender
-        else if (/gender|sex\b/i.test(lower)) {
+        } else if (/gender|sex\b/i.test(lower)) {
           if (profile.eeocGender && lower.includes(profile.eeocGender.toLowerCase())) {
             await radio.check({ force: true }).catch(() => {});
           } else if (/decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
-        }
-        // Race / Ethnicity
-        else if (/race|ethnicity|hispanic|latino/i.test(lower)) {
+        } else if (/race|ethnicity|hispanic|latino/i.test(lower)) {
           if (profile.eeocRace && lower.includes(profile.eeocRace.toLowerCase())) {
             await radio.check({ force: true }).catch(() => {});
           } else if (/decline|prefer not/i.test(lower)) {
@@ -386,44 +379,8 @@ export class GenericFormFiller {
         }
       }
     } catch {}
-
-    // 3. EEOC & Standard Select Dropdowns
-    try {
-      const selects = await ctx.$$('select');
-      for (const sel of selects) {
-        const isVisible = await sel.isVisible().catch(() => false);
-        if (!isVisible) continue;
-
-        const labelText = await sel.evaluate((el) => {
-          const parent = el.closest('label') || el.closest('div');
-          return parent?.textContent || '';
-        }).catch(() => '');
-        const lower = labelText.toLowerCase();
-
-        if (/veteran/i.test(lower)) {
-          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocVeteran && new RegExp(profile.eeocVeteran, 'i').test(o.text)) || /not a protected veteran|decline/i.test(o.text));
-          if (match) await sel.selectOption(match.value).catch(() => {});
-        } else if (/disability/i.test(lower)) {
-          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocDisability && new RegExp(profile.eeocDisability, 'i').test(o.text)) || /no|decline|do not wish/i.test(o.text));
-          if (match) await sel.selectOption(match.value).catch(() => {});
-        } else if (/gender|sex\b/i.test(lower)) {
-          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocGender && new RegExp(profile.eeocGender, 'i').test(o.text)) || /decline|prefer not/i.test(o.text));
-          if (match) await sel.selectOption(match.value).catch(() => {});
-        } else if (/race|ethnicity|hispanic/i.test(lower)) {
-          const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocRace && new RegExp(profile.eeocRace, 'i').test(o.text)) || /decline|prefer not/i.test(o.text));
-          if (match) await sel.selectOption(match.value).catch(() => {});
-        }
-      }
-    } catch {}
   }
 
-  /**
-   * Checks if application is multi-step and clicks Next/Continue.
-   */
   /**
    * Checks if application is multi-step and iteratively advances steps up to 6 times.
    */
@@ -437,47 +394,53 @@ export class GenericFormFiller {
     const maxSteps = 6;
 
     while (stepCount <= maxSteps) {
-      // Check if a final submit button is already visible and enabled
-      const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:has-text("Submit Application"), button:has-text("Submit"), button:has-text("Finish")').first();
-      const hasFinalSubmit = (await submitBtn.count().catch(() => 0)) > 0 && (await submitBtn.isVisible().catch(() => false));
-
-      const nextBtn = page.locator('button, a[role="button"], input[type="button"]').filter({
-        hasText: /save and continue|save & continue|next step|next|continue to next|proceed to next/i,
+      // 1. Look for explicit step-advance buttons (Next, Continue, Save and continue)
+      const nextBtn = page.locator('button, a[role="button"], input[type="button"], input[type="submit"]').filter({
+        hasText: /^(?:save\s+(?:&|and)\s+continue|save\s+and\s+next|next(?:\s+step)?|continue(?:\s+to\s+next)?|proceed(?:\s+to\s+next)?)$/i,
       }).first();
 
       const hasNext = (await nextBtn.count().catch(() => 0)) > 0 && (await nextBtn.isVisible().catch(() => false));
 
-      if (hasFinalSubmit && !hasNext) {
+      // 2. Look for true final submit buttons
+      const submitBtn = page.locator('button, a[role="button"], input[type="submit"]').filter({
+        hasText: /^(?:submit(?:\s+application)?|complete(?:\s+application)?|finish|apply(?:\s+now)?)$/i,
+      }).first();
+
+      const hasFinalSubmit = (await submitBtn.count().catch(() => 0)) > 0 && (await submitBtn.isVisible().catch(() => false));
+
+      if (hasNext) {
+        await logger.info('wizard_step_advancing', `Advancing multi-step wizard (Step ${stepCount} -> ${stepCount + 1})`);
+        await safeClick(page, nextBtn, { actionName: `wizard_advance_step_${stepCount}` }, logger);
+        await page.waitForTimeout(2500);
+
+        // Re-scan and fill any new screening questions on subsequent step
+        const formCtx = await browser.findFormFrame(['input', 'select', 'textarea', 'form']);
+        await this.fillPersonalDetails(formCtx, context.userProfile, logger);
+        await this.answerStandardQuestions(formCtx, context.userProfile, logger);
+        await UniversalQuestionResolver.resolveAndFillQuestions(
+          formCtx,
+          browser,
+          context,
+          logger,
+          logger.getApiClient()
+        );
+
+        stepCount++;
+        continue;
+      }
+
+      if (hasFinalSubmit) {
         await logger.info('wizard_reached_final', `Reached final submission step of application wizard`);
         break;
       }
 
-      if (!hasNext) {
-        break;
-      }
-
-      await logger.info('wizard_step_advancing', `Advancing multi-step wizard (Step ${stepCount} -> ${stepCount + 1})`);
-      await safeClick(page, nextBtn, { actionName: `wizard_advance_step_${stepCount}` }, logger);
-      await page.waitForTimeout(2500);
-
-      // Re-scan and fill any new screening questions on subsequent step
-      const formCtx = await browser.findFormFrame(['input', 'select', 'textarea', 'form']);
-      await this.fillPersonalDetails(formCtx, context.userProfile, logger);
-      await this.answerStandardQuestions(formCtx, context.userProfile, logger);
-      await UniversalQuestionResolver.resolveAndFillQuestions(
-        formCtx,
-        browser,
-        context,
-        logger,
-        logger.getApiClient()
-      );
-
-      stepCount++;
+      break;
     }
   }
 
   /**
-   * Helper to find first matching input from selector list and fill it with humanized typing.
+   * Helper to find first matching input from selector list and fill it with humanized typing
+   * and autocomplete / dropdown selection handling.
    */
   private async tryFillInput(
     ctx: Page | Frame,
@@ -498,6 +461,52 @@ export class GenericFormFiller {
             await el.dispatchEvent('input').catch(() => {});
             await el.dispatchEvent('change').catch(() => {});
             await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 150) + 150));
+
+            // Check if autocomplete / combobox suggestions appeared (e.g. Location, Address, City)
+            const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+            const isAutocomplete =
+              /location|city|address|state|country/i.test(sel) ||
+              (await el.getAttribute('role').catch(() => '')) === 'combobox' ||
+              (await el.getAttribute('aria-autocomplete').catch(() => '')) !== null;
+
+            if (isAutocomplete) {
+              await page.waitForTimeout(350);
+
+              const suggestionSelectors = [
+                '[role="listbox"] [role="option"]',
+                '[role="option"]',
+                '.pac-item',
+                '.suggestions > *',
+                '.typeahead > *',
+                'ul.dropdown-menu > li',
+                '[class*="autocomplete" i] li',
+                '[class*="autocomplete" i] div[role="option"]',
+                '[class*="suggestion" i]',
+                '[class*="dropdown-item" i]',
+                'div[id*="-option-"]',
+              ];
+
+              let clicked = false;
+              for (const sSel of suggestionSelectors) {
+                try {
+                  const opt = page.locator(sSel).first();
+                  if ((await opt.count().catch(() => 0)) > 0 && (await opt.isVisible().catch(() => false))) {
+                    await opt.click().catch(() => null);
+                    clicked = true;
+                    await page.waitForTimeout(200);
+                    break;
+                  }
+                } catch {}
+              }
+
+              if (!clicked) {
+                await el.press('ArrowDown').catch(() => null);
+                await page.waitForTimeout(100);
+                await el.press('Enter').catch(() => null);
+                await page.waitForTimeout(150);
+              }
+            }
+
             return true;
           }
         }

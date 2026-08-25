@@ -211,24 +211,12 @@ export async function detectJobClosed(
       }
     }
 
-    // 2. Fallback to raw page HTML scan with strict patterns
-    const html = await browser.getHtml().catch(() => '');
-    if (html) {
-      for (const pattern of STRICT_CLOSED_PATTERNS) {
-        const match = html.match(pattern);
-        if (match) {
-          const matchedText = match[0];
-          if (logger) {
-            await logger.warn('job_closed_detected_html', `Detected closed job status in HTML: "${matchedText}"`);
-          }
-          return {
-            isClosed: true,
-            reason: `This job is no longer accepting applications (${matchedText}).`,
-            matchedText,
-          };
-        }
-      }
-    }
+    // Note: We intentionally do NOT scan raw unrendered HTML (page source)
+    // because modern SPAs (Phenom, Workday, Greenhouse, etc.) embed error message
+    // templates and localization dictionaries in <script> tags and JSON bundles,
+    // which would cause false positives for closed jobs.
+    // The checks above on document.title, badgeSnippets, bannerSnippets, and
+    // document.body.innerText already capture all visible rendered content.
 
     return { isClosed: false, reason: '' };
   } catch (err: any) {
