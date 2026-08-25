@@ -14,6 +14,12 @@ import { ExecutionLogger } from '../execution-logger';
 import { InterventionReason, QuestionInterventionData, WorkflowContext } from '../types';
 import { InterventionError } from './base-plugin';
 import { RailwayAPIClient } from '../api-client';
+import {
+  replaceValue,
+  commitContenteditable,
+  setSwitchState,
+  readSwitchState,
+} from '../utils/form-commit';
 
 export interface ExtractedQuestion {
   id: string;
@@ -209,6 +215,16 @@ export class UniversalQuestionResolver {
       '.form-group',
       '.form-field',
       '.question',
+      // Workday
+      '[data-automation-id*="questionItem"], [data-automation-id="checkbox"], [data-automation-id*="radioGroup"]',
+      // Greenhouse / Lever / Ashby
+      '.application-field, .field-wrapper-b, li.application-question-item, .custom-question, .fields > .field',
+      // Phenom People (ph- prefixed widgets)
+      '[class*="ph-form-field"], [class*="Phenom__FieldWrapper"], [class*="legal-section"] div:has(> input), div[aria-label*="question" i]',
+      // SmartRecruiters
+      '.smrte-application-question, [data-test*="question" i], [data-testid*="question" i]',
+      // iCIMS / Taleo / Oracle
+      '[class*="icims"] [class*="question"], tr[id*="question"], .ORCQUESTIONLABELWRAP > *, [class*="taleo"] .question-row',
     ];
 
     const containers = await ctx.locator(containerSelectors.join(', ')).all();
@@ -288,6 +304,25 @@ export class UniversalQuestionResolver {
         }
       }
 
+      // 1.5 Contenteditable rich-text editors (Greenhouse job boards, Workday, custom Quill/TinyMCE/ProseMirror)
+      const richText = container.locator('[contenteditable="true"], [contenteditable=""]').first();
+      if (await richText.count() > 0 && (await richText.isVisible().catch(() => false))) {
+        const richTextContent = ((await richText.textContent().catch(() => '')) || '').trim();
+        if (!richTextContent) {
+          qIndex++;
+          extracted.push({
+            id: `q_${qIndex}`,
+            fieldKey: (await richText.getAttribute('name')) || (await richText.getAttribute('aria-label')) || `richtext_${qIndex}`,
+            label: cleanLabel,
+            type: 'textarea',
+            options: [],
+            required: isRequired,
+            container,
+          });
+          continue;
+        }
+      }
+
       // 2. Dropdowns: Native select or React Select / custom combobox
       const nativeSelect = container.locator('select').first();
       const reactSelect = container.locator('.select__control, .select-shell, input.select__input, [role="combobox"]').first();
@@ -357,6 +392,28 @@ export class UniversalQuestionResolver {
         }
       }
 
+      // 3.5 Checkboxes & ARIA switches (single consent-style or yes/no toggle controls)
+      const checkbox = container.locator('input[type="checkbox"]').first();
+      const ariaSwitch = container.locator('[role="switch"], [aria-checked]').first();
+      const hasCheckbox = await checkbox.count() > 0 && !(await checkbox.isChecked().catch(() => true));
+      const hasAriaSwitch = !hasCheckbox && await ariaSwitch.count() > 0 &&
+        (await readSwitchState(ariaSwitch).catch(() => null)) === false;
+      if (hasCheckbox || hasAriaSwitch) {
+        qIndex++;
+        extracted.push({
+          id: `q_${qIndex}`,
+          fieldKey: hasCheckbox
+            ? ((await checkbox.getAttribute('name')) || (await checkbox.getAttribute('id')) || `checkbox_${qIndex}`)
+            : `switch_${qIndex}`,
+          label: cleanLabel,
+          type: 'checkbox',
+          options: [],
+          required: isRequired,
+          container,
+        });
+        continue;
+      }
+
       // 4. Text input
       const textInput = container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
       if (await textInput.count() > 0 && (await textInput.isVisible().catch(() => false))) {
@@ -396,16 +453,34 @@ export class UniversalQuestionResolver {
         const textarea = container.locator('textarea').first();
         if (await textarea.count() > 0) {
           await textarea.click().catch(() => null);
-          await textarea.fill(answer);
+          await replaceValue(textarea, answer);
           return true;
+        }
+        // Contenteditable rich-text editor fallback (Quill, TinyMCE, ProseMirror)
+        const richText = container.locator('[contenteditable="true"], [contenteditable=""]').first();
+        if (await richText.count() > 0) {
+          await commitContenteditable(richText, answer);
+          return true;
+        }
+      } else if (question.type === 'checkbox') {
+        const checkbox = container.locator('input[type="checkbox"]').first();
+        if (await checkbox.count() > 0) {
+          if ((await checkbox.isChecked().catch(() => false)) === false) {
+            await checkbox.check({ force: true }).catch(() => null);
+          }
+          return true;
+        }
+        // ARIA switch / toggle (Material, Chakra, Workday custom widgets)
+        const ariaSwitch = container.locator('[role="switch"], [aria-checked]').first();
+        if (await ariaSwitch.count() > 0) {
+          const result = await setSwitchState(ariaSwitch, true);
+          return result === true;
         }
       } else if (question.type === 'text') {
         const input = container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
         if (await input.count() > 0) {
           await input.click().catch(() => null);
-          await input.fill(answer);
-          await input.dispatchEvent('input').catch(() => null);
-          await input.dispatchEvent('change').catch(() => null);
+          await replaceValue(input, answer);
 
           // Handle autocomplete dropdowns (e.g. Location, City, Country, Address)
           const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
@@ -482,7 +557,7 @@ export class UniversalQuestionResolver {
 
             if (await reactInput.count() > 0) {
               await reactInput.focus().catch(() => null);
-              await reactInput.fill(answer);
+              await replaceValue(reactInput, answer);
               await reactInput.press('Enter');
               await page.waitForTimeout(300);
             }

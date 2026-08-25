@@ -12,6 +12,7 @@ import { InterventionReason, WorkflowContext } from '../types';
 import { InterventionError } from '../plugins/base-plugin';
 import { RailwayAPIClient } from '../api-client';
 import { EmailInterceptor } from '../email/email-interceptor';
+import { replaceValue } from '../utils/form-commit';
 
 export interface AuthHandlingResult {
   handled: boolean;
@@ -201,11 +202,11 @@ export class UniversalAuthHandler {
     const fillAndCommit = async (loc: Locator, val: string) => {
       await loc.scrollIntoViewIfNeeded().catch(() => {});
       await loc.click({ force: true }).catch(() => {});
-      await loc.fill(val).catch(async () => {
+      try {
+        await replaceValue(loc, val);
+      } catch {
         await loc.pressSequentially(val, { delay: 20 }).catch(() => {});
-      });
-      await loc.dispatchEvent('input').catch(() => {});
-      await loc.dispatchEvent('change').catch(() => {});
+      }
       await loc.dispatchEvent('blur').catch(() => {});
     };
 

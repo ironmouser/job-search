@@ -21,6 +21,7 @@ import { InterventionError } from '../plugins/base-plugin';
 import { safeClick } from '../obstruction/safe-interact';
 import { UIObstructionResolver } from '../obstruction/resolver';
 import { UniversalQuestionResolver } from '../plugins/question-resolver';
+import { replaceValue } from '../utils/form-commit';
 
 export class GenericFormFiller {
   /**
@@ -162,14 +163,17 @@ export class GenericFormFiller {
       ], profile.streetAddress);
     }
 
-    // City
+    // City (Phenom renders City as an rbt-typeahead too)
     if (profile.city) {
-      await this.tryFillInput(ctx, [
-        'input[name="city" i]',
-        'input[name*="city" i]',
-        'input[id*="city" i]',
-        'input[placeholder*="City" i]',
-      ], profile.city);
+      const phenomHandled = await this.fillPhenomTypeahead(ctx, 'city', profile.city, logger);
+      if (!phenomHandled) {
+        await this.tryFillInput(ctx, [
+          'input[name="city" i]',
+          'input[name*="city" i]',
+          'input[id*="city" i]',
+          'input[placeholder*="City" i]',
+        ], profile.city);
+      }
     }
 
     // Postal / Zip Code
@@ -184,21 +188,24 @@ export class GenericFormFiller {
       ], profile.postalCode);
     }
 
-    // State / Province
+    // State / Province (also a typeahead on some Phenom forms)
     if (profile.state) {
-      await this.tryFillInput(ctx, [
-        'input[name*="state" i]',
-        'input[name*="province" i]',
-        'input[id*="state" i]',
-        'input[placeholder*="State" i]',
-      ], profile.state);
+      const phenomHandled = await this.fillPhenomTypeahead(ctx, 'state', profile.state, logger);
+      if (!phenomHandled) {
+        await this.tryFillInput(ctx, [
+          'input[name*="state" i]',
+          'input[name*="province" i]',
+          'input[id*="state" i]',
+          'input[placeholder*="State" i]',
+        ], profile.state);
+      }
     }
 
     // Location / City, State (common in Phenom People, Workday, SmartRecruiters)
     const locationVal = (profile as any).location || (profile.city && profile.state ? `${profile.city}, ${profile.state}` : profile.city) || '';
     if (locationVal) {
       // Try dedicated Phenom People rbt-typeahead handler first
-      const phenomHandled = await this.fillPhenomTypeaheadLocation(ctx, locationVal, logger);
+      const phenomHandled = await this.fillPhenomTypeahead(ctx, 'location', locationVal, logger);
       if (!phenomHandled) {
         await this.tryFillInput(ctx, [
           'input[name*="location" i]',
@@ -230,25 +237,65 @@ export class GenericFormFiller {
         'input[placeholder*="Portfolio" i]',
       ], profile.websiteUrl);
     }
+
+    // Country (Phenom often renders this as an rbt-typeahead dropdown)
+    if (profile.country) {
+      const phenomHandled = await this.fillPhenomTypeahead(ctx, 'country', profile.country, logger);
+      if (!phenomHandled) {
+        await this.tryFillInput(ctx, [
+          'select[name*="country" i]',
+          'select[id*="country" i]',
+          'input[name*="country" i]',
+          'input[id*="country" i]',
+          'input[placeholder*="Country" i]',
+          'input[aria-label*="Country" i]',
+        ], profile.country);
+      }
+    }
   }
 
   /**
-   * Handles Phenom People react-bootstrap-typeahead Location field.
+   * Handles Phenom People react-bootstrap-typeahead inputs (Location, City, State, Country).
    * Clears any stale text, types fresh, waits for .rbt-menu, and clicks the first option.
    * Returns true if the Phenom typeahead was found and handled.
    */
-  private async fillPhenomTypeaheadLocation(
+  private async fillPhenomTypeahead(
     ctx: Page | Frame,
-    locationVal: string,
+    kind: 'location' | 'city' | 'state' | 'country',
+    value: string,
     logger: ExecutionLogger
   ): Promise<boolean> {
     const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+    const labelPattern = { location: 'Location', city: 'City', state: 'State', country: 'Country' }[kind];
     try {
-      // Phenom People wraps the typeahead in .rbt-input-multi or uses aria-autocomplete="list"
-      const rbtInput = ctx.locator(
-        '.rbt-input-main, input[aria-autocomplete="list"][placeholder*="Location" i], input[aria-autocomplete="list"][aria-label*="Location" i]'
-      ).first();
-      if ((await rbtInput.count().catch(() => 0)) === 0 || !(await rbtInput.isVisible().catch(() => false))) {
+      // Phenom People wraps the typeahead in .rbt-input-multi or uses aria-autocomplete="list".
+      // A form can render several rbt inputs (City, State, Country), so match by field metadata
+      // instead of just taking the first one on the page.
+      const rbtInputs = ctx.locator('.rbt-input-main:visible');
+      const inputCount = await rbtInputs.count().catch(() => 0);
+      if (inputCount === 0) {
+        return false;
+      }
+
+      let rbtInput: ReturnType<Page['locator']> | null = null;
+      for (let i = 0; i < inputCount; i++) {
+        const candidate = rbtInputs.nth(i);
+        const describedBy = await candidate.getAttribute('aria-describedby').catch(() => null);
+        const hintText = describedBy
+          ? ((await ctx.locator(`#${describedBy}`).textContent().catch(() => '')) || '')
+          : '';
+        const inputMeta = [
+          await candidate.getAttribute('placeholder').catch(() => ''),
+          await candidate.getAttribute('aria-label').catch(() => ''),
+          await candidate.getAttribute('name').catch(() => ''),
+          hintText,
+        ].join(' ');
+        if (new RegExp(labelPattern, 'i').test(inputMeta) && (await candidate.isVisible().catch(() => false))) {
+          rbtInput = candidate;
+          break;
+        }
+      }
+      if (!rbtInput) {
         return false;
       }
 
@@ -257,8 +304,8 @@ export class GenericFormFiller {
       await page.keyboard.press('Backspace').catch(() => {});
       await page.waitForTimeout(200);
 
-      // Type the location value with human-like cadence
-      for (const char of locationVal) {
+      // Type the field value with human-like cadence
+      for (const char of value) {
         const delay = Math.floor(Math.random() * 25) + 15;
         await rbtInput.pressSequentially(char, { delay }).catch(() => {});
       }
@@ -269,6 +316,12 @@ export class GenericFormFiller {
       await page.waitForTimeout(1500);
 
       // Try clicking the first visible option in the rbt dropdown
+      // (scoped to the input's own .rbt container so sibling typeahead fields don't interfere)
+      const rbtContainer = ctx.locator('.rbt:visible').filter({ has: rbtInput }).first();
+      let containerScope: Page | Frame | ReturnType<Page['locator']> = page;
+      if ((await rbtContainer.count().catch(() => 0)) > 0) {
+        containerScope = rbtContainer;
+      }
       const optionSelectors = [
         '.rbt-menu > li a',
         '.rbt-menu > li',
@@ -278,11 +331,11 @@ export class GenericFormFiller {
 
       for (const sSel of optionSelectors) {
         try {
-          const opt = page.locator(sSel).first();
+          const opt = containerScope.locator(sSel).first();
           if ((await opt.count().catch(() => 0)) > 0 && (await opt.isVisible().catch(() => false))) {
             await opt.click().catch(() => null);
             await page.waitForTimeout(400);
-            await logger.info('field_filled', `Location populated via Phenom typeahead: ${locationVal}`);
+            await logger.info('field_filled', `${labelPattern} populated via Phenom typeahead: ${value}`);
             return true;
           }
         } catch {}
@@ -293,7 +346,7 @@ export class GenericFormFiller {
       await page.waitForTimeout(200);
       await rbtInput.press('Enter').catch(() => null);
       await page.waitForTimeout(300);
-      await logger.info('field_filled', `Location populated via keyboard selection: ${locationVal}`);
+      await logger.info('field_filled', `${labelPattern} populated via keyboard selection: ${value}`);
       return true;
     } catch {
       return false;
@@ -406,9 +459,7 @@ export class GenericFormFiller {
       ).first();
 
       if ((await clTextArea.count().catch(() => 0)) > 0 && (await clTextArea.isVisible().catch(() => false))) {
-        await clTextArea.fill(context.coverLetterMarkdown);
-        await clTextArea.dispatchEvent('input').catch(() => {});
-        await clTextArea.dispatchEvent('change').catch(() => {});
+        await replaceValue(clTextArea, context.coverLetterMarkdown);
         await logger.info('cover_letter_filled', 'Cover letter populated into text area field');
         return;
       }

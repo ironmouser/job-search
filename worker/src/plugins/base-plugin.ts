@@ -2,6 +2,7 @@ import { ATSPlatform, ATSDetectionResult, WorkflowContext, WorkflowResult, Inter
 import { ExecutionLogger } from '../execution-logger';
 import { BrowserSession } from '../browser-session';
 import { detectJobClosed } from '../utils/job-status-detector';
+import { replaceValue } from '../utils/form-commit';
 import { safeClick, safeInteract, SafeInteractOptions, SafeInteractResult, UIObstructionDetector, UIObstructionResolver } from '../obstruction';
 
 /**
@@ -267,11 +268,11 @@ export abstract class ATSPlugin {
             const fillAndCommit = async (loc: import('playwright').Locator, val: string) => {
               await loc.scrollIntoViewIfNeeded().catch(() => {});
               await loc.click({ force: true }).catch(() => {});
-              await loc.fill(val).catch(async () => {
+              try {
+                await replaceValue(loc, val);
+              } catch {
                 await loc.pressSequentially(val, { delay: 20 }).catch(() => {});
-              });
-              await loc.dispatchEvent('input').catch(() => {});
-              await loc.dispatchEvent('change').catch(() => {});
+              }
               await loc.dispatchEvent('blur').catch(() => {});
             };
 
@@ -1011,9 +1012,7 @@ export abstract class ATSPlugin {
       for (const taSel of taSelectors) {
         const clTextArea = ctx.locator(taSel).first();
         if ((await clTextArea.count().catch(() => 0)) > 0 && (await clTextArea.isVisible().catch(() => false))) {
-          await clTextArea.fill(context.coverLetterMarkdown);
-          await clTextArea.dispatchEvent('input').catch(() => {});
-          await clTextArea.dispatchEvent('change').catch(() => {});
+          await replaceValue(clTextArea, context.coverLetterMarkdown);
           await logger.info('cover_letter_filled', `Cover letter populated into text area field: "${taSel}"`);
           return true;
         }
