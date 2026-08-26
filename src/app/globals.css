@@ -2563,7 +2563,7 @@ body.light-theme .sync-overlay-content {
 
 @media (max-width: 1024px) {
   .sync-floating-container {
-    bottom: max(6.5rem, calc(6rem + env(safe-area-inset-bottom, 0px)));
+    bottom: max(5rem, calc(3rem + env(safe-area-inset-bottom, 0px)));
     right: 1.25rem;
   }
 }
