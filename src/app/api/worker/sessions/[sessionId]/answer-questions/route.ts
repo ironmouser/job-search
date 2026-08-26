@@ -158,7 +158,7 @@ export async function POST(
 
       if (isDemographic) {
         // Check for specific demographic values in preferences or customAnswers
-        let demoAnswer = customVal;
+        let demoAnswer: string | null | undefined = customVal;
 
         if (!demoAnswer) {
           if (/gender|sex\b/i.test(lowerLabel) && !/transgender|identity/i.test(lowerLabel)) {
