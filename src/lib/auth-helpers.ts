@@ -23,7 +23,10 @@ export function isGroupUser(subscriptionType: string) {
  * Verifies the caller is a SYSTEM_ADMIN.
  * Returns the session user or throws a NextResponse 401/403.
  */
-export async function requireSystemAdmin() {
+export async function requireSystemAdmin(): Promise<
+  | { user: any; error: null }
+  | { user: null; error: NextResponse }
+> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return { user: null, error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
@@ -41,7 +44,10 @@ export async function requireSystemAdmin() {
  *
  * Returns the DB user record or an error response.
  */
-export async function requireOrgAdmin(organizationId: string) {
+export async function requireOrgAdmin(organizationId: string): Promise<
+  | { user: any; dbUser: any; error: null }
+  | { user: null; dbUser: null; error: NextResponse }
+> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return { user: null, dbUser: null, error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
@@ -76,7 +82,10 @@ export async function requireOrgAdmin(organizationId: string) {
 /**
  * Verifies the caller is authenticated and not disabled.
  */
-export async function requireAuth() {
+export async function requireAuth(): Promise<
+  | { user: any; error: null }
+  | { user: null; error: NextResponse }
+> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return { user: null, error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };

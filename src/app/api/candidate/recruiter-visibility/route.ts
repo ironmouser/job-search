@@ -5,7 +5,7 @@ import { CandidateConsentType } from '@prisma/client';
 
 export async function GET() {
   const { user, error } = await requireAuth();
-  if (error || !user) return error;
+  if (error) return error;
 
   try {
     const consents = await getCandidateConsents(user.id);
@@ -27,7 +27,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const { user, error } = await requireAuth();
-  if (error || !user) return error;
+  if (error) return error;
 
   try {
     const body = await req.json();

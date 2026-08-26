@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   const { user, error } = await requireAuth();
-  if (error || !user) return error;
+  if (error) return error;
 
   try {
     const introductions = await prisma.introduction.findMany({

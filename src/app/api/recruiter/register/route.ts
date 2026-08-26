@@ -5,7 +5,7 @@ import { RecruiterOrgType, RecruiterRole, RecruiterVerificationStatus } from '@p
 
 export async function POST(req: NextRequest) {
   const { user, error } = await requireAuth();
-  if (error || !user) return error;
+  if (error) return error;
 
   try {
     const body = await req.json();

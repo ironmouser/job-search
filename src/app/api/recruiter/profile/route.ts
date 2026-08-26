@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   const { user, error } = await requireAuth();
-  if (error || !user) return error;
+  if (error) return error;
 
   try {
     const profile = await prisma.recruiterProfile.findUnique({
@@ -54,7 +54,7 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   const { user, error } = await requireAuth();
-  if (error || !user) return error;
+  if (error) return error;
 
   try {
     const body = await req.json();
