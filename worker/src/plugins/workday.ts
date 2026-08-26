@@ -5,6 +5,10 @@ import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
 import { UniversalQuestionResolver } from './question-resolver';
 import { replaceValue } from '../utils/form-commit';
+import {
+  isTransgenderOrGenderIdentityQuestion,
+  matchesOptionSafely,
+} from '../utils/demographic-matching';
 
 /**
  * WorkdayPlugin — automation plugin for Workday ATS.
@@ -723,10 +727,22 @@ export class WorkdayPlugin extends ATSPlugin {
         await logger.info('question_answered', `Visa sponsorship: ${val}`);
       } 
       // EEOC Gender
-      else if (lowerLabel.includes('gender') || lowerLabel.includes('sex')) {
+      else if ((lowerLabel.includes('gender') || lowerLabel.includes('sex')) && !isTransgenderOrGenderIdentityQuestion(lowerLabel)) {
         const choice = profile.eeocGender || 'Decline';
-        const opt = group.locator(`label:has-text("${choice}"), label:has-text("Decline"), label:has-text("I do not wish to answer")`).first();
-        if (await opt.count() > 0) await opt.click().catch(() => {});
+        const labels = await group.locator('label').all();
+        let clicked = false;
+        for (const lbl of labels) {
+          const txt = (await lbl.textContent().catch(() => ''))?.trim() ?? '';
+          if (matchesOptionSafely(txt, choice)) {
+            await lbl.click().catch(() => {});
+            clicked = true;
+            break;
+          }
+        }
+        if (!clicked) {
+          const opt = group.locator('label:has-text("Decline"), label:has-text("I do not wish to answer")').first();
+          if (await opt.count() > 0) await opt.click().catch(() => {});
+        }
         await logger.info('eeoc_answered', `EEOC Gender: ${choice}`);
       }
       // EEOC Race / Ethnicity

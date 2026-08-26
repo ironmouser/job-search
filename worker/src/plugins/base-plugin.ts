@@ -4,6 +4,10 @@ import { BrowserSession } from '../browser-session';
 import { detectJobClosed } from '../utils/job-status-detector';
 import { replaceValue } from '../utils/form-commit';
 import { safeClick, safeInteract, SafeInteractOptions, SafeInteractResult, UIObstructionDetector, UIObstructionResolver } from '../obstruction';
+import {
+  isTransgenderOrGenderIdentityQuestion,
+  matchesOptionSafely,
+} from '../utils/demographic-matching';
 
 /**
  * ATSPlugin — Abstract base class for all ATS platform automation plugins.
@@ -824,8 +828,8 @@ export abstract class ATSPlugin {
           }
         }
         // Gender
-        else if (/gender|sex\b/i.test(lower) && !/transgender|identity/i.test(lower)) {
-          if (profile.eeocGender && lower.includes(profile.eeocGender.toLowerCase())) {
+        else if (/gender|sex\b/i.test(lower) && !isTransgenderOrGenderIdentityQuestion(lower)) {
+          if (profile.eeocGender && matchesOptionSafely(labelText, profile.eeocGender)) {
             await radio.check({ force: true }).catch(() => {});
           } else if (profile.skipSelfId && /decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
@@ -833,7 +837,7 @@ export abstract class ATSPlugin {
         }
         // Race / Ethnicity
         else if (/race|ethnicity|hispanic|latino/i.test(lower)) {
-          if (profile.eeocRace && lower.includes(profile.eeocRace.toLowerCase())) {
+          if (profile.eeocRace && matchesOptionSafely(labelText, profile.eeocRace)) {
             await radio.check({ force: true }).catch(() => {});
           } else if (profile.skipSelfId && /decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
@@ -857,19 +861,19 @@ export abstract class ATSPlugin {
 
         if (/veteran/i.test(lower)) {
           const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocVeteran && new RegExp(profile.eeocVeteran, 'i').test(o.text)) || (profile.skipSelfId && /not a protected veteran|decline/i.test(o.text)));
+          const match = options.find((o) => (profile.eeocVeteran && matchesOptionSafely(o.text, profile.eeocVeteran)) || (profile.skipSelfId && /not a protected veteran|decline/i.test(o.text)));
           if (match) await sel.selectOption(match.value).catch(() => {});
         } else if (/disability/i.test(lower)) {
           const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocDisability && new RegExp(profile.eeocDisability, 'i').test(o.text)) || (profile.skipSelfId && /no|decline|do not wish/i.test(o.text)));
+          const match = options.find((o) => (profile.eeocDisability && matchesOptionSafely(o.text, profile.eeocDisability)) || (profile.skipSelfId && /no|decline|do not wish/i.test(o.text)));
           if (match) await sel.selectOption(match.value).catch(() => {});
-        } else if (/gender|sex\b/i.test(lower) && !/transgender|identity/i.test(lower)) {
+        } else if (/gender|sex\b/i.test(lower) && !isTransgenderOrGenderIdentityQuestion(lower)) {
           const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocGender && new RegExp(profile.eeocGender, 'i').test(o.text)) || (profile.skipSelfId && /decline|prefer not/i.test(o.text)));
+          const match = options.find((o) => (profile.eeocGender && matchesOptionSafely(o.text, profile.eeocGender)) || (profile.skipSelfId && /decline|prefer not/i.test(o.text)));
           if (match) await sel.selectOption(match.value).catch(() => {});
         } else if (/race|ethnicity|hispanic/i.test(lower)) {
           const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocRace && new RegExp(profile.eeocRace, 'i').test(o.text)) || (profile.skipSelfId && /decline|prefer not/i.test(o.text)));
+          const match = options.find((o) => (profile.eeocRace && matchesOptionSafely(o.text, profile.eeocRace)) || (profile.skipSelfId && /decline|prefer not/i.test(o.text)));
           if (match) await sel.selectOption(match.value).catch(() => {});
         }
       }

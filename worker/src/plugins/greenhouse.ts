@@ -12,6 +12,10 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
 import { UniversalQuestionResolver } from './question-resolver';
+import {
+  isTransgenderOrGenderIdentityQuestion,
+  matchesOptionSafely,
+} from '../utils/demographic-matching';
 
 /**
  * GreenhousePlugin — automation plugin for Greenhouse ATS.
@@ -550,11 +554,22 @@ export class GreenhousePlugin extends ATSPlugin {
         } else if (label.includes('country')) {
           targetValue = profile.country || '';
         } else if (label.includes('gender') || label.includes('sex')) {
-          if (profile.skipSelfId && !profile.eeocGender) {
-            await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
-            continue;
+          if (isTransgenderOrGenderIdentityQuestion(label)) {
+            // Transgender / gender identity question — DO NOT answer with eeocGender!
+            const customVal = profile.customAnswers?.[label] || profile.customAnswers?.[label.replace(/\*/g, '').trim()];
+            if (customVal) {
+              targetValue = String(customVal).trim();
+            } else {
+              await logger.info('transgender_question_skipped', `Skipping gender identity question without explicit user answer: "${label.substring(0, 60)}"`);
+              continue;
+            }
+          } else {
+            if (profile.skipSelfId && !profile.eeocGender) {
+              await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
+              continue;
+            }
+            targetValue = profile.eeocGender || '';
           }
-          targetValue = profile.eeocGender || '';
         } else if (label.includes('race') || label.includes('ethnicity')) {
           if (profile.skipSelfId && !profile.eeocRace) {
             await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
@@ -583,7 +598,7 @@ export class GreenhousePlugin extends ATSPlugin {
               const options = await nativeSelect.locator('option').all();
               for (const opt of options) {
                 const optText = (await opt.textContent())?.trim() ?? '';
-                if (optText.toLowerCase().includes(targetValue.toLowerCase())) {
+                if (matchesOptionSafely(optText, targetValue)) {
                   const val = await opt.getAttribute('value');
                   if (val) await nativeSelect.selectOption(val);
                   await logger.info('question_answered', `Dropdown answered (${targetValue}): "${label.substring(0, 50)}"`);
@@ -599,19 +614,36 @@ export class GreenhousePlugin extends ATSPlugin {
                 if (await control.count() > 0) await control.click().catch(() => null);
                 await browser.page.waitForTimeout(200);
 
-                if (await reactInput.count() > 0) {
-                  await reactInput.focus().catch(() => null);
-                  await this.typeHumanized(ctx, reactInput, targetValue);
-                  await browser.page.keyboard.press('Enter');
-                  await browser.page.waitForTimeout(300);
+                let matchedAndClicked = false;
+                const optionItems = await ctx.locator('.select__option, [id*="-option-"], [role="option"]').all();
+                for (const optItem of optionItems) {
+                  const text = (await optItem.textContent().catch(() => ''))?.trim() ?? '';
+                  if (matchesOptionSafely(text, targetValue)) {
+                    await optItem.click().catch(() => null);
+                    matchedAndClicked = true;
+                    break;
+                  }
                 }
 
-                // Fallback: Click matching option in dropdown popup
-                const optionItem = ctx.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(targetValue, 'i') }).first();
-                if (await optionItem.count() > 0 && await optionItem.isVisible().catch(() => false)) {
-                  await optionItem.click().catch(() => null);
+                if (!matchedAndClicked && (await reactInput.count() > 0)) {
+                  await reactInput.focus().catch(() => null);
+                  await this.typeHumanized(ctx, reactInput, targetValue);
+                  await browser.page.waitForTimeout(300);
+
+                  const filteredOptions = await ctx.locator('.select__option, [id*="-option-"], [role="option"]').all();
+                  for (const fOpt of filteredOptions) {
+                    const text = (await fOpt.textContent().catch(() => ''))?.trim() ?? '';
+                    if (matchesOptionSafely(text, targetValue)) {
+                      await fOpt.click().catch(() => null);
+                      matchedAndClicked = true;
+                      break;
+                    }
+                  }
                 }
-                await logger.info('question_answered', `React Select answered (${targetValue}): "${label.substring(0, 50)}"`);
+
+                if (matchedAndClicked) {
+                  await logger.info('question_answered', `React Select answered (${targetValue}): "${label.substring(0, 50)}"`);
+                }
               }
             }
           } catch (err: any) {

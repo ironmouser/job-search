@@ -16,7 +16,12 @@ import { chromium, Browser } from 'playwright';
 import * as http from 'http';
 import * as path from 'path';
 import { readFileSync } from 'fs';
-import { UniversalQuestionResolver, isDemographicQuestion } from '../src/plugins/question-resolver';
+import {
+  UniversalQuestionResolver,
+  isDemographicQuestion,
+  isTransgenderOrGenderIdentityQuestion,
+  matchesOptionSafely,
+} from '../src/plugins/question-resolver';
 import { BrowserSession } from '../src/browser-session';
 import { ExecutionLogger } from '../src/execution-logger';
 import { WorkflowContext, InterventionReason } from '../src/types';
@@ -46,6 +51,59 @@ describe('Demographic question detection & intervention flow', () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
+  describe('isTransgenderOrGenderIdentityQuestion unit tests', () => {
+    it('correctly identifies transgender and gender identity questions', () => {
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('What gender identity do you most closely identify with?'), true);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('Do you identify as transgender?'), true);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('Transgender Status'), true);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('Gender Identity'), true);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('Gender Expression'), true);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('Cisgender or Transgender'), true);
+    });
+
+    it('does not classify standard EEOC binary gender or unrelated questions as transgender', () => {
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('Gender'), false);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('Sex'), false);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('What is your gender?'), false);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('Biological sex'), false);
+      assert.strictEqual(isTransgenderOrGenderIdentityQuestion('First Name'), false);
+    });
+  });
+
+  describe('matchesOptionSafely unit tests', () => {
+    it('NEVER matches Trans Man/Male when target is simple Male or Man', () => {
+      assert.strictEqual(matchesOptionSafely('Trans Man/Male', 'Male'), false);
+      assert.strictEqual(matchesOptionSafely('Trans Man', 'Male'), false);
+      assert.strictEqual(matchesOptionSafely('Trans Male', 'Male'), false);
+      assert.strictEqual(matchesOptionSafely('Trans Man/Male', 'Man'), false);
+    });
+
+    it('correctly matches valid Male / Man options for Male target', () => {
+      assert.strictEqual(matchesOptionSafely('Male', 'Male'), true);
+      assert.strictEqual(matchesOptionSafely('Man', 'Male'), true);
+      assert.strictEqual(matchesOptionSafely('Man / Male', 'Male'), true);
+      assert.strictEqual(matchesOptionSafely('Male (He/Him)', 'Male'), true);
+    });
+
+    it('NEVER matches Female or Woman options when target is Male', () => {
+      assert.strictEqual(matchesOptionSafely('Female', 'Male'), false);
+      assert.strictEqual(matchesOptionSafely('Woman / Female', 'Male'), false);
+      assert.strictEqual(matchesOptionSafely('Trans Woman/Female', 'Male'), false);
+    });
+
+    it('NEVER matches Trans Woman/Female when target is simple Female or Woman', () => {
+      assert.strictEqual(matchesOptionSafely('Trans Woman/Female', 'Female'), false);
+      assert.strictEqual(matchesOptionSafely('Trans Woman', 'Female'), false);
+      assert.strictEqual(matchesOptionSafely('Female', 'Female'), true);
+      assert.strictEqual(matchesOptionSafely('Woman / Female', 'Female'), true);
+    });
+
+    it('matches Trans options only when target explicitly specifies Trans', () => {
+      assert.strictEqual(matchesOptionSafely('Trans Man/Male', 'Trans Man'), true);
+      assert.strictEqual(matchesOptionSafely('Transgender', 'Transgender'), true);
+    });
+  });
+
   describe('isDemographicQuestion classification unit tests', () => {
     it('correctly identifies sexual orientation questions', () => {
       assert.strictEqual(isDemographicQuestion('What is your sexual orientation?'), true);
@@ -55,6 +113,7 @@ describe('Demographic question detection & intervention flow', () => {
     });
 
     it('correctly identifies transgender and gender identity questions', () => {
+      assert.strictEqual(isDemographicQuestion('What gender identity do you most closely identify with?'), true);
       assert.strictEqual(isDemographicQuestion('Do you identify as transgender?'), true);
       assert.strictEqual(isDemographicQuestion('Transgender Status'), true);
       assert.strictEqual(isDemographicQuestion('Gender Identity'), true);

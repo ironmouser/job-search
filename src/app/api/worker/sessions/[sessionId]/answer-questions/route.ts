@@ -26,6 +26,73 @@ export interface AnswerItem {
  * tailored answers adhering to all content rules (no em-dashes, no filler words, professional tone).
  */
 /**
+ * Detect if a question specifically asks about transgender status,
+ * gender identity, gender expression, or cisgender status.
+ *
+ * Generic EEOC gender (Male/Female) MUST NEVER be used to answer these questions.
+ */
+export function isTransgenderOrGenderIdentityQuestion(label: string, fieldKey?: string): boolean {
+  const text = `${label} ${fieldKey || ''}`.toLowerCase();
+  return /transgender|\btrans\b|gender\s*identity|gender\s*expression|cisgender|\bcis\b/i.test(text);
+}
+
+/**
+ * Safely match an option text against a target answer string without false positives.
+ */
+export function matchesOptionSafely(optionText: string, targetValue: string): boolean {
+  const opt = optionText.trim().toLowerCase();
+  const target = targetValue.trim().toLowerCase();
+  if (!opt || !target) return false;
+
+  if (opt === target) return true;
+
+  const targetHasTrans = /transgender|\btrans\b|transsexual/i.test(target);
+  const optHasTrans = /transgender|\btrans\b|transsexual/i.test(opt);
+
+  // If user target does NOT specify trans, NEVER match an option with 'trans'
+  if (!targetHasTrans && optHasTrans) {
+    return false;
+  }
+  if (targetHasTrans && !optHasTrans) {
+    return false;
+  }
+
+  if (/^(male|man)$/i.test(target)) {
+    if (optHasTrans) return false;
+    const hasMale = /\b(?:male|man|men)\b/i.test(opt);
+    const hasFemale = /\b(?:female|woman|women)\b/i.test(opt);
+    return hasMale && !hasFemale;
+  }
+
+  if (/^(female|woman)$/i.test(target)) {
+    if (optHasTrans) return false;
+    const hasFemale = /\b(?:female|woman|women)\b/i.test(opt);
+    const hasMale = /\b(?:male|man|men)\b/i.test(opt);
+    return hasFemale && !hasMale;
+  }
+
+  if (/^(decline|prefer not to say|do not wish to answer|prefer not to disclose)$/i.test(target)) {
+    return /decline|prefer not|do not wish|choose not/i.test(opt);
+  }
+
+  if (/^yes$/i.test(target)) {
+    return /^yes\b|affirmative|i agree/i.test(opt) && !/^no\b/i.test(opt);
+  }
+  if (/^no$/i.test(target)) {
+    return /^no\b|negative|i do not|none/i.test(opt) && !/^yes\b/i.test(opt);
+  }
+
+  const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const wordRegex = new RegExp(`\\b${escaped}\\b`, 'i');
+  if (wordRegex.test(opt)) return true;
+
+  if (opt.includes(target) && target.length >= 4) return true;
+  if (target.includes(opt) && opt.length >= 4) return true;
+
+  return false;
+}
+
+/**
  * Detect if a question is a demographic / EEOC / voluntary self-identification question.
  * The bot MUST NOT guess or assume answers for these questions.
  */
@@ -36,7 +103,7 @@ export function isDemographicQuestion(label: string, fieldKey?: string): boolean
   if (/sexual\s*(?:orientation|identity|preference)|sexuality/i.test(text)) return true;
 
   // Transgender / gender identity / cisgender
-  if (/transgender|\btrans\b|gender\s*identity|gender\s*expression|cisgender/i.test(text)) return true;
+  if (isTransgenderOrGenderIdentityQuestion(label, fieldKey)) return true;
 
   // Pronouns
   if (/\bpronouns?\b|preferred\s*pronouns/i.test(text)) return true;
@@ -161,7 +228,11 @@ export async function POST(
         let demoAnswer: string | null | undefined = customVal;
 
         if (!demoAnswer) {
-          if (/gender|sex\b/i.test(lowerLabel) && !/transgender|identity/i.test(lowerLabel)) {
+          const isTransOrIdentity = isTransgenderOrGenderIdentityQuestion(lowerLabel, lowerId);
+          if (isTransOrIdentity) {
+            // NEVER use generic eeocGender for transgender / gender identity questions!
+            demoAnswer = customVal;
+          } else if (/gender|sex\b/i.test(lowerLabel) && !isTransgenderOrGenderIdentityQuestion(lowerLabel)) {
             demoAnswer = prefs?.eeocGender;
           } else if (/race|ethnicity|hispanic|latino/i.test(lowerLabel)) {
             demoAnswer = prefs?.eeocRace;
@@ -175,32 +246,35 @@ export async function POST(
         if (demoAnswer !== undefined && demoAnswer !== null && String(demoAnswer).trim().length > 0) {
           let resolvedOption = String(demoAnswer).trim();
           if (q.options && q.options.length > 0) {
-            const matchedOpt = q.options.find(
-              (o) =>
-                o.toLowerCase() === resolvedOption.toLowerCase() ||
-                o.toLowerCase().includes(resolvedOption.toLowerCase()) ||
-                resolvedOption.toLowerCase().includes(o.toLowerCase())
-            );
+            const matchedOpt = q.options.find((o) => matchesOptionSafely(o, resolvedOption));
             if (matchedOpt) {
               resolvedOption = matchedOpt;
+            } else {
+              // If options are provided but none safely match, do not force an invalid selection
+              if (!q.options.some((o) => o.toLowerCase() === resolvedOption.toLowerCase())) {
+                resolvedOption = '';
+              }
             }
           }
 
-          answers.push({
-            id: q.id,
-            answer: resolvedOption,
-            confidence: 100,
-            requiresHumanInput: false,
-          });
-        } else {
-          // If no answer exists in DB for this demographic question, NEVER let AI guess!
-          answers.push({
-            id: q.id,
-            answer: null,
-            confidence: 0,
-            requiresHumanInput: true,
-          });
+          if (resolvedOption) {
+            answers.push({
+              id: q.id,
+              answer: resolvedOption,
+              confidence: 100,
+              requiresHumanInput: false,
+            });
+            continue;
+          }
         }
+
+        // If no answer exists in DB for this demographic question, NEVER let AI guess!
+        answers.push({
+          id: q.id,
+          answer: null,
+          confidence: 0,
+          requiresHumanInput: true,
+        });
         continue;
       }
 
@@ -311,7 +385,7 @@ CONTENT WRITING RULES (STRICT):
 6. For dropdowns or radio choices with Allowed Options, YOU MUST SELECT ONE OF THE EXACT ALLOWED OPTIONS verbatim.
 7. For salary or compensation questions: If candidate has a configured salary expectation ("${prefs?.expectedSalary || ''}"), provide that value (clean number if required, e.g. 150000 or $150,000 depending on field type). If not specified, use a reasonable market rate for the role or the job's salary range ("${session.job?.salaryRange || ''}").
 8. If a question is highly personal, confidential, or impossible to deduce safely, mark requiresHumanInput as true and answer as null.
-9. CRITICAL DEMOGRAPHIC RULE: Never guess, assume, or invent answers to demographic, diversity, sexual orientation, transgender, gender identity, pronouns, race, veteran, or disability questions. If not explicitly provided in candidate information, return null and mark requiresHumanInput as true.
+9. CRITICAL DEMOGRAPHIC RULE: Never guess, assume, or invent answers to demographic, diversity, sexual orientation, transgender, gender identity, pronouns, race, veteran, or disability questions. Generic gender settings (Male/Female) must never be used to assume or select transgender or gender-identity options (e.g. Trans Man/Male, Cisgender, etc.). If not explicitly provided in candidate information, return null and mark requiresHumanInput as true.
 
 OUTPUT FORMAT:
 Return a valid JSON array of objects with the exact structure:

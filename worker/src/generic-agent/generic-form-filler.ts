@@ -23,6 +23,10 @@ import { UIObstructionResolver } from '../obstruction/resolver';
 import { UniversalQuestionResolver } from '../plugins/question-resolver';
 import { replaceValue } from '../utils/form-commit';
 import { driveTypeahead } from '../utils/typeahead';
+import {
+  isTransgenderOrGenderIdentityQuestion,
+  matchesOptionSafely,
+} from '../utils/demographic-matching';
 
 export class GenericFormFiller {
   /**
@@ -578,14 +582,14 @@ export class GenericFormFiller {
           } else if (profile.visaSponsorship && /no/i.test(lower) && /no/i.test(profile.visaSponsorship)) {
             await radio.check({ force: true }).catch(() => {});
           }
-        } else if (/gender|sex\b/i.test(lower) && !/transgender|identity/i.test(lower)) {
-          if (profile.eeocGender && lower.includes(profile.eeocGender.toLowerCase())) {
+        } else if (/gender|sex\b/i.test(lower) && !isTransgenderOrGenderIdentityQuestion(lower)) {
+          if (profile.eeocGender && matchesOptionSafely(labelText, profile.eeocGender)) {
             await radio.check({ force: true }).catch(() => {});
           } else if (profile.skipSelfId && /decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
         } else if (/race|ethnicity|hispanic|latino/i.test(lower)) {
-          if (profile.eeocRace && lower.includes(profile.eeocRace.toLowerCase())) {
+          if (profile.eeocRace && matchesOptionSafely(labelText, profile.eeocRace)) {
             await radio.check({ force: true }).catch(() => {});
           } else if (profile.skipSelfId && /decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});

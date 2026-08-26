@@ -23,6 +23,19 @@ import {
   toSlashDate,
 } from '../utils/form-commit';
 import { valuesClose } from '../utils/typeahead';
+import {
+  isTransgenderOrGenderIdentityQuestion,
+  isOptionTransgender,
+  isOptionCisgender,
+  matchesOptionSafely,
+} from '../utils/demographic-matching';
+
+export {
+  isTransgenderOrGenderIdentityQuestion,
+  isOptionTransgender,
+  isOptionCisgender,
+  matchesOptionSafely,
+};
 
 export interface ExtractedQuestion {
   id: string;
@@ -60,7 +73,7 @@ export function isDemographicQuestion(label: string, fieldKey?: string): boolean
   if (/sexual\s*(?:orientation|identity|preference)|sexuality/i.test(text)) return true;
 
   // Transgender / gender identity / cisgender
-  if (/transgender|\btrans\b|gender\s*identity|gender\s*expression|cisgender/i.test(text)) return true;
+  if (isTransgenderOrGenderIdentityQuestion(label, fieldKey)) return true;
 
   // Pronouns
   if (/\bpronouns?\b|preferred\s*pronouns/i.test(text)) return true;
@@ -81,6 +94,112 @@ export function isDemographicQuestion(label: string, fieldKey?: string): boolean
   if (/\b(?:eeoc|eeo)\b|voluntary\s*self[-\s]*identification|self[-\s]*identify|diversity\s*(?:&|and)\s*inclusion/i.test(text)) return true;
 
   return false;
+}
+
+/**
+ * Detect if a question label implies selection / dropdown choices (e.g. Work authorization, EEOC, relocation, Yes/No).
+ */
+export function isSemanticDropdownQuestion(label: string): boolean {
+  const text = label.toLowerCase();
+  return (
+    /authorized|eligible to work|legally permitted|legal right to work/i.test(text) ||
+    /sponsorship|require.*visa|visa.*sponsor/i.test(text) ||
+    /gender|sex\b/i.test(text) ||
+    /race|ethnicity|ethnic/i.test(text) ||
+    /veteran/i.test(text) ||
+    /disability|handicap/i.test(text) ||
+    /relocate|relocation/i.test(text) ||
+    /willing to travel/i.test(text) ||
+    /highest.*education|degree\b/i.test(text) ||
+    /years of experience|how many years/i.test(text) ||
+    /^(?:are you|do you|will you|have you)\b/i.test(text.trim()) ||
+    /\b(?:select one|please select|choose one)\b/i.test(text)
+  );
+}
+
+/**
+ * Return comprehensive semantic dropdown options for common application questions.
+ */
+export function getSemanticDropdownOptions(label: string): string[] {
+  const text = label.toLowerCase();
+
+  // Work authorization
+  if (/authorized|eligible to work|legally permitted|legal right to work/i.test(text)) {
+    return [
+      'Yes, I am authorized to work in the United States',
+      'No, I am not authorized to work in the United States',
+      'Yes',
+      'No',
+    ];
+  }
+  // Visa sponsorship
+  if (/sponsorship|require.*visa|visa.*sponsor/i.test(text)) {
+    return [
+      'No, I do not require sponsorship',
+      'Yes, I require sponsorship now or in the future',
+      'No',
+      'Yes',
+    ];
+  }
+  // Gender
+  if (/gender|sex\b/i.test(text)) {
+    return ['Male', 'Female', 'Non-Binary', 'Decline to self-identify'];
+  }
+  // Race / Ethnicity
+  if (/race|ethnicity|ethnic/i.test(text)) {
+    return [
+      'Hispanic or Latino',
+      'White (Not Hispanic or Latino)',
+      'Black or African American',
+      'Asian',
+      'Native Hawaiian or Other Pacific Islander',
+      'American Indian or Alaska Native',
+      'Two or More Races',
+      'Decline to self-identify',
+    ];
+  }
+  // Veteran status
+  if (/veteran/i.test(text)) {
+    return [
+      'I am not a protected veteran',
+      'I identify as one or more of the classifications of protected veteran',
+      'I decline to identify',
+    ];
+  }
+  // Disability status
+  if (/disability|handicap/i.test(text)) {
+    return [
+      'Yes, I have a disability (or previously had a disability)',
+      'No, I do not have a disability',
+      'I do not wish to answer',
+    ];
+  }
+  // Relocation
+  if (/relocate|relocation/i.test(text)) {
+    return ['Yes', 'No', 'Negotiable'];
+  }
+  // Willing to travel
+  if (/travel/i.test(text)) {
+    return ['0%', '25%', '50%', '75%', '100%', 'Yes', 'No'];
+  }
+  // Over 18
+  if (/\b18\b|legal age/i.test(text)) {
+    return ['Yes', 'No'];
+  }
+  // Highest Education
+  if (/education|degree\b/i.test(text)) {
+    return ["High School", "Associate's Degree", "Bachelor's Degree", "Master's Degree", "Doctorate / Ph.D.", "Other"];
+  }
+  // Experience level / Years of experience
+  if (/years of experience|how many years/i.test(text)) {
+    return ['0-1 years', '1-2 years', '3-5 years', '5-7 years', '8+ years', '10+ years'];
+  }
+  // General Yes / No dropdowns
+  if (/^(?:are you|do you|will you|have you)\b/i.test(text.trim()) || /\b(?:yes\/no|select yes or no)\b/i.test(text)) {
+    return ['Yes', 'No'];
+  }
+
+  return [];
 }
 
 /** Read back the committed value of an extracted text-type question's input. */
@@ -189,7 +308,11 @@ export class UniversalQuestionResolver {
           // Check for specific demographic field in userProfile
           let demoAnswer: string | undefined = customVal;
           if (!demoAnswer) {
-            if (/gender|sex\b/i.test(lowerQ) && !/transgender|identity/i.test(lowerQ)) {
+            const isTransOrIdentity = isTransgenderOrGenderIdentityQuestion(q.label, q.fieldKey);
+            if (isTransOrIdentity) {
+              // NEVER use eeocGender for transgender / gender identity questions!
+              demoAnswer = customVal;
+            } else if (/gender|sex\b/i.test(lowerQ) && !isTransgenderOrGenderIdentityQuestion(lowerQ)) {
               demoAnswer = context.userProfile.eeocGender;
             } else if (/race|ethnicity|hispanic|latino/i.test(lowerQ)) {
               demoAnswer = context.userProfile.eeocRace;
@@ -204,7 +327,7 @@ export class UniversalQuestionResolver {
             answer = String(demoAnswer).trim();
             requiresHuman = false;
           } else {
-            // Demographic question without saved answer strictly requires human intervention
+            // Demographic question without saved answer strictly requires human intervention if required
             requiresHuman = true;
           }
         } else {
@@ -501,9 +624,25 @@ export class UniversalQuestionResolver {
         }
       }
 
-      // 2. Dropdowns: Native select or React Select / custom combobox
+      // 2. Dropdowns: Native select or React Select / custom combobox / ARIA listbox
       const nativeSelect = container.locator('select').first();
-      const reactSelect = container.locator('.select__control, .select-shell, input.select__input, [role="combobox"]').first();
+      const customSelect = container.locator([
+        '.select__control',
+        '.select-shell',
+        'input.select__input',
+        '[role="combobox"]',
+        'button[aria-haspopup="listbox"]',
+        'button[aria-haspopup="true"]',
+        'div[aria-haspopup="listbox"]',
+        '[data-automation-id*="select" i]',
+        '[data-automation-id*="dropdown" i]',
+        '[data-testid*="select" i]',
+        '[data-testid*="dropdown" i]',
+        '[class*="ashby-dropdown" i]',
+        '[class*="select__control" i]',
+        '[class*="select-control" i]',
+        '[class*="dropdown" i]',
+      ].join(', ')).first();
 
       let dropdownOptions: string[] = [];
       if (await nativeSelect.count() > 0) {
@@ -511,9 +650,13 @@ export class UniversalQuestionResolver {
         dropdownOptions = rawOpts.map((o) => o.trim()).filter((o) => o && !/^(select|choose|please\s*select|\-\-)/i.test(o));
       }
 
-      if (dropdownOptions.length === 0 && (await reactSelect.count() > 0)) {
-        const customOpts = await container.locator('[role="option"], .select__option, [class*="option" i]').allTextContents().catch(() => []);
+      if (dropdownOptions.length === 0 && (await customSelect.count() > 0)) {
+        const customOpts = await container.locator('[role="option"], .select__option, [class*="option" i], li[role="option"], [data-automation-id*="promptOption" i]').allTextContents().catch(() => []);
         dropdownOptions = customOpts.map((o) => o.trim()).filter((o) => o && !/^(select|choose|please\s*select|\-\-)/i.test(o));
+      }
+
+      if (dropdownOptions.length === 0) {
+        dropdownOptions = getSemanticDropdownOptions(cleanLabel);
       }
 
       if (await nativeSelect.count() > 0) {
@@ -535,14 +678,15 @@ export class UniversalQuestionResolver {
           });
           continue;
         }
-      } else if (await reactSelect.count() > 0 && (await reactSelect.isVisible().catch(() => false))) {
+      } else if (await customSelect.count() > 0 && (await customSelect.isVisible().catch(() => false))) {
         const text = (await container.textContent().catch(() => ''))?.toLowerCase() || '';
-        // If it still says "select..." or "choose..." or is blank
-        if (text.includes('select...') || text.includes('select a country') || text.includes('choose...') || text.includes('select an option') || !text.trim()) {
+        // If it still says "select..." or "choose..." or is blank or has no value
+        const isUnfilled = text.includes('select...') || text.includes('select a country') || text.includes('choose...') || text.includes('select an option') || !text.trim() || isSemanticDropdownQuestion(cleanLabel);
+        if (isUnfilled) {
           qIndex++;
           extracted.push({
             id: `q_${qIndex}`,
-            fieldKey: (await reactSelect.getAttribute('name')) || (await reactSelect.getAttribute('id')) || `react_select_${qIndex}`,
+            fieldKey: (await customSelect.getAttribute('name')) || (await customSelect.getAttribute('id')) || `custom_select_${qIndex}`,
             label: cleanLabel,
             type: 'select',
             options: dropdownOptions,
@@ -640,21 +784,44 @@ export class UniversalQuestionResolver {
         }
       }
 
-      // 4. Text input
+      // 4. Text input / Autocomplete Combobox
       const textInput = container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
       if (await textInput.count() > 0 && (await textInput.isVisible().catch(() => false))) {
         const val = (await textInput.inputValue().catch(() => ''))?.trim();
         if (!val) {
+          const isComboboxOrDropdown =
+            (await textInput.getAttribute('role').catch(() => '')) === 'combobox' ||
+            (await textInput.getAttribute('aria-haspopup').catch(() => '')) !== null ||
+            (await textInput.getAttribute('aria-autocomplete').catch(() => '')) !== null ||
+            (await textInput.getAttribute('readonly').catch(() => '')) !== null ||
+            (await textInput.getAttribute('class').catch(() => ''))?.toLowerCase().includes('select') ||
+            (await textInput.getAttribute('class').catch(() => ''))?.toLowerCase().includes('dropdown') ||
+            (await container.locator('[role="combobox"], [aria-haspopup], [class*="select" i], [class*="dropdown" i]').count().catch(() => 0)) > 0 ||
+            isSemanticDropdownQuestion(cleanLabel);
+
           qIndex++;
-          extracted.push({
-            id: `q_${qIndex}`,
-            fieldKey: (await textInput.getAttribute('name')) || (await textInput.getAttribute('id')) || `text_${qIndex}`,
-            label: cleanLabel,
-            type: 'text',
-            options: [],
-            required: isRequired,
-            container,
-          });
+          if (isComboboxOrDropdown) {
+            const opts = getSemanticDropdownOptions(cleanLabel);
+            extracted.push({
+              id: `q_${qIndex}`,
+              fieldKey: (await textInput.getAttribute('name')) || (await textInput.getAttribute('id')) || `select_${qIndex}`,
+              label: cleanLabel,
+              type: 'select',
+              options: opts,
+              required: isRequired,
+              container,
+            });
+          } else {
+            extracted.push({
+              id: `q_${qIndex}`,
+              fieldKey: (await textInput.getAttribute('name')) || (await textInput.getAttribute('id')) || `text_${qIndex}`,
+              label: cleanLabel,
+              type: 'text',
+              options: [],
+              required: isRequired,
+              container,
+            });
+          }
           continue;
         }
       }
@@ -836,8 +1003,8 @@ export class UniversalQuestionResolver {
         if (await nativeSelect.count() > 0) {
           const options = await nativeSelect.locator('option').all();
           for (const opt of options) {
-            const text = (await opt.textContent())?.trim().toLowerCase() ?? '';
-            if (text.includes(answer.toLowerCase()) || answer.toLowerCase().includes(text)) {
+            const text = (await opt.textContent())?.trim() ?? '';
+            if (matchesOptionSafely(text, answer)) {
               const val = await opt.getAttribute('value');
               if (val) {
                 await nativeSelect.selectOption(val);
@@ -855,26 +1022,43 @@ export class UniversalQuestionResolver {
             if (await control.count() > 0) await control.click().catch(() => null);
             await page.waitForTimeout(200);
 
+            // First check popup options directly with matchesOptionSafely
+            const optionEls = await page.locator('.select__option, [id*="-option-"], [role="option"]').all();
+            for (const optEl of optionEls) {
+              const text = (await optEl.textContent().catch(() => ''))?.trim() ?? '';
+              if (matchesOptionSafely(text, answer)) {
+                await optEl.click().catch(() => null);
+                return true;
+              }
+            }
+
             if (await reactInput.count() > 0) {
               await reactInput.focus().catch(() => null);
               await replaceValue(reactInput, answer);
-              await reactInput.press('Enter');
+              await page.waitForTimeout(300);
+
+              const filteredOptions = await page.locator('.select__option, [id*="-option-"], [role="option"]').all();
+              for (const fOpt of filteredOptions) {
+                const text = (await fOpt.textContent().catch(() => ''))?.trim() ?? '';
+                if (matchesOptionSafely(text, answer)) {
+                  await fOpt.click().catch(() => null);
+                  return true;
+                }
+              }
+
+              // Fallback press Enter only if exact match or no other option clicked
+              await reactInput.press('Enter').catch(() => null);
               await page.waitForTimeout(300);
             }
 
-            // Click option in popup if visible
-            const optionItem = page.locator('.select__option, [id*="-option-"]').filter({ hasText: new RegExp(answer, 'i') }).first();
-            if (await optionItem.count() > 0 && await optionItem.isVisible().catch(() => false)) {
-              await optionItem.click().catch(() => null);
-            }
             return true;
           }
         }
       } else if (question.type === 'radio') {
         const radioLabels = await container.locator('label').all();
         for (const rLabel of radioLabels) {
-          const text = (await rLabel.textContent())?.trim().toLowerCase() ?? '';
-          if (text.includes(answer.toLowerCase()) || answer.toLowerCase().includes(text)) {
+          const text = (await rLabel.textContent())?.trim() ?? '';
+          if (matchesOptionSafely(text, answer)) {
             await rLabel.click().catch(() => null);
             return true;
           }
@@ -882,8 +1066,8 @@ export class UniversalQuestionResolver {
 
         const radios = await container.locator('input[type="radio"]').all();
         for (const radio of radios) {
-          const val = (await radio.getAttribute('value'))?.toLowerCase() ?? '';
-          if (val && (val.includes(answer.toLowerCase()) || answer.toLowerCase().includes(val))) {
+          const val = (await radio.getAttribute('value'))?.trim() ?? '';
+          if (val && matchesOptionSafely(val, answer)) {
             await radio.check({ force: true }).catch(() => null);
             return true;
           }

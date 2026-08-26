@@ -111,6 +111,124 @@ function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: 
   }
 }
 
+function getDropdownOptionsForField(q: { label: string; fieldType?: string; options?: string[] }): string[] {
+  if (q.options && q.options.length > 0) {
+    return q.options;
+  }
+
+  const text = q.label.toLowerCase();
+
+  // Work authorization
+  if (/authorized|eligible to work|legally permitted|legal right to work/i.test(text)) {
+    return [
+      'Yes, I am authorized to work in the United States',
+      'No, I am not authorized to work in the United States',
+      'Yes',
+      'No',
+    ];
+  }
+  // Visa sponsorship
+  if (/sponsorship|require.*visa|visa.*sponsor/i.test(text)) {
+    return [
+      'No, I do not require sponsorship',
+      'Yes, I require sponsorship now or in the future',
+      'No',
+      'Yes',
+    ];
+  }
+  // Gender
+  if (/gender|sex\b/i.test(text)) {
+    return ['Male', 'Female', 'Non-Binary', 'Decline to self-identify'];
+  }
+  // Race / Ethnicity
+  if (/race|ethnicity|ethnic/i.test(text)) {
+    return [
+      'Hispanic or Latino',
+      'White (Not Hispanic or Latino)',
+      'Black or African American',
+      'Asian',
+      'Native Hawaiian or Other Pacific Islander',
+      'American Indian or Alaska Native',
+      'Two or More Races',
+      'Decline to self-identify',
+    ];
+  }
+  // Veteran status
+  if (/veteran/i.test(text)) {
+    return [
+      'I am not a protected veteran',
+      'I identify as one or more of the classifications of protected veteran',
+      'I decline to identify',
+    ];
+  }
+  // Disability status
+  if (/disability|handicap/i.test(text)) {
+    return [
+      'Yes, I have a disability (or previously had a disability)',
+      'No, I do not have a disability',
+      'I do not wish to answer',
+    ];
+  }
+  // Relocation
+  if (/relocate|relocation/i.test(text)) {
+    return ['Yes', 'No', 'Negotiable'];
+  }
+  // Willing to travel
+  if (/travel/i.test(text)) {
+    return ['0%', '25%', '50%', '75%', '100%', 'Yes', 'No'];
+  }
+  // Over 18
+  if (/\b18\b|legal age/i.test(text)) {
+    return ['Yes', 'No'];
+  }
+  // Highest Education
+  if (/education|degree\b/i.test(text)) {
+    return ["High School", "Associate's Degree", "Bachelor's Degree", "Master's Degree", "Doctorate / Ph.D.", "Other"];
+  }
+  // Experience level / Years of experience
+  if (/years of experience|how many years/i.test(text)) {
+    return ['0-1 years', '1-2 years', '3-5 years', '5-7 years', '8+ years', '10+ years'];
+  }
+  // General Yes / No dropdowns
+  if (/^(?:are you|do you|will you|have you)\b/i.test(text.trim()) || /\b(?:yes\/no|select yes or no)\b/i.test(text)) {
+    return ['Yes', 'No'];
+  }
+
+  return ['Yes', 'No'];
+}
+
+function getEffectiveFieldType(q: { label: string; fieldType?: string; options?: string[] }): 'select' | 'radio' | 'checkbox' | 'textarea' | 'date' | 'text' {
+  if (q.fieldType === 'select' || q.fieldType === 'dropdown') return 'select';
+  if (q.fieldType === 'radio') return 'radio';
+  if (q.fieldType === 'checkbox') return 'checkbox';
+  if (q.fieldType === 'textarea') return 'textarea';
+  if (q.fieldType === 'date') return 'date';
+
+  const text = q.label.toLowerCase();
+
+  if (
+    /authorized|eligible to work|legally permitted|legal right to work/i.test(text) ||
+    /sponsorship|require.*visa|visa.*sponsor/i.test(text) ||
+    /gender|sex\b/i.test(text) ||
+    /race|ethnicity|ethnic/i.test(text) ||
+    /veteran/i.test(text) ||
+    /disability|handicap/i.test(text) ||
+    /relocate|relocation/i.test(text) ||
+    /willing to travel/i.test(text) ||
+    /highest.*education|degree\b/i.test(text) ||
+    /years of experience|how many years/i.test(text) ||
+    /\b(?:select one|please select|choose one|select from the dropdown|dropdown)\b/i.test(text)
+  ) {
+    return 'select';
+  }
+
+  if (q.options && q.options.length > 0) {
+    return 'select';
+  }
+
+  return (q.fieldType as any) || 'text';
+}
+
 export function InterventionPanel({
   interventionId,
   reason,
@@ -875,7 +993,7 @@ export function InterventionPanel({
                   ? (accountMode === 'sign_in'
                       ? <>Click <strong>Sign In & Resume Application</strong> so JAHQ can authenticate and continue filling your application.</>
                       : <>Click <strong>Create Account & Resume</strong> so JAHQ can register your profile and submit your application.</>)
-                  : hasEffectiveQuestions
+              : hasEffectiveQuestions
                   ? <>Once answered, click <strong>Resume Automation</strong> so the AI agent can fill out and submit your application with your answers.</>
                   : <>Once verified, click <strong>Resume Automation</strong> so the AI agent can automatically fill out and submit your application.</>}
               </span>
@@ -910,6 +1028,8 @@ export function InterventionPanel({
                   const fieldKey = q.fieldKey || q.label;
                   const currentValue = batchAnswers[fieldKey] ?? (idx === 0 && customAnswer ? customAnswer : '');
                   const isRequired = q.required !== false;
+                  const effectiveType = getEffectiveFieldType(q);
+                  const dropdownOptions = getDropdownOptionsForField(q);
 
                   return (
                     <div
@@ -928,62 +1048,38 @@ export function InterventionPanel({
                         <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
                           {q.label} {isRequired ? <span style={{ color: '#ef4444' }}>*</span> : <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 400 }}>(Optional)</span>}
                         </label>
-                        {q.fieldType && (
-                          <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
-                            {q.fieldType}
-                          </span>
-                        )}
+                        <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                          {effectiveType}
+                        </span>
                       </div>
 
                       {/* Render based on fieldType with 1:1 ATS input parity */}
-                      {q.fieldType === 'select' ? (
-                        q.options && q.options.length > 0 ? (
-                          <select
-                            value={currentValue}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
-                              if (idx === 0) setCustomAnswer(val);
-                            }}
-                            style={{
-                              background: 'var(--input, var(--background))',
-                              border: '1px solid var(--border-glass)',
-                              color: 'var(--text-primary)',
-                              padding: '0.75rem',
-                              borderRadius: '8px',
-                              fontSize: '0.875rem',
-                              width: '100%',
-                            }}
-                          >
-                            <option value="">Select an option...</option>
-                            {q.options.map((opt, optIdx) => (
-                              <option key={optIdx} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            value={currentValue}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
-                              if (idx === 0) setCustomAnswer(val);
-                            }}
-                            placeholder="Enter your answer..."
-                            style={{
-                              background: 'var(--input, var(--background))',
-                              border: '1px solid var(--border-glass)',
-                              color: 'var(--text-primary)',
-                              padding: '0.75rem',
-                              borderRadius: '8px',
-                              fontSize: '0.875rem',
-                              width: '100%',
-                            }}
-                          />
-                        )
-                      ) : q.fieldType === 'radio' && q.options && q.options.length > 0 ? (
+                      {effectiveType === 'select' ? (
+                        <select
+                          value={currentValue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
+                            if (idx === 0) setCustomAnswer(val);
+                          }}
+                          style={{
+                            background: 'var(--input, var(--background))',
+                            border: '1px solid var(--border-glass)',
+                            color: 'var(--text-primary)',
+                            padding: '0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            width: '100%',
+                          }}
+                        >
+                          <option value="">Select an option...</option>
+                          {dropdownOptions.map((opt, optIdx) => (
+                            <option key={optIdx} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : effectiveType === 'radio' && dropdownOptions.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {q.options.map((opt, optIdx) => {
+                          {dropdownOptions.map((opt, optIdx) => {
                             const isSelected = Boolean(currentValue === opt || (Boolean(currentValue) && currentValue.toLowerCase() === opt.toLowerCase()));
                             const radioId = `radio-${fieldKey}-${optIdx}-${interventionId}`;
                             return (
@@ -1026,11 +1122,11 @@ export function InterventionPanel({
                             );
                           })}
                         </div>
-                      ) : q.fieldType === 'checkbox' ? (
-                        q.options && q.options.length > 1 ? (
+                      ) : effectiveType === 'checkbox' ? (
+                        dropdownOptions.length > 1 ? (
                           // Multi-checkbox group
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {q.options.map((opt, optIdx) => {
+                            {dropdownOptions.map((opt, optIdx) => {
                               const currentSelected = currentValue ? currentValue.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : [];
                               const isChecked = currentSelected.includes(opt.toLowerCase());
                               const checkId = `check-${fieldKey}-${optIdx}-${interventionId}`;
@@ -1115,7 +1211,7 @@ export function InterventionPanel({
                             </span>
                           </label>
                         )
-                      ) : q.fieldType === 'textarea' ? (
+                      ) : effectiveType === 'textarea' ? (
                         <textarea
                           rows={4}
                           value={currentValue}
@@ -1137,7 +1233,7 @@ export function InterventionPanel({
                             fontFamily: 'inherit',
                           }}
                         />
-                      ) : q.fieldType === 'date' ? (
+                      ) : effectiveType === 'date' ? (
                         <input
                           type="date"
                           value={currentValue}
@@ -1165,7 +1261,7 @@ export function InterventionPanel({
                             setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
                             if (idx === 0) setCustomAnswer(val);
                           }}
-                          placeholder="Type your answer here..."
+                          placeholder="Enter your answer..."
                           style={{
                             background: 'var(--input, var(--background))',
                             border: '1px solid var(--border-glass)',
