@@ -533,9 +533,14 @@ export class UniversalQuestionResolver {
             if (!labelText) continue;
             if (wanted.some((w) => labelText.includes(w) || w.includes(labelText))) {
               if (!(await box.isChecked().catch(() => false))) {
-                await box.check({ force: true }).catch(() => null);
+                // check() can fail silently on stale handles; fall back to a label
+                // click, then verify actual state instead of trusting the call.
+                await box.check({ force: true }).catch(async () => {
+                  const label = container.locator('label:has(input[type="checkbox"])').nth(i);
+                  await label.click({ force: true }).catch(() => null);
+                });
               }
-              matched++;
+              if (await box.isChecked().catch(() => false)) matched++;
             }
           }
           return matched > 0;

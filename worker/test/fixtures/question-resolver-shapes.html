@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Senior Backend Engineer - Meridian Labs</title>
+</head>
+<body>
+<main>
+  <h1>Apply — Senior Backend Engineer</h1>
+
+  <form id="career-apply-form">
+
+    <!-- 1. Multi-select checkbox group ("select all that apply") -->
+    <div class="field-wrapper application-question">
+      <fieldset>
+        <legend>Which scheduling tools have you used? (select all that apply) *</legend>
+        <label><input type="checkbox" name="scheduling_tools" value="cron" /> Cron</label>
+        <label><input type="checkbox" name="scheduling_tools" value="temporal" /> Temporal</label>
+        <label><input type="checkbox" name="multicheck" value="airflow" /> Apache Airflow</label>
+        <label><input type="checkbox" name="scheduling_tools" value="quartz" /> Quartz Scheduler</label>
+      </fieldset>
+    </div>
+
+    <!-- 2. Native date input -->
+    <div class="field-wrapper application-question">
+      <label for="earliest-start">Earliest start date *</label>
+      <input type="date" id="earliest-start" name="start_date" />
+    </div>
+
+    <!-- 3. Placeholder-masked date text field -->
+    <div class="field-wrapper application-question">
+      <label for="last-review">Date of last performance review</label>
+      <input type="text" id="last-review" name="last_review_date" placeholder="MM/DD/YYYY" />
+    </div>
+
+    <!-- Control: single consent checkbox must NOT be treated as a group -->
+    <div class="field-wrapper application-question">
+      <label><input type="checkbox" name="relocation_consent" value="yes" checked /> Willing to relocate to Austin, TX</label>
+    </div>
+
+    <!-- Control: prefilled native date must NOT be re-extracted -->
+    <div class="field-wrapper application-question">
+      <label for="birth-date">Date of birth</label>
+      <input type="date" id="birth-date" name="dob" value="1992-06-15" />
+    </div>
+
+    <!-- Control: already-filled placeholder date must NOT be re-extracted -->
+    <div class="field-wrapper application-question">
+      <label for="grad-date">Graduation date</label>
+      <input type="text" id="grad-date" name="graduation_date" placeholder="MM/DD/YYYY" value="05/20/2018" />
+    </div>
+
+    <!-- Filler: unrelated text question so the resolver has a normal shape present too -->
+    <div class="field-wrapper application-question">
+      <label for="portfolio">Portfolio URL</label>
+      <input type="text" id="portfolio" name="portfolio_url" />
+    </div>
+
+    <button type="submit">Submit Application</button>
+  </form>
+
+  <script>
+    // React-style controlled component, modeled on real React semantics:
+    // onChange -> setState -> synchronous re-render syncing DOM to state.
+    // Writes that bypass events are reverted on the next render pass, so
+    // framework-safe commits (native setter + input/change) are required
+    // for values to stick and reach component state.
+    const state = {
+      start_date: '',
+      last_review_date: '',
+      portfolio_url: ''
+    };
+    function render() {
+      for (const name of Object.keys(state)) {
+        const el = document.querySelector('[name="' + name + '"]');
+        if (el && el.value !== state[name]) el.value = state[name];
+      }
+      window.__filled = Object.assign({}, state);
+    }
+    document.addEventListener('input', function (e) {
+      const t = e.target;
+      if (t.name && Object.prototype.hasOwnProperty.call(state, t.name)) {
+        if (state[t.name] !== t.value) {
+          state[t.name] = t.value;
+          render();
+        }
+      }
+    });
+    document.addEventListener('change', function () {
+      render();
+    });
+    render();
+  </script>
+</main>
+</body>
+</html>
