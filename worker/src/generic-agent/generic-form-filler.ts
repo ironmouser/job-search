@@ -27,6 +27,7 @@ import {
   isTransgenderOrGenderIdentityQuestion,
   matchesOptionSafely,
 } from '../utils/demographic-matching';
+import { getAssetFilename } from '../utils/asset-names';
 
 export class GenericFormFiller {
   /**
@@ -339,9 +340,10 @@ export class GenericFormFiller {
     if (!context.resumeMarkdown) return;
 
     try {
+      const resumeFilename = getAssetFilename(context.userProfile?.name, 'resume', context.resumeMarkdown);
       const resumePath = await browser.writeMarkdownToPdf(
         context.resumeMarkdown,
-        `resume_${context.sessionId}.pdf`
+        resumeFilename
       );
 
       // 1. Scoped container search (Resume / CV containers, excluding Cover Letter).
@@ -438,9 +440,10 @@ export class GenericFormFiller {
         return;
       }
 
+      const clFilename = getAssetFilename(context.userProfile?.name, 'cover-letter', context.coverLetterMarkdown);
       const clPath = await browser.writeMarkdownToPdf(
         context.coverLetterMarkdown,
-        `cover_letter_${context.sessionId}.pdf`
+        clFilename
       );
 
       // 2. Check container-scoped upload widgets (e.g. Phenom People "Cover Letter" section).

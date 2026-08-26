@@ -343,8 +343,9 @@ export class BrowserSession {
   async writeMarkdownToPdf(markdown: string, filename: string): Promise<string> {
     if (!this.tempDir || !this.browser) throw new Error('BrowserSession not started — call launch() first');
 
-    // Ensure the output filename ends in .pdf
-    const pdfFilename = filename.replace(/\.(txt|md)$/, '') + '.pdf';
+    // Ensure the output filename ends in exactly one .pdf extension
+    const cleanBase = filename.replace(/\.(pdf|txt|md)$/i, '');
+    const pdfFilename = `${cleanBase}.pdf`;
     const filePath = path.join(this.tempDir, pdfFilename);
 
     // Convert markdown to HTML (lightweight, no external lib needed for resumes)

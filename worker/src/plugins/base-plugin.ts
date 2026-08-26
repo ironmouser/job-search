@@ -8,6 +8,7 @@ import {
   isTransgenderOrGenderIdentityQuestion,
   matchesOptionSafely,
 } from '../utils/demographic-matching';
+import { getAssetFilename } from '../utils/asset-names';
 
 /**
  * ATSPlugin — Abstract base class for all ATS platform automation plugins.
@@ -897,9 +898,10 @@ export abstract class ATSPlugin {
     }
 
     try {
+      const resumeFilename = getAssetFilename(context.userProfile?.name, 'resume', context.resumeMarkdown);
       const resumePath = await browser.writeMarkdownToPdf(
         context.resumeMarkdown,
-        `resume_${context.sessionId}.pdf`
+        resumeFilename
       );
 
       // 1. Platform-specific selector overrides
@@ -1022,9 +1024,10 @@ export abstract class ATSPlugin {
         }
       }
 
+      const clFilename = getAssetFilename(context.userProfile?.name, 'cover-letter', context.coverLetterMarkdown);
       const clPath = await browser.writeMarkdownToPdf(
         context.coverLetterMarkdown,
-        `cover_letter_${context.sessionId}.pdf`
+        clFilename
       );
 
       // 2. Specific selectors override
