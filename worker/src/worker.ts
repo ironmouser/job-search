@@ -60,8 +60,23 @@ export class WorkerProcess implements AutomationWorker {
 
     const engine = new WorkflowEngine(this.apiClient, this.workerId);
 
+    // Hard ceiling on a whole session. Every known stall mode (wedged locator
+    // await, black-holed control-plane call, intervention poll) is individually
+    // bounded now, but defense in depth: nothing should ever outlive this.
+    // Generous because legitimate runs include up to 5 interventions at 5 min
+    // each plus slow multi-step forms.
+    const SESSION_DEADLINE_MS = parseInt(process.env.SESSION_TIMEOUT_MS ?? '45 * 60 * 1000', 10);
+    let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
+    const deadline = new Promise<never>((_, reject) => {
+      deadlineTimer = setTimeout(
+        () => reject(new Error(`Session exceeded ${SESSION_DEADLINE_MS / 60000} min watchdog deadline`)),
+        SESSION_DEADLINE_MS
+      );
+      deadlineTimer.unref?.();
+    });
+
     try {
-      const result = await engine.execute(session);
+      const result = await Promise.race([engine.execute(session), deadline]);
       this.sessionsProcessed++;
       return result;
     } catch (err: any) {
@@ -87,6 +102,7 @@ export class WorkerProcess implements AutomationWorker {
         estimatedSubmissionTime: null,
       };
     } finally {
+      if (deadlineTimer) clearTimeout(deadlineTimer);
       this.currentSessionId = null;
     }
   }

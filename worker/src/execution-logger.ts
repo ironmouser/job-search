@@ -63,8 +63,15 @@ export class ExecutionLogger {
 
     this.buffer.push(entry);
 
-    // Flush immediately on error or when buffer is full
-    if (level === LogLevel.ERROR || this.buffer.length >= this.FLUSH_THRESHOLD) {
+    // Flush immediately on error or when buffer is full. WARN also flushes:
+    // warnings are the breadcrumb trail leading up to stalls/interventions,
+    // and a buffered-only trail dies with the process (observed during the
+    // 2026-08-26 CarGurus hang — 14 minutes of activity lost).
+    if (
+      level === LogLevel.ERROR ||
+      level === LogLevel.WARN ||
+      this.buffer.length >= this.FLUSH_THRESHOLD
+    ) {
       await this.flush();
     }
   }

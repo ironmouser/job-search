@@ -607,6 +607,8 @@ export class GenericFormFiller {
     const page = browser.page;
     let stepCount = 1;
     const maxSteps = 6;
+    let stuckRemediations = 0;
+    const MAX_STUCK_REMEDIATIONS = 2;
 
     while (stepCount <= maxSteps) {
       // Check for active blocking validation errors on the current view before clicking Next
@@ -652,7 +654,23 @@ export class GenericFormFiller {
         const formCtx = await browser.findFormFrame(['input', 'select', 'textarea', 'form']);
         const requiredError = formCtx.locator(':has-text("Is a required property"), :has-text("This field is required"), [aria-invalid="true"]').first();
         if (await requiredError.isVisible().catch(() => false)) {
-          await logger.warn('wizard_step_stuck', 'Form validation prevented wizard from advancing. Re-attempting field completion.');
+          stuckRemediations++;
+          if (stuckRemediations > MAX_STUCK_REMEDIATIONS) {
+            // The same validation error survived repeated remediation passes
+            // (observed: Phenom Location typeahead rejecting a non-geocodable
+            // profile value 12 times in a row). Refilling again is a loop, not
+            // a recovery — escalate to the user with the field still on screen.
+            await logger.warn(
+              'wizard_step_stuck_escalate',
+              `Validation error persists after ${stuckRemediations - 1} remediation pass(es) — escalating instead of looping`
+            );
+            throw new InterventionError(
+              InterventionReason.UNEXPECTED_PAGE,
+              'The application form keeps reporting a validation error that automated refilling could not clear. Please review the highlighted field(s) — often a location or typeahead field the form cannot match.',
+              page.url()
+            );
+          }
+          await logger.warn('wizard_step_stuck', `Form validation prevented wizard from advancing (remediation ${stuckRemediations}/${MAX_STUCK_REMEDIATIONS}). Re-attempting field completion.`);
           await this.fillPersonalDetails(formCtx, context.userProfile, logger);
           await this.answerStandardQuestions(formCtx, context.userProfile, logger);
           await UniversalQuestionResolver.resolveAndFillQuestions(

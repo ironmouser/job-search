@@ -23,11 +23,14 @@ export class RailwayAPIClient {
   private readonly baseUrl: string;
   private readonly apiKey: string;
   private readonly workerId: string;
+  /** Hard ceiling for any single control-plane HTTP call. */
+  private readonly requestTimeoutMs: number;
 
-  constructor(baseUrl: string, apiKey: string, workerId: string) {
+  constructor(baseUrl: string, apiKey: string, workerId: string, requestTimeoutMs = 30_000) {
     this.baseUrl = baseUrl.replace(/\/$/, ''); // strip trailing slash
     this.apiKey = apiKey;
     this.workerId = workerId;
+    this.requestTimeoutMs = requestTimeoutMs;
   }
 
   // ─── Queue ───────────────────────────────────────────────────────────────
@@ -210,6 +213,10 @@ export class RailwayAPIClient {
     const init: RequestInit = {
       method,
       headers,
+      // Hard bound on every control-plane call. Without this a black-holed
+      // Railway connection stalls automation forever (observed: session stuck
+      // in `applying` because createIntervention never returned).
+      signal: AbortSignal.timeout(this.requestTimeoutMs),
     };
 
     if (body !== null && body !== undefined) {

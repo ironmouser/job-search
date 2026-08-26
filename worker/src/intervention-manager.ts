@@ -60,6 +60,11 @@ export class InterventionManager {
       pageUrl,
     });
 
+    // Persist every buffered entry BEFORE the long poll begins. If the worker
+    // dies or the API call stalls, the log trail up to this point must already
+    // be in the database.
+    await this.logger.flush();
+
     // Take a screenshot and upload to S3
     let screenshotUrl: string | undefined;
     try {
