@@ -1207,6 +1207,7 @@ export function GlobalAutoApplyBar() {
             ) : pageActions ? (
               /* Page actions rendered in vertical speed dial column */
               <div
+                className="mobile-fab-actions-stack"
                 style={{ display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-end', gap: '0.65rem' }}
                 onClick={() => setIsFabOpen(false)}
               >

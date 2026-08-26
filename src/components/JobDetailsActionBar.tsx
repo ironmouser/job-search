@@ -335,7 +335,7 @@ export default function JobDetailsActionBar({
   // Register Job Page actions into the Global Command Bar
   useEffect(() => {
     setPageActions(
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap' }}>
+      <div className="command-bar-actions-group">
         {/* Save & Feedback */}
         <FeedbackButtons
           jobId={currentJobId}
@@ -345,7 +345,7 @@ export default function JobDetailsActionBar({
           compact={true}
         />
 
-        <div style={{ width: '1px', height: '18px', background: 'rgba(255, 255, 255, 0.15)', margin: '0 0.15rem' }} />
+        <div className="command-bar-divider" />
 
         {/* Prev & Next Navigation Buttons (without step number) */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>

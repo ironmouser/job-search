@@ -890,7 +890,7 @@ export default function DashboardClient({
   // Register Dashboard quick actions into the Global Command Bar
   useEffect(() => {
     setPageActions(
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap' }}>
+      <div className="command-bar-actions-group">
         {/* Scan Inbox */}
         <button
           type="button"
@@ -925,7 +925,7 @@ export default function DashboardClient({
         </button>
 
         {/* Divider */}
-        <div style={{ width: '1px', height: '18px', background: '#30363d', margin: '0 0.15rem' }} />
+        <div className="command-bar-divider" />
 
         {/* Filter Button */}
         <button

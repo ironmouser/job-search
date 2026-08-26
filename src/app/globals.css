@@ -3640,6 +3640,24 @@ body.light-theme .accordion-summary-box {
 
 /* ─── Global Command & Bottom Action Bar ────────────────────────────── */
 
+.command-bar-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: nowrap;
+}
+
+.command-bar-divider {
+  width: 1px;
+  height: 18px;
+  background: #30363d;
+  margin: 0 0.15rem;
+}
+
+body.light-theme .command-bar-divider {
+  background: rgba(0, 0, 0, 0.15);
+}
+
 .command-bar-btn {
   display: inline-flex;
   align-items: center;
@@ -4024,7 +4042,9 @@ body.light-theme .mobile-fab.open {
 }
 
 /* Ensure inner wrappers inside pageActions layout as vertical stack aligned to the right */
-.mobile-fab-menu>div,
+.mobile-fab-actions-stack,
+.mobile-fab-menu .command-bar-actions-group,
+.mobile-fab-menu > div,
 .mobile-fab-menu div[style*="display: flex"],
 .mobile-fab-menu div[style*="display:flex"] {
   display: flex !important;
@@ -4032,9 +4052,12 @@ body.light-theme .mobile-fab.open {
   align-items: flex-end !important;
   gap: 0.65rem !important;
   width: auto !important;
+  max-width: 90vw !important;
+  flex-wrap: nowrap !important;
 }
 
 /* Hide divider lines inside mobile FAB menu */
+.mobile-fab-menu .command-bar-divider,
 .mobile-fab-menu div[style*="width: 1px"],
 .mobile-fab-menu div[style*="width:1px"] {
   display: none !important;
@@ -4048,15 +4071,15 @@ body.light-theme .mobile-fab.open {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
-  gap: 0.6rem !important;
-  padding: 0.62rem 1.15rem !important;
+  gap: 0.65rem !important;
+  padding: 0.65rem 1.15rem !important;
   border-radius: 9999px !important;
   background: #1e293b !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   color: #f8fafc !important;
   font-size: 0.88rem !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25) !important;
   cursor: pointer;
   transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }

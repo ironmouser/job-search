@@ -33,7 +33,7 @@ export function RecruiterDock() {
     };
 
     setPageActions(
-      <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "nowrap" }}>
+      <div className="command-bar-actions-group">
         <div
           style={{
             display: "inline-flex",
@@ -53,7 +53,7 @@ export function RecruiterDock() {
           <span>Recruiter Portal</span>
         </div>
 
-        <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 0.15rem" }} />
+        <div className="command-bar-divider" />
 
         {RECRUITER_NAV_ITEMS.map(({ title, href, Icon, color }) => {
           const active = isItemActive(href);
