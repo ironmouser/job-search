@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Minus, Maximize2, Loader2 } from 'lucide-react';
 
 const ANIMATION_SEQUENCE = ['thumbs.mp4', 'lasso.mp4', 'head.mp4', 'fly.mp4'];
 
@@ -18,6 +18,93 @@ function getNextRandomIndex(currentIndex: number, total: number): number {
   return nextIndex;
 }
 
+/**
+ * Reusable animated circular spinner badge with job count inside
+ */
+function SyncSpinnerBadge({ 
+  count, 
+  size = 48 
+}: { 
+  count: number | null; 
+  size?: number;
+}) {
+  const innerSize = Math.round(size * 0.75);
+  const radius = Math.round(size * 0.4375);
+  const center = size / 2;
+
+  return (
+    <div 
+      style={{
+        position: 'relative',
+        width: `${size}px`,
+        height: `${size}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}
+    >
+      {/* Rotating SVG Spinner ring */}
+      <svg 
+        className="animate-spin" 
+        viewBox={`0 0 ${size} ${size}`} 
+        style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          width: '100%', 
+          height: '100%', 
+          animation: 'spin 1.2s linear infinite',
+          overflow: 'visible'
+        }}
+      >
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="rgba(0, 112, 243, 0.2)"
+          strokeWidth="3"
+        />
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="#0070f3"
+          strokeWidth="3.5"
+          strokeDasharray={`${Math.round(radius * 4.5)} ${Math.round(radius * 1.8)}`}
+          strokeLinecap="round"
+        />
+      </svg>
+
+      {/* Inner solid blue number badge */}
+      <div 
+        style={{
+          width: `${innerSize}px`,
+          height: `${innerSize}px`,
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #0070f3 0%, #0051a2 100%)',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 700,
+          fontSize: size <= 40 ? '0.8rem' : '0.95rem',
+          boxShadow: '0 2px 8px rgba(0, 112, 243, 0.35)',
+          zIndex: 2,
+          transition: 'transform 0.2s ease',
+          transform: (count !== null && count > 0) ? 'scale(1.05)' : 'scale(1)'
+        }}
+      >
+        {count !== null ? count : (
+          <Loader2 size={Math.round(innerSize * 0.55)} className="animate-spin" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SyncOverlay({ 
   isSyncing, 
   syncMessage, 
@@ -25,6 +112,7 @@ export default function SyncOverlay({
   isRefining = false,
   title = "Syncing in Progress",
   subtext = "This could take up to 3 minutes to complete.\nPlease do not close or refresh this page.",
+  allowMinimize = true,
   onClose
 }: { 
   isSyncing: boolean; 
@@ -33,10 +121,12 @@ export default function SyncOverlay({
   isRefining?: boolean;
   title?: string;
   subtext?: React.ReactNode;
+  allowMinimize?: boolean;
   onClose?: () => void;
 }) {
   const [activeAnimIndex, setActiveAnimIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   useEffect(() => {
@@ -53,9 +143,14 @@ export default function SyncOverlay({
     }
   }, []);
 
+  // Handle body scroll locking based on syncing & minimized state
   useEffect(() => {
     if (isSyncing) {
-      document.body.style.overflow = 'hidden';
+      if (!isMinimized) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
 
       // Pick an initial random animation index when sync starts
       const initialRandom = Math.floor(Math.random() * ANIMATION_SEQUENCE.length);
@@ -64,12 +159,15 @@ export default function SyncOverlay({
       return () => {
         document.body.style.overflow = '';
       };
+    } else {
+      document.body.style.overflow = '';
+      setIsMinimized(false);
     }
-  }, [isSyncing]);
+  }, [isSyncing, isMinimized]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isSyncing) {
+    if (isSyncing && !isMinimized) {
       // Switch to a random non-consecutive animation every 10 seconds (10,000 ms)
       interval = setInterval(() => {
         setActiveAnimIndex(prev => getNextRandomIndex(prev, ANIMATION_SEQUENCE.length));
@@ -80,61 +178,213 @@ export default function SyncOverlay({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isSyncing]);
+  }, [isSyncing, isMinimized]);
 
   // Ensure the active video plays continuously
   useEffect(() => {
-    if (isSyncing) {
+    if (isSyncing && !isMinimized) {
       const activeVideo = videoRefs.current[activeAnimIndex];
       if (activeVideo) {
         activeVideo.currentTime = 0;
         activeVideo.play().catch(() => {});
       }
     }
-  }, [activeAnimIndex, isSyncing]);
+  }, [activeAnimIndex, isSyncing, isMinimized]);
 
   if (!isSyncing || !mounted) return null;
 
   const displayCount = (jobsFoundCount !== undefined && jobsFoundCount !== null) ? jobsFoundCount : null;
 
+  // MINIMIZED FLOATING DOCK & MOBILE FAB
+  if (isMinimized) {
+    return createPortal(
+      <div className="sync-floating-container">
+        {/* Desktop Floating Pill / Dock */}
+        <div className="sync-floating-dock">
+          <SyncSpinnerBadge count={displayCount} size={40} />
+          
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: '140px', maxWidth: '200px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span 
+                style={{ 
+                  width: '7px', 
+                  height: '7px', 
+                  borderRadius: '50%', 
+                  background: '#0070f3',
+                  display: 'inline-block',
+                  animation: 'pulse 1.5s infinite' 
+                }} 
+              />
+              <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--foreground, #111)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {title}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary, #666)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isRefining 
+                ? (displayCount ? `Refining ${displayCount} matches...` : 'Refining candidate matches...')
+                : (syncMessage || (displayCount !== null ? `${displayCount} jobs found` : 'Syncing...'))}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
+            <button
+              type="button"
+              onClick={() => setIsMinimized(false)}
+              aria-label="Expand sync overlay"
+              title="Expand focus overlay"
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'rgba(0, 112, 243, 0.1)',
+                color: '#0070f3',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 112, 243, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 112, 243, 0.1)';
+              }}
+            >
+              <Maximize2 size={14} />
+            </button>
+
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close and cancel sync"
+                title="Cancel sync"
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: 'rgba(0, 0, 0, 0.06)',
+                  color: 'var(--text-secondary, #666)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                  e.currentTarget.style.color = '#ef4444';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.06)';
+                  e.currentTarget.style.color = 'var(--text-secondary, #666)';
+                }}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Circular Floating Action Button (FAB) */}
+        <button
+          type="button"
+          className="sync-floating-fab"
+          onClick={() => setIsMinimized(false)}
+          aria-label="Expand sync progress"
+          title="Tap to expand sync details"
+        >
+          <SyncSpinnerBadge count={displayCount} size={48} />
+        </button>
+      </div>,
+      document.body
+    );
+  }
+
+  // FULL FOCUS OVERLAY MODAL
   return createPortal(
     <div className={`sync-overlay-backdrop ${isSyncing ? 'active' : ''}`}>
       <div className="sync-overlay-content" style={{ position: 'relative' }}>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close sync overlay"
-            title="Cancel and close"
-            style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              border: 'none',
-              background: 'rgba(0, 0, 0, 0.08)',
-              color: '#555555',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              zIndex: 20,
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.16)';
-              e.currentTarget.style.color = '#111111';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)';
-              e.currentTarget.style.color = '#555555';
-            }}
-          >
-            <X size={18} />
-          </button>
-        )}
+        {/* Top Control Buttons (Minimize & Close) */}
+        <div 
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            zIndex: 20
+          }}
+        >
+          {allowMinimize && (
+            <button
+              type="button"
+              onClick={() => setIsMinimized(true)}
+              aria-label="Minimize sync overlay"
+              title="Minimize to background dock"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'rgba(0, 0, 0, 0.08)',
+                color: '#555555',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 112, 243, 0.15)';
+                e.currentTarget.style.color = '#0070f3';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)';
+                e.currentTarget.style.color = '#555555';
+              }}
+            >
+              <Minus size={18} />
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close sync overlay"
+              title="Cancel and close"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'rgba(0, 0, 0, 0.08)',
+                color: '#555555',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.16)';
+                e.currentTarget.style.color = '#111111';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)';
+                e.currentTarget.style.color = '#555555';
+              }}
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+
         <div className="sync-overlay-header">
           <h2>{title}</h2>
           
@@ -153,74 +403,7 @@ export default function SyncOverlay({
                 maxWidth: '90%'
               }}
             >
-              {/* Container with rotating spinner ring around job number */}
-              <div 
-                style={{
-                  position: 'relative',
-                  width: '48px',
-                  height: '48px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}
-              >
-                {/* Rotating SVG Spinner ring */}
-                <svg 
-                  className="animate-spin" 
-                  viewBox="0 0 48 48" 
-                  style={{ 
-                    position: 'absolute', 
-                    top: 0, 
-                    left: 0, 
-                    width: '100%', 
-                    height: '100%', 
-                    animation: 'spin 1.2s linear infinite',
-                    overflow: 'visible'
-                  }}
-                >
-                  <circle
-                    cx="24"
-                    cy="24"
-                    r="21"
-                    fill="none"
-                    stroke="rgba(0, 112, 243, 0.2)"
-                    strokeWidth="3"
-                  />
-                  <circle
-                    cx="24"
-                    cy="24"
-                    r="21"
-                    fill="none"
-                    stroke="#0070f3"
-                    strokeWidth="3.5"
-                    strokeDasharray="95 38"
-                    strokeLinecap="round"
-                  />
-                </svg>
-
-                {/* Inner solid blue number badge */}
-                <div 
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #0070f3 0%, #0051a2 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '0.95rem',
-                    boxShadow: '0 2px 8px rgba(0, 112, 243, 0.35)',
-                    zIndex: 2,
-                    transition: 'transform 0.2s ease',
-                    transform: displayCount > 0 ? 'scale(1.05)' : 'scale(1)'
-                  }}
-                >
-                  {displayCount}
-                </div>
-              </div>
+              <SyncSpinnerBadge count={displayCount} size={48} />
 
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: '0.925rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
