@@ -22,6 +22,7 @@ import { safeClick } from '../obstruction/safe-interact';
 import { UIObstructionResolver } from '../obstruction/resolver';
 import { UniversalQuestionResolver } from '../plugins/question-resolver';
 import { replaceValue } from '../utils/form-commit';
+import { driveTypeahead } from '../utils/typeahead';
 
 export class GenericFormFiller {
   /**
@@ -256,7 +257,8 @@ export class GenericFormFiller {
 
   /**
    * Handles Phenom People react-bootstrap-typeahead inputs (Location, City, State, Country).
-   * Clears any stale text, types fresh, waits for .rbt-menu, and clicks the first option.
+   * Clears stale text, types fresh, picks the best-matching option (not blindly the
+   * first), then VERIFIES the committed value; retries once on mismatch.
    * Returns true if the Phenom typeahead was found and handled.
    */
   private async fillPhenomTypeahead(
@@ -265,7 +267,6 @@ export class GenericFormFiller {
     value: string,
     logger: ExecutionLogger
   ): Promise<boolean> {
-    const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
     const labelPattern = { location: 'Location', city: 'City', state: 'State', country: 'Country' }[kind];
     try {
       // Phenom People wraps the typeahead in .rbt-input-multi or uses aria-autocomplete="list".
@@ -299,54 +300,23 @@ export class GenericFormFiller {
         return false;
       }
 
-      // Always clear first — triple-click selects all, then type replaces it
-      await rbtInput.click({ clickCount: 3 }).catch(() => {});
-      await page.keyboard.press('Backspace').catch(() => {});
-      await page.waitForTimeout(200);
-
-      // Type the field value with human-like cadence
-      for (const char of value) {
-        const delay = Math.floor(Math.random() * 25) + 15;
-        await rbtInput.pressSequentially(char, { delay }).catch(() => {});
-      }
-      await rbtInput.dispatchEvent('input').catch(() => {});
-      await rbtInput.dispatchEvent('change').catch(() => {});
-
-      // Wait longer for Phenom's AJAX suggestion fetch to populate the rbt-menu
-      await page.waitForTimeout(1500);
-
-      // Try clicking the first visible option in the rbt dropdown
-      // (scoped to the input's own .rbt container so sibling typeahead fields don't interfere)
-      const rbtContainer = ctx.locator('.rbt:visible').filter({ has: rbtInput }).first();
-      let containerScope: Page | Frame | ReturnType<Page['locator']> = page;
-      if ((await rbtContainer.count().catch(() => 0)) > 0) {
-        containerScope = rbtContainer;
-      }
-      const optionSelectors = [
-        '.rbt-menu > li a',
-        '.rbt-menu > li',
-        '[role="listbox"] [role="option"]',
-        '[role="option"]',
-      ];
-
-      for (const sSel of optionSelectors) {
-        try {
-          const opt = containerScope.locator(sSel).first();
-          if ((await opt.count().catch(() => 0)) > 0 && (await opt.isVisible().catch(() => false))) {
-            await opt.click().catch(() => null);
-            await page.waitForTimeout(400);
-            await logger.info('field_filled', `${labelPattern} populated via Phenom typeahead: ${value}`);
-            return true;
-          }
-        } catch {}
+      const attempt1 = await driveTypeahead(ctx, rbtInput, value, { suggestionWaitMs: 1500 });
+      if (!attempt1.verified) {
+        await logger.warn(
+          'typeahead_verify_retry',
+          `${labelPattern} typeahead value mismatch after first pass ("${attempt1.finalValue.slice(0, 60)}") — retrying`
+        );
+        const attempt2 = await driveTypeahead(ctx, rbtInput, value, { suggestionWaitMs: 2500 });
+        if (!attempt2.verified) {
+          await logger.warn(
+            'typeahead_verify_failed',
+            `${labelPattern} typeahead still mismatched after retry ("${attempt2.finalValue.slice(0, 60)}" vs "${value.slice(0, 60)}")`
+          );
+          return true; // handled but unverified — caller may validate/escalate
+        }
       }
 
-      // Keyboard fallback: ArrowDown → Enter
-      await rbtInput.press('ArrowDown').catch(() => null);
-      await page.waitForTimeout(200);
-      await rbtInput.press('Enter').catch(() => null);
-      await page.waitForTimeout(300);
-      await logger.info('field_filled', `${labelPattern} populated via keyboard selection: ${value}`);
+      await logger.info('field_filled', `${labelPattern} populated via typeahead: ${value}`);
       return true;
     } catch {
       return false;

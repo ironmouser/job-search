@@ -144,18 +144,67 @@ export function InterventionPanel({
   const [isJobBoardConnected, setIsJobBoardConnected] = useState(false);
 
   const questionData = (() => {
-    const match = (description || '').match(/\[QUESTION_DATA:(.*?)\]/);
-    if (match && match[1]) {
-      try {
-        return JSON.parse(match[1]);
-      } catch {}
+    const text = description || '';
+    const start = text.indexOf('[QUESTION_DATA:');
+    if (start === -1) return null;
+    // Payload is raw JSON that itself contains ']' (options arrays), so scan
+    // forward balancing braces instead of matching a non-greedy regex.
+    let depth = 0, inStr = false, esc = false, end = -1;
+    for (let i = start + '[QUESTION_DATA:'.length; i < text.length; i++) {
+      const ch = text[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+      } else if (ch === '"') inStr = true;
+      else if (ch === '{' || ch === '[') depth++;
+      else if (ch === '}' || ch === ']') {
+        depth--;
+        if (depth === 0) { end = i; break; }
+      }
     }
-    return null;
+    if (end === -1) return null;
+    try {
+      return JSON.parse(text.slice(start + '[QUESTION_DATA:'.length, end + 1));
+    } catch {
+      return null;
+    }
   })();
 
-  const cleanDescription = (description || '').replace(/\[QUESTION_DATA:.*?\]\s*/g, '').trim();
+  // QUESTION_DATA may be a single question object (legacy) or an array of
+  // unanswered fields. Normalize both to an array for batch rendering.
+  const questionFields: Array<{
+    fieldKey?: string;
+    label: string;
+    fieldType?: string;
+    options?: string[];
+    required?: boolean;
+    suggestedAnswer?: string;
+  }> = Array.isArray(questionData) ? questionData : questionData ? [questionData] : [];
+  const hasQuestionFields = questionFields.length > 0;
+
+  const cleanDescription = (description || '')
+    .replace(/\[QUESTION_DATA:\{[\s\S]*?\}\](?=\s|$)/, '')
+    .replace(/\[QUESTION_DATA:.*?\]\s*/g, '')
+    .trim();
   const [customAnswer, setCustomAnswer] = useState<string>('');
+  const [batchAnswers, setBatchAnswers] = useState<Record<string, string>>({});
   const [emailVerificationCode, setEmailVerificationCode] = useState<string>('');
+
+  // Pre-fill batch answers with the bot's suggested answers when fields arrive
+  useEffect(() => {
+    if (hasQuestionFields && questionFields.length > 0) {
+      setBatchAnswers((prev) => {
+        const next = { ...prev };
+        for (const f of questionFields) {
+          const key = f.fieldKey || f.label;
+          if (next[key] === undefined && f.suggestedAnswer) next[key] = f.suggestedAnswer;
+        }
+        return next;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [description]);
 
   useEffect(() => {
     setMounted(true);
@@ -271,7 +320,30 @@ export function InterventionPanel({
           emailAddress: settings.emailAddress,
           defaultAccountPassword: settings.defaultAccountPassword,
         };
-        if (customAnswer) {
+
+        // Batch unanswered fields: merge every user-provided answer into
+        // customAnswers (keyed by both fieldKey and label so the worker's
+        // fallback lookup finds it either way), and mirror known profile
+        // keys (city/state/etc.) onto their canonical settings fields.
+        if (hasQuestionFields) {
+          const mergedCustom = { ...(settings?.customAnswers || {}) };
+          for (const f of questionFields) {
+            const key = f.fieldKey || f.label;
+            const val = (batchAnswers[key] ?? '').trim();
+            if (!val) continue;
+            mergedCustom[key] = val;
+            mergedCustom[f.label] = val;
+
+            const lowerLabel = f.label.toLowerCase();
+            if (/^city\b|\bcity\b/i.test(lowerLabel)) extraPayload.city = val;
+            else if (/^state\b|\bstate\b|province/i.test(lowerLabel)) extraPayload.state = val;
+            else if (/postal|zip\s*code/i.test(lowerLabel)) extraPayload.postalCode = val;
+            else if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel)) extraPayload.streetAddress = val;
+          }
+          extraPayload.customAnswers = mergedCustom;
+        }
+
+        if (customAnswer && !hasQuestionFields) {
           const qKey = questionData?.fieldKey || questionData?.label || 'answer';
           const qLabel = questionData?.label || qKey;
           const lowerLabel = qLabel.toLowerCase();

@@ -22,6 +22,7 @@ import {
   toISODate,
   toSlashDate,
 } from '../utils/form-commit';
+import { valuesClose } from '../utils/typeahead';
 
 export interface ExtractedQuestion {
   id: string;
@@ -31,6 +32,28 @@ export interface ExtractedQuestion {
   options: string[];
   required: boolean;
   container: Locator;
+}
+
+/**
+ * A field the bot could not fill or verify, surfaced to the user in a single
+ * batched intervention. The intervention panel mirrors these fields as inputs
+ * so the user can answer them all at once before automation resumes.
+ */
+export interface UnansweredFieldData {
+  fieldKey?: string;
+  label: string;
+  fieldType: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+  options?: string[];
+  required?: boolean;
+  /** Best-guess answer the bot would have used (pre-filled for the user to confirm/correct). */
+  suggestedAnswer?: string;
+}
+
+/** Read back the committed value of an extracted text-type question's input. */
+async function readTextQuestionValue(ctx: Page | Frame, q: ExtractedQuestion): Promise<string | null> {
+  const input = q.container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
+  if ((await input.count().catch(() => 0)) === 0) return null;
+  return (await input.inputValue().catch(() => '')) || '';
 }
 
 export class UniversalQuestionResolver {
@@ -75,6 +98,8 @@ export class UniversalQuestionResolver {
         await logger.warn('ai_question_error', `AI question answering service failed: ${err.message}`);
       }
     }
+
+    const unanswered: UnansweredFieldData[] = [];
 
     for (const q of questions) {
       const match = aiAnswers.find((a) => a.id === q.id);
@@ -167,6 +192,36 @@ export class UniversalQuestionResolver {
       if (answer) {
         const filled = await this.fillSingleQuestion(ctx, q, answer, logger);
         if (filled) {
+          // Location-type fields are the highest-risk fills: typeahead widgets
+          // can leave truncated or mangled text. Verify what actually committed;
+          // on mismatch retry once with a fresh answer (context may have been
+          // refreshed), then treat as failed so it reaches the intervention.
+          const isLocationType = /location|city|state|country|address/i.test(q.label);
+          if (isLocationType && q.type === 'text') {
+            const committed = await readTextQuestionValue(ctx, q);
+            if (!valuesClose(committed || '', answer)) {
+              await logger.warn(
+                'question_fill_mismatch',
+                `"${q.label.slice(0, 60)}" expected "${answer.slice(0, 40)}" but input holds "${(committed || '').slice(0, 40)}" — retrying once`
+              );
+              const refilled = await this.fillSingleQuestion(ctx, q, answer, logger);
+              if (!refilled || !valuesClose((await readTextQuestionValue(ctx, q)) || '', answer)) {
+                await logger.warn(
+                  'question_fill_failed',
+                  `Location field "${q.label.slice(0, 60)}" could not be verified — escalating to user intervention`
+                );
+                unanswered.push({
+                  fieldKey: q.fieldKey,
+                  label: q.label,
+                  fieldType: q.type,
+                  options: q.options.length > 0 ? q.options : undefined,
+                  required: q.required,
+                  suggestedAnswer: answer,
+                });
+                continue;
+              }
+            }
+          }
           await logger.info(
             'question_answered_ai',
             `Answered question (${q.type}): "${q.label.slice(0, 60)}" -> "${answer.slice(0, 40)}..."`
@@ -189,13 +244,24 @@ export class UniversalQuestionResolver {
           options: q.options.length > 0 ? q.options : undefined,
           required: q.required,
         };
-
-        throw new InterventionError(
-          InterventionReason.UNKNOWN_QUESTION,
-          `[QUESTION_DATA:${JSON.stringify(questionData)}] Application question requires your input: "${q.label.slice(0, 100)}"`,
-          page.url()
-        );
+        unanswered.push({ ...questionData });
       }
+    }
+
+    // Batch-intervention: instead of throwing on the FIRST unanswerable field,
+    // surface every troublesome field at once so the user can fill them all in
+    // a single pass and the bot resumes once.
+    if (unanswered.length > 0) {
+      await logger.warn(
+        'question_requires_input_batch',
+        `${unanswered.length} application field(s) require user input: ${unanswered.map((u) => u.label.slice(0, 40)).join('; ')}`
+      );
+
+      throw new InterventionError(
+        InterventionReason.UNKNOWN_QUESTION,
+        `[QUESTION_DATA:${JSON.stringify(unanswered)}] Application needs your input for ${unanswered.length} field(s): ${unanswered.map((u) => `"${u.label.slice(0, 60)}"`).join(', ')}`,
+        page.url()
+      );
     }
   }
 
