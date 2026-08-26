@@ -519,7 +519,13 @@ export class GreenhousePlugin extends ATSPlugin {
       if (hasSelect) {
         let targetValue = '';
 
-        if (
+        const customVal = profile.customAnswers?.[label] ||
+          profile.customAnswers?.[label.replace(/\*/g, '').trim()] ||
+          profile.customAnswers?.[label.replace(/\s+/g, ' ').trim()];
+
+        if (customVal) {
+          targetValue = String(customVal).trim();
+        } else if (
           label.includes('authorized') ||
           label.includes('eligible to work') ||
           label.includes('legally') ||
@@ -530,10 +536,13 @@ export class GreenhousePlugin extends ATSPlugin {
           targetValue = profile.visaSponsorship || '';
         } else if (label.includes('country')) {
           targetValue = profile.country || '';
+        } else if (/consent.*personal\s*information|retain.*personal\s*information|data\s*retention|gdpr/i.test(label)) {
+          targetValue = 'Yes';
+        } else if (/where\s*did\s*you.*(?:hear|find)|how\s*did\s*you.*(?:hear|find)|referral\s*source/i.test(label)) {
+          targetValue = 'Job Board';
         } else if (label.includes('gender') || label.includes('sex')) {
           if (isTransgenderOrGenderIdentityQuestion(label)) {
             // Transgender / gender identity question — DO NOT answer with eeocGender!
-            const customVal = profile.customAnswers?.[label] || profile.customAnswers?.[label.replace(/\*/g, '').trim()];
             if (customVal) {
               targetValue = String(customVal).trim();
             } else {

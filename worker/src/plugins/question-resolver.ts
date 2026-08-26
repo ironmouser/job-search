@@ -235,11 +235,48 @@ export function getSemanticDropdownOptions(label: string): string[] {
   return [];
 }
 
-/** Read back the committed value of an extracted text-type question's input. */
-async function readTextQuestionValue(ctx: Page | Frame, q: ExtractedQuestion): Promise<string | null> {
-  const input = q.container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
-  if ((await input.count().catch(() => 0)) === 0) return null;
-  return (await input.inputValue().catch(() => '')) || '';
+/** Read back the committed value of an extracted question (text or select/dropdown). */
+async function readQuestionValue(ctx: Page | Frame, q: ExtractedQuestion): Promise<string | null> {
+  const container = q.container;
+
+  // 1. If question is a select or container has custom dropdown/combobox
+  const isSelectElement =
+    q.type === 'select' ||
+    (await container.locator('select, .select__control, .select-shell, [role="combobox"], [class*="singleValue" i]').count().catch(() => 0)) > 0;
+
+  if (isSelectElement) {
+    // Check React-Select / custom singleValue
+    const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i], [class*="ValueContainer" i]').first();
+    if ((await valContainer.count().catch(() => 0)) > 0) {
+      const text = (await valContainer.textContent().catch(() => ''))?.trim();
+      if (text && !/^(select\.\.\.|choose\.\.\.|select an option|\-\-)/i.test(text)) {
+        return text;
+      }
+    }
+
+    // Check native select
+    const nativeSelect = container.locator('select').first();
+    if ((await nativeSelect.count().catch(() => 0)) > 0) {
+      const selectedText = await nativeSelect.evaluate((el: HTMLSelectElement) => el.options[el.selectedIndex]?.text || el.value || '').catch(() => '');
+      if (selectedText && !/^(select|choose|\-\-)/i.test(selectedText.trim())) {
+        return selectedText.trim();
+      }
+    }
+  }
+
+  // 2. Text input check
+  const input = container.locator('input[type="text"]:not(.select__input):not([role="combobox"]), input[type="url"], input[type="tel"], input:not([type]):not(.select__input):not([role="combobox"])').first();
+  if ((await input.count().catch(() => 0)) > 0) {
+    return (await input.inputValue().catch(() => '')) || '';
+  }
+
+  // 3. Fallback to any input
+  const anyInput = container.locator('input').first();
+  if ((await anyInput.count().catch(() => 0)) > 0) {
+    return (await anyInput.inputValue().catch(() => '')) || '';
+  }
+
+  return null;
 }
 
 export class UniversalQuestionResolver {
@@ -443,11 +480,36 @@ export class UniversalQuestionResolver {
               answer = context.userProfile.websiteUrl;
               requiresHuman = false;
             }
-          } else if (/authorized to work|work authorization/i.test(lowerQ)) {
-            answer = context.userProfile.usWorkAuthorization === 'No' ? 'No' : 'Yes';
+          } else if (/authorized to work|work authorization|legal authorization|legally authorized|eligible to work/i.test(lowerQ) || /work_auth|authorized/i.test(lowerKey)) {
+            answer = context.userProfile.usWorkAuthorization === 'No' ? 'No' : (context.userProfile.usWorkAuthorization || 'Yes');
+            if (q.options.length > 0) {
+              const opt = q.options.find((o) => matchesOptionSafely(o, answer!));
+              if (opt) answer = opt;
+            }
             requiresHuman = false;
-          } else if (/require sponsorship|visa sponsorship/i.test(lowerQ)) {
-            answer = context.userProfile.visaSponsorship === 'Yes' ? 'Yes' : 'No';
+          } else if (/require.*sponsorship|visa sponsorship|employment visa|need.*sponsorship/i.test(lowerQ) || /visa|sponsorship/i.test(lowerKey)) {
+            answer = context.userProfile.visaSponsorship === 'Yes' ? 'Yes' : (context.userProfile.visaSponsorship || 'No');
+            if (q.options.length > 0) {
+              const opt = q.options.find((o) => matchesOptionSafely(o, answer!));
+              if (opt) answer = opt;
+            }
+            requiresHuman = false;
+          } else if (/consent.*personal\s*information|retain.*personal\s*information|data\s*retention|retain.*data|gdpr/i.test(lowerQ) || /consent|gdpr/i.test(lowerKey)) {
+            answer = 'Yes';
+            if (q.options.length > 0) {
+              const consentOpt = q.options.find((o) => /^(yes|i consent|agree|accept)/i.test(o.trim())) || q.options[0];
+              if (consentOpt) answer = consentOpt;
+            }
+            requiresHuman = false;
+          } else if (/where\s*did\s*you.*(?:hear|find)|how\s*did\s*you.*(?:hear|find)|referral\s*source|source\s*of\s*application/i.test(lowerQ) || /referral|how_heard|hear_about/i.test(lowerKey)) {
+            if (customVal) {
+              answer = String(customVal).trim();
+            } else if (q.options.length > 0) {
+              const preferredSource = q.options.find((o) => /job\s*board|indeed|linkedin|careers|website|online/i.test(o.trim())) || q.options[0];
+              answer = preferredSource;
+            } else {
+              answer = 'Job Board';
+            }
             requiresHuman = false;
           }
         }
@@ -460,16 +522,23 @@ export class UniversalQuestionResolver {
           // can leave truncated or mangled text. Verify what actually committed;
           // on mismatch retry once with a fresh answer (context may have been
           // refreshed), then treat as failed so it reaches the intervention.
-          const isLocationType = /location|city|state|country|address/i.test(q.label);
+          // IMPORTANT: Exclude screening/auth questions that happen to contain the word "country".
+          const isWorkAuthOrVisaOrScreening = /authorized|authorization|sponsorship|visa|relocat|travel|veteran|disability|gender|race|hear\s*about|consent|over\s*18/i.test(q.label);
+          const isPureCountryField = /^country\b|\bcountry\s*(?:of\s*residence)?$/i.test(q.label.trim()) || /^country$/i.test(q.fieldKey.trim());
+          const isLocationType = !isWorkAuthOrVisaOrScreening && (
+            /location\b|city\b|state\b|province\b|postal|zip\b|street\s*address|address\s*line/i.test(q.label) ||
+            isPureCountryField
+          );
+
           if (isLocationType && (q.type === 'text' || q.type === 'select')) {
-            const committed = await readTextQuestionValue(ctx, q);
+            const committed = await readQuestionValue(ctx, q);
             if (committed !== null && !valuesClose(committed || '', answer)) {
               await logger.warn(
                 'question_fill_mismatch',
                 `"${q.label.slice(0, 60)}" expected "${answer.slice(0, 40)}" but input holds "${(committed || '').slice(0, 40)}" — retrying once`
               );
               const refilled = await this.fillSingleQuestion(ctx, q, answer, logger);
-              if (!refilled || !valuesClose((await readTextQuestionValue(ctx, q)) || '', answer)) {
+              if (!refilled || !valuesClose((await readQuestionValue(ctx, q)) || '', answer)) {
                 await logger.warn(
                   'question_fill_failed',
                   `Location field "${q.label.slice(0, 60)}" could not be verified — escalating to user intervention`
