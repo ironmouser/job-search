@@ -2555,10 +2555,17 @@ body.light-theme .sync-overlay-content {
 
 .sync-floating-container {
   position: fixed;
-  bottom: 24px;
+  bottom: 84px;
   right: 24px;
   z-index: 9990;
   animation: syncSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (max-width: 1024px) {
+  .sync-floating-container {
+    bottom: max(6.5rem, calc(6rem + env(safe-area-inset-bottom, 0px)));
+    right: 1.25rem;
+  }
 }
 
 @keyframes syncSlideUp {
@@ -2590,11 +2597,6 @@ body.light-theme .sync-overlay-content {
 }
 
 @media (max-width: 639px) {
-  .sync-floating-container {
-    bottom: 84px;
-    right: 16px;
-  }
-  
   .sync-floating-dock {
     display: none;
   }
