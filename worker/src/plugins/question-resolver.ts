@@ -28,7 +28,7 @@ export interface ExtractedQuestion {
   id: string;
   fieldKey: string;
   label: string;
-  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date';
   options: string[];
   required: boolean;
   container: Locator;
@@ -42,7 +42,7 @@ export interface ExtractedQuestion {
 export interface UnansweredFieldData {
   fieldKey?: string;
   label: string;
-  fieldType: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+  fieldType: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date';
   options?: string[];
   required?: boolean;
   /** Best-guess answer the bot would have used (pre-filled for the user to confirm/correct). */
@@ -114,8 +114,14 @@ export class UniversalQuestionResolver {
       `Found ${questions.length} custom/screening question(s) to process`
     );
 
-    // Prepare payload for AI question answering
-    const questionsPayload = questions.map((q) => ({
+    // Prepare payload for AI question answering (only for required questions)
+    const requiredQuestions = questions.filter((q) => q.required);
+    if (requiredQuestions.length === 0) {
+      await logger.info('all_questions_optional', 'All detected questions are optional — skipping form questions');
+      return;
+    }
+
+    const questionsPayload = requiredQuestions.map((q) => ({
       id: q.id,
       label: q.label,
       type: q.type,
@@ -136,6 +142,15 @@ export class UniversalQuestionResolver {
     const unanswered: UnansweredFieldData[] = [];
 
     for (const q of questions) {
+      // 1. Skip optional questions completely — do not answer, do not fill, do not escalate
+      if (!q.required) {
+        await logger.info(
+          'question_skipped_optional',
+          `Skipping optional question (${q.type}): "${q.label.slice(0, 60)}"`
+        );
+        continue;
+      }
+
       const isDemographic = isDemographicQuestion(q.label, q.fieldKey);
       const match = aiAnswers.find((a) => a.id === q.id);
       let answer = match?.answer;
@@ -290,9 +305,9 @@ export class UniversalQuestionResolver {
           // on mismatch retry once with a fresh answer (context may have been
           // refreshed), then treat as failed so it reaches the intervention.
           const isLocationType = /location|city|state|country|address/i.test(q.label);
-          if (isLocationType && q.type === 'text') {
+          if (isLocationType && (q.type === 'text' || q.type === 'select')) {
             const committed = await readTextQuestionValue(ctx, q);
-            if (!valuesClose(committed || '', answer)) {
+            if (committed !== null && !valuesClose(committed || '', answer)) {
               await logger.warn(
                 'question_fill_mismatch',
                 `"${q.label.slice(0, 60)}" expected "${answer.slice(0, 40)}" but input holds "${(committed || '').slice(0, 40)}" — retrying once`
@@ -323,8 +338,8 @@ export class UniversalQuestionResolver {
         }
       }
 
-      // If answer failed or requires human input
-      if (q.required || requiresHuman) {
+      // If answer failed or requires human input on a REQUIRED field
+      if (q.required) {
         await logger.warn(
           'question_requires_input',
           `Required custom question could not be answered automatically: "${q.label.slice(0, 80)}"`
@@ -341,9 +356,8 @@ export class UniversalQuestionResolver {
       }
     }
 
-    // Batch-intervention: instead of throwing on the FIRST unanswerable field,
-    // surface every troublesome field at once so the user can fill them all in
-    // a single pass and the bot resumes once.
+    // Batch-intervention: surface only troublesome required fields at once so the user
+    // can fill them in a single pass and the bot resumes.
     if (unanswered.length > 0) {
       await logger.warn(
         'question_requires_input_batch',
@@ -438,12 +452,15 @@ export class UniversalQuestionResolver {
         continue;
       }
 
-      const isRequired =
-        label.includes('*') ||
-        (await container.locator('[aria-required="true"], [required], .required').count().catch(() => 0)) > 0;
+      const hasRequiredAttr = (await container.locator('[aria-required="true"], [required], .required, [data-required="true"], [class*="required" i]').count().catch(() => 0)) > 0;
+      const hasAsterisk = label.includes('*') || /[\*\u204E\u2217]/.test(label);
+      const hasRequiredWord = /\b(required)\b/i.test(label);
+      const hasOptionalWord = /\b(optional)\b/i.test(label) || /\(optional\)/i.test(label) || /\[optional\]/i.test(label);
+
+      const isRequired = (hasRequiredAttr || hasAsterisk || hasRequiredWord) && !hasOptionalWord;
 
       // Clean display label
-      const cleanLabel = label.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
+      const cleanLabel = label.replace(/[\*\u204E\u2217]/g, '').replace(/\s+/g, ' ').trim();
 
       // Check field types:
       // 1. Textarea
@@ -582,7 +599,7 @@ export class UniversalQuestionResolver {
             id: `q_${qIndex}`,
             fieldKey: (await checkbox.getAttribute('name')) || `multicheck_${qIndex}`,
             label: cleanLabel,
-            type: 'text',
+            type: 'checkbox',
             options: groupLabels,
             required: isRequired,
             container,
@@ -614,7 +631,7 @@ export class UniversalQuestionResolver {
             id: `q_${qIndex}`,
             fieldKey: (await dateInput.getAttribute('name')) || (await dateInput.getAttribute('id')) || `date_${qIndex}`,
             label: cleanLabel,
-            type: 'text',
+            type: 'date',
             options: [],
             required: isRequired,
             container,
@@ -672,20 +689,6 @@ export class UniversalQuestionResolver {
           return true;
         }
       } else if (question.type === 'checkbox') {
-        const checkbox = container.locator('input[type="checkbox"]').first();
-        if (await checkbox.count() > 0) {
-          if ((await checkbox.isChecked().catch(() => false)) === false) {
-            await checkbox.check({ force: true }).catch(() => null);
-          }
-          return true;
-        }
-        // ARIA switch / toggle (Material, Chakra, Workday custom widgets)
-        const ariaSwitch = container.locator('[role="switch"], [aria-checked]').first();
-        if (await ariaSwitch.count() > 0) {
-          const result = await setSwitchState(ariaSwitch, true);
-          return result === true;
-        }
-      } else if (question.type === 'text') {
         // Multi-checkbox group: check every box whose label matches the answer list
         const groupBoxes = container.locator('input[type="checkbox"]:visible');
         const groupBoxCount = await groupBoxes.count().catch(() => 0);
@@ -704,8 +707,6 @@ export class UniversalQuestionResolver {
             if (!labelText) continue;
             if (wanted.some((w) => labelText.includes(w) || w.includes(labelText))) {
               if (!(await box.isChecked().catch(() => false))) {
-                // check() can fail silently on stale handles; fall back to a label
-                // click, then verify actual state instead of trusting the call.
                 await box.check({ force: true }).catch(async () => {
                   const label = container.locator('label:has(input[type="checkbox"])').nth(i);
                   await label.click({ force: true }).catch(() => null);
@@ -717,6 +718,49 @@ export class UniversalQuestionResolver {
           return matched > 0;
         }
 
+        // Single checkbox
+        const checkbox = container.locator('input[type="checkbox"]').first();
+        if (await checkbox.count() > 0) {
+          const isAffirmative = /^(yes|true|1|agree|confirm|accept)$/i.test(answer.trim());
+          if (isAffirmative && (await checkbox.isChecked().catch(() => false)) === false) {
+            await checkbox.check({ force: true }).catch(() => null);
+          } else if (!isAffirmative && (await checkbox.isChecked().catch(() => false)) === true) {
+            await checkbox.uncheck({ force: true }).catch(() => null);
+          }
+          return true;
+        }
+
+        // ARIA switch / toggle (Material, Chakra, Workday custom widgets)
+        const ariaSwitch = container.locator('[role="switch"], [aria-checked]').first();
+        if (await ariaSwitch.count() > 0) {
+          const isAffirmative = /^(yes|true|1|agree|confirm|accept)$/i.test(answer.trim());
+          const result = await setSwitchState(ariaSwitch, isAffirmative);
+          return result === true;
+        }
+      } else if (question.type === 'date') {
+        // Native date inputs require ISO (yyyy-mm-dd) via fill(); keyboard entry gets mangled
+        const nativeDateInput = container.locator('input[type="date"]').first();
+        if ((await nativeDateInput.count().catch(() => 0)) > 0) {
+          await nativeDateInput.click().catch(() => null);
+          await replaceValue(nativeDateInput, toISODate(answer) || answer);
+          return true;
+        }
+
+        // Placeholder-masked date fields (MM/DD/YYYY) reject free-form answers; normalize first
+        const placeholderDate = container.locator('input[placeholder*="MM/DD/YYYY" i], input[placeholder*="mm/dd/yyyy" i]').first();
+        if ((await placeholderDate.count().catch(() => 0)) > 0 && /\d/.test(answer)) {
+          await placeholderDate.click().catch(() => null);
+          await replaceValue(placeholderDate, toSlashDate(answer) || answer);
+          return true;
+        }
+
+        const fallbackInput = container.locator('input').first();
+        if (await fallbackInput.count() > 0) {
+          await fallbackInput.click().catch(() => null);
+          await replaceValue(fallbackInput, toISODate(answer) || toSlashDate(answer) || answer);
+          return true;
+        }
+      } else if (question.type === 'text') {
         // Native date inputs require ISO (yyyy-mm-dd) via fill(); keyboard entry gets mangled
         const nativeDateInput = container.locator('input[type="date"]').first();
         if ((await nativeDateInput.count().catch(() => 0)) > 0) {

@@ -423,42 +423,25 @@ export class LeverPlugin extends ATSPlugin {
           label.includes('eligible to work') ||
           label.includes('legally permitted')
         ) {
-          if (!profile.usWorkAuthorization) {
-            throw new InterventionError(
-              InterventionReason.UNKNOWN_QUESTION,
-              `Work Authorization answer is required for: "${label.trim()}". Please provide your details.`,
-              page.url()
-            );
-          }
-          const isYes = profile.usWorkAuthorization.toLowerCase() === 'yes';
-          const targetRegex = isYes ? /^yes$/i : /^no$/i;
-          const targetLabel = container.locator('label').filter({ hasText: targetRegex }).first();
-          if (await targetLabel.count() > 0) {
-            await targetLabel.click();
-            await logger.info('question_answered', `Work authorization: ${profile.usWorkAuthorization}`);
+          if (profile.usWorkAuthorization) {
+            const isYes = profile.usWorkAuthorization.toLowerCase() === 'yes';
+            const targetRegex = isYes ? /^yes$/i : /^no$/i;
+            const targetLabel = container.locator('label').filter({ hasText: targetRegex }).first();
+            if (await targetLabel.count() > 0) {
+              await targetLabel.click();
+              await logger.info('question_answered', `Work authorization: ${profile.usWorkAuthorization}`);
+            }
           }
         } else if (label.includes('sponsorship') || label.includes('visa')) {
-          if (!profile.visaSponsorship) {
-            throw new InterventionError(
-              InterventionReason.UNKNOWN_QUESTION,
-              `Visa Sponsorship answer is required for: "${label.trim()}". Please provide your details.`,
-              page.url()
-            );
+          if (profile.visaSponsorship) {
+            const isYes = profile.visaSponsorship.toLowerCase() === 'yes';
+            const targetRegex = isYes ? /^yes$/i : /^no$/i;
+            const targetLabel = container.locator('label').filter({ hasText: targetRegex }).first();
+            if (await targetLabel.count() > 0) {
+              await targetLabel.click();
+              await logger.info('question_answered', `Visa sponsorship required: ${profile.visaSponsorship}`);
+            }
           }
-          const isYes = profile.visaSponsorship.toLowerCase() === 'yes';
-          const targetRegex = isYes ? /^yes$/i : /^no$/i;
-          const targetLabel = container.locator('label').filter({ hasText: targetRegex }).first();
-          if (await targetLabel.count() > 0) {
-            await targetLabel.click();
-            await logger.info('question_answered', `Visa sponsorship required: ${profile.visaSponsorship}`);
-          }
-        } else if (label) {
-          await logger.warn('unknown_question', `Unknown Lever radio question: "${label.substring(0, 100)}"`);
-          throw new InterventionError(
-            InterventionReason.UNKNOWN_QUESTION,
-            `Lever has a question that requires your input: "${label.trim()}"`,
-            page.url()
-          );
         }
         continue;
       }

@@ -104,7 +104,7 @@ export class RailwayAPIClient {
     questions: Array<{
       id: string;
       label: string;
-      type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+      type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date';
       options?: string[];
       required?: boolean;
     }>

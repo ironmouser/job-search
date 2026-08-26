@@ -273,24 +273,6 @@ export function InterventionPanel({
       .catch(() => setLoadingSettings(false));
   }, [description]);
 
-  const isMissingAuth = settings && (
-    !settings.usWorkAuthorization || 
-    !settings.visaSponsorship || 
-    !settings.workingRemotelyFrom || 
-    !settings.country || 
-    !settings.eeocGender || 
-    !settings.eeocRace || 
-    !settings.eeocVeteran || 
-    !settings.eeocDisability ||
-    !settings.phone ||
-    (!settings.location && !settings.city) ||
-    !settings.linkedinUrl ||
-    !settings.expectedSalary
-  );
-
-  // Only show the general profile settings form if it's strictly an account auth reason or if settings are missing and there are no question fields to answer
-  const showAuthForm = !hasEffectiveQuestions && reason !== 'unknown_question' && isMissingAuth;
-
   const handleSettingsChange = (key: string, value: any) => {
     setSettings((prev: any) => ({ ...prev, [key]: value }));
   };
@@ -878,8 +860,6 @@ export function InterventionPanel({
                       : `${portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using the credentials you provide, then resume your application.`)
                   : hasEffectiveQuestions
                   ? 'Answer the application question(s) below or complete them directly on the employer site.'
-                  : showAuthForm 
-                  ? 'Fill out your missing authorization details below or complete verification directly on the company site.' 
                   : 'Complete the verification or login directly on the job application page.'}
               </span>
             </div>
@@ -937,7 +917,7 @@ export function InterventionPanel({
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '0.5rem',
+                        gap: '0.6rem',
                         background: 'var(--card, var(--background))',
                         border: '1px solid var(--border-glass)',
                         borderRadius: '8px',
@@ -955,7 +935,7 @@ export function InterventionPanel({
                         )}
                       </div>
 
-                      {/* Render based on fieldType */}
+                      {/* Render based on fieldType with 1:1 ATS input parity */}
                       {q.fieldType === 'select' ? (
                         q.options && q.options.length > 0 ? (
                           <select
@@ -1002,45 +982,77 @@ export function InterventionPanel({
                           />
                         )
                       ) : q.fieldType === 'radio' && q.options && q.options.length > 0 ? (
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           {q.options.map((opt, optIdx) => {
-                            const isSelected = currentValue === opt || currentValue.toLowerCase() === opt.toLowerCase();
+                            const isSelected = Boolean(currentValue === opt || (Boolean(currentValue) && currentValue.toLowerCase() === opt.toLowerCase()));
+                            const radioId = `radio-${fieldKey}-${optIdx}-${interventionId}`;
                             return (
-                              <button
+                              <label
                                 key={optIdx}
-                                type="button"
-                                onClick={() => {
-                                  setBatchAnswers((prev) => ({ ...prev, [fieldKey]: opt }));
-                                  if (idx === 0) setCustomAnswer(opt);
-                                }}
-                                className={isSelected ? 'btn-primary' : 'btn-outline'}
+                                htmlFor={radioId}
                                 style={{
-                                  padding: '0.5rem 1rem',
-                                  fontSize: '0.85rem',
-                                  fontWeight: 600,
-                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.65rem',
+                                  padding: '0.6rem 0.85rem',
+                                  borderRadius: '8px',
+                                  border: isSelected ? '1px solid var(--accent-primary, #3b82f6)' : '1px solid var(--border-glass)',
+                                  background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'var(--background-card)',
                                   cursor: 'pointer',
-                                  background: isSelected ? 'var(--primary, #3b82f6)' : 'var(--background-card)',
-                                  color: isSelected ? '#ffffff' : 'var(--text-primary)',
-                                  border: '1px solid var(--border-glass)',
+                                  transition: 'all 0.15s ease',
                                 }}
                               >
-                                {opt}
-                              </button>
+                                <input
+                                  type="radio"
+                                  id={radioId}
+                                  name={`radio-group-${fieldKey}-${interventionId}`}
+                                  value={opt}
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setBatchAnswers((prev) => ({ ...prev, [fieldKey]: opt }));
+                                    if (idx === 0) setCustomAnswer(opt);
+                                  }}
+                                  style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    cursor: 'pointer',
+                                    accentColor: 'var(--accent-primary, #3b82f6)',
+                                  }}
+                                />
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)', fontWeight: isSelected ? 600 : 400 }}>
+                                  {opt}
+                                </span>
+                              </label>
                             );
                           })}
                         </div>
                       ) : q.fieldType === 'checkbox' ? (
                         q.options && q.options.length > 1 ? (
                           // Multi-checkbox group
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             {q.options.map((opt, optIdx) => {
-                              const currentSelected = currentValue.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+                              const currentSelected = currentValue ? currentValue.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : [];
                               const isChecked = currentSelected.includes(opt.toLowerCase());
+                              const checkId = `check-${fieldKey}-${optIdx}-${interventionId}`;
                               return (
-                                <label key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                <label
+                                  key={optIdx}
+                                  htmlFor={checkId}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.65rem',
+                                    padding: '0.55rem 0.85rem',
+                                    borderRadius: '8px',
+                                    border: isChecked ? '1px solid var(--accent-primary, #3b82f6)' : '1px solid var(--border-glass)',
+                                    background: isChecked ? 'rgba(59, 130, 246, 0.08)' : 'var(--background-card)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                >
                                   <input
                                     type="checkbox"
+                                    id={checkId}
                                     checked={isChecked}
                                     onChange={(e) => {
                                       const selectedArr = currentValue ? currentValue.split(',').map((s) => s.trim()).filter(Boolean) : [];
@@ -1054,32 +1066,58 @@ export function InterventionPanel({
                                       setBatchAnswers((prev) => ({ ...prev, [fieldKey]: nextVal }));
                                       if (idx === 0) setCustomAnswer(nextVal);
                                     }}
-                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    style={{
+                                      width: '18px',
+                                      height: '18px',
+                                      cursor: 'pointer',
+                                      accentColor: 'var(--accent-primary, #3b82f6)',
+                                    }}
                                   />
-                                  <span>{opt}</span>
+                                  <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)', fontWeight: isChecked ? 600 : 400 }}>
+                                    {opt}
+                                  </span>
                                 </label>
                               );
                             })}
                           </div>
                         ) : (
                           // Single checkbox (e.g. consent or confirmation)
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '0.65rem',
+                              padding: '0.6rem 0.85rem',
+                              borderRadius: '8px',
+                              border: '1px solid var(--border-glass)',
+                              background: 'var(--background-card)',
+                              cursor: 'pointer',
+                            }}
+                          >
                             <input
                               type="checkbox"
-                              checked={currentValue === 'Yes' || currentValue === 'true' || currentValue === '1'}
+                              checked={currentValue === 'Yes' || currentValue === 'true' || currentValue === '1' || currentValue === 'agree'}
                               onChange={(e) => {
                                 const val = e.target.checked ? 'Yes' : 'No';
                                 setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
                                 if (idx === 0) setCustomAnswer(val);
                               }}
-                              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                              style={{
+                                width: '18px',
+                                height: '18px',
+                                cursor: 'pointer',
+                                marginTop: '2px',
+                                accentColor: 'var(--accent-primary, #3b82f6)',
+                              }}
                             />
-                            <span>I agree / confirm</span>
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                              I agree / acknowledge
+                            </span>
                           </label>
                         )
                       ) : q.fieldType === 'textarea' ? (
                         <textarea
-                          rows={3}
+                          rows={4}
                           value={currentValue}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -1096,6 +1134,26 @@ export function InterventionPanel({
                             fontSize: '0.875rem',
                             width: '100%',
                             resize: 'vertical',
+                            fontFamily: 'inherit',
+                          }}
+                        />
+                      ) : q.fieldType === 'date' ? (
+                        <input
+                          type="date"
+                          value={currentValue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
+                            if (idx === 0) setCustomAnswer(val);
+                          }}
+                          style={{
+                            background: 'var(--input, var(--background))',
+                            border: '1px solid var(--border-glass)',
+                            color: 'var(--text-primary)',
+                            padding: '0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            width: '100%',
                           }}
                         />
                       ) : (
@@ -1289,375 +1347,6 @@ export function InterventionPanel({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                   <Lock size={14} color="#10b981" />
                   <span>Credentials are protected and used only to submit your application.</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Missing Profile Settings Form (shown only if no specific application questions exist and profile has missing details) */}
-          {showAuthForm && !loadingSettings && (
-            <div
-              style={{
-                background: 'var(--secondary, var(--card-header-bg))',
-                borderRadius: '10px',
-                padding: '1.25rem',
-                border: '1px solid var(--border-glass)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.25rem',
-              }}
-            >
-              <div>
-                <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
-                  <FileText size={17} color="var(--accent-primary, #3b82f6)" />
-                  Complete Profile Settings
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                  Please provide missing authorization and demographic details so JAHQ can answer required application questions. These will be saved to your profile for future applications.
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="auto-apply-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
-                    <select
-                      value={settings?.usWorkAuthorization || ''}
-                      onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)}
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      <option value="Yes">Yes, I am authorized to work in the US</option>
-                      <option value="No">No, I am not authorized</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Visa Sponsorship</label>
-                    <select
-                      value={settings?.visaSponsorship || ''}
-                      onChange={(e) => handleSettingsChange('visaSponsorship', e.target.value)}
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      <option value="Yes">Yes, I require sponsorship</option>
-                      <option value="No">No, I do not require sponsorship</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Working Remotely From</label>
-                    <input
-                      type="text"
-                      value={settings?.workingRemotelyFrom || ''}
-                      onChange={(e) => handleSettingsChange('workingRemotelyFrom', e.target.value)}
-                      placeholder="e.g. New York, NY"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Country</label>
-                    <input
-                      type="text"
-                      value={settings?.country || ''}
-                      onChange={(e) => handleSettingsChange('country', e.target.value)}
-                      placeholder="e.g. United States"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Gender</label>
-                    <select
-                      value={settings?.eeocGender || ''}
-                      onChange={(e) => handleSettingsChange('eeocGender', e.target.value)}
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Decline">Decline</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Race / Ethnicity</label>
-                    <select
-                      value={settings?.eeocRace || ''}
-                      onChange={(e) => handleSettingsChange('eeocRace', e.target.value)}
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      <option value="Hispanic or Latino">Hispanic or Latino</option>
-                      <option value="White">White</option>
-                      <option value="Black or African American">Black or African American</option>
-                      <option value="Asian">Asian</option>
-                      <option value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</option>
-                      <option value="American Indian or Alaska Native">American Indian or Alaska Native</option>
-                      <option value="Two or More Races">Two or More Races</option>
-                      <option value="Decline">Decline</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Veteran Status</label>
-                    <select
-                      value={settings?.eeocVeteran || ''}
-                      onChange={(e) => handleSettingsChange('eeocVeteran', e.target.value)}
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      <option value="Yes">Yes, protected veteran</option>
-                      <option value="No">No, not a veteran</option>
-                      <option value="Decline">Decline</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Disability Status</label>
-                    <select
-                      value={settings?.eeocDisability || ''}
-                      onChange={(e) => handleSettingsChange('eeocDisability', e.target.value)}
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                      <option value="Decline">Decline</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Phone Number</label>
-                    <input
-                      type="tel"
-                      value={settings?.phone || ''}
-                      onChange={(e) => handleSettingsChange('phone', e.target.value)}
-                      placeholder="e.g. +1 (555) 000-0000"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Street Address</label>
-                    <input
-                      type="text"
-                      value={settings?.streetAddress || ''}
-                      onChange={(e) => handleSettingsChange('streetAddress', e.target.value)}
-                      placeholder="e.g. 123 Main St, Apt 4B"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>City</label>
-                    <input
-                      type="text"
-                      value={settings?.city || ''}
-                      onChange={(e) => {
-                        const newCity = e.target.value;
-                        handleSettingsChange('city', newCity);
-                        const st = settings?.state || '';
-                        if (newCity || st) handleSettingsChange('location', [newCity, st].filter(Boolean).join(', '));
-                      }}
-                      placeholder="e.g. San Francisco"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>State / Province</label>
-                    <input
-                      type="text"
-                      value={settings?.state || ''}
-                      onChange={(e) => {
-                        const newSt = e.target.value;
-                        handleSettingsChange('state', newSt);
-                        const ct = settings?.city || '';
-                        if (ct || newSt) handleSettingsChange('location', [ct, newSt].filter(Boolean).join(', '));
-                      }}
-                      placeholder="e.g. CA"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>ZIP / Postal Code</label>
-                    <input
-                      type="text"
-                      value={settings?.postalCode || ''}
-                      onChange={(e) => handleSettingsChange('postalCode', e.target.value)}
-                      placeholder="e.g. 94105"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>LinkedIn URL</label>
-                    <input
-                      type="url"
-                      value={settings?.linkedinUrl || ''}
-                      onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)}
-                      placeholder="e.g. https://linkedin.com/in/username"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Salary / Compensation Expectation</label>
-                    <input
-                      type="text"
-                      value={settings?.expectedSalary || ''}
-                      onChange={(e) => handleSettingsChange('expectedSalary', e.target.value)}
-                      placeholder="e.g. $140,000 or 140000"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Available Start Date</label>
-                    <input
-                      type="text"
-                      value={settings?.startDate || ''}
-                      onChange={(e) => handleSettingsChange('startDate', e.target.value)}
-                      placeholder="e.g. Immediately or 2 weeks"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Willing to Relocate</label>
-                    <select
-                      value={settings?.willingToRelocate || ''}
-                      onChange={(e) => handleSettingsChange('willingToRelocate', e.target.value)}
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      <option value="Yes">Yes</option>
-                      <option value="No">No</option>
-                      <option value="Negotiable">Negotiable</option>
-                    </select>
-                  </div>
                 </div>
               </div>
             </div>

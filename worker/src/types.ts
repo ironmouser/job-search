@@ -247,7 +247,7 @@ export interface ExecutionLogEntry {
 export interface QuestionInterventionData {
   fieldKey?: string;
   label: string;
-  fieldType: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+  fieldType: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date';
   options?: string[];
   required?: boolean;
 }
