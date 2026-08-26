@@ -198,6 +198,39 @@ export function getSemanticDropdownOptions(label: string): string[] {
   if (/^(?:are you|do you|will you|have you)\b/i.test(text.trim()) || /\b(?:yes\/no|select yes or no)\b/i.test(text)) {
     return ['Yes', 'No'];
   }
+  // Consent & personal information retention
+  if (/consent|personal\s*information|retain\s*data|data\s*retention|gdpr/i.test(text)) {
+    return [
+      'Yes',
+      'No',
+      'I consent to have my personal information retained',
+      'I do not consent',
+    ];
+  }
+  // Referral source / Where did you hear
+  if (/hear\s*about|referral|source|first\s*hear/i.test(text)) {
+    return [
+      'LinkedIn',
+      'Company Website / Careers Page',
+      'Job Board (Indeed, Glassdoor, etc.)',
+      'Employee Referral',
+      'Recruiter Outreach',
+      'Event / Conference',
+      'Other',
+    ];
+  }
+  // Influenced decision to apply
+  if (/decision\s*to\s*apply|influenced.*decision|why.*apply/i.test(text)) {
+    return [
+      'Company Mission & Culture',
+      'Career Growth Opportunities',
+      'Product & Technology',
+      'Competitive Compensation & Benefits',
+      'Remote / Work Flexibility',
+      'Team & Leadership',
+      'Other',
+    ];
+  }
 
   return [];
 }
@@ -500,6 +533,7 @@ export class UniversalQuestionResolver {
    */
   private static async extractUnfilledQuestions(ctx: Page | Frame): Promise<ExtractedQuestion[]> {
     const extracted: ExtractedQuestion[] = [];
+    const seenLabels = new Set<string>();
 
     // Common containers across Greenhouse, Lever, Ashby, Workday, SmartRecruiters, etc.
     const containerSelectors = [
@@ -532,10 +566,10 @@ export class UniversalQuestionResolver {
       const isVisible = await container.isVisible().catch(() => false);
       if (!isVisible) continue;
 
-      // Ignore containers inside cookie banners, privacy dialogs, or nav/footer
+      // Ignore containers strictly inside true cookie banners/SDKs or nav/footer
       const isInsideObstruction = await container.evaluate((el) => {
         return !!el.closest(
-          '#onetrust-consent-sdk, #onetrust-banner-sdk, #onetrust-pc-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [data-testid*="cookie" i], [class*="consent" i], [id*="consent" i], [aria-label*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy" i], [id*="privacy" i], [aria-label*="privacy" i], [data-testid*="privacy" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i]'
+          '#onetrust-consent-sdk, #onetrust-banner-sdk, #onetrust-pc-sdk, [id*="cookie-banner" i], [class*="cookie-banner" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], .cookie-modal, .cookie-bar, header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i]'
         );
       }).catch(() => false);
       if (isInsideObstruction) continue;
@@ -551,26 +585,32 @@ export class UniversalQuestionResolver {
       }
       if (!label || label.length < 3) continue;
 
-      const lowerLabel = label.toLowerCase();
+      const cleanLabel = label.replace(/[\*\u204E\u2217]/g, '').replace(/\s+/g, ' ').trim();
+      const normLabel = cleanLabel.toLowerCase();
 
-      // Skip cookie settings, privacy preferences, and legal disclaimers
+      // Deduplicate extracted questions so parent/child containers do not generate duplicate intervention fields
+      if (seenLabels.has(normLabel)) {
+        continue;
+      }
+
+      // Skip cookie settings and banner tracking preferences
       if (
-        /cookie|cookies|privacy\s*preference|consent\s*preference|cookie\s*setting|strictly\s*necessary|targeting\s*cookies|functional\s*cookies|performance\s*cookies|analytics\s*cookies|manage\s*consent|privacy\s*choices|your\s*privacy|advertising\s*preferences|gdpr|ccpa|terms\s*of\s*service|privacy\s*policy/i.test(lowerLabel)
+        /strictly\s*necessary\s*cookies|targeting\s*cookies|functional\s*cookies|performance\s*cookies|analytics\s*cookies|manage\s*cookie|cookie\s*setting|cookie\s*preference/i.test(normLabel)
       ) {
         continue;
       }
 
       // Skip standard personal contact fields already handled by main plugins
       if (
-        /^(first|last)\s*name/i.test(lowerLabel) ||
-        /^email/i.test(lowerLabel) ||
-        /^phone/i.test(lowerLabel) ||
-        /^resume/i.test(lowerLabel) ||
-        /^cover\s*letter/i.test(lowerLabel) ||
-        /^linkedin/i.test(lowerLabel) ||
-        /^website/i.test(lowerLabel) ||
-        /^portfolio/i.test(lowerLabel) ||
-        /^github/i.test(lowerLabel)
+        /^(first|last)\s*name/i.test(normLabel) ||
+        /^email/i.test(normLabel) ||
+        /^phone/i.test(normLabel) ||
+        /^resume/i.test(normLabel) ||
+        /^cover\s*letter/i.test(normLabel) ||
+        /^linkedin/i.test(normLabel) ||
+        /^website/i.test(normLabel) ||
+        /^portfolio/i.test(normLabel) ||
+        /^github/i.test(normLabel)
       ) {
         continue;
       }
@@ -582,9 +622,6 @@ export class UniversalQuestionResolver {
 
       const isRequired = (hasRequiredAttr || hasAsterisk || hasRequiredWord) && !hasOptionalWord;
 
-      // Clean display label
-      const cleanLabel = label.replace(/[\*\u204E\u2217]/g, '').replace(/\s+/g, ' ').trim();
-
       // Check field types:
       // 1. Textarea
       const textarea = container.locator('textarea').first();
@@ -592,6 +629,7 @@ export class UniversalQuestionResolver {
         const val = (await textarea.inputValue().catch(() => ''))?.trim();
         if (!val) {
           qIndex++;
+          seenLabels.add(normLabel);
           extracted.push({
             id: `q_${qIndex}`,
             fieldKey: (await textarea.getAttribute('name')) || (await textarea.getAttribute('id')) || `textarea_${qIndex}`,
@@ -611,6 +649,7 @@ export class UniversalQuestionResolver {
         const richTextContent = ((await richText.textContent().catch(() => '')) || '').trim();
         if (!richTextContent) {
           qIndex++;
+          seenLabels.add(normLabel);
           extracted.push({
             id: `q_${qIndex}`,
             fieldKey: (await richText.getAttribute('name')) || (await richText.getAttribute('aria-label')) || `richtext_${qIndex}`,
@@ -645,8 +684,9 @@ export class UniversalQuestionResolver {
       ].join(', ')).first();
 
       let dropdownOptions: string[] = [];
-      if (await nativeSelect.count() > 0) {
-        const rawOpts = await nativeSelect.locator('option').allTextContents().catch(() => []);
+      const anySelect = container.locator('select').first();
+      if (await anySelect.count() > 0) {
+        const rawOpts = await anySelect.locator('option').allTextContents().catch(() => []);
         dropdownOptions = rawOpts.map((o) => o.trim()).filter((o) => o && !/^(select|choose|please\s*select|\-\-)/i.test(o));
       }
 
@@ -661,12 +701,14 @@ export class UniversalQuestionResolver {
 
       if (await nativeSelect.count() > 0) {
         const val = await nativeSelect.inputValue().catch(() => '');
+        const selText = ((await nativeSelect.evaluate((el: HTMLSelectElement) => el.options[el.selectedIndex]?.text || '').catch(() => '')) || '').trim().toLowerCase();
         const reactText = ((await container.locator('.select__single-value, .select-value, .selected').textContent().catch(() => '')) || '').toLowerCase();
         const containerText = ((await container.textContent().catch(() => '')) || '').toLowerCase();
-        const isUnfilled = !val || val === '' || val === '0' || reactText.includes('select') || containerText.includes('select...') || containerText.includes('choose...');
+        const isUnfilled = !val || val === '' || val === '0' || /^(select|choose|please\s*select|\-\-)/i.test(selText) || reactText.includes('select...') || containerText.includes('select...');
 
         if (isUnfilled) {
           qIndex++;
+          seenLabels.add(normLabel);
           extracted.push({
             id: `q_${qIndex}`,
             fieldKey: (await nativeSelect.getAttribute('name')) || (await nativeSelect.getAttribute('id')) || `select_${qIndex}`,
@@ -679,11 +721,18 @@ export class UniversalQuestionResolver {
           continue;
         }
       } else if (await customSelect.count() > 0 && (await customSelect.isVisible().catch(() => false))) {
-        const text = (await container.textContent().catch(() => ''))?.toLowerCase() || '';
-        // If it still says "select..." or "choose..." or is blank or has no value
-        const isUnfilled = text.includes('select...') || text.includes('select a country') || text.includes('choose...') || text.includes('select an option') || !text.trim() || isSemanticDropdownQuestion(cleanLabel);
+        const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i]').first();
+        let currentText = '';
+        if (await valContainer.count() > 0) {
+          currentText = ((await valContainer.textContent().catch(() => '')) || '').trim();
+        } else {
+          currentText = ((await customSelect.textContent().catch(() => '')) || '').trim();
+        }
+        // Truly unfilled only if it holds placeholder text or is empty (do NOT force unfilled if already filled with Yes/No/etc.)
+        const isUnfilled = !currentText || /select\.\.\.|choose\.\.\.|select an option|select a country|^select$/i.test(currentText);
         if (isUnfilled) {
           qIndex++;
+          seenLabels.add(normLabel);
           extracted.push({
             id: `q_${qIndex}`,
             fieldKey: (await customSelect.getAttribute('name')) || (await customSelect.getAttribute('id')) || `custom_select_${qIndex}`,
@@ -713,6 +762,7 @@ export class UniversalQuestionResolver {
           const options = radioLabels.map((r) => r.trim()).filter((r) => r && r !== cleanLabel);
 
           qIndex++;
+          seenLabels.add(normLabel);
           extracted.push({
             id: `q_${qIndex}`,
             fieldKey: (await radios.first().getAttribute('name')) || `radio_${qIndex}`,
@@ -737,6 +787,7 @@ export class UniversalQuestionResolver {
         // Multi-select group ("select all that apply") when 2+ checkboxes share the container
         if (checkboxCount > 1) {
           qIndex++;
+          seenLabels.add(normLabel);
           const groupLabels = (await container.locator('label').allTextContents().catch(() => []))
             .map((t) => t.trim()).filter((t) => t && t !== cleanLabel);
           extracted.push({
@@ -751,6 +802,7 @@ export class UniversalQuestionResolver {
           continue;
         }
         qIndex++;
+        seenLabels.add(normLabel);
         extracted.push({
           id: `q_${qIndex}`,
           fieldKey: hasCheckbox
@@ -771,6 +823,7 @@ export class UniversalQuestionResolver {
         const val = (await dateInput.inputValue().catch(() => ''))?.trim();
         if (!val) {
           qIndex++;
+          seenLabels.add(normLabel);
           extracted.push({
             id: `q_${qIndex}`,
             fieldKey: (await dateInput.getAttribute('name')) || (await dateInput.getAttribute('id')) || `date_${qIndex}`,
@@ -800,6 +853,7 @@ export class UniversalQuestionResolver {
             isSemanticDropdownQuestion(cleanLabel);
 
           qIndex++;
+          seenLabels.add(normLabel);
           if (isComboboxOrDropdown) {
             const opts = getSemanticDropdownOptions(cleanLabel);
             extracted.push({
@@ -1022,17 +1076,20 @@ export class UniversalQuestionResolver {
             if (await control.count() > 0) await control.click().catch(() => null);
             await page.waitForTimeout(200);
 
+            let matchedAndClicked = false;
+
             // First check popup options directly with matchesOptionSafely
             const optionEls = await page.locator('.select__option, [id*="-option-"], [role="option"]').all();
             for (const optEl of optionEls) {
               const text = (await optEl.textContent().catch(() => ''))?.trim() ?? '';
               if (matchesOptionSafely(text, answer)) {
                 await optEl.click().catch(() => null);
-                return true;
+                matchedAndClicked = true;
+                break;
               }
             }
 
-            if (await reactInput.count() > 0) {
+            if (!matchedAndClicked && (await reactInput.count() > 0)) {
               await reactInput.focus().catch(() => null);
               await replaceValue(reactInput, answer);
               await page.waitForTimeout(300);
@@ -1042,16 +1099,35 @@ export class UniversalQuestionResolver {
                 const text = (await fOpt.textContent().catch(() => ''))?.trim() ?? '';
                 if (matchesOptionSafely(text, answer)) {
                   await fOpt.click().catch(() => null);
-                  return true;
+                  matchedAndClicked = true;
+                  break;
                 }
               }
 
-              // Fallback press Enter only if exact match or no other option clicked
-              await reactInput.press('Enter').catch(() => null);
-              await page.waitForTimeout(300);
+              if (!matchedAndClicked) {
+                const firstFiltered = page.locator('.select__option, [id*="-option-"], [role="option"]').first();
+                if ((await firstFiltered.count() > 0) && (await firstFiltered.isVisible().catch(() => false))) {
+                  const firstText = (await firstFiltered.textContent().catch(() => ''))?.trim() ?? '';
+                  if (matchesOptionSafely(firstText, answer)) {
+                    await firstFiltered.click().catch(() => null);
+                    matchedAndClicked = true;
+                  }
+                }
+              }
             }
 
-            return true;
+            await page.waitForTimeout(250);
+
+            // Verify whether value committed
+            const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i]').first();
+            if (await valContainer.count() > 0) {
+              const committed = ((await valContainer.textContent().catch(() => '')) || '').trim();
+              if (committed && !/select\.\.\.|choose\.\.\./i.test(committed)) {
+                return true;
+              }
+            }
+
+            return matchedAndClicked;
           }
         }
       } else if (question.type === 'radio') {

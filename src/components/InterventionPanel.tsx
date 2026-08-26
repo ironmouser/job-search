@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
@@ -193,6 +193,39 @@ function getDropdownOptionsForField(q: { label: string; fieldType?: string; opti
   if (/^(?:are you|do you|will you|have you)\b/i.test(text.trim()) || /\b(?:yes\/no|select yes or no)\b/i.test(text)) {
     return ['Yes', 'No'];
   }
+  // Consent & personal information retention
+  if (/consent|personal\s*information|retain\s*data|data\s*retention|gdpr/i.test(text)) {
+    return [
+      'Yes',
+      'No',
+      'I consent to have my personal information retained',
+      'I do not consent',
+    ];
+  }
+  // Referral source / Where did you hear
+  if (/hear\s*about|referral|source|first\s*hear/i.test(text)) {
+    return [
+      'LinkedIn',
+      'Company Website / Careers Page',
+      'Job Board (Indeed, Glassdoor, etc.)',
+      'Employee Referral',
+      'Recruiter Outreach',
+      'Event / Conference',
+      'Other',
+    ];
+  }
+  // Influenced decision to apply
+  if (/decision\s*to\s*apply|influenced.*decision|why.*apply/i.test(text)) {
+    return [
+      'Company Mission & Culture',
+      'Career Growth Opportunities',
+      'Product & Technology',
+      'Competitive Compensation & Benefits',
+      'Remote / Work Flexibility',
+      'Team & Leadership',
+      'Other',
+    ];
+  }
 
   return ['Yes', 'No'];
 }
@@ -203,6 +236,7 @@ function getEffectiveFieldType(q: { label: string; fieldType?: string; options?:
   if (q.fieldType === 'checkbox') return 'checkbox';
   if (q.fieldType === 'textarea') return 'textarea';
   if (q.fieldType === 'date') return 'date';
+  if (q.fieldType === 'text') return 'text';
 
   const text = q.label.toLowerCase();
 
@@ -217,6 +251,8 @@ function getEffectiveFieldType(q: { label: string; fieldType?: string; options?:
     /willing to travel/i.test(text) ||
     /highest.*education|degree\b/i.test(text) ||
     /years of experience|how many years/i.test(text) ||
+    /hear\s*about|referral|source|first\s*hear/i.test(text) ||
+    /consent|personal\s*information|retain\s*data/i.test(text) ||
     /\b(?:select one|please select|choose one|select from the dropdown|dropdown)\b/i.test(text)
   ) {
     return 'select';
@@ -290,7 +326,7 @@ export function InterventionPanel({
   })();
 
   // QUESTION_DATA may be a single question object or an array of unanswered fields.
-  const questionFields: Array<{
+  const rawQuestionFields: Array<{
     fieldKey?: string;
     label: string;
     fieldType?: string;
@@ -298,7 +334,7 @@ export function InterventionPanel({
     required?: boolean;
     suggestedAnswer?: string;
   }> = Array.isArray(questionData) ? questionData : questionData ? [questionData] : [];
-  const hasQuestionFields = questionFields.length > 0;
+  const hasQuestionFields = rawQuestionFields.length > 0;
 
   const cleanDescription = (description || '')
     .replace(/\[QUESTION_DATA:\{[\s\S]*?\}\](?=\s|$)/, '')
@@ -315,7 +351,7 @@ export function InterventionPanel({
     return null;
   })();
 
-  const effectiveQuestionFields: Array<{
+  const rawEffectiveFields: Array<{
     fieldKey?: string;
     label: string;
     fieldType?: string;
@@ -323,12 +359,25 @@ export function InterventionPanel({
     required?: boolean;
     suggestedAnswer?: string;
   }> = hasQuestionFields
-    ? questionFields
+    ? rawQuestionFields
     : reason === 'unknown_question' && extractedQuestionFromDesc
     ? [{ label: extractedQuestionFromDesc, fieldType: 'text', required: true }]
     : reason === 'unknown_question' && cleanDescription && cleanDescription.length > 5 && !cleanDescription.toLowerCase().includes('application form on')
     ? [{ label: cleanDescription, fieldType: 'text', required: true }]
     : [];
+
+  // Deduplicate question fields by normalized label to ensure identical questions are not rendered multiple times
+  const effectiveQuestionFields = useMemo(() => {
+    const seen = new Set<string>();
+    const result: typeof rawEffectiveFields = [];
+    for (const q of rawEffectiveFields) {
+      const normKey = (q.label || q.fieldKey || '').replace(/[\*\u204E\u2217]/g, '').trim().toLowerCase();
+      if (!normKey || seen.has(normKey)) continue;
+      seen.add(normKey);
+      result.push(q);
+    }
+    return result;
+  }, [rawEffectiveFields]);
 
   const hasEffectiveQuestions = effectiveQuestionFields.length > 0;
 
