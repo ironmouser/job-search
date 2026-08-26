@@ -61,7 +61,6 @@ export function OrgAdminDock() {
 
   useEffect(() => {
     if (!isOrgAdminRoute) {
-      setPageActions(null);
       return;
     }
 

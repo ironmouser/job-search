@@ -21,7 +21,6 @@ export function RecruiterDock() {
 
   useEffect(() => {
     if (!isRecruiterRoute) {
-      setPageActions(null);
       return;
     }
 
