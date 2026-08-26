@@ -1163,57 +1163,78 @@ export class UniversalQuestionResolver {
           const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
 
           if (await control.count() > 0 || await reactInput.count() > 0) {
-            if (await control.count() > 0) await control.click().catch(() => null);
-            await page.waitForTimeout(200);
+            if (await control.count() > 0) {
+              await control.click({ force: true }).catch(() => null);
+            } else if (await reactInput.count() > 0) {
+              await reactInput.click({ force: true }).catch(() => null);
+            }
+            await page.waitForTimeout(250);
 
             let matchedAndClicked = false;
 
-            // First check popup options directly with matchesOptionSafely
-            const optionEls = await page.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all();
+            // 1. Check popup options directly in ctx or page
+            let optionEls = await ctx.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all().catch(() => []);
+            if (optionEls.length === 0) {
+              optionEls = await page.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all().catch(() => []);
+            }
+
             for (const optEl of optionEls) {
               const text = (await optEl.textContent().catch(() => ''))?.trim() ?? '';
               if (matchesOptionSafely(text, answer)) {
-                await optEl.click().catch(() => null);
+                await optEl.scrollIntoViewIfNeeded().catch(() => null);
+                await optEl.click({ force: true }).catch(() => null);
                 matchedAndClicked = true;
                 break;
               }
             }
 
-            // If not found in open popup, use search/filter input to filter options and CLICK the matched option
+            // 2. If not found in open popup, use search/filter input to filter options and CLICK the matched option
             if (!matchedAndClicked && (await reactInput.count() > 0)) {
+              const searchKeyword = answer.split(/[\(,]/)[0].trim();
               await reactInput.focus().catch(() => null);
-              await replaceValue(reactInput, answer);
+              await replaceValue(reactInput, searchKeyword);
               await page.waitForTimeout(300);
 
-              const filteredOptions = await page.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all();
+              let filteredOptions = await ctx.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all().catch(() => []);
+              if (filteredOptions.length === 0) {
+                filteredOptions = await page.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all().catch(() => []);
+              }
+
               for (const fOpt of filteredOptions) {
                 const text = (await fOpt.textContent().catch(() => ''))?.trim() ?? '';
-                if (matchesOptionSafely(text, answer)) {
-                  await fOpt.click().catch(() => null);
+                if (matchesOptionSafely(text, answer) || matchesOptionSafely(text, searchKeyword)) {
+                  await fOpt.scrollIntoViewIfNeeded().catch(() => null);
+                  await fOpt.click({ force: true }).catch(() => null);
                   matchedAndClicked = true;
                   break;
                 }
               }
 
-              if (!matchedAndClicked) {
-                const firstFiltered = page.locator('.select__option, [id*="-option-"], [role="option"]').first();
-                if ((await firstFiltered.count() > 0) && (await firstFiltered.isVisible().catch(() => false))) {
+              if (!matchedAndClicked && filteredOptions.length > 0) {
+                const firstFiltered = filteredOptions[0];
+                if ((await firstFiltered.count().catch(() => 0)) > 0 && (await firstFiltered.isVisible().catch(() => false))) {
                   const firstText = (await firstFiltered.textContent().catch(() => ''))?.trim() ?? '';
-                  if (matchesOptionSafely(firstText, answer)) {
-                    await firstFiltered.click().catch(() => null);
+                  if (matchesOptionSafely(firstText, answer) || matchesOptionSafely(firstText, searchKeyword)) {
+                    await firstFiltered.scrollIntoViewIfNeeded().catch(() => null);
+                    await firstFiltered.click({ force: true }).catch(() => null);
                     matchedAndClicked = true;
                   }
                 }
+              }
+
+              if (!matchedAndClicked) {
+                await reactInput.press('Enter').catch(() => null);
+                await page.waitForTimeout(200);
               }
             }
 
             await page.waitForTimeout(250);
 
-            // Verify whether value committed
+            // 3. Verify whether value committed
             const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i], [class*="ValueContainer" i]').first();
             if (await valContainer.count() > 0) {
               const committed = ((await valContainer.textContent().catch(() => '')) || '').trim();
-              if (committed && !/select\.\.\.|choose\.\.\.|select an option/i.test(committed)) {
+              if (committed && !/^(select\.\.\.|choose\.\.\.|select an option|\-\-)/i.test(committed)) {
                 return true;
               }
             }

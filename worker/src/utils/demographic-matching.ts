@@ -83,20 +83,34 @@ export function matchesOptionSafely(optionText: string, targetValue: string): bo
     return /decline|prefer not|do not wish|choose not/i.test(opt);
   }
 
-  // Yes / No
-  if (/^yes$/i.test(target)) {
-    return /^yes\b|affirmative|i agree/i.test(opt) && !/^no\b/i.test(opt);
-  }
-  if (/^no$/i.test(target)) {
-    return /^no\b|negative|i do not|none/i.test(opt) && !/^yes\b/i.test(opt);
+  // Yes / Consent / Agree
+  if (/^yes$/i.test(target) || /consent|agree|accept|affirmative/i.test(target)) {
+    if (/^no\b|i do not|decline|reject/i.test(opt)) return false;
+    return /^yes\b|affirmative|i agree|i consent|consent|accept/i.test(opt);
   }
 
-  // Race / Ethnicity / Veteran / Disability or custom text matching
+  // No / Decline / Do not consent
+  if (/^no$/i.test(target) || /do not consent|decline|reject/i.test(target)) {
+    if (/^yes\b|affirmative|i agree|i consent/i.test(opt) && !/do not/i.test(opt)) return false;
+    return /^no\b|negative|i do not|none|decline|do not consent/i.test(opt);
+  }
+
+  // Punctuation & whitespace normalized exact/substring matching (e.g., "Job Board (Indeed, Glassdoor, etc.)" vs "Job Board")
+  const cleanOpt = opt.replace(/[\(\)\[\],.\-\/]/g, ' ').replace(/\s+/g, ' ').trim();
+  const cleanTarget = target.replace(/[\(\)\[\],.\-\/]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (cleanOpt === cleanTarget) return true;
+  if (cleanOpt.length >= 4 && cleanTarget.length >= 4) {
+    if (cleanOpt.includes(cleanTarget) || cleanTarget.includes(cleanOpt)) return true;
+  }
+
+  // Fallback word regex matching
   const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const wordRegex = new RegExp(`\\b${escaped}\\b`, 'i');
-  if (wordRegex.test(opt)) return true;
+  try {
+    const wordRegex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (wordRegex.test(opt)) return true;
+  } catch {}
 
-  // Substring inclusion only if lengths are reasonably close (avoid tiny substrings matching large unrelated text)
+  // Direct substring inclusion
   if (opt.includes(target) && target.length >= 4) {
     return true;
   }
