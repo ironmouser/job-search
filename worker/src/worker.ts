@@ -65,7 +65,7 @@ export class WorkerProcess implements AutomationWorker {
     // bounded now, but defense in depth: nothing should ever outlive this.
     // Generous because legitimate runs include up to 5 interventions at 5 min
     // each plus slow multi-step forms.
-    const SESSION_DEADLINE_MS = parseInt(process.env.SESSION_TIMEOUT_MS ?? '45 * 60 * 1000', 10);
+    const SESSION_DEADLINE_MS = parseInt(process.env.SESSION_TIMEOUT_MS ?? '2700000', 10); // 45 min
     let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
     const deadline = new Promise<never>((_, reject) => {
       deadlineTimer = setTimeout(
