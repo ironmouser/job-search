@@ -982,6 +982,13 @@ export class UniversalQuestionResolver {
           return true;
         }
       } else if (question.type === 'text') {
+        // If container actually has a dropdown/select element, delegate directly to select logic
+        const hasSelectElement =
+          (await container.locator('select, .select__control, .select-shell, [role="combobox"], button[aria-haspopup="listbox"], button[aria-haspopup="true"], div.select, [class*="select__control" i]').count().catch(() => 0)) > 0;
+        if (hasSelectElement) {
+          return this.fillSingleQuestion(ctx, { ...question, type: 'select' }, answer, logger);
+        }
+
         // Native date inputs require ISO (yyyy-mm-dd) via fill(); keyboard entry gets mangled
         const nativeDateInput = container.locator('input[type="date"]').first();
         if ((await nativeDateInput.count().catch(() => 0)) > 0) {
@@ -998,7 +1005,7 @@ export class UniversalQuestionResolver {
           return true;
         }
 
-        const input = container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
+        const input = container.locator('input[type="text"]:not(.select__input):not([role="combobox"]), input[type="url"], input[type="tel"], input:not([type]):not(.select__input):not([role="combobox"])').first();
         if (await input.count() > 0) {
           await input.click().catch(() => null);
           await replaceValue(input, answer);
@@ -1067,8 +1074,22 @@ export class UniversalQuestionResolver {
             }
           }
         } else {
-          // React Select
-          const control = container.locator('.select__control, .select-shell').first();
+          // React Select, ARIA listbox, or custom dropdown
+          const control = container.locator([
+            '.select__control',
+            '.select-shell',
+            '[role="combobox"]',
+            'button[aria-haspopup="listbox"]',
+            'button[aria-haspopup="true"]',
+            'div[aria-haspopup="listbox"]',
+            '[data-automation-id*="select" i]',
+            '[data-automation-id*="dropdown" i]',
+            '[data-testid*="select" i]',
+            '[data-testid*="dropdown" i]',
+            '[class*="select__control" i]',
+            '[class*="select-control" i]',
+            '[class*="dropdown" i]',
+          ].join(', ')).first();
           const reactInput = container.locator('input.select__input, input[role="combobox"]').first();
           const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
 
@@ -1079,7 +1100,7 @@ export class UniversalQuestionResolver {
             let matchedAndClicked = false;
 
             // First check popup options directly with matchesOptionSafely
-            const optionEls = await page.locator('.select__option, [id*="-option-"], [role="option"]').all();
+            const optionEls = await page.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all();
             for (const optEl of optionEls) {
               const text = (await optEl.textContent().catch(() => ''))?.trim() ?? '';
               if (matchesOptionSafely(text, answer)) {
@@ -1089,12 +1110,13 @@ export class UniversalQuestionResolver {
               }
             }
 
+            // If not found in open popup, use search/filter input to filter options and CLICK the matched option
             if (!matchedAndClicked && (await reactInput.count() > 0)) {
               await reactInput.focus().catch(() => null);
               await replaceValue(reactInput, answer);
               await page.waitForTimeout(300);
 
-              const filteredOptions = await page.locator('.select__option, [id*="-option-"], [role="option"]').all();
+              const filteredOptions = await page.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all();
               for (const fOpt of filteredOptions) {
                 const text = (await fOpt.textContent().catch(() => ''))?.trim() ?? '';
                 if (matchesOptionSafely(text, answer)) {
@@ -1119,10 +1141,10 @@ export class UniversalQuestionResolver {
             await page.waitForTimeout(250);
 
             // Verify whether value committed
-            const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i]').first();
+            const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i], [class*="ValueContainer" i]').first();
             if (await valContainer.count() > 0) {
               const committed = ((await valContainer.textContent().catch(() => '')) || '').trim();
-              if (committed && !/select\.\.\.|choose\.\.\./i.test(committed)) {
+              if (committed && !/select\.\.\.|choose\.\.\.|select an option/i.test(committed)) {
                 return true;
               }
             }

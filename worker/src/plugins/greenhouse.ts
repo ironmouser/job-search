@@ -514,31 +514,8 @@ export class GreenhousePlugin extends ATSPlugin {
       }
       if (!label) continue;
 
-      // 1. Text inputs (LinkedIn, Website, Phone, Location, etc.)
-      const textInput = container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
-      if (await textInput.count() > 0 && await textInput.isVisible().catch(() => false)) {
-        let answer = '';
-        if (label.includes('linkedin')) {
-          answer = profile.linkedinUrl ?? '';
-        } else if (label.includes('website') || label.includes('portfolio') || label.includes('github')) {
-          answer = profile.websiteUrl ?? '';
-        } else if (label.includes('phone') && profile.phone) {
-          answer = profile.phone;
-        } else if ((label.includes('location') || label.includes('city')) && profile.location) {
-          answer = profile.location;
-        }
-
-        if (answer) {
-          const currentVal = await textInput.inputValue().catch(() => '');
-          if (!currentVal) {
-            await this.typeHumanized(ctx, textInput, answer);
-            await logger.info('question_answered', `Custom text field populated: "${label.substring(0, 50)}"`);
-          }
-        }
-      }
-
-      // 2. Dropdowns: React Select or native <select>
-      const hasSelect = (await container.locator('.select-shell, .select__control, select, input.select__input').count()) > 0;
+      // 1. Dropdowns: React Select, native <select>, or custom comboboxes (MUST be evaluated before text inputs)
+      const hasSelect = (await container.locator('.select-shell, .select__control, select, [role="combobox"], div.select').count()) > 0;
       if (hasSelect) {
         let targetValue = '';
 
@@ -650,6 +627,31 @@ export class GreenhousePlugin extends ATSPlugin {
             await logger.warn('question_error', `Failed to answer dropdown: ${label.substring(0, 50)}`, { error: err.message });
           }
         }
+        continue;
+      }
+
+      // 2. Real text inputs (LinkedIn, Website, Phone, Location, etc.) — strictly excluding dropdown combobox inputs
+      const textInput = container.locator('input[type="text"]:not(.select__input):not([role="combobox"]), input[type="url"], input[type="tel"]').first();
+      if (await textInput.count() > 0 && await textInput.isVisible().catch(() => false)) {
+        let answer = '';
+        if (label.includes('linkedin')) {
+          answer = profile.linkedinUrl ?? '';
+        } else if (label.includes('website') || label.includes('portfolio') || label.includes('github')) {
+          answer = profile.websiteUrl ?? '';
+        } else if (label.includes('phone') && profile.phone) {
+          answer = profile.phone;
+        } else if ((label.includes('location') || label.includes('city')) && profile.location) {
+          answer = profile.location;
+        }
+
+        if (answer) {
+          const currentVal = await textInput.inputValue().catch(() => '');
+          if (!currentVal) {
+            await this.typeHumanized(ctx, textInput, answer);
+            await logger.info('question_answered', `Custom text field populated: "${label.substring(0, 50)}"`);
+          }
+        }
+        continue;
       }
 
       // 3. Radio buttons
