@@ -440,4 +440,251 @@ export async function sendInitialJobSearchNotificationEmail({
   }
 }
 
+// ─── Recruiter Network Notification Emails ────────────────────────────────────
+
+export async function sendIntroductionRequestEmail({
+  to,
+  candidateName,
+  recruiterName,
+  recruiterTitle,
+  orgName,
+  jobTitle,
+  jobLocation,
+  introPublicId,
+}: {
+  to: string;
+  candidateName?: string | null;
+  recruiterName: string;
+  recruiterTitle: string;
+  orgName: string;
+  jobTitle: string;
+  jobLocation: string;
+  introPublicId: string;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@contact.jobagenthq.com>';
+    const appUrl = process.env.NEXTAUTH_URL || 'https://www.jobagenthq.com';
+    const actionUrl = `${appUrl}/settings?tab=introductions&id=${introPublicId}`;
+
+    const greeting = candidateName ? `Hi ${candidateName.split(' ')[0]},` : 'Hi,';
+    const subject = `New Recruiter Introduction Request: ${jobTitle} at ${orgName}`;
+
+    const htmlMessage = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div style="margin-bottom: 24px; text-align: center;">
+          <h1 style="color: #2563eb; font-size: 24px; font-weight: 700; margin: 0;">Job Agent HQ</h1>
+        </div>
+        <p style="font-size: 16px; font-weight: 600; color: #0f172a;">${greeting}</p>
+        <p style="font-size: 15px; margin-bottom: 16px;">
+          A verified recruiter on the Job Agent Network has requested an introduction to discuss an active role with you.
+        </p>
+        <div style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 16px 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 4px 0;"><strong>Position:</strong> ${jobTitle}</p>
+          <p style="margin: 4px 0;"><strong>Location:</strong> ${jobLocation}</p>
+          <p style="margin: 4px 0;"><strong>Recruiter:</strong> ${recruiterName} (${recruiterTitle})</p>
+          <p style="margin: 4px 0;"><strong>Organization:</strong> ${orgName}</p>
+          <p style="margin: 4px 0; font-size: 13px; color: #64748b;">Reference ID: ${introPublicId}</p>
+        </div>
+        <p style="font-size: 14px; color: #475569; margin-bottom: 24px;">
+          Your private contact information has not been shared. It will only be provided if you choose to accept this introduction request.
+        </p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${actionUrl}" style="background: #2563eb; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            Review Introduction Request
+          </a>
+        </div>
+        <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-top: 32px;">
+          Job Agent HQ Recruiter Network
+        </p>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pass}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ from, to, subject, html: htmlMessage }),
+      });
+      if (response.ok) return { success: true };
+    }
+
+    const host = process.env.EMAIL_SERVER_HOST;
+    const port = parseInt(process.env.EMAIL_SERVER_PORT || '587', 10);
+    const user = process.env.EMAIL_SERVER_USER;
+
+    if (!host || !user || !pass) {
+      console.log('DEV FALLBACK - Intro Request Email:', { to, subject, introPublicId });
+      return { success: true, devMode: true };
+    }
+
+    const nodemailer = (await import('nodemailer')).default;
+    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    await transporter.sendMail({ from, to, subject, html: htmlMessage });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to send introduction request email:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function sendIntroductionAcceptedEmail({
+  to,
+  recruiterName,
+  candidateName,
+  candidateEmail,
+  jobTitle,
+  introPublicId,
+}: {
+  to: string;
+  recruiterName: string;
+  candidateName: string;
+  candidateEmail: string;
+  jobTitle: string;
+  introPublicId: string;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@contact.jobagenthq.com>';
+    const appUrl = process.env.NEXTAUTH_URL || 'https://www.jobagenthq.com';
+    const pipelineUrl = `${appUrl}/recruiter/pipeline`;
+
+    const subject = `Introduction Accepted: ${candidateName} for ${jobTitle}`;
+
+    const htmlMessage = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <h2 style="color: #16a34a; font-size: 20px; font-weight: 700; margin-top: 0;">Introduction Request Accepted</h2>
+        <p>Great news ${recruiterName}, <strong>${candidateName}</strong> has accepted your introduction request for the role of <strong>${jobTitle}</strong>.</p>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 4px 0;"><strong>Candidate:</strong> ${candidateName}</p>
+          <p style="margin: 4px 0;"><strong>Email:</strong> <a href="mailto:${candidateEmail}">${candidateEmail}</a></p>
+          <p style="margin: 4px 0; font-size: 13px; color: #64748b;">Reference ID: ${introPublicId}</p>
+        </div>
+        <p>You can now reach out directly to coordinate interview steps.</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${pipelineUrl}" style="background: #16a34a; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            View in Pipeline
+          </a>
+        </div>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${pass}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to, subject, html: htmlMessage }),
+      });
+      return { success: true };
+    }
+
+    const host = process.env.EMAIL_SERVER_HOST;
+    const port = parseInt(process.env.EMAIL_SERVER_PORT || '587', 10);
+    const user = process.env.EMAIL_SERVER_USER;
+    if (!host || !user || !pass) {
+      console.log('DEV FALLBACK - Intro Accepted Email:', { to, candidateEmail, introPublicId });
+      return { success: true, devMode: true };
+    }
+    const nodemailer = (await import('nodemailer')).default;
+    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    await transporter.sendMail({ from, to, subject, html: htmlMessage });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to send intro accepted email:', err);
+    return { success: false };
+  }
+}
+
+export async function sendIntroductionDeclinedEmail({
+  to,
+  recruiterName,
+  jobTitle,
+  introPublicId,
+}: {
+  to: string;
+  recruiterName: string;
+  jobTitle: string;
+  introPublicId: string;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@contact.jobagenthq.com>';
+    const subject = `Update on Introduction Request: ${jobTitle}`;
+
+    const htmlMessage = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <p>Hi ${recruiterName},</p>
+        <p>The candidate has politely declined the introduction request for <strong>${jobTitle}</strong> (Ref: ${introPublicId}).</p>
+        <p>Your pipeline has been updated. You can continue discovering other qualified matches on your dashboard.</p>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${pass}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to, subject, html: htmlMessage }),
+      });
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+export async function sendHireConfirmationEmail({
+  to,
+  candidateName,
+  recruiterName,
+  orgName,
+  jobTitle,
+  placementId,
+}: {
+  to: string;
+  candidateName?: string | null;
+  recruiterName: string;
+  orgName: string;
+  jobTitle: string;
+  placementId: string;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@contact.jobagenthq.com>';
+    const appUrl = process.env.NEXTAUTH_URL || 'https://www.jobagenthq.com';
+    const confirmUrl = `${appUrl}/settings?tab=placements&id=${placementId}`;
+
+    const greeting = candidateName ? `Hi ${candidateName.split(' ')[0]},` : 'Hi,';
+    const subject = `Congratulations on your new role: ${jobTitle} at ${orgName}!`;
+
+    const htmlMessage = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <h2 style="color: #2563eb; margin-top: 0;">Congratulations on your offer!</h2>
+        <p style="font-weight: 600;">${greeting}</p>
+        <p>${recruiterName} from ${orgName} has reported that you have been offered or placed in the role of <strong>${jobTitle}</strong>.</p>
+        <p>Please take a moment to confirm this milestone in your Job Agent HQ dashboard.</p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${confirmUrl}" style="background: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            Confirm Placement
+          </a>
+        </div>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${pass}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to, subject, html: htmlMessage }),
+      });
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+
 

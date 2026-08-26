@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateWorker } from '@/lib/auto-apply/worker-auth';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
+import { healLocation } from '@/lib/locationNormalizer';
 
 /**
  * GET /api/worker/queue/poll
@@ -101,18 +102,18 @@ export async function GET(request: NextRequest) {
       name: userName,
       email: userEmail,
       phone: prefs?.phone || extractPhone(resumeText) || undefined,
-      location: prefs?.location || extractLocation(resumeText) || undefined,
+      location: healLocation(prefs?.location || extractLocation(resumeText)) || undefined,
       streetAddress: (prefs as any)?.streetAddress || undefined,
-      city: (prefs as any)?.city || undefined,
-      state: (prefs as any)?.state || undefined,
+      city: healLocation((prefs as any)?.city) || undefined,
+      state: healLocation((prefs as any)?.state) || undefined,
       postalCode: (prefs as any)?.postalCode || undefined,
       linkedinUrl: prefs?.linkedinUrl || undefined,
       githubUrl: prefs?.githubUrl || undefined,
       websiteUrl: prefs?.websiteUrl || undefined,
       usWorkAuthorization: prefs?.usWorkAuthorization ?? undefined,
-      workingRemotelyFrom: prefs?.workingRemotelyFrom ?? undefined,
+      workingRemotelyFrom: healLocation(prefs?.workingRemotelyFrom) ?? undefined,
       visaSponsorship: prefs?.visaSponsorship ?? undefined,
-      country: prefs?.country ?? undefined,
+      country: healLocation(prefs?.country) ?? undefined,
       eeocRace: prefs?.eeocRace ?? undefined,
       eeocGender: prefs?.eeocGender ?? undefined,
       eeocVeteran: prefs?.eeocVeteran ?? undefined,

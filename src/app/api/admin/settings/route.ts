@@ -72,6 +72,10 @@ export async function POST(request: Request) {
         aiOpportunityScoringIsPro: data.aiOpportunityScoringIsPro,
         aiAssetGenerationIsPro: data.aiAssetGenerationIsPro,
         aiQaHelperIsPro: data.aiQaHelperIsPro,
+
+        recruiterNetworkEnabled: data.recruiterNetworkEnabled,
+        recruiterPortalEnabled: data.recruiterPortalEnabled,
+        recruiterDiscoveryEnabled: data.recruiterDiscoveryEnabled,
       },
       create: {
         id: 'system',
@@ -110,6 +114,10 @@ export async function POST(request: Request) {
         aiOpportunityScoringIsPro: data.aiOpportunityScoringIsPro ?? true,
         aiAssetGenerationIsPro: data.aiAssetGenerationIsPro ?? true,
         aiQaHelperIsPro: data.aiQaHelperIsPro ?? true,
+
+        recruiterNetworkEnabled: data.recruiterNetworkEnabled ?? false,
+        recruiterPortalEnabled: data.recruiterPortalEnabled ?? false,
+        recruiterDiscoveryEnabled: data.recruiterDiscoveryEnabled ?? false,
       }
     });
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Sparkles, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, MessageSquareHeart, Users, Mail, Cpu, Activity, Zap, User } from 'lucide-react';
+import { LayoutDashboard, Sparkles, Briefcase, BarChart2, Settings, FileText, Menu, X, LogIn, LogOut, Shield, HelpCircle, ChevronLeft, ChevronRight, MessageSquareHeart, Users, Mail, Cpu, Activity, Zap, User, UserCheck } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useHelp } from '@/contexts/HelpContext';
 import { getAssetUrl } from '@/lib/assets';
@@ -217,6 +217,12 @@ export default function Navigation() {
                 <Link href="/settings" className={pathname === '/settings' ? 'active' : ''} onClick={closeMenu} title="Settings" data-tour="settings-menu">
                   <Settings size={16} />
                   <span className="nav-text">Settings</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/recruiter" className={pathname.startsWith('/recruiter') ? 'active' : ''} onClick={closeMenu} title="Recruiter Portal">
+                  <UserCheck size={16} style={{ color: pathname.startsWith('/recruiter') ? undefined : '#38bdf8' }} />
+                  <span className="nav-text">Recruiter Portal</span>
                 </Link>
               </li>
               <li className="nav-item">

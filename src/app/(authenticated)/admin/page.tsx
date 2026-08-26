@@ -60,6 +60,10 @@ interface GlobalSettings {
   aiOpportunityScoringIsPro: boolean;
   aiAssetGenerationIsPro: boolean;
   aiQaHelperIsPro: boolean;
+
+  recruiterNetworkEnabled?: boolean;
+  recruiterPortalEnabled?: boolean;
+  recruiterDiscoveryEnabled?: boolean;
 }
 
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => {
@@ -191,6 +195,10 @@ export default function AdminDashboard() {
     aiOpportunityScoringIsPro: true,
     aiAssetGenerationIsPro: true,
     aiQaHelperIsPro: true,
+
+    recruiterNetworkEnabled: false,
+    recruiterPortalEnabled: false,
+    recruiterDiscoveryEnabled: false,
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -311,6 +319,10 @@ export default function AdminDashboard() {
               aiOpportunityScoringIsPro: data.aiOpportunityScoringIsPro ?? true,
               aiAssetGenerationIsPro: data.aiAssetGenerationIsPro ?? true,
               aiQaHelperIsPro: data.aiQaHelperIsPro ?? true,
+
+              recruiterNetworkEnabled: data.recruiterNetworkEnabled ?? false,
+              recruiterPortalEnabled: data.recruiterPortalEnabled ?? false,
+              recruiterDiscoveryEnabled: data.recruiterDiscoveryEnabled ?? false,
             });
           }
         })
@@ -1192,6 +1204,47 @@ export default function AdminDashboard() {
                     <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Automatically crawls and scans linked user mailboxes to discover job alerts.</div>
                   </div>
                   <ToggleSwitch checked={settings.emailsSyncIsPro} onChange={() => setSettings({ ...settings, emailsSyncIsPro: !settings.emailsSyncIsPro })} />
+                </div>
+              </div>
+
+              {/* Category: Recruiter Network Rollout */}
+              <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                <h4 style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--text-primary)", fontSize: "1.1rem", borderBottom: "1px solid var(--border-glass)", paddingBottom: "0.5rem" }}>
+                  <Users size={18} className="text-accent" /> Recruiter Network (Beta Rollout)
+                </h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Recruiter Network Core</div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Master switch for recruiter network matching and attribution.</div>
+                    </div>
+                    <ToggleSwitch
+                      checked={Boolean(settings.recruiterNetworkEnabled)}
+                      onChange={() => setSettings({ ...settings, recruiterNetworkEnabled: !settings.recruiterNetworkEnabled })}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Recruiter Portal UI</div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Enables recruiter dashboard, job opening management, and candidate search interface.</div>
+                    </div>
+                    <ToggleSwitch
+                      checked={Boolean(settings.recruiterPortalEnabled)}
+                      onChange={() => setSettings({ ...settings, recruiterPortalEnabled: !settings.recruiterPortalEnabled })}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.75rem", background: "rgba(255,255,255,0.01)", border: "1px solid var(--border-glass)", borderRadius: "8px" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Candidate Discovery Settings</div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Displays recruiter visibility and opt-in controls in candidate settings.</div>
+                    </div>
+                    <ToggleSwitch
+                      checked={Boolean(settings.recruiterDiscoveryEnabled)}
+                      onChange={() => setSettings({ ...settings, recruiterDiscoveryEnabled: !settings.recruiterDiscoveryEnabled })}
+                    />
+                  </div>
                 </div>
               </div>
 

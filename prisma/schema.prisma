@@ -261,6 +261,11 @@ model GlobalSettings {
   aiQaHelperIsPro           Boolean @default(true) @map("ai_qa_helper_is_pro")
   autoApplyIsPro            Boolean @default(true) @map("auto_apply_is_pro")
 
+  // Recruiter Network Feature Flags
+  recruiterNetworkEnabled   Boolean @default(false) @map("recruiter_network_enabled")
+  recruiterPortalEnabled    Boolean @default(false) @map("recruiter_portal_enabled")
+  recruiterDiscoveryEnabled Boolean @default(false) @map("recruiter_discovery_enabled")
+
   @@map("global_settings")
 }
 
@@ -320,6 +325,15 @@ model User {
   collisionLogsPrimary AccountCollisionLog[]   @relation("CollisionPrimary")
   upgradeEvents        UpgradeEvent[]
   connectedJobBoards   ConnectedJobBoard[]
+
+  // Recruiter Network Relations
+  recruiterProfile       RecruiterProfile?
+  candidateConsents      CandidateConsent[]        @relation("CandidateConsents")
+  consentEvents          ConsentEvent[]            @relation("CandidateConsentEvents")
+  intentSnapshots        CandidateIntentSnapshot[] @relation("CandidateIntentSnapshots")
+  recruiterMatches       RecruiterJobMatch[]       @relation("CandidateMatches")
+  candidateIntroductions Introduction[]            @relation("CandidateIntroductions")
+  candidatePlacements    PlacementEvent[]          @relation("CandidatePlacements")
 }
 
 
@@ -716,5 +730,374 @@ model ConnectedJobBoard {
   @@index([userId])
   @@map("connected_job_boards")
 }
+
+// ─── Recruiter Network Enums ──────────────────────────────────────────────────
+
+enum RecruiterOrgType {
+  RECRUITING_AGENCY
+  INTERNAL_RECRUITING
+  STAFFING_FIRM
+  EXECUTIVE_SEARCH
+  EMPLOYER
+}
+
+enum RecruiterVerificationStatus {
+  PENDING
+  VERIFIED
+  SUSPENDED
+  REJECTED
+}
+
+enum RecruiterRole {
+  OWNER
+  ADMIN
+  RECRUITER
+  RESEARCHER
+}
+
+enum RecruiterJobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  FILLED
+  CLOSED
+  ARCHIVED
+}
+
+enum CandidateConsentType {
+  RECRUITER_DISCOVERY
+  RECRUITER_INTRODUCTION
+  CONTACT_INFORMATION_SHARING
+  RESUME_SHARING
+}
+
+enum ConsentStatus {
+  GRANTED
+  REVOKED
+}
+
+enum ConsentEventType {
+  GRANTED
+  REVOKED
+  UPDATED
+}
+
+enum MatchIntentLevel {
+  HIGH
+  MEDIUM
+  LOW
+  UNKNOWN
+}
+
+enum RecruiterMatchStatus {
+  NEW
+  VIEWED
+  SAVED
+  INTRO_REQUESTED
+  INTRO_ACCEPTED
+  INTRO_DECLINED
+  DISMISSED
+}
+
+enum IntroductionStatus {
+  REQUESTED
+  VIEWED
+  ACCEPTED
+  DECLINED
+  CONTACT_SHARED
+  WITHDRAWN
+  INTERVIEW
+  OFFER
+  HIRED
+  CLOSED
+}
+
+enum IntroductionEventType {
+  INTRODUCTION_REQUESTED
+  CANDIDATE_VIEWED
+  CANDIDATE_ACCEPTED
+  CANDIDATE_DECLINED
+  CONTACT_SHARED
+  STAGE_CHANGED
+  RECRUITER_MARKED_INTERVIEW
+  RECRUITER_MARKED_OFFER
+  RECRUITER_MARKED_HIRED
+  CANDIDATE_CONFIRMED_HIRE
+  INTRODUCTION_CLOSED
+}
+
+enum PlacementStatus {
+  REPORTED
+  CANDIDATE_PENDING_CONFIRMATION
+  CONFIRMED
+  DISPUTED
+  CANCELLED
+}
+
+// ─── Recruiter Organization ───────────────────────────────────────────────────
+
+model RecruiterOrganization {
+  id                 String                      @id @default(uuid()) @db.Uuid
+  name               String
+  type               RecruiterOrgType            @default(RECRUITING_AGENCY)
+  website            String?
+  description        String?                     @db.Text
+  logoUrl            String?                     @map("logo_url")
+  verificationStatus RecruiterVerificationStatus @default(PENDING) @map("verification_status")
+  verifiedAt         DateTime?                   @map("verified_at") @db.Timestamptz(6)
+  verifiedBy         String?                     @map("verified_by")
+  rejectionReason    String?                     @map("rejection_reason")
+  createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  recruiters      RecruiterProfile[]
+  jobs            RecruiterJob[]
+  introductions   Introduction[]
+  placementEvents PlacementEvent[]
+
+  @@index([verificationStatus])
+  @@map("recruiter_organizations")
+}
+
+// ─── Recruiter Profile ────────────────────────────────────────────────────────
+
+model RecruiterProfile {
+  id                 String                      @id @default(uuid()) @db.Uuid
+  userId             String                      @unique @map("user_id")
+  organizationId     String                      @map("organization_id") @db.Uuid
+  firstName          String                      @map("first_name")
+  lastName           String                      @map("last_name")
+  title              String
+  businessEmail      String                      @map("business_email")
+  profilePhotoUrl    String?                     @map("profile_photo_url")
+  bio                String?                     @db.Text
+  linkedinUrl        String?                     @map("linkedin_url")
+  role               RecruiterRole               @default(RECRUITER)
+  verificationStatus RecruiterVerificationStatus @default(PENDING) @map("verification_status")
+  verifiedAt         DateTime?                   @map("verified_at") @db.Timestamptz(6)
+  createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdJobs     RecruiterJob[]
+  introductions   Introduction[]
+  placementEvents PlacementEvent[]
+
+  @@index([organizationId])
+  @@index([verificationStatus])
+  @@map("recruiter_profiles")
+}
+
+// ─── Candidate Consent ────────────────────────────────────────────────────────
+
+model CandidateConsent {
+  id            String               @id @default(uuid()) @db.Uuid
+  candidateId   String               @map("candidate_id")
+  consentType   CandidateConsentType @map("consent_type")
+  status        ConsentStatus        @default(GRANTED)
+  policyVersion String               @default("1.0") @map("policy_version")
+  grantedAt     DateTime?            @map("granted_at") @db.Timestamptz(6)
+  revokedAt     DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  source        String               @default("settings")
+  metadata      Json?
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  candidate User           @relation("CandidateConsents", fields: [candidateId], references: [id], onDelete: Cascade)
+  events    ConsentEvent[]
+
+  @@unique([candidateId, consentType])
+  @@index([candidateId, status])
+  @@index([consentType, status])
+  @@map("candidate_consents")
+}
+
+model ConsentEvent {
+  id            String           @id @default(uuid()) @db.Uuid
+  candidateId   String           @map("candidate_id")
+  consentId     String           @map("consent_id") @db.Uuid
+  eventType     ConsentEventType @map("event_type")
+  policyVersion String           @default("1.0") @map("policy_version")
+  ipAddress     String?          @map("ip_address")
+  userAgent     String?          @map("user_agent")
+  metadata      Json?
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  candidate User             @relation("CandidateConsentEvents", fields: [candidateId], references: [id], onDelete: Cascade)
+  consent   CandidateConsent @relation(fields: [consentId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId, createdAt(sort: Desc)])
+  @@index([consentId])
+  @@map("consent_events")
+}
+
+// ─── Candidate Intent Snapshot (Independent from Job Fit) ─────────────────────
+
+model CandidateIntentSnapshot {
+  id                 String           @id @default(uuid()) @db.Uuid
+  candidateId        String           @map("candidate_id")
+  intentLevel        MatchIntentLevel @map("intent_level")
+  intentScore        Int              @map("intent_score")
+  calculationVersion String           @default("v1") @map("calculation_version")
+  calculatedAt       DateTime         @default(now()) @map("calculated_at") @db.Timestamptz(6)
+  expiresAt          DateTime         @map("expires_at") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  candidate User @relation("CandidateIntentSnapshots", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId, calculatedAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("candidate_intent_snapshots")
+}
+
+// ─── Recruiter Jobs ───────────────────────────────────────────────────────────
+
+model RecruiterJob {
+  id                    String             @id @default(uuid()) @db.Uuid
+  publicId              String             @unique @map("public_id")
+  organizationId        String             @map("organization_id") @db.Uuid
+  createdByRecruiterId  String             @map("created_by_recruiter_id") @db.Uuid
+  title                 String
+  description           String             @db.Text
+  normalizedDescription String?            @map("normalized_description") @db.Text
+  seniority             String?
+  requiredSkills        String[]           @default([]) @map("required_skills")
+  preferredSkills       String[]           @default([]) @map("preferred_skills")
+  experienceMinYears    Int?               @map("experience_min_years")
+  location              String?
+  remoteType            String?            @default("REMOTE") @map("remote_type")
+  employmentType        String?            @default("FULL_TIME") @map("employment_type")
+  salaryMin             Int?               @map("salary_min")
+  salaryMax             Int?               @map("salary_max")
+  salaryCurrency        String             @default("USD") @map("salary_currency")
+  status                RecruiterJobStatus @default(ACTIVE)
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization    RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recruiter       RecruiterProfile      @relation(fields: [createdByRecruiterId], references: [id], onDelete: Cascade)
+  matches         RecruiterJobMatch[]
+  introductions   Introduction[]
+  placementEvents PlacementEvent[]
+
+  @@index([organizationId, status])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("recruiter_jobs")
+}
+
+// ─── Recruiter Job Match (Job Fit specific) ───────────────────────────────────
+
+model RecruiterJobMatch {
+  id             String               @id @default(uuid()) @db.Uuid
+  recruiterJobId String               @map("recruiter_job_id") @db.Uuid
+  candidateId    String               @map("candidate_id")
+  jobFitScore    Int                  @map("job_fit_score")
+  matchReasons   Json                 @map("match_reasons")
+  matchVersion   String               @default("v1") @map("match_version")
+  status         RecruiterMatchStatus @default(NEW)
+  scoredAt       DateTime             @default(now()) @map("scored_at") @db.Timestamptz(6)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  recruiterJob  RecruiterJob   @relation(fields: [recruiterJobId], references: [id], onDelete: Cascade)
+  candidate     User           @relation("CandidateMatches", fields: [candidateId], references: [id], onDelete: Cascade)
+  introductions Introduction[]
+
+  @@unique([recruiterJobId, candidateId])
+  @@index([recruiterJobId, jobFitScore(sort: Desc)])
+  @@index([candidateId])
+  @@map("recruiter_job_matches")
+}
+
+// ─── Introduction (Core Attribution Object) ───────────────────────────────────
+
+model Introduction {
+  id                    String             @id @default(uuid()) @db.Uuid
+  publicId              String             @unique @map("public_id")
+  candidateId           String             @map("candidate_id")
+  recruiterId           String             @map("recruiter_id") @db.Uuid
+  organizationId        String             @map("organization_id") @db.Uuid
+  recruiterJobId        String             @map("recruiter_job_id") @db.Uuid
+  matchId               String?            @map("match_id") @db.Uuid
+
+  jobFitScore           Int?               @map("job_fit_score")
+  matchVersion          String?            @default("v1") @map("match_version")
+
+  requestedAt           DateTime           @default(now()) @map("requested_at") @db.Timestamptz(6)
+  candidateViewedAt     DateTime?          @map("candidate_viewed_at") @db.Timestamptz(6)
+  candidateResponse     String?            @map("candidate_response")
+  candidateResponseAt   DateTime?          @map("candidate_response_at") @db.Timestamptz(6)
+  acceptedAt            DateTime?          @map("accepted_at") @db.Timestamptz(6)
+  declinedAt            DateTime?          @map("declined_at") @db.Timestamptz(6)
+  contactSharedAt       DateTime?          @map("contact_shared_at") @db.Timestamptz(6)
+  currentStatus         IntroductionStatus @default(REQUESTED) @map("current_status")
+  closedAt              DateTime?          @map("closed_at") @db.Timestamptz(6)
+  attributionWindowDays Int                @default(365) @map("attribution_window_days")
+  notes                 String?            @db.Text
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  candidate       User                  @relation("CandidateIntroductions", fields: [candidateId], references: [id], onDelete: Cascade)
+  recruiter       RecruiterProfile      @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  organization    RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recruiterJob    RecruiterJob          @relation(fields: [recruiterJobId], references: [id], onDelete: Cascade)
+  match           RecruiterJobMatch?    @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  events          IntroductionEvent[]
+  placementEvents PlacementEvent[]
+
+  @@unique([recruiterJobId, candidateId])
+  @@index([organizationId, currentStatus])
+  @@index([candidateId, currentStatus])
+  @@index([recruiterId])
+  @@map("introductions")
+}
+
+// ─── Introduction Events (Append-Only Audit Log) ──────────────────────────────
+
+model IntroductionEvent {
+  id             String                @id @default(uuid()) @db.Uuid
+  introductionId String                @map("introduction_id") @db.Uuid
+  eventType      IntroductionEventType @map("event_type")
+  actorType      String                @map("actor_type")
+  actorId        String                @map("actor_id")
+  metadata       Json?
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  introduction Introduction @relation(fields: [introductionId], references: [id], onDelete: Cascade)
+
+  @@index([introductionId, createdAt])
+  @@map("introduction_events")
+}
+
+// ─── Placement Events ─────────────────────────────────────────────────────────
+
+model PlacementEvent {
+  id             String          @id @default(uuid()) @db.Uuid
+  introductionId String          @map("introduction_id") @db.Uuid
+  candidateId    String          @map("candidate_id")
+  recruiterId    String          @map("recruiter_id") @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  recruiterJobId String          @map("recruiter_job_id") @db.Uuid
+  reportedBy     String          @map("reported_by")
+  reportedAt     DateTime        @default(now()) @map("reported_at") @db.Timestamptz(6)
+  status         PlacementStatus @default(CANDIDATE_PENDING_CONFIRMATION)
+  confirmedAt    DateTime?       @map("confirmed_at") @db.Timestamptz(6)
+  notes          String?         @db.Text
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  introduction Introduction          @relation(fields: [introductionId], references: [id], onDelete: Cascade)
+  candidate    User                  @relation("CandidatePlacements", fields: [candidateId], references: [id], onDelete: Cascade)
+  recruiter    RecruiterProfile      @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  organization RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recruiterJob RecruiterJob          @relation(fields: [recruiterJobId], references: [id], onDelete: Cascade)
+
+  @@index([introductionId])
+  @@index([organizationId, status])
+  @@index([candidateId])
+  @@map("placement_events")
+}
+
 
 

@@ -7,6 +7,7 @@ import { ensureKeywordColumnsExist, ALL_PRO_SOURCES, DEFAULT_PRO_SOURCES, DEFAUL
 import { getEffectiveTier } from '@/lib/tier';
 import { logSuspiciousActivity } from '@/lib/security';
 import { extractJobTitleFromProfileOrResume } from '@/lib/recovery';
+import { healLocation } from '@/lib/locationNormalizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -241,17 +242,22 @@ export async function POST(request: Request) {
             existingPrefs?.streetAddress ||
             undefined;
 
-        const resolvedCity = data.city ||
+        const rawCity = data.city ||
             incomingCustomAnswers['city'] ||
             incomingCustomAnswers['City'] ||
             existingPrefs?.city ||
             undefined;
+        const resolvedCity = rawCity ? healLocation(rawCity) : undefined;
 
-        const resolvedState = data.state ||
+        const rawState = data.state ||
             incomingCustomAnswers['state'] ||
             incomingCustomAnswers['State'] ||
             existingPrefs?.state ||
             undefined;
+        const resolvedState = rawState ? (healLocation(rawState) || rawState) : undefined;
+
+        const rawCountry = data.country || undefined;
+        const resolvedCountry = rawCountry ? (healLocation(rawCountry) || rawCountry) : undefined;
 
         const resolvedPostalCode = data.postalCode ||
             incomingCustomAnswers['postalCode'] ||
@@ -268,9 +274,13 @@ export async function POST(request: Request) {
             ...(data.accountAuthMode ? { accountAuthMode: data.accountAuthMode } : {}),
         };
 
+        const resolvedLocation = data.location ? healLocation(data.location) : ([resolvedCity, resolvedState].filter(Boolean).join(', ') || undefined);
+        const resolvedSearchLocation = data.searchLocation ? healLocation(data.searchLocation) : data.searchLocation;
+        const resolvedWorkingRemotelyFrom = data.workingRemotelyFrom ? healLocation(data.workingRemotelyFrom) : data.workingRemotelyFrom;
+
         let updateData: any = {
             jobLevel: data.jobLevel || 'Mid-level',
-            searchLocation: data.searchLocation,
+            searchLocation: resolvedSearchLocation,
             includeKeywords: data.includeKeywords,
             excludeKeywords: data.excludeKeywords,
             remoteOnly: data.remoteOnly,
@@ -279,9 +289,9 @@ export async function POST(request: Request) {
             theme: data.theme,
             aiStrictness: data.aiStrictness,
             usWorkAuthorization: data.usWorkAuthorization,
-            workingRemotelyFrom: data.workingRemotelyFrom,
+            workingRemotelyFrom: resolvedWorkingRemotelyFrom,
             visaSponsorship: data.visaSponsorship,
-            country: data.country,
+            country: resolvedCountry,
             eeocRace: data.eeocRace,
             eeocGender: data.eeocGender,
             eeocVeteran: data.eeocVeteran,
@@ -294,7 +304,7 @@ export async function POST(request: Request) {
             willingToRelocate: data.willingToRelocate,
             defaultAccountPassword: data.defaultAccountPassword && data.defaultAccountPassword !== '********' ? encrypt(data.defaultAccountPassword) : data.defaultAccountPassword,
             phone: data.phone,
-            location: data.location || ([resolvedCity, resolvedState].filter(Boolean).join(', ') || undefined),
+            location: resolvedLocation,
             streetAddress: resolvedStreetAddress,
             city: resolvedCity,
             state: resolvedState,
@@ -345,7 +355,7 @@ export async function POST(request: Request) {
                 userId: session.user.id,
                 searchKeyword: data.searchKeyword || '',
                 jobLevel: data.jobLevel || 'Mid-level',
-                searchLocation: data.searchLocation || '',
+                searchLocation: resolvedSearchLocation || '',
                 includeKeywords: data.includeKeywords || '',
                 excludeKeywords: data.excludeKeywords || '',
                 remoteOnly: data.remoteOnly || false,
@@ -354,9 +364,9 @@ export async function POST(request: Request) {
                 theme: data.theme || 'light',
                 aiStrictness: data.aiStrictness || 'Standard',
                 usWorkAuthorization: data.usWorkAuthorization || '',
-                workingRemotelyFrom: data.workingRemotelyFrom || '',
+                workingRemotelyFrom: resolvedWorkingRemotelyFrom || '',
                 visaSponsorship: data.visaSponsorship || '',
-                country: data.country || '',
+                country: resolvedCountry || '',
                 eeocRace: data.eeocRace || '',
                 eeocGender: data.eeocGender || '',
                 eeocVeteran: data.eeocVeteran || '',
@@ -367,7 +377,7 @@ export async function POST(request: Request) {
                 willingToTravel: data.willingToTravel || '',
                 isOver18: data.isOver18 || '',
                 phone: data.phone || '',
-                location: data.location || ([resolvedCity, resolvedState].filter(Boolean).join(', ') || ''),
+                location: resolvedLocation || '',
                 streetAddress: resolvedStreetAddress || '',
                 city: resolvedCity || '',
                 state: resolvedState || '',

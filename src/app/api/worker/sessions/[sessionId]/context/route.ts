@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateWorker } from '@/lib/auto-apply/worker-auth';
 import { decrypt } from '@/lib/encryption';
+import { healLocation } from '@/lib/locationNormalizer';
 
 /**
  * GET /api/worker/sessions/[sessionId]/context
@@ -143,18 +144,18 @@ export async function GET(
         name: userName,
         email: userEmail,
         phone: prefs?.phone || phoneMatch?.[0] || undefined,
-        location: prefs?.location || locationMatch?.[0] || undefined,
+        location: healLocation(prefs?.location || locationMatch?.[0]) || undefined,
         streetAddress: (prefs as any)?.streetAddress || (prefs?.sources as any)?.customAnswers?.['addressLine1'] || (prefs?.sources as any)?.customAnswers?.['Address Line 1'] || (prefs?.sources as any)?.customAnswers?.['streetAddress'] || undefined,
-        city: (prefs as any)?.city || (prefs?.sources as any)?.customAnswers?.['city'] || (prefs?.sources as any)?.customAnswers?.['City'] || undefined,
-        state: (prefs as any)?.state || (prefs?.sources as any)?.customAnswers?.['state'] || (prefs?.sources as any)?.customAnswers?.['State'] || undefined,
+        city: healLocation((prefs as any)?.city || (prefs?.sources as any)?.customAnswers?.['city'] || (prefs?.sources as any)?.customAnswers?.['City']) || undefined,
+        state: healLocation((prefs as any)?.state || (prefs?.sources as any)?.customAnswers?.['state'] || (prefs?.sources as any)?.customAnswers?.['State']) || undefined,
         postalCode: (prefs as any)?.postalCode || (prefs?.sources as any)?.customAnswers?.['postalCode'] || (prefs?.sources as any)?.customAnswers?.['postal_code'] || (prefs?.sources as any)?.customAnswers?.['Postal Code'] || (prefs?.sources as any)?.customAnswers?.['zipCode'] || undefined,
         linkedinUrl: prefs?.linkedinUrl || linkedinMatch?.[0] || undefined,
         githubUrl: prefs?.githubUrl || undefined,
         websiteUrl: prefs?.websiteUrl || undefined,
         usWorkAuthorization: prefs?.usWorkAuthorization ?? undefined,
-        workingRemotelyFrom: prefs?.workingRemotelyFrom ?? undefined,
+        workingRemotelyFrom: healLocation(prefs?.workingRemotelyFrom) ?? undefined,
         visaSponsorship: prefs?.visaSponsorship ?? undefined,
-        country: prefs?.country ?? undefined,
+        country: healLocation(prefs?.country) ?? undefined,
         eeocRace: prefs?.eeocRace ?? undefined,
         eeocGender: prefs?.eeocGender ?? undefined,
         eeocVeteran: prefs?.eeocVeteran ?? undefined,

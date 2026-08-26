@@ -274,24 +274,35 @@ table .btn-primary:hover:not(:disabled) {
 
 /* ─── Form Elements ──────────────────────────────────────────────────── */
 
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
-textarea {
+textarea,
+.input-base {
   font-family: var(--font-sans);
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.12));
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 body.light-theme input:not([type="checkbox"]):not([type="radio"]),
 body.light-theme select,
-body.light-theme textarea {
-  background-color: var(--input) !important;
+body.light-theme textarea,
+body.light-theme .input-base {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  color: #0f172a !important;
 }
 
 input:focus,
 select:focus,
-textarea:focus {
+textarea:focus,
+.input-base:focus {
   outline: none;
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px var(--ring);
+  border-color: #3695e3 !important;
+  box-shadow: 0 0 0 2px rgba(54, 149, 227, 0.25);
 }
 
 /* ─── Animations ─────────────────────────────────────────────────────── */

@@ -10,6 +10,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 const PdfCustomizerSection = dynamic(() => import('@/components/PdfCustomizerSection'), { ssr: false, loading: () => null });
 const ConnectedAccountsSection = dynamic(() => import('@/components/ConnectedAccountsSection'), { ssr: false, loading: () => null });
+const RecruiterVisibilitySection = dynamic(() => import('@/components/candidate/RecruiterVisibilitySection'), { ssr: false, loading: () => null });
+import { UserCheck } from 'lucide-react';
 import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -132,6 +134,7 @@ export default function SettingsPage() {
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
         general: false,
         'job-discovery': false,
+        'recruiter-discovery': false,
         'connected-accounts': false,
         scoring: false,
         'email-sync': false,
@@ -881,6 +884,28 @@ export default function SettingsPage() {
             {openSections['connected-accounts'] && (
                 <div className="accordion-body">
                     <ConnectedAccountsSection />
+                </div>
+            )}
+        </div>
+
+        {/* Recruiter Discovery Network */}
+        <div className={`glass-card accordion-card responsive-card-padding ${openSections['recruiter-discovery'] ? 'open' : ''}`} id="recruiter-discovery">
+            <div className="accordion-card-header" onClick={() => toggleSection('recruiter-discovery')}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                    <UserCheck size={22} className="text-accent" /> Recruiter Discovery & Introductions
+                </h3>
+                <ChevronDown size={20} className="accordion-chevron" />
+            </div>
+
+            {!openSections['recruiter-discovery'] && (
+                <div className="accordion-summary-box" onClick={() => toggleSection('recruiter-discovery')}>
+                    Manage your visibility to verified recruiters, review introduction requests, and control contact sharing.
+                </div>
+            )}
+
+            {openSections['recruiter-discovery'] && (
+                <div className="accordion-body">
+                    <RecruiterVisibilitySection />
                 </div>
             )}
         </div>
