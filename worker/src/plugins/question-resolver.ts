@@ -19,6 +19,8 @@ import {
   commitContenteditable,
   setSwitchState,
   readSwitchState,
+  toISODate,
+  toSlashDate,
 } from '../utils/form-commit';
 
 export interface ExtractedQuestion {
@@ -395,10 +397,27 @@ export class UniversalQuestionResolver {
       // 3.5 Checkboxes & ARIA switches (single consent-style or yes/no toggle controls)
       const checkbox = container.locator('input[type="checkbox"]').first();
       const ariaSwitch = container.locator('[role="switch"], [aria-checked]').first();
+      const checkboxCount = await container.locator('input[type="checkbox"]:visible').count().catch(() => 0);
       const hasCheckbox = await checkbox.count() > 0 && !(await checkbox.isChecked().catch(() => true));
       const hasAriaSwitch = !hasCheckbox && await ariaSwitch.count() > 0 &&
         (await readSwitchState(ariaSwitch).catch(() => null)) === false;
       if (hasCheckbox || hasAriaSwitch) {
+        // Multi-select group ("select all that apply") when 2+ checkboxes share the container
+        if (checkboxCount > 1) {
+          qIndex++;
+          const groupLabels = (await container.locator('label').allTextContents().catch(() => []))
+            .map((t) => t.trim()).filter((t) => t && t !== cleanLabel);
+          extracted.push({
+            id: `q_${qIndex}`,
+            fieldKey: (await checkbox.getAttribute('name')) || `multicheck_${qIndex}`,
+            label: cleanLabel,
+            type: 'text',
+            options: groupLabels,
+            required: isRequired,
+            container,
+          });
+          continue;
+        }
         qIndex++;
         extracted.push({
           id: `q_${qIndex}`,
@@ -412,6 +431,25 @@ export class UniversalQuestionResolver {
           container,
         });
         continue;
+      }
+
+      // 3.6 Date inputs — native date pickers and Workday/Greenhouse composite date fields
+      const dateInput = container.locator('input[type="date"], input[placeholder*="MM/DD/YYYY" i], input[placeholder*="mm/dd/yyyy" i]').first();
+      if (await dateInput.count() > 0 && (await dateInput.isVisible().catch(() => false))) {
+        const val = (await dateInput.inputValue().catch(() => ''))?.trim();
+        if (!val) {
+          qIndex++;
+          extracted.push({
+            id: `q_${qIndex}`,
+            fieldKey: (await dateInput.getAttribute('name')) || (await dateInput.getAttribute('id')) || `date_${qIndex}`,
+            label: cleanLabel,
+            type: 'text',
+            options: [],
+            required: isRequired,
+            container,
+          });
+          continue;
+        }
       }
 
       // 4. Text input
@@ -477,6 +515,48 @@ export class UniversalQuestionResolver {
           return result === true;
         }
       } else if (question.type === 'text') {
+        // Multi-checkbox group: check every box whose label matches the answer list
+        const groupBoxes = container.locator('input[type="checkbox"]:visible');
+        const groupBoxCount = await groupBoxes.count().catch(() => 0);
+        if (groupBoxCount > 1 && question.options.length > 0) {
+          const wanted = answer.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+          let matched = 0;
+          for (let i = 0; i < groupBoxCount; i++) {
+            const box = groupBoxes.nth(i);
+            const labelText = (
+              (await box.evaluate((el) => {
+                const lbl = el.closest('label') ||
+                  (el.id ? document.querySelector(`label[for="${el.id}"]`) : null);
+                return lbl ? lbl.textContent : '';
+              }).catch(() => '')) || ''
+            ).toLowerCase();
+            if (!labelText) continue;
+            if (wanted.some((w) => labelText.includes(w) || w.includes(labelText))) {
+              if (!(await box.isChecked().catch(() => false))) {
+                await box.check({ force: true }).catch(() => null);
+              }
+              matched++;
+            }
+          }
+          return matched > 0;
+        }
+
+        // Native date inputs require ISO (yyyy-mm-dd) via fill(); keyboard entry gets mangled
+        const nativeDateInput = container.locator('input[type="date"]').first();
+        if ((await nativeDateInput.count().catch(() => 0)) > 0) {
+          await nativeDateInput.click().catch(() => null);
+          await replaceValue(nativeDateInput, toISODate(answer) || answer);
+          return true;
+        }
+
+        // Placeholder-masked date fields (MM/DD/YYYY) reject free-form answers; normalize first
+        const placeholderDate = container.locator('input[placeholder*="MM/DD/YYYY" i]').first();
+        if ((await placeholderDate.count().catch(() => 0)) > 0 && /\d/.test(answer)) {
+          await placeholderDate.click().catch(() => null);
+          await replaceValue(placeholderDate, toSlashDate(answer) || answer);
+          return true;
+        }
+
         const input = container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
         if (await input.count() > 0) {
           await input.click().catch(() => null);

@@ -116,6 +116,47 @@ export async function setSwitchState(
   return readSwitchState(locator);
 }
 
+/**
+ * Normalize a free-form date string ("March 3, 2026", "03/05/2026", "2026-03-05")
+ * to the ISO yyyy-mm-dd format required by native <input type="date"> fills.
+ * Returns null when unparseable.
+ */
+export function toISODate(value: string): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+
+  let match = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (match) {
+    const [, a, b, y] = match;
+    // Assume US ordering (MM/DD/YYYY); fall back to DD/MM when first segment > 12
+    const month = parseInt(a, 10) > 12 ? b : a;
+    const day = parseInt(a, 10) > 12 ? a : b;
+    return `${y.length === 2 ? `20${y}` : y}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(v);
+  if (!isNaN(parsed.getTime())) {
+    return [
+      parsed.getFullYear(),
+      String(parsed.getMonth() + 1).padStart(2, '0'),
+      String(parsed.getDate()).padStart(2, '0'),
+    ].join('-');
+  }
+  return null;
+}
+
+/**
+ * Normalize a free-form date string to the MM/DD/YYYY slash format expected by
+ * placeholder-masked text date fields. Returns null when unparseable.
+ */
+export function toSlashDate(value: string): string | null {
+  const iso = toISODate(value);
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-');
+  return `${m}/${d}/${y}`;
+}
+
 /** Read aria-checked / checked state from a switch-like element. */
 export async function readSwitchState(locator: Locator): Promise<boolean | null> {
   return locator.evaluate((el) => {
