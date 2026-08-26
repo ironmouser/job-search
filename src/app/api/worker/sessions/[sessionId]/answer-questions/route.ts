@@ -90,19 +90,46 @@ export async function POST(
     // Pre-resolve from customAnswers or profile attributes
     for (const q of body.questions) {
       const lowerLabel = q.label.toLowerCase();
+      const lowerId = (q.id || '').toLowerCase();
       const customVal = customAnswers[q.id] || customAnswers[q.label] || customAnswers[q.label.trim()];
 
-      if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
+      const isCityQuestion = /^city\b|\bcity\b|location\s*\(\s*city\s*\)/i.test(lowerLabel) || /^city\b|candidate-location/i.test(lowerId);
+      const isStateQuestion = /^state\b|\bstate\b|province|region|location\s*\(\s*state\s*\)/i.test(lowerLabel) || /^state\b|candidate-state/i.test(lowerId);
+      const isAddressQuestion = /address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel) || /address\s*line\s*1|street\s*address|address1/i.test(lowerId);
+      const isPostalQuestion = /postal|zip\s*code/i.test(lowerLabel) || /postal|zip/i.test(lowerId);
+
+      if (isCityQuestion && city) {
         answers.push({
           id: q.id,
-          answer: String(customVal).trim(),
+          answer: city,
           confidence: 100,
           requiresHumanInput: false,
         });
-      } else if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel) && streetAddress) {
+      } else if (isStateQuestion && state) {
+        answers.push({
+          id: q.id,
+          answer: state,
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else if (isAddressQuestion && streetAddress) {
         answers.push({
           id: q.id,
           answer: streetAddress,
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else if (isPostalQuestion && postalCode) {
+        answers.push({
+          id: q.id,
+          answer: postalCode,
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
+        answers.push({
+          id: q.id,
+          answer: String(customVal).trim(),
           confidence: 100,
           requiresHumanInput: false,
         });
@@ -112,27 +139,6 @@ export async function POST(
           id: q.id,
           answer: addr2,
           confidence: 90,
-          requiresHumanInput: false,
-        });
-      } else if (/^city\b|\bcity\b/i.test(lowerLabel) && city) {
-        answers.push({
-          id: q.id,
-          answer: city,
-          confidence: 100,
-          requiresHumanInput: false,
-        });
-      } else if (/^state\b|\bstate\b|province|region/i.test(lowerLabel) && state) {
-        answers.push({
-          id: q.id,
-          answer: state,
-          confidence: 100,
-          requiresHumanInput: false,
-        });
-      } else if (/postal|zip\s*code/i.test(lowerLabel) && postalCode) {
-        answers.push({
-          id: q.id,
-          answer: postalCode,
-          confidence: 100,
           requiresHumanInput: false,
         });
       } else {

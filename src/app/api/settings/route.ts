@@ -225,7 +225,7 @@ export async function POST(request: Request) {
 
         const existingPrefs = await prisma.userPreferences.findUnique({
             where: { userId: session.user.id },
-            select: { sources: true, streetAddress: true, city: true, state: true, postalCode: true }
+            select: { sources: true, streetAddress: true, city: true, state: true, postalCode: true, country: true, location: true, phone: true }
         });
 
         const existingSources = (existingPrefs?.sources as Record<string, any>) || {};
@@ -235,38 +235,87 @@ export async function POST(request: Request) {
             ...incomingCustomAnswers,
         };
 
-        const resolvedStreetAddress = data.streetAddress ||
-            incomingCustomAnswers['addressLine1'] ||
-            incomingCustomAnswers['Address Line 1'] ||
-            incomingCustomAnswers['streetAddress'] ||
-            existingPrefs?.streetAddress ||
-            undefined;
+        const resolvedStreetAddress = data.streetAddress !== undefined
+            ? (typeof data.streetAddress === 'string' ? data.streetAddress.trim() : '')
+            : (incomingCustomAnswers['addressLine1'] || incomingCustomAnswers['Address Line 1'] || incomingCustomAnswers['streetAddress'] || existingPrefs?.streetAddress || '');
 
-        const rawCity = data.city ||
-            incomingCustomAnswers['city'] ||
-            incomingCustomAnswers['City'] ||
-            existingPrefs?.city ||
-            undefined;
-        const resolvedCity = rawCity ? healLocation(rawCity) : undefined;
+        const rawCity = data.city !== undefined
+            ? (typeof data.city === 'string' ? data.city.trim() : '')
+            : (incomingCustomAnswers['city'] || incomingCustomAnswers['City'] || existingPrefs?.city || '');
+        const resolvedCity = rawCity ? healLocation(rawCity) : rawCity;
 
-        const rawState = data.state ||
-            incomingCustomAnswers['state'] ||
-            incomingCustomAnswers['State'] ||
-            existingPrefs?.state ||
-            undefined;
-        const resolvedState = rawState ? (healLocation(rawState) || rawState) : undefined;
+        const rawState = data.state !== undefined
+            ? (typeof data.state === 'string' ? data.state.trim() : '')
+            : (incomingCustomAnswers['state'] || incomingCustomAnswers['State'] || existingPrefs?.state || '');
+        const resolvedState = rawState ? (healLocation(rawState) || rawState) : rawState;
 
-        const rawCountry = data.country || undefined;
-        const resolvedCountry = rawCountry ? (healLocation(rawCountry) || rawCountry) : undefined;
+        const rawCountry = data.country !== undefined
+            ? (typeof data.country === 'string' ? data.country.trim() : '')
+            : (existingPrefs?.country || '');
+        const resolvedCountry = rawCountry ? (healLocation(rawCountry) || rawCountry) : rawCountry;
 
-        const resolvedPostalCode = data.postalCode ||
-            incomingCustomAnswers['postalCode'] ||
-            incomingCustomAnswers['postal_code'] ||
-            incomingCustomAnswers['Postal Code'] ||
-            incomingCustomAnswers['zipCode'] ||
-            incomingCustomAnswers['Zip Code'] ||
-            existingPrefs?.postalCode ||
-            undefined;
+        const resolvedPostalCode = data.postalCode !== undefined
+            ? (typeof data.postalCode === 'string' ? data.postalCode.trim() : '')
+            : (incomingCustomAnswers['postalCode'] || incomingCustomAnswers['postal_code'] || incomingCustomAnswers['Postal Code'] || incomingCustomAnswers['zipCode'] || incomingCustomAnswers['Zip Code'] || existingPrefs?.postalCode || '');
+
+        // Synchronize customAnswers so auto-apply questions (Location (City), candidate-location, etc.) never retain stale values
+        if (resolvedCity) {
+            mergedCustomAnswers['city'] = resolvedCity;
+            mergedCustomAnswers['City'] = resolvedCity;
+            mergedCustomAnswers['Location (City)'] = resolvedCity;
+            mergedCustomAnswers['candidate-location'] = resolvedCity;
+            mergedCustomAnswers['location_city'] = resolvedCity;
+        } else if (data.city === '') {
+            delete mergedCustomAnswers['city'];
+            delete mergedCustomAnswers['City'];
+            delete mergedCustomAnswers['Location (City)'];
+            delete mergedCustomAnswers['candidate-location'];
+            delete mergedCustomAnswers['location_city'];
+        }
+
+        if (resolvedState) {
+            mergedCustomAnswers['state'] = resolvedState;
+            mergedCustomAnswers['State'] = resolvedState;
+            mergedCustomAnswers['Location (State)'] = resolvedState;
+            mergedCustomAnswers['candidate-state'] = resolvedState;
+        } else if (data.state === '') {
+            delete mergedCustomAnswers['state'];
+            delete mergedCustomAnswers['State'];
+            delete mergedCustomAnswers['Location (State)'];
+            delete mergedCustomAnswers['candidate-state'];
+        }
+
+        if (resolvedCountry) {
+            mergedCustomAnswers['country'] = resolvedCountry;
+            mergedCustomAnswers['Country'] = resolvedCountry;
+        } else if (data.country === '') {
+            delete mergedCustomAnswers['country'];
+            delete mergedCustomAnswers['Country'];
+        }
+
+        if (resolvedStreetAddress) {
+            mergedCustomAnswers['streetAddress'] = resolvedStreetAddress;
+            mergedCustomAnswers['addressLine1'] = resolvedStreetAddress;
+            mergedCustomAnswers['Address Line 1'] = resolvedStreetAddress;
+        } else if (data.streetAddress === '') {
+            delete mergedCustomAnswers['streetAddress'];
+            delete mergedCustomAnswers['addressLine1'];
+            delete mergedCustomAnswers['Address Line 1'];
+        }
+
+        if (resolvedPostalCode) {
+            mergedCustomAnswers['postalCode'] = resolvedPostalCode;
+            mergedCustomAnswers['postal_code'] = resolvedPostalCode;
+            mergedCustomAnswers['Postal Code'] = resolvedPostalCode;
+            mergedCustomAnswers['zipCode'] = resolvedPostalCode;
+            mergedCustomAnswers['Zip Code'] = resolvedPostalCode;
+        } else if (data.postalCode === '') {
+            delete mergedCustomAnswers['postalCode'];
+            delete mergedCustomAnswers['postal_code'];
+            delete mergedCustomAnswers['Postal Code'];
+            delete mergedCustomAnswers['zipCode'];
+            delete mergedCustomAnswers['Zip Code'];
+        }
 
         const sourcesToSave = {
             ...(typeof data.sources === 'object' && data.sources !== null ? data.sources : existingSources),
@@ -274,9 +323,11 @@ export async function POST(request: Request) {
             ...(data.accountAuthMode ? { accountAuthMode: data.accountAuthMode } : {}),
         };
 
-        const resolvedLocation = data.location ? healLocation(data.location) : ([resolvedCity, resolvedState].filter(Boolean).join(', ') || undefined);
-        const resolvedSearchLocation = data.searchLocation ? healLocation(data.searchLocation) : data.searchLocation;
-        const resolvedWorkingRemotelyFrom = data.workingRemotelyFrom ? healLocation(data.workingRemotelyFrom) : data.workingRemotelyFrom;
+        const resolvedLocation = data.location !== undefined
+            ? (data.location ? healLocation(data.location) : '')
+            : ([resolvedCity, resolvedState].filter(Boolean).join(', ') || undefined);
+        const resolvedSearchLocation = data.searchLocation ? healLocation(data.searchLocation) : (data.searchLocation !== undefined ? data.searchLocation : undefined);
+        const resolvedWorkingRemotelyFrom = data.workingRemotelyFrom ? healLocation(data.workingRemotelyFrom) : (data.workingRemotelyFrom !== undefined ? data.workingRemotelyFrom : undefined);
 
         let updateData: any = {
             jobLevel: data.jobLevel || 'Mid-level',

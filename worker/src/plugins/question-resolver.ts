@@ -113,7 +113,37 @@ export class UniversalQuestionResolver {
         const customAnswers = context.userProfile.customAnswers || {};
         const customVal = customAnswers[q.fieldKey] || customAnswers[q.label] || customAnswers[q.label.trim()];
 
-        if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
+        const isCityQuestion = /^city\b|\bcity\b|location\s*\(\s*city\s*\)/i.test(lowerQ) || /^city\b|candidate-location/i.test(lowerKey);
+        const isStateQuestion = /^state\b|\bstate\b|province|region|location\s*\(\s*state\s*\)/i.test(lowerQ) || /^state\b|candidate-state/i.test(lowerKey);
+        const isAddressQuestion = /address\s*(?:line\s*1)?|street\s*address/i.test(lowerQ) || /address\s*line\s*1|street\s*address|address1/i.test(lowerKey);
+        const isPostalQuestion = /postal|zip\s*code/i.test(lowerQ) || /postal|zip/i.test(lowerKey);
+        const isCountryQuestion = /^country\b|\bcountry\b/i.test(lowerQ) || /^country\b/i.test(lowerKey);
+
+        if (isCityQuestion && (context.userProfile.city || context.userProfile.location)) {
+          const c = context.userProfile.city || (context.userProfile.location ? context.userProfile.location.split(',')[0]?.trim() : '');
+          if (c) {
+            answer = c;
+            requiresHuman = false;
+          }
+        } else if (isStateQuestion && (context.userProfile.state || context.userProfile.location)) {
+          const s = context.userProfile.state || (context.userProfile.location ? context.userProfile.location.split(',')[1]?.trim() : '');
+          if (s) {
+            answer = s;
+            requiresHuman = false;
+          }
+        } else if (isAddressQuestion && (context.userProfile.streetAddress || context.userProfile.location)) {
+          const addr = context.userProfile.streetAddress || context.userProfile.location;
+          if (addr) {
+            answer = addr;
+            requiresHuman = false;
+          }
+        } else if (isPostalQuestion && context.userProfile.postalCode) {
+          answer = context.userProfile.postalCode;
+          requiresHuman = false;
+        } else if (isCountryQuestion && (context.userProfile.country || customVal)) {
+          answer = context.userProfile.country || customVal || 'United States';
+          requiresHuman = false;
+        } else if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
           answer = String(customVal).trim();
           requiresHuman = false;
         } else if (/salary|compensation|desired pay|expected pay|pay expectation|target salary/i.test(lowerQ) && context.userProfile.expectedSalary) {
@@ -125,27 +155,9 @@ export class UniversalQuestionResolver {
         } else if (/relocat/i.test(lowerQ) && (context.userProfile as any).willingToRelocate) {
           answer = (context.userProfile as any).willingToRelocate;
           requiresHuman = false;
-        } else if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerQ) || /address\s*line\s*1|street\s*address|address1/i.test(lowerKey)) {
-          const addr = context.userProfile.streetAddress || context.userProfile.location;
-          if (addr) {
-            answer = addr;
-            requiresHuman = false;
-          }
         } else if (/address\s*line\s*2|apt|suite|unit/i.test(lowerQ) || /address\s*line\s*2|address2/i.test(lowerKey)) {
           answer = context.userProfile.streetAddress2 || '';
           requiresHuman = false;
-        } else if (/^city\b|\bcity\b/i.test(lowerQ) || /^city\b/i.test(lowerKey)) {
-          const c = context.userProfile.city || (context.userProfile.location ? context.userProfile.location.split(',')[0]?.trim() : '');
-          if (c) {
-            answer = c;
-            requiresHuman = false;
-          }
-        } else if (/^state\b|\bstate\b|province|region/i.test(lowerQ) || /^state\b/i.test(lowerKey)) {
-          const s = context.userProfile.state || (context.userProfile.location ? context.userProfile.location.split(',')[1]?.trim() : '');
-          if (s) {
-            answer = s;
-            requiresHuman = false;
-          }
         } else if (/postal|zip\s*code/i.test(lowerQ) || /postal|zip/i.test(lowerKey)) {
           if (context.userProfile.postalCode) {
             answer = context.userProfile.postalCode;
