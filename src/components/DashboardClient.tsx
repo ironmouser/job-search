@@ -206,21 +206,8 @@ export default function DashboardClient({
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [minScoreFilter, setMinScoreFilter] = useState<number>(50);
-  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'columns'>(() => {
-    if (typeof window !== 'undefined') {
-      const isMobile = window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      if (isMobile) return 'grid';
-      const explicit = localStorage.getItem('dashboard_view_mode_explicit');
-      if (explicit === 'grid' || explicit === 'table' || explicit === 'columns') return explicit as 'grid' | 'table' | 'columns';
-    }
-    return 'columns';
-  });
-  const [isMobile, setIsMobile] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
-    return false;
-  });
+  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'columns'>('columns');
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isEmailSyncing, setIsEmailSyncing] = useState(false);
 
@@ -473,29 +460,31 @@ export default function DashboardClient({
     const urlPage = searchParams?.get('page');
     const urlLimit = searchParams?.get('limit') || searchParams?.get('perPage');
 
+    const isMobileClient = typeof window !== 'undefined' && (
+      window.innerWidth <= 1024 ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    );
+    setIsMobile(isMobileClient);
+    const explicitViewMode = typeof window !== 'undefined' ? localStorage.getItem('dashboard_view_mode_explicit') : null;
+    if (isMobileClient) {
+      if (explicitViewMode === 'table') {
+        setViewMode('table');
+      } else {
+        setViewMode('grid');
+      }
+    } else if (explicitViewMode === 'grid' || explicitViewMode === 'table' || explicitViewMode === 'columns') {
+      setViewMode(explicitViewMode as 'grid' | 'table' | 'columns');
+    } else {
+      // Default all desktop users to split panel 'columns'
+      setViewMode('columns');
+    }
+
     const saved = localStorage.getItem('jobAgentDashboardState');
     let stateFromStorage: any = {};
     if (saved) {
       try {
         stateFromStorage = JSON.parse(saved);
         if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter);
-        const isMobile = typeof window !== 'undefined' && (
-          window.innerWidth <= 1024 ||
-          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        );
-        const explicitViewMode = typeof window !== 'undefined' ? localStorage.getItem('dashboard_view_mode_explicit') : null;
-        if (isMobile) {
-          if (explicitViewMode === 'table') {
-            setViewMode('table');
-          } else {
-            setViewMode('grid');
-          }
-        } else if (explicitViewMode === 'grid' || explicitViewMode === 'table' || explicitViewMode === 'columns') {
-          setViewMode(explicitViewMode as 'grid' | 'table' | 'columns');
-        } else {
-          // Default all current & future desktop users to split panel 'columns'
-          setViewMode('columns');
-        }
         if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption);
         if (stateFromStorage.locationFilter !== undefined) {
           if (Array.isArray(stateFromStorage.locationFilter)) {
