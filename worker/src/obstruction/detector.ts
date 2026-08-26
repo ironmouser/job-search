@@ -274,8 +274,17 @@ export class UIObstructionDetector {
           '[id*="consent" i]:not([aria-hidden="true"])',
           '[class*="cookie" i]:not([aria-hidden="true"])',
           '[class*="consent" i]:not([aria-hidden="true"])',
-          '[class*="privacy-banner" i]',
-          '[class*="privacy-modal" i]',
+          '[class*="privacy" i]:not([aria-hidden="true"])',
+          '[id*="privacy" i]:not([aria-hidden="true"])',
+          '[aria-label*="cookie" i]',
+          '[aria-label*="consent" i]',
+          '[aria-label*="privacy" i]',
+          '[data-testid*="cookie" i]',
+          '[data-testid*="consent" i]',
+          '[data-testid*="privacy" i]',
+          '[data-ui*="cookie" i]',
+          '[data-ui*="consent" i]',
+          '[data-ui*="privacy" i]',
           'div[class*="newsletter-modal" i]',
           'div[class*="signup-modal" i]',
           'div[class*="marketing-modal" i]',
@@ -307,6 +316,28 @@ export class UIObstructionDetector {
           if (activeModalEl) break;
         }
 
+        // Secondary fallback for privacy/cookie banners without standard modal class names
+        if (!activeModalEl) {
+          const candidates = Array.from(document.querySelectorAll('div, section, aside'));
+          for (const el of candidates) {
+            const htmlEl = el as HTMLElement;
+            const style = window.getComputedStyle(htmlEl);
+            const z = parseInt(style.zIndex, 10) || 0;
+            const isOverlay = (style.position === 'fixed' || style.position === 'sticky' || style.position === 'absolute') && (z >= 1 || style.bottom === '0px' || style.top === '0px');
+            if (isOverlay && style.display !== 'none' && style.visibility !== 'hidden' && htmlEl.offsetWidth > 100 && htmlEl.offsetHeight > 40) {
+              const text = (htmlEl.innerText || '').toLowerCase();
+              if (
+                text.includes('privacy is important to us') ||
+                text.includes('we use cookies') ||
+                (text.includes('cookie settings') && (text.includes('reject all') || text.includes('accept all')))
+              ) {
+                activeModalEl = htmlEl;
+                break;
+              }
+            }
+          }
+        }
+
         const extractInfo = (el: Element | null): any => {
           if (!el) return undefined;
           const htmlEl = el as HTMLElement;
@@ -333,12 +364,12 @@ export class UIObstructionDetector {
         let hasClose = false;
         if (activeModalEl) {
           const closeBtns = activeModalEl.querySelectorAll(
-            'button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], [aria-label*="close" i], [aria-label*="dismiss" i], [aria-label*="reject" i], [aria-label*="decline" i]'
+            'button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], [aria-label*="close" i], [aria-label*="dismiss" i], [aria-label*="reject" i], [aria-label*="decline" i], [aria-label*="accept" i]'
           );
           for (const btn of Array.from(closeBtns)) {
             const text = (btn.textContent || btn.getAttribute('aria-label') || '').toLowerCase();
             if (
-              /close|dismiss|no thanks|not now|maybe later|cancel|reject|decline|necessary|functional|essential|save|confirm|accept|got it|agree|continue|allow/i.test(
+              /close|dismiss|no thanks|not now|maybe later|cancel|reject|decline|necessary|functional|essential|save|confirm|accept|got it|agree|continue|allow|✕|×/i.test(
                 text
               )
             ) {

@@ -67,12 +67,14 @@ export class DiceApplyPlugin extends ATSPlugin {
     const page = browser.page;
     await logger.info('dice_prepare', 'Preparing Dice Easy Apply session');
 
-    // 1. Check authentication
+    // Proactively dismiss any cookie or privacy consent modal
+    await this.dismissCookieBannerIfPresent(page, logger);
+
+    // 1. Check authentication requirements
     const html = await browser.getHtml();
     const isLoggedOut =
       html.includes('Log In to Apply') ||
-      html.includes('/dashboard/login') ||
-      (await page.$('a[href*="/login"], button:has-text("Log In")').catch(() => null)) !== null;
+      (await page.$('button:has-text("Log In to Apply"), a:has-text("Log In to Apply")').catch(() => null)) !== null;
 
     if (!context.connectedSession && isLoggedOut) {
       throw new InterventionError(
@@ -88,6 +90,8 @@ export class DiceApplyPlugin extends ATSPlugin {
       'button[data-cy="easy-apply-button"]',
       'button[aria-label="Easy Apply"]',
       'button:has-text("Apply Now")',
+      'a:has-text("Easy Apply")',
+      'a:has-text("Apply Now")',
     ];
 
     let clicked = false;
@@ -105,8 +109,9 @@ export class DiceApplyPlugin extends ATSPlugin {
       await logger.warn('dice_no_apply_btn', 'Could not locate standard Dice Easy Apply button');
     }
 
-    // Wait for the slide-over drawer to appear
+    // Wait for the slide-over drawer to appear and dismiss any newly triggered cookie overlays
     await page.waitForTimeout(2000);
+    await this.dismissCookieBannerIfPresent(page, logger);
   }
 
   async apply(
@@ -116,6 +121,9 @@ export class DiceApplyPlugin extends ATSPlugin {
   ): Promise<void> {
     const page = browser.page;
     await logger.info('dice_apply', 'Processing Dice application drawer');
+
+    // Dismiss any cookie modal before proceeding with drawer fields
+    await this.dismissCookieBannerIfPresent(page, logger);
 
     // 1. Upload or select resume
     await this.uploadResumeFile(browser, page, context, logger);

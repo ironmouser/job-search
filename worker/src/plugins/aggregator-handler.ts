@@ -135,6 +135,9 @@ export class AggregatorHandler {
 
     await logger.info('destination_discovery', `Phase 1: Scanning page for application destinations at ${page.url()}...`);
 
+    // Proactively dismiss any cookie or privacy consent banner before scanning
+    await UIObstructionResolver.dismissCookieBannerIfPresent(page, logger);
+
     // ── Check for page obstructions (e.g. marketing/newsletter/cookie modals) ─
     try {
       const pageObstruction = await UIObstructionDetector.detectObstruction(page);
@@ -544,6 +547,14 @@ export class AggregatorHandler {
         const role = (await el.getAttribute('role').catch(() => null)) ?? '';
 
         if (BUTTON_BLOCKLIST_REGEX.test(text) && !APPLY_TEXT_REGEX.test(text)) continue;
+
+        // Skip elements inside cookie / privacy banners
+        const isInsideCookieOrPrivacyBanner = await el.evaluate((node: HTMLElement) => {
+          return !!node.closest(
+            '#onetrust-consent-sdk, #onetrust-banner-sdk, #onetrust-pc-sdk, #usercentrics-root, #didomi-host, #cmp-container, #CybotCookiebotDialog, #cookie-law-info-bar, #osano-cm-window, [id*="cookie" i], [class*="cookie" i], [class*="privacy" i], [id*="privacy" i], [class*="consent" i], [id*="consent" i], [aria-label*="cookie" i], [aria-label*="privacy" i]'
+          );
+        }).catch(() => false);
+        if (isInsideCookieOrPrivacyBanner) continue;
 
         // In-page anchor check
         if (href && (href.startsWith('#') || href.includes('#apply') || href.includes('#grnhse') || href.includes('#application'))) {

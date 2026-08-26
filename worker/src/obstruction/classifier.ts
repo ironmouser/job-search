@@ -38,7 +38,7 @@ export class UIObstructionClassifier {
       };
     }
 
-    const combinedText = [
+    const modalText = [
       blockingElement?.text || '',
       modalContainer?.text || '',
       blockingElement?.className || '',
@@ -47,6 +47,12 @@ export class UIObstructionClassifier {
       modalContainer?.id || '',
       blockingElement?.role || '',
       modalContainer?.role || '',
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    const combinedText = [
+      modalText,
       pageText,
     ]
       .join(' ')
@@ -70,7 +76,7 @@ export class UIObstructionClassifier {
       'security challenge',
     ];
     const matchedCaptcha = captchaKeywords.filter(
-      (kw) => combinedText.includes(kw) || iframeUrls.includes(kw)
+      (kw) => modalText.includes(kw) || iframeUrls.includes(kw) || combinedText.includes(kw)
     );
     if (matchedCaptcha.length > 0) {
       return {
@@ -100,7 +106,7 @@ export class UIObstructionClassifier {
       'use of developer or inspection tools',
     ];
     const matchedBot = botKeywords.filter(
-      (kw) => combinedText.includes(kw) || iframeUrls.includes(kw)
+      (kw) => modalText.includes(kw) || iframeUrls.includes(kw) || combinedText.includes(kw)
     );
     if (matchedBot.length > 0) {
       return {
@@ -112,47 +118,8 @@ export class UIObstructionClassifier {
       };
     }
 
-    // ─── 2. Authentication & Login Gates (UNSAFE - DO NOT BYPASS) ───────────
-    const authKeywords = [
-      'sign in to apply',
-      'log in to apply',
-      'sign in to continue',
-      'log in to continue',
-      'create an account to continue',
-      'create an account to apply',
-      'login to your account',
-      'sign into your account',
-      'enter your password',
-      'password requirements',
-      'verify new password',
-      'forgot password',
-      'sign in with google',
-      'sign in with linkedin',
-      'sign in with apple',
-      'sign in to apply',
-      'sign in to easy apply',
-      'join now to apply',
-      'join to apply',
-      'join now',
-      'agree & join',
-      'sign in or join',
-      'conversion-modal-signin',
-      'conversion-modal-join',
-      'session expired',
-      'unauthorized',
-    ];
-    const matchedAuth = authKeywords.filter((kw) => combinedText.includes(kw));
-    if (matchedAuth.length > 0) {
-      return {
-        type: ObstructionType.LOGIN_MODAL,
-        isSafeToDismiss: false,
-        confidence: 90,
-        reason: `Detected candidate login or authentication requirement: ${matchedAuth.join(', ')}`,
-        detectedKeywords: matchedAuth,
-      };
-    }
-
-    // ─── 3. Cookie & Privacy Consent Banners & Settings (SAFE TO DISMISS) ───
+    // ─── 2. Cookie & Privacy Consent Banners & Settings (SAFE TO DISMISS) ───
+    // Check modalText and container attributes first so cookie modals are never mistaken for login gates
     const cookieKeywords = [
       'cookie',
       'cookies',
@@ -164,19 +131,29 @@ export class UIObstructionClassifier {
       'cookie consent',
       'cookie dialog',
       'cookies policy',
+      'your privacy is important to us',
+      'privacy is important to us',
+      'tracking technologies',
+      'cookies and other tracking technologies',
       'privacy preferences',
       'privacy settings',
+      'privacy choices',
+      'your privacy choices',
       'consent preferences',
       'consent settings',
       'consent manager',
       'manage cookies',
       'manage preferences',
       'manage consent',
-      'your privacy choices',
       'we use cookies',
+      'use cookies',
       'accept all cookies',
       'accept cookies',
       'reject all cookies',
+      'reject all',
+      'reject non-essential',
+      'decline all',
+      'refuse all',
       'strictly necessary',
       'necessary cookies',
       'functional cookies',
@@ -196,14 +173,54 @@ export class UIObstructionClassifier {
       'civic',
       'clarip',
     ];
-    const matchedCookie = cookieKeywords.filter((kw) => combinedText.includes(kw));
+    const matchedCookie = cookieKeywords.filter((kw) => modalText.includes(kw));
     if (matchedCookie.length > 0) {
       return {
         type: ObstructionType.COOKIE_BANNER,
         isSafeToDismiss: true,
-        confidence: 90,
+        confidence: 95,
         reason: `Detected cookie consent or settings banner: ${matchedCookie.join(', ')}`,
         detectedKeywords: matchedCookie,
+      };
+    }
+
+    // ─── 3. Authentication & Login Gates (UNSAFE - DO NOT BYPASS) ───────────
+    // Check modalText specifically so general page background headers/footers do not misclassify overlays
+    const authKeywords = [
+      'sign in to apply',
+      'log in to apply',
+      'sign in to continue',
+      'log in to continue',
+      'create an account to continue',
+      'create an account to apply',
+      'login to your account',
+      'sign into your account',
+      'enter your password',
+      'password requirements',
+      'verify new password',
+      'forgot password',
+      'sign in with google',
+      'sign in with linkedin',
+      'sign in with apple',
+      'sign in to easy apply',
+      'join now to apply',
+      'join to apply',
+      'join now',
+      'agree & join',
+      'sign in or join',
+      'conversion-modal-signin',
+      'conversion-modal-join',
+      'session expired',
+      'unauthorized',
+    ];
+    const matchedAuth = authKeywords.filter((kw) => modalText.includes(kw));
+    if (matchedAuth.length > 0) {
+      return {
+        type: ObstructionType.LOGIN_MODAL,
+        isSafeToDismiss: false,
+        confidence: 90,
+        reason: `Detected candidate login or authentication requirement: ${matchedAuth.join(', ')}`,
+        detectedKeywords: matchedAuth,
       };
     }
 

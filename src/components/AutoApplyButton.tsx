@@ -80,6 +80,9 @@ export function AutoApplyButton({
       });
       const data = await res.json();
       if (res.ok) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('job-assets-updated', { detail: { jobId } }));
+        }
         onSessionStarted?.(data.sessionId);
       } else {
         if (data.errorCode === 'MISSING_BASE_RESUME') {

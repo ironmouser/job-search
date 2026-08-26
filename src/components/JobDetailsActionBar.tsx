@@ -208,22 +208,27 @@ export default function JobDetailsActionBar({
 
     try {
       setIsGenerating(true);
-      const res = await fetch(`/api/jobs/${currentJobId}/tailor`, {
+      const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ force: true })
+        body: JSON.stringify({ jobId: currentJobId })
       });
       if (res.ok) {
         setLocalHasAssets(true);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('job-assets-updated', { detail: { jobId: currentJobId } }));
+        }
         router.refresh();
-      } else if (res.status === 400) {
-        const data = await res.json();
-        if (data.code === 'NO_RESUME') {
+      } else {
+        const data = await res.json().catch(() => ({}));
+        if (data.errorCode === 'MISSING_BASE_RESUME' || data.code === 'NO_RESUME') {
           setIsJitResumeOpen(true);
+        } else {
+          alert(data.error || 'Failed to generate tailored application documents.');
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to generate assets:', e);
     } finally {
       setIsGenerating(false);
     }
@@ -248,9 +253,12 @@ export default function JobDetailsActionBar({
       if (!res.ok) {
         alert(data.error || 'Failed to start auto apply');
       } else {
+        setLocalHasAssets(true);
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auto-apply-queue-start'));
+          window.dispatchEvent(new CustomEvent('job-assets-updated', { detail: { jobId: currentJobId } }));
         }
+        router.refresh();
       }
     } catch (err: any) {
       console.error('Failed to trigger auto apply:', err);

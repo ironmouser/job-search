@@ -140,7 +140,7 @@ const LEGAL_PATHS = [
   '/dmca',
 ];
 
-const LEGAL_TEXT_REGEX = /\b(privacy policy|terms of service|terms of use|terms and conditions|cookie policy|cookies|legal notice|disclaimer|privacy notice|data policy|gdpr|accessibility statement)\b/i;
+const LEGAL_TEXT_REGEX = /\b(privacy policy|terms of service|terms of use|terms and conditions|cookie policy|cookie settings|cookie preferences|cookies|legal notice|disclaimer|privacy notice|data policy|gdpr|accessibility statement|your privacy is important to us|manage cookies|reject all|accept all cookies)\b/i;
 
 const SOCIAL_DOMAINS = [
   'facebook.com', 'fb.com',
@@ -333,7 +333,7 @@ export function classifyCandidate(
   // ── 7. Application action buttons (with or without extractable URL) ──────
   const isExplicitApplyText = APPLY_TEXT_REGEX.test(allText);
   const isApplyAttrOnly = !isExplicitApplyText && /apply/i.test(allAttrs);
-  const isBlocklistedText = /^(share|save|report|follow|bookmark|flag|close|back|cancel|return)\b/i.test(text);
+  const isBlocklistedText = /^(share|save|report|follow|bookmark|flag|close|back|cancel|return|reject all|accept all|cookie settings|manage cookies|privacy choices)\b/i;
 
   if (isExplicitApplyText || (isApplyAttrOnly && !isBlocklistedText && text.length < 60)) {
     // If it has an external href pointing away from the job board, it's an APPLICATION_LINK

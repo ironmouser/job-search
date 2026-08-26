@@ -225,21 +225,18 @@ export function AutoApplyPanel({
     }
   }, [session?.status, jobId, router, session?.atsPlatform]);
 
-  // Fire onAssetsGenerated (and the global window event) when the session transitions
-  // out of GENERATING_ASSETS/PREPARING into a later stage. This signals that assets
-  // are now saved in the DB and Step 2 in the Job Details view should refresh.
-  const prevStatusRef = useRef<string | null>(null);
+  // Fire onAssetsGenerated (and the global window event) when the session is active or transitions
+  // so that Step 2 in the Job Details view refreshes if assets were auto-generated during auto-apply.
+  const hasTriggeredAssetSyncRef = useRef(false);
   useEffect(() => {
     const status = session?.status as string | undefined;
     if (!status) return;
 
-    const wasGenerating =
-      prevStatusRef.current === AutoApplyStatus.GENERATING_ASSETS ||
-      prevStatusRef.current === 'generating_assets' ||
-      prevStatusRef.current === AutoApplyStatus.PREPARING ||
-      prevStatusRef.current === 'preparing';
-
-    const isNowPastAssets =
+    const isSessionActiveOrDone =
+      status === AutoApplyStatus.QUEUED ||
+      status === 'queued' ||
+      status === AutoApplyStatus.PROCESSING ||
+      status === 'processing' ||
       status === AutoApplyStatus.APPLYING ||
       status === 'applying' ||
       status === AutoApplyStatus.DETECTING_ATS ||
@@ -255,13 +252,12 @@ export function AutoApplyPanel({
       status === AutoApplyStatus.SIMULATED ||
       status === 'simulated';
 
-    if (wasGenerating && isNowPastAssets) {
+    if (!hasAssets && isSessionActiveOrDone && !hasTriggeredAssetSyncRef.current) {
+      hasTriggeredAssetSyncRef.current = true;
       onAssetsGenerated?.();
       window.dispatchEvent(new CustomEvent('job-assets-updated', { detail: { jobId } }));
     }
-
-    prevStatusRef.current = status;
-  }, [session?.status, jobId, onAssetsGenerated]);
+  }, [session?.status, jobId, hasAssets, onAssetsGenerated]);
 
   const hasScrolledToIssueRef = useRef(false);
   const lastScrolledInterventionIdRef = useRef<string | null>(null);

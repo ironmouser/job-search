@@ -305,7 +305,7 @@ export class UniversalQuestionResolver {
       // Ignore containers inside cookie banners, privacy dialogs, or nav/footer
       const isInsideObstruction = await container.evaluate((el) => {
         return !!el.closest(
-          '#onetrust-consent-sdk, #onetrust-banner-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [class*="consent" i], [id*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy-banner" i], [id*="privacy-banner" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i]'
+          '#onetrust-consent-sdk, #onetrust-banner-sdk, #onetrust-pc-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [data-testid*="cookie" i], [class*="consent" i], [id*="consent" i], [aria-label*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy" i], [id*="privacy" i], [aria-label*="privacy" i], [data-testid*="privacy" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i]'
         );
       }).catch(() => false);
       if (isInsideObstruction) continue;
@@ -325,7 +325,7 @@ export class UniversalQuestionResolver {
 
       // Skip cookie settings, privacy preferences, and legal disclaimers
       if (
-        /cookie|cookies|privacy\s*preference|consent\s*preference|cookie\s*setting|strictly\s*necessary|targeting\s*cookies|functional\s*cookies|performance\s*cookies|analytics\s*cookies|manage\s*consent|privacy\s*choices|advertising\s*preferences|gdpr|ccpa|terms\s*of\s*service|privacy\s*policy/i.test(lowerLabel)
+        /cookie|cookies|privacy\s*preference|consent\s*preference|cookie\s*setting|strictly\s*necessary|targeting\s*cookies|functional\s*cookies|performance\s*cookies|analytics\s*cookies|manage\s*consent|privacy\s*choices|your\s*privacy|advertising\s*preferences|gdpr|ccpa|terms\s*of\s*service|privacy\s*policy/i.test(lowerLabel)
       ) {
         continue;
       }

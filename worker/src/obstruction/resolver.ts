@@ -39,11 +39,18 @@ export class UIObstructionResolver {
     'button:has-text("Reject Optional")',
     'button:has-text("Reject optional")',
     'button:has-text("Reject")',
+    '[role="button"]:has-text("Reject all")',
+    '[role="button"]:has-text("Reject All")',
+    '[role="button"]:has-text("Reject")',
+    'a:has-text("Reject all")',
+    'a:has-text("Reject All")',
     'button:has-text("Decline all")',
     'button:has-text("Decline All")',
     'button:has-text("Decline all cookies")',
     'button:has-text("Decline All Cookies")',
     'button:has-text("Decline")',
+    '[role="button"]:has-text("Decline all")',
+    '[role="button"]:has-text("Decline All")',
     'button:has-text("Refuse all")',
     'button:has-text("Refuse All")',
     'button:has-text("Refuse all cookies")',
@@ -65,6 +72,7 @@ export class UIObstructionResolver {
     'button[id*="reject" i]',
     'button[class*="reject" i]',
     'button[data-testid*="reject" i]',
+    'button[data-cy*="reject" i]',
     '[aria-label*="reject all" i]',
     '[aria-label*="reject" i]',
     '[aria-label*="decline all" i]',
@@ -95,6 +103,11 @@ export class UIObstructionResolver {
     '[aria-label*="dismiss cookie" i]',
     '[title="Close" i]',
     '[title="Dismiss" i]',
+    'button[class*="cookie" i] [aria-label*="close" i]',
+    'button[class*="cookie" i] button[class*="close" i]',
+    'div[class*="cookie" i] button[aria-label*="close" i]',
+    'div[class*="privacy" i] button[aria-label*="close" i]',
+    'div[class*="consent" i] button[aria-label*="close" i]',
     'button:has-text("Dismiss")',
     'button:has-text("Close")',
     'button:has-text("Skip")',
@@ -105,7 +118,8 @@ export class UIObstructionResolver {
     'button:has-text("Maybe later")',
     'button:has-text("✕")',
     'button:has-text("×")',
-    'button[class*="cookie" i] button[class*="close" i]',
+    '[role="button"]:has-text("✕")',
+    '[role="button"]:has-text("×")',
     'button[class*="modal__close" i]',
     'button[class*="close-modal" i]',
     'button[class*="close-btn" i]',
@@ -193,6 +207,11 @@ export class UIObstructionResolver {
     'button:has-text("Accept Cookies")',
     'button:has-text("Accept cookies")',
     'button:has-text("Accept")',
+    '[role="button"]:has-text("Accept all")',
+    '[role="button"]:has-text("Accept All")',
+    '[role="button"]:has-text("Accept")',
+    'a:has-text("Accept all")',
+    'a:has-text("Accept All")',
     'button:has-text("I agree")',
     'button:has-text("I Agree")',
     'button:has-text("Got it")',
@@ -207,6 +226,7 @@ export class UIObstructionResolver {
     'button[id*="accept" i]',
     'button[class*="accept" i]',
     'button[data-testid*="accept" i]',
+    'button[data-cy*="accept" i]',
     '[aria-label*="accept all" i]',
     '[aria-label*="accept" i]',
     '[aria-label*="allow all" i]',
@@ -854,11 +874,13 @@ export class UIObstructionResolver {
     logger?: ExecutionLogger
   ): Promise<boolean> {
     try {
+      // 1. Check via full obstruction detector
       const obstruction = await UIObstructionDetector.detectObstruction(pageOrFrame);
       if (
         obstruction.detected &&
         (obstruction.classification.type === ObstructionType.COOKIE_BANNER ||
-          obstruction.classification.type === ObstructionType.PRIVACY_BANNER)
+          obstruction.classification.type === ObstructionType.PRIVACY_BANNER ||
+          obstruction.classification.type === ObstructionType.NON_CRITICAL_DIALOG)
       ) {
         const dummyTarget =
           'locator' in pageOrFrame
@@ -867,6 +889,48 @@ export class UIObstructionResolver {
         const res = await this.resolveCookieObstruction(pageOrFrame, dummyTarget, obstruction, logger);
         return res.success;
       }
+
+      // 2. Proactive direct DOM check for docked or corner cookie/privacy banners
+      // Step A: Reject All / Decline All
+      const rejectClicked = await this.findAndClickSelectors(pageOrFrame, this.COOKIE_REJECT_SELECTORS);
+      if (rejectClicked) {
+        await this.waitForActionabilitySettle(pageOrFrame, 350);
+        if (logger) {
+          await logger.info('cookie_obstruction_resolved', 'Proactively dismissed cookie banner via Reject All.');
+        }
+        return true;
+      }
+
+      // Step B: Explicit Dismiss / Close button
+      const dismissClicked = await this.findAndClickSelectors(pageOrFrame, this.COOKIE_DISMISS_SELECTORS);
+      if (dismissClicked) {
+        await this.waitForActionabilitySettle(pageOrFrame, 350);
+        if (logger) {
+          await logger.info('cookie_obstruction_resolved', 'Proactively dismissed cookie banner via Close/Dismiss button.');
+        }
+        return true;
+      }
+
+      // Step C: Necessary only / Functional only
+      const necessaryClicked = await this.findAndClickSelectors(pageOrFrame, this.COOKIE_NECESSARY_SELECTORS);
+      if (necessaryClicked) {
+        await this.waitForActionabilitySettle(pageOrFrame, 350);
+        if (logger) {
+          await logger.info('cookie_obstruction_resolved', 'Proactively resolved cookie banner via Necessary/Functional only selection.');
+        }
+        return true;
+      }
+
+      // Step D: Fallback Accept
+      const acceptClicked = await this.findAndClickSelectors(pageOrFrame, this.COOKIE_ACCEPT_FALLBACK_SELECTORS);
+      if (acceptClicked) {
+        await this.waitForActionabilitySettle(pageOrFrame, 350);
+        if (logger) {
+          await logger.info('cookie_obstruction_resolved', 'Proactively dismissed cookie banner via Accept All fallback.');
+        }
+        return true;
+      }
+
       return false;
     } catch {
       return false;

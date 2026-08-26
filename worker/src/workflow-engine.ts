@@ -20,6 +20,7 @@ import { InterventionError } from './plugins/base-plugin';
 import { AggregatorHandler } from './plugins/aggregator-handler';
 import { uploadBrowserScreenshot } from './s3';
 import { detectJobClosed } from './utils/job-status-detector';
+import { UIObstructionResolver } from './obstruction';
 
 /**
  * WorkflowEngine — finite state machine for Auto Apply automation.
@@ -95,6 +96,9 @@ export class WorkflowEngine {
       // ─── Step 3: Detect ATS ──────────────────────────────────────────────
       await logger.info('page_navigated', `Navigating to ${context.jobUrl}`);
       await browser.navigate(context.jobUrl);
+
+      // Proactively dismiss any initial cookie / privacy consent banner
+      await UIObstructionResolver.dismissCookieBannerIfPresent(browser.page, logger);
 
       // Check if the landing page indicates the job is closed / no longer accepting applications
       const initialClosedCheck = await detectJobClosed(browser, logger);
@@ -180,6 +184,9 @@ export class WorkflowEngine {
             browser.page.url() || currentUrl
           );
         }
+
+        // Proactively dismiss any newly appeared cookie banner on the landed page
+        await UIObstructionResolver.dismissCookieBannerIfPresent(browser.page, logger);
 
         html = await browser.getHtml();
         redirectChain = await browser.getRedirectChain();

@@ -69,13 +69,16 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
     const page = browser.page;
     await logger.info('ziprecruiter_prepare', 'Preparing ZipRecruiter 1-Click Apply session');
 
+    // Proactively dismiss any cookie or privacy consent modal
+    await this.dismissCookieBannerIfPresent(page, logger);
+
     // 1. Verify Authentication
     const html = await browser.getHtml();
     const isLoggedOut =
       html.includes('Sign In to Apply') ||
       html.includes('Sign in or create an account') ||
       html.includes('action="/login"') ||
-      (await page.$('a[href*="/login"], button[data-testid*="login"]').catch(() => null)) !== null;
+      (await page.$('button:has-text("Sign In to Apply"), a:has-text("Sign In to Apply")').catch(() => null)) !== null;
 
     // If no connected session was passed or session is logged out
     if (!context.connectedSession && isLoggedOut) {

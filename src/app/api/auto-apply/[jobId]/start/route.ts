@@ -102,6 +102,7 @@ export async function POST(
       select: { tailoredResumeMarkdown: true, coverLetterMarkdown: true },
     });
 
+    let didAutoGenerateAssets = false;
     if (!assets?.tailoredResumeMarkdown || !assets?.coverLetterMarkdown) {
       const { getUserSettings, hasUserUploadedResume } = await import('@/lib/settings');
       const userSettings = await getUserSettings(userId);
@@ -117,13 +118,16 @@ export async function POST(
 
       try {
         const { generateAssetsForJob } = await import('@/lib/generator');
-        await generateAssetsForJob(
+        const generated = await generateAssetsForJob(
           userId,
           jobId,
-          userJob.job.title,
-          userJob.job.description || '',
-          userJob.job.company
+          userJob.job.title || 'Target Position',
+          userJob.job.description || `Position: ${userJob.job.title} at ${userJob.job.company}`,
+          userJob.job.company || 'Employer'
         );
+        if (generated) {
+          didAutoGenerateAssets = true;
+        }
       } catch (assetErr: any) {
         console.error('[auto-apply/start] Auto asset generation failed:', assetErr);
         return NextResponse.json(
@@ -265,6 +269,7 @@ export async function POST(
       sessionId: applySession.id,
       status: AutoApplyStatus.QUEUED,
       simulationMode,
+      assetsGenerated: didAutoGenerateAssets || !!assets,
       message: simulationMode
         ? 'Auto Apply queued in simulation mode — worker will test the flow without submitting'
         : 'Auto Apply queued — worker will submit your application',

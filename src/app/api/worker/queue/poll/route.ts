@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'asc' },
         include: {
           job: {
-            select: { id: true, title: true, company: true, url: true, applicationUrl: true },
+            select: { id: true, title: true, company: true, url: true, applicationUrl: true, description: true },
           },
           user: {
             include: { userPreferences: true },
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch application assets for this user+job
-    const assets = await prisma.applicationAsset.findUnique({
+    let assets = await prisma.applicationAsset.findUnique({
       where: {
         userId_jobId: { userId: session.userId, jobId: session.jobId },
       },
@@ -66,13 +66,38 @@ export async function GET(request: NextRequest) {
     });
 
     if (!assets?.tailoredResumeMarkdown || !assets?.coverLetterMarkdown) {
+      const { hasUserUploadedResume } = await import('@/lib/settings');
+      const baseResume = session.user.userPreferences?.resumeMarkdown;
+      if (hasUserUploadedResume(baseResume)) {
+        try {
+          const { generateAssetsForJob } = await import('@/lib/generator');
+          const generated = await generateAssetsForJob(
+            session.userId,
+            session.jobId,
+            session.job.title || 'Target Position',
+            session.job.description || `Position: ${session.job.title} at ${session.job.company}`,
+            session.job.company || 'Employer'
+          );
+          if (generated?.tailoredResumeMarkdown && generated?.coverLetterMarkdown) {
+            assets = {
+              tailoredResumeMarkdown: generated.tailoredResumeMarkdown,
+              coverLetterMarkdown: generated.coverLetterMarkdown,
+            };
+          }
+        } catch (genErr: any) {
+          console.warn('[worker/queue/poll] JIT asset generation failed:', genErr?.message);
+        }
+      }
+    }
+
+    if (!assets?.tailoredResumeMarkdown || !assets?.coverLetterMarkdown) {
       // Mark as failed immediately — assets are required
       await prisma.autoApplySession.update({
         where: { id: session.id },
         data: {
           status: AutoApplyStatus.FAILED,
           failureReason: 'missing_assets',
-          failureDetails: 'Resume or cover letter not generated. Generate assets before using Auto Apply.',
+          failureDetails: 'Resume or cover letter not generated. Upload a base resume before using Auto Apply.',
           completedAt: new Date(),
         },
       });

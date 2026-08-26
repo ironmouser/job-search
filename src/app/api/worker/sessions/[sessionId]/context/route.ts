@@ -46,7 +46,7 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    const assets = await prisma.applicationAsset.findUnique({
+    let assets = await prisma.applicationAsset.findUnique({
       where: {
         userId_jobId: { userId: session.userId, jobId: session.jobId },
       },
@@ -55,6 +55,31 @@ export async function GET(
         coverLetterMarkdown: true,
       },
     });
+
+    if (!assets?.tailoredResumeMarkdown || !assets?.coverLetterMarkdown) {
+      const { hasUserUploadedResume } = await import('@/lib/settings');
+      const baseResume = session.user.userPreferences?.resumeMarkdown;
+      if (hasUserUploadedResume(baseResume)) {
+        try {
+          const { generateAssetsForJob } = await import('@/lib/generator');
+          const generated = await generateAssetsForJob(
+            session.userId,
+            session.jobId,
+            session.job.title || 'Target Position',
+            session.job.description || `Position: ${session.job.title} at ${session.job.company}`,
+            session.job.company || 'Employer'
+          );
+          if (generated?.tailoredResumeMarkdown && generated?.coverLetterMarkdown) {
+            assets = {
+              tailoredResumeMarkdown: generated.tailoredResumeMarkdown,
+              coverLetterMarkdown: generated.coverLetterMarkdown,
+            };
+          }
+        } catch (genErr: any) {
+          console.warn('[worker/context] JIT asset generation failed:', genErr?.message);
+        }
+      }
+    }
 
     if (!assets?.tailoredResumeMarkdown || !assets?.coverLetterMarkdown) {
       return NextResponse.json(

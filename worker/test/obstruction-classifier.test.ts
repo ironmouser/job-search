@@ -297,4 +297,29 @@ describe('UIObstructionClassifier', () => {
     assert.strictEqual(res.isSafeToDismiss, false);
     assert.strictEqual(UIObstructionClassifier.isSafe(res.type), false);
   });
+
+  it('classifies Dice-style cookie and privacy dialog as safe to dismiss even when page contains login links', () => {
+    const res = UIObstructionClassifier.classify({
+      blockingElement: {
+        tag: 'div',
+        role: 'dialog',
+        id: 'privacy-consent-box',
+        className: 'privacy-banner',
+        text: 'Your privacy is important to us! We use cookies and other tracking technologies on our site, through which Dice and other third parties may collect information about your visit. By clicking Accept All you agree to our use of these technologies. Cookie settings Reject all Accept all',
+        zIndex: 99999,
+        position: 'fixed',
+        opacity: 1,
+        pointerEvents: 'auto',
+        ariaModal: true,
+        isDialog: true,
+        isInViewport: true,
+        boundingBox: { x: 100, y: 400, width: 450, height: 250 },
+      },
+      pageText: 'To see how well you match this job, please log in or create an account. Sign in to apply.',
+    });
+
+    assert.strictEqual(res.type, ObstructionType.COOKIE_BANNER);
+    assert.strictEqual(res.isSafeToDismiss, true);
+    assert.strictEqual(UIObstructionClassifier.isSafe(res.type), true);
+  });
 });
