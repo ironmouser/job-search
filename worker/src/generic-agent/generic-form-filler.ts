@@ -578,16 +578,16 @@ export class GenericFormFiller {
           } else if (profile.visaSponsorship && /no/i.test(lower) && /no/i.test(profile.visaSponsorship)) {
             await radio.check({ force: true }).catch(() => {});
           }
-        } else if (/gender|sex\b/i.test(lower)) {
+        } else if (/gender|sex\b/i.test(lower) && !/transgender|identity/i.test(lower)) {
           if (profile.eeocGender && lower.includes(profile.eeocGender.toLowerCase())) {
             await radio.check({ force: true }).catch(() => {});
-          } else if (/decline|prefer not/i.test(lower)) {
+          } else if (profile.skipSelfId && /decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
         } else if (/race|ethnicity|hispanic|latino/i.test(lower)) {
           if (profile.eeocRace && lower.includes(profile.eeocRace.toLowerCase())) {
             await radio.check({ force: true }).catch(() => {});
-          } else if (/decline|prefer not/i.test(lower)) {
+          } else if (profile.skipSelfId && /decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
         }

@@ -193,7 +193,10 @@ export async function GET(
         accountPassword: (prefs as any)?.defaultAccountPassword ? decrypt((prefs as any).defaultAccountPassword) : undefined,
         accountEmail: prefs?.emailAddress || userEmail || undefined,
         accountAuthMode: (((prefs as any)?.accountAuthMode === 'create_account' || (prefs?.sources as any)?.accountAuthMode === 'create_account') ? 'create_account' : 'sign_in'),
-        customAnswers: (prefs?.sources as any)?.customAnswers || {},
+        customAnswers: {
+          ...((prefs?.sources as any)?.customAnswers || {}),
+          ...((session.browserMetadata as any)?.sessionAnswers || {}),
+        },
       },
       connectedSession,
     };

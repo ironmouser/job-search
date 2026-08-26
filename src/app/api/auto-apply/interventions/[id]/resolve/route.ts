@@ -28,6 +28,8 @@ export async function POST(
     verificationUrl?: string;
     otp?: string;
     token?: string;
+    answers?: Record<string, string>;
+    saveForFuture?: boolean;
   };
   try {
     body = await request.json();
@@ -56,13 +58,44 @@ export async function POST(
       });
       if (sessionRec) {
         if (body.resolution === 'completed') {
+          const existingMeta = (sessionRec.browserMetadata as Record<string, any>) || {};
+          const sessionAnswers = {
+            ...(existingMeta.sessionAnswers || {}),
+            ...(body.answers || {}),
+          };
+
           await prisma.autoApplySession.update({
             where: { id: sessionRec.id },
             data: {
               status: 'applying',
               currentStep: 'resuming',
+              browserMetadata: {
+                ...existingMeta,
+                sessionAnswers,
+              },
             },
           });
+
+          if (body.saveForFuture && body.answers && Object.keys(body.answers).length > 0) {
+            const userPrefs = await prisma.userPreferences.findUnique({
+              where: { userId },
+              select: { sources: true },
+            });
+            const existingSources = (userPrefs?.sources as Record<string, any>) || {};
+            const mergedCustom = {
+              ...(existingSources.customAnswers || {}),
+              ...body.answers,
+            };
+            await prisma.userPreferences.update({
+              where: { userId },
+              data: {
+                sources: {
+                  ...existingSources,
+                  customAnswers: mergedCustom,
+                },
+              },
+            }).catch((err) => console.warn('[resolve] Could not save customAnswers to prefs:', err));
+          }
         } else {
           const failureReason = sessionRec.failureReason === 'job_closed'
             ? 'job_closed'
@@ -103,18 +136,26 @@ export async function POST(
         select: { browserMetadata: true },
       });
       const existingMetadata = (sessionRec?.browserMetadata as Record<string, any>) || {};
-      const updatedMetadata = (body.verificationUrl || body.otp || body.token)
-        ? {
-            ...existingMetadata,
-            emailVerification: {
-              receivedAt: new Date().toISOString(),
-              primaryUrl: body.verificationUrl || null,
-              otp: body.otp || null,
-              token: body.token || null,
-              source: 'intervention_resolve_ui',
-            },
-          }
-        : existingMetadata;
+      const sessionAnswers = {
+        ...(existingMetadata.sessionAnswers || {}),
+        ...(body.answers || {}),
+      };
+
+      const updatedMetadata = {
+        ...existingMetadata,
+        sessionAnswers,
+        ...((body.verificationUrl || body.otp || body.token)
+          ? {
+              emailVerification: {
+                receivedAt: new Date().toISOString(),
+                primaryUrl: body.verificationUrl || null,
+                otp: body.otp || null,
+                token: body.token || null,
+                source: 'intervention_resolve_ui',
+              },
+            }
+          : {}),
+      };
 
       await prisma.autoApplySession.update({
         where: { id: intervention.sessionId },
@@ -124,6 +165,39 @@ export async function POST(
           browserMetadata: updatedMetadata,
         },
       });
+
+      // If user selected "Save for future applications", persist to userPreferences
+      if (body.saveForFuture && body.answers && Object.keys(body.answers).length > 0) {
+        const userPrefs = await prisma.userPreferences.findUnique({
+          where: { userId },
+          select: { sources: true },
+        });
+        const existingSources = (userPrefs?.sources as Record<string, any>) || {};
+        const mergedCustom = {
+          ...(existingSources.customAnswers || {}),
+          ...body.answers,
+        };
+
+        const extraData: Record<string, any> = {
+          sources: {
+            ...existingSources,
+            customAnswers: mergedCustom,
+          },
+        };
+
+        for (const [k, v] of Object.entries(body.answers)) {
+          const lower = k.toLowerCase();
+          if (/gender|sex\b/i.test(lower) && !/transgender|identity/i.test(lower)) extraData.eeocGender = v;
+          else if (/race|ethnicity|hispanic|latino/i.test(lower)) extraData.eeocRace = v;
+          else if (/veteran|military/i.test(lower)) extraData.eeocVeteran = v;
+          else if (/disability/i.test(lower)) extraData.eeocDisability = v;
+        }
+
+        await prisma.userPreferences.update({
+          where: { userId },
+          data: extraData,
+        }).catch((err) => console.warn('[resolve] Could not save customAnswers to prefs:', err));
+      }
     } else {
       const isJobClosed = intervention.reason === 'job_closed';
       const failureReason = isJobClosed

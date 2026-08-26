@@ -171,8 +171,7 @@ export function InterventionPanel({
     }
   })();
 
-  // QUESTION_DATA may be a single question object (legacy) or an array of
-  // unanswered fields. Normalize both to an array for batch rendering.
+  // QUESTION_DATA may be a single question object or an array of unanswered fields.
   const questionFields: Array<{
     fieldKey?: string;
     label: string;
@@ -187,24 +186,61 @@ export function InterventionPanel({
     .replace(/\[QUESTION_DATA:\{[\s\S]*?\}\](?=\s|$)/, '')
     .replace(/\[QUESTION_DATA:.*?\]\s*/g, '')
     .trim();
+
+  // Extract fallback question text from description if not structured in QUESTION_DATA
+  const extractedQuestionFromDesc = (() => {
+    if (hasQuestionFields) return null;
+    const match = cleanDescription.match(/(?:requires your input|question|answer is required for|required for|input for|answer:)\s*:?\s*["'“]?([^"'”\n]+)["'”]?/i);
+    if (match && match[1] && match[1].trim().length > 3) {
+      return match[1].trim();
+    }
+    return null;
+  })();
+
+  const effectiveQuestionFields: Array<{
+    fieldKey?: string;
+    label: string;
+    fieldType?: string;
+    options?: string[];
+    required?: boolean;
+    suggestedAnswer?: string;
+  }> = hasQuestionFields
+    ? questionFields
+    : reason === 'unknown_question' && extractedQuestionFromDesc
+    ? [{ label: extractedQuestionFromDesc, fieldType: 'text', required: true }]
+    : reason === 'unknown_question' && cleanDescription && cleanDescription.length > 5 && !cleanDescription.toLowerCase().includes('application form on')
+    ? [{ label: cleanDescription, fieldType: 'text', required: true }]
+    : [];
+
+  const hasEffectiveQuestions = effectiveQuestionFields.length > 0;
+
   const [customAnswer, setCustomAnswer] = useState<string>('');
   const [batchAnswers, setBatchAnswers] = useState<Record<string, string>>({});
+  const [saveForFutureApplications, setSaveForFutureApplications] = useState<boolean>(true);
   const [emailVerificationCode, setEmailVerificationCode] = useState<string>('');
 
-  // Pre-fill batch answers with the bot's suggested answers when fields arrive
+  // Pre-fill batch answers with suggested answers or existing custom answers when fields arrive
   useEffect(() => {
-    if (hasQuestionFields && questionFields.length > 0) {
+    if (effectiveQuestionFields.length > 0) {
       setBatchAnswers((prev) => {
         const next = { ...prev };
-        for (const f of questionFields) {
+        for (const f of effectiveQuestionFields) {
           const key = f.fieldKey || f.label;
-          if (next[key] === undefined && f.suggestedAnswer) next[key] = f.suggestedAnswer;
+          if (next[key] === undefined) {
+            if (f.suggestedAnswer) {
+              next[key] = f.suggestedAnswer;
+            } else if (settings?.customAnswers?.[key]) {
+              next[key] = settings.customAnswers[key];
+            } else if (settings?.customAnswers?.[f.label]) {
+              next[key] = settings.customAnswers[f.label];
+            }
+          }
         }
         return next;
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [description]);
+  }, [description, effectiveQuestionFields.length, settings]);
 
   useEffect(() => {
     setMounted(true);
@@ -252,7 +288,8 @@ export function InterventionPanel({
     !settings.expectedSalary
   );
 
-  const showAuthForm = reason === 'unknown_question' || isMissingAuth;
+  // Only show the general profile settings form if it's strictly an account auth reason or if settings are missing and there are no question fields to answer
+  const showAuthForm = !hasEffectiveQuestions && reason !== 'unknown_question' && isMissingAuth;
 
   const handleSettingsChange = (key: string, value: any) => {
     setSettings((prev: any) => ({ ...prev, [key]: value }));
@@ -314,61 +351,62 @@ export function InterventionPanel({
     setResolving(true);
     setResolution(res);
     try {
-      if (res === 'completed' && settings) {
-        const extraPayload: Record<string, any> = {
-          accountAuthMode: accountMode,
-          emailAddress: settings.emailAddress,
-          defaultAccountPassword: settings.defaultAccountPassword,
-        };
+      const answersMap: Record<string, string> = {};
 
-        // Batch unanswered fields: merge every user-provided answer into
-        // customAnswers (keyed by both fieldKey and label so the worker's
-        // fallback lookup finds it either way), and mirror known profile
-        // keys (city/state/etc.) onto their canonical settings fields.
-        if (hasQuestionFields) {
-          const mergedCustom = { ...(settings?.customAnswers || {}) };
-          for (const f of questionFields) {
+      if (res === 'completed') {
+        if (effectiveQuestionFields.length > 0) {
+          for (const f of effectiveQuestionFields) {
             const key = f.fieldKey || f.label;
             const val = (batchAnswers[key] ?? '').trim();
             if (!val) continue;
-            mergedCustom[key] = val;
-            mergedCustom[f.label] = val;
-
-            const lowerLabel = f.label.toLowerCase();
-            if (/^city\b|\bcity\b/i.test(lowerLabel)) extraPayload.city = val;
-            else if (/^state\b|\bstate\b|province/i.test(lowerLabel)) extraPayload.state = val;
-            else if (/postal|zip\s*code/i.test(lowerLabel)) extraPayload.postalCode = val;
-            else if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel)) extraPayload.streetAddress = val;
+            answersMap[key] = val;
+            answersMap[f.label] = val;
+            answersMap[f.label.replace(/\*/g, '').trim()] = val;
           }
-          extraPayload.customAnswers = mergedCustom;
+        } else if (customAnswer) {
+          const qKey = questionData?.fieldKey || questionData?.label || 'answer';
+          answersMap[qKey] = customAnswer;
+          if (questionData?.label) {
+            answersMap[questionData.label] = customAnswer;
+          }
         }
 
-        if (customAnswer && !hasQuestionFields) {
-          const qKey = questionData?.fieldKey || questionData?.label || 'answer';
-          const qLabel = questionData?.label || qKey;
-          const lowerLabel = qLabel.toLowerCase();
-          const lowerKey = String(qKey).toLowerCase();
-
-          extraPayload.customAnswers = {
-            ...(settings?.customAnswers || {}),
-            [qKey]: customAnswer,
-            [qLabel]: customAnswer,
+        // If user wants to save answers for future applications, persist to DB via settings
+        if (saveForFutureApplications && settings) {
+          const extraPayload: Record<string, any> = {
+            accountAuthMode: accountMode,
+            emailAddress: settings.emailAddress,
+            defaultAccountPassword: settings.defaultAccountPassword,
           };
 
-          if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel) || /address\s*line\s*1|street\s*address/i.test(lowerKey)) {
-            extraPayload.streetAddress = customAnswer;
-          } else if (/^city\b|\bcity\b/i.test(lowerLabel) || /^city\b|\bcity\b/i.test(lowerKey)) {
-            extraPayload.city = customAnswer;
-          } else if (/^state\b|\bstate\b|province|region/i.test(lowerLabel) || /^state\b|\bstate\b/i.test(lowerKey)) {
-            extraPayload.state = customAnswer;
-          } else if (/postal|zip\s*code/i.test(lowerLabel) || /postal|zip/i.test(lowerKey)) {
-            extraPayload.postalCode = customAnswer;
+          const mergedCustom = { ...(settings?.customAnswers || {}) };
+
+          for (const [k, v] of Object.entries(answersMap)) {
+            mergedCustom[k] = v;
+            const lowerLabel = k.toLowerCase();
+            if (/^city\b|\bcity\b/i.test(lowerLabel)) extraPayload.city = v;
+            else if (/^state\b|\bstate\b|province/i.test(lowerLabel)) extraPayload.state = v;
+            else if (/postal|zip\s*code/i.test(lowerLabel)) extraPayload.postalCode = v;
+            else if (/address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel)) extraPayload.streetAddress = v;
+            else if (/authorized|legally/i.test(lowerLabel)) extraPayload.usWorkAuthorization = v;
+            else if (/sponsorship/i.test(lowerLabel)) extraPayload.visaSponsorship = v;
+            else if (/gender|sex\b/i.test(lowerLabel) && !/transgender|identity/i.test(lowerLabel)) extraPayload.eeocGender = v;
+            else if (/race|ethnicity|hispanic|latino/i.test(lowerLabel)) extraPayload.eeocRace = v;
+            else if (/veteran|military/i.test(lowerLabel)) extraPayload.eeocVeteran = v;
+            else if (/disability/i.test(lowerLabel)) extraPayload.eeocDisability = v;
           }
+
+          extraPayload.customAnswers = mergedCustom;
+          await saveSettings(extraPayload);
         }
-        await saveSettings(extraPayload);
       }
 
-      const resolvePayload: Record<string, any> = { resolution: res };
+      const resolvePayload: Record<string, any> = {
+        resolution: res,
+        answers: answersMap,
+        saveForFuture: saveForFutureApplications,
+      };
+
       if (res === 'completed' && emailVerificationCode && emailVerificationCode.trim()) {
         const trimmed = emailVerificationCode.trim();
         if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
@@ -838,6 +876,8 @@ export function InterventionPanel({
                   ? (accountMode === 'sign_in'
                       ? 'Enter the credentials for your existing account so JAHQ can sign in and continue your application.'
                       : `${portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using the credentials you provide, then resume your application.`)
+                  : hasEffectiveQuestions
+                  ? 'Answer the application question(s) below or complete them directly on the employer site.'
                   : showAuthForm 
                   ? 'Fill out your missing authorization details below or complete verification directly on the company site.' 
                   : 'Complete the verification or login directly on the job application page.'}
@@ -855,12 +895,287 @@ export function InterventionPanel({
                   ? (accountMode === 'sign_in'
                       ? <>Click <strong>Sign In & Resume Application</strong> so JAHQ can authenticate and continue filling your application.</>
                       : <>Click <strong>Create Account & Resume</strong> so JAHQ can register your profile and submit your application.</>)
+                  : hasEffectiveQuestions
+                  ? <>Once answered, click <strong>Resume Automation</strong> so the AI agent can fill out and submit your application with your answers.</>
                   : <>Once verified, click <strong>Resume Automation</strong> so the AI agent can automatically fill out and submit your application.</>}
               </span>
             </div>
           </div>
 
-          {(isAuthReason || showAuthForm) && !loadingSettings && (
+          {/* Job Application Questions Form */}
+          {hasEffectiveQuestions && (
+            <div
+              style={{
+                background: 'var(--secondary, var(--card-header-bg))',
+                borderRadius: '10px',
+                padding: '1.25rem',
+                border: '1px solid var(--border-glass)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+              }}
+            >
+              <div>
+                <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
+                  <HelpCircle size={17} color="var(--accent-primary, #3b82f6)" />
+                  Application Questions
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                  The application form requires input for the question{effectiveQuestionFields.length > 1 ? 's' : ''} below. Select or provide your answers to proceed.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {effectiveQuestionFields.map((q, idx) => {
+                  const fieldKey = q.fieldKey || q.label;
+                  const currentValue = batchAnswers[fieldKey] ?? (idx === 0 && customAnswer ? customAnswer : '');
+                  const isRequired = q.required !== false;
+
+                  return (
+                    <div
+                      key={fieldKey || idx}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem',
+                        background: 'var(--card, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                          {q.label} {isRequired ? <span style={{ color: '#ef4444' }}>*</span> : <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 400 }}>(Optional)</span>}
+                        </label>
+                        {q.fieldType && (
+                          <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                            {q.fieldType}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Render based on fieldType */}
+                      {q.fieldType === 'select' ? (
+                        q.options && q.options.length > 0 ? (
+                          <select
+                            value={currentValue}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
+                              if (idx === 0) setCustomAnswer(val);
+                            }}
+                            style={{
+                              background: 'var(--input, var(--background))',
+                              border: '1px solid var(--border-glass)',
+                              color: 'var(--text-primary)',
+                              padding: '0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.875rem',
+                              width: '100%',
+                            }}
+                          >
+                            <option value="">Select an option...</option>
+                            {q.options.map((opt, optIdx) => (
+                              <option key={optIdx} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={currentValue}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
+                              if (idx === 0) setCustomAnswer(val);
+                            }}
+                            placeholder="Enter your answer..."
+                            style={{
+                              background: 'var(--input, var(--background))',
+                              border: '1px solid var(--border-glass)',
+                              color: 'var(--text-primary)',
+                              padding: '0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.875rem',
+                              width: '100%',
+                            }}
+                          />
+                        )
+                      ) : q.fieldType === 'radio' && q.options && q.options.length > 0 ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          {q.options.map((opt, optIdx) => {
+                            const isSelected = currentValue === opt || currentValue.toLowerCase() === opt.toLowerCase();
+                            return (
+                              <button
+                                key={optIdx}
+                                type="button"
+                                onClick={() => {
+                                  setBatchAnswers((prev) => ({ ...prev, [fieldKey]: opt }));
+                                  if (idx === 0) setCustomAnswer(opt);
+                                }}
+                                className={isSelected ? 'btn-primary' : 'btn-outline'}
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 600,
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  background: isSelected ? 'var(--primary, #3b82f6)' : 'var(--background-card)',
+                                  color: isSelected ? '#ffffff' : 'var(--text-primary)',
+                                  border: '1px solid var(--border-glass)',
+                                }}
+                              >
+                                {opt}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : q.fieldType === 'checkbox' ? (
+                        q.options && q.options.length > 1 ? (
+                          // Multi-checkbox group
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                            {q.options.map((opt, optIdx) => {
+                              const currentSelected = currentValue.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+                              const isChecked = currentSelected.includes(opt.toLowerCase());
+                              return (
+                                <label key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const selectedArr = currentValue ? currentValue.split(',').map((s) => s.trim()).filter(Boolean) : [];
+                                      let nextArr: string[];
+                                      if (e.target.checked) {
+                                        nextArr = [...selectedArr, opt];
+                                      } else {
+                                        nextArr = selectedArr.filter((s) => s.toLowerCase() !== opt.toLowerCase());
+                                      }
+                                      const nextVal = nextArr.join(', ');
+                                      setBatchAnswers((prev) => ({ ...prev, [fieldKey]: nextVal }));
+                                      if (idx === 0) setCustomAnswer(nextVal);
+                                    }}
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  />
+                                  <span>{opt}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          // Single checkbox (e.g. consent or confirmation)
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={currentValue === 'Yes' || currentValue === 'true' || currentValue === '1'}
+                              onChange={(e) => {
+                                const val = e.target.checked ? 'Yes' : 'No';
+                                setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
+                                if (idx === 0) setCustomAnswer(val);
+                              }}
+                              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            />
+                            <span>I agree / confirm</span>
+                          </label>
+                        )
+                      ) : q.fieldType === 'textarea' ? (
+                        <textarea
+                          rows={3}
+                          value={currentValue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
+                            if (idx === 0) setCustomAnswer(val);
+                          }}
+                          placeholder="Type your answer here..."
+                          style={{
+                            background: 'var(--input, var(--background))',
+                            border: '1px solid var(--border-glass)',
+                            color: 'var(--text-primary)',
+                            padding: '0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            width: '100%',
+                            resize: 'vertical',
+                          }}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={currentValue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setBatchAnswers((prev) => ({ ...prev, [fieldKey]: val }));
+                            if (idx === 0) setCustomAnswer(val);
+                          }}
+                          placeholder="Type your answer here..."
+                          style={{
+                            background: 'var(--input, var(--background))',
+                            border: '1px solid var(--border-glass)',
+                            color: 'var(--text-primary)',
+                            padding: '0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            width: '100%',
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Save for future applications checkbox */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.65rem',
+                  padding: '0.85rem 1rem',
+                  background: 'var(--card, var(--background))',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '8px',
+                  marginTop: '0.25rem',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id={`save-future-checkbox-${interventionId}`}
+                  checked={saveForFutureApplications}
+                  onChange={(e) => setSaveForFutureApplications(e.target.checked)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    cursor: 'pointer',
+                    marginTop: '2px',
+                    flexShrink: 0,
+                    accentColor: 'var(--accent-primary, #3b82f6)',
+                  }}
+                />
+                <label
+                  htmlFor={`save-future-checkbox-${interventionId}`}
+                  style={{
+                    fontSize: '0.86rem',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    userSelect: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.2rem',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>Save answers for future applications</span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
+                    When checked, these answers will be saved to your profile so the bot can automatically answer them in future applications.
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Account Auth Credentials Form */}
+          {isAuthReason && !loadingSettings && (
             <div
               style={{
                 background: 'var(--secondary, var(--card-header-bg))',
@@ -875,145 +1190,24 @@ export function InterventionPanel({
               <div>
                 <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
                   <Key size={17} color="var(--accent-primary, #3b82f6)" />
-                  {isAuthReason
-                    ? (accountMode === 'sign_in' ? `Sign in to ${providerInfo ? providerInfo.name : 'Candidate'} Account` : `Create ${providerInfo ? providerInfo.name : 'Candidate'} Account`)
-                    : 'Complete Application Settings'}
+                  {accountMode === 'sign_in' ? `Sign in to ${providerInfo ? providerInfo.name : 'Candidate'} Account` : `Create ${providerInfo ? providerInfo.name : 'Candidate'} Account`}
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                  {isAuthReason
-                    ? (accountMode === 'sign_in'
-                        ? `Enter the credentials for your ${providerInfo ? providerInfo.name : portalDisplayName} account so JAHQ can sign in and continue your application.`
-                        : `${providerInfo ? providerInfo.name : portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using these credentials, then resume your application.`)
-                    : 'Please provide missing authorization and demographic details so JAHQ can answer required application questions. These will be saved to your profile for future applications.'}
+                  {accountMode === 'sign_in'
+                    ? `Enter the credentials for your ${providerInfo ? providerInfo.name : portalDisplayName} account so JAHQ can sign in and continue your application.`
+                    : `${providerInfo ? providerInfo.name : portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using these credentials, then resume your application.`}
                 </p>
               </div>
-              
-              {isAuthReason && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div className="auto-apply-input-group" style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Email Address</label>
-                      <input
-                        type="email"
-                        value={settings?.emailAddress || ''}
-                        onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
-                        placeholder="user@example.com"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {accountMode === 'sign_in' ? 'Account Password' : 'New Account Password'}
-                      </label>
-                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          value={settings?.defaultAccountPassword || ''}
-                          onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
-                          placeholder={accountMode === 'sign_in' ? 'Enter existing account password' : 'Enter desired password'}
-                          style={{
-                            width: '100%',
-                            background: 'var(--input, var(--background))',
-                            border: '1px solid var(--border-glass)',
-                            color: 'var(--text-primary)',
-                            padding: '0.75rem 2.5rem 0.75rem 0.75rem',
-                            borderRadius: '8px',
-                            fontSize: '0.875rem',
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          style={{
-                            position: 'absolute',
-                            right: '0.75rem',
-                            background: 'none',
-                            border: 'none',
-                            padding: '0.25rem',
-                            cursor: 'pointer',
-                            color: 'var(--text-secondary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                          title={showPassword ? 'Hide password' : 'Show password'}
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Email Verification Link or OTP Code (Optional)
-                    </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="auto-apply-input-group" style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Email Address</label>
                     <input
-                      type="text"
-                      value={emailVerificationCode}
-                      onChange={(e) => setEmailVerificationCode(e.target.value)}
-                      placeholder="Paste activation URL or enter 6-digit code..."
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.85rem',
-                        width: '100%',
-                      }}
-                    />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      If {portalDisplayName} sent a verification link or code to your email, paste it here to automatically complete verification.
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    <Lock size={14} color="#10b981" />
-                    <span>Credentials are protected and used only to submit your application.</span>
-                  </div>
-                </div>
-              )}
-
-              {questionData && (
-                <div
-                  style={{
-                    background: 'var(--accent-glow, rgba(0, 112, 243, 0.08))',
-                    border: '1px solid var(--border-glass)',
-                    borderRadius: '10px',
-                    padding: '1.15rem 1.25rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.75rem',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                      <HelpCircle size={17} color="var(--accent-primary, #3b82f6)" /> Employer Question {questionData.required ? <span style={{ color: '#ef4444' }}>*</span> : '(Optional)'}
-                    </h4>
-                    {questionData.fieldType && (
-                      <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {questionData.fieldType}
-                      </span>
-                    )}
-                  </div>
-
-                  <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.45 }}>
-                    {questionData.label}
-                  </p>
-
-                  {questionData.fieldType === 'select' && questionData.options && questionData.options.length > 0 ? (
-                    <select
-                      value={customAnswer}
-                      onChange={(e) => setCustomAnswer(e.target.value)}
+                      type="email"
+                      value={settings?.emailAddress || ''}
+                      onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
+                      placeholder="user@example.com"
                       style={{
                         background: 'var(--input, var(--background))',
                         border: '1px solid var(--border-glass)',
@@ -1021,46 +1215,135 @@ export function InterventionPanel({
                         padding: '0.75rem',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
-                        width: '100%',
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {accountMode === 'sign_in' ? 'Account Password' : 'New Account Password'}
+                    </label>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={settings?.defaultAccountPassword || ''}
+                        onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
+                        placeholder={accountMode === 'sign_in' ? 'Enter existing account password' : 'Enter desired password'}
+                        style={{
+                          width: '100%',
+                          background: 'var(--input, var(--background))',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-primary)',
+                          padding: '0.75rem 2.5rem 0.75rem 0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '0.75rem',
+                          background: 'none',
+                          border: 'none',
+                          padding: '0.25rem',
+                          cursor: 'pointer',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title={showPassword ? 'Hide password' : 'Show password'}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Email Verification Link or OTP Code (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={emailVerificationCode}
+                    onChange={(e) => setEmailVerificationCode(e.target.value)}
+                    placeholder="Paste activation URL or enter 6-digit code..."
+                    style={{
+                      background: 'var(--input, var(--background))',
+                      border: '1px solid var(--border-glass)',
+                      color: 'var(--text-primary)',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      width: '100%',
+                    }}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    If {portalDisplayName} sent a verification link or code to your email, paste it here to automatically complete verification.
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  <Lock size={14} color="#10b981" />
+                  <span>Credentials are protected and used only to submit your application.</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Missing Profile Settings Form (shown only if no specific application questions exist and profile has missing details) */}
+          {showAuthForm && !loadingSettings && (
+            <div
+              style={{
+                background: 'var(--secondary, var(--card-header-bg))',
+                borderRadius: '10px',
+                padding: '1.25rem',
+                border: '1px solid var(--border-glass)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+              }}
+            >
+              <div>
+                <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
+                  <FileText size={17} color="var(--accent-primary, #3b82f6)" />
+                  Complete Profile Settings
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                  Please provide missing authorization and demographic details so JAHQ can answer required application questions. These will be saved to your profile for future applications.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="auto-apply-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
+                    <select
+                      value={settings?.usWorkAuthorization || ''}
+                      onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)}
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
                       }}
                     >
-                      <option value="">Select an answer...</option>
-                      {questionData.options.map((opt: string, i: number) => (
-                        <option key={i} value={opt}>{opt}</option>
-                      ))}
+                      <option value="">Select...</option>
+                      <option value="Yes">Yes, I am authorized to work in the US</option>
+                      <option value="No">No, I am not authorized</option>
                     </select>
-                  ) : questionData.fieldType === 'radio' && questionData.options && questionData.options.length > 0 ? (
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {questionData.options.map((opt: string, i: number) => {
-                        const isSelected = customAnswer === opt;
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => setCustomAnswer(opt)}
-                            className={isSelected ? 'btn-primary' : 'btn-outline'}
-                            style={{
-                              padding: '0.5rem 1rem',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              background: isSelected ? 'var(--primary, #3b82f6)' : 'var(--background-card)',
-                              color: isSelected ? '#ffffff' : 'var(--text-primary)',
-                              border: '1px solid var(--border-glass)',
-                            }}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : questionData.fieldType === 'textarea' ? (
-                    <textarea
-                      rows={4}
-                      value={customAnswer}
-                      onChange={(e) => setCustomAnswer(e.target.value)}
-                      placeholder="Type your answer here..."
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Visa Sponsorship</label>
+                    <select
+                      value={settings?.visaSponsorship || ''}
+                      onChange={(e) => handleSettingsChange('visaSponsorship', e.target.value)}
                       style={{
                         background: 'var(--input, var(--background))',
                         border: '1px solid var(--border-glass)',
@@ -1068,16 +1351,21 @@ export function InterventionPanel({
                         padding: '0.75rem',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
-                        width: '100%',
-                        resize: 'vertical',
                       }}
-                    />
-                  ) : (
+                    >
+                      <option value="">Select...</option>
+                      <option value="Yes">Yes, I require sponsorship</option>
+                      <option value="No">No, I do not require sponsorship</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Working Remotely From</label>
                     <input
                       type="text"
-                      value={customAnswer}
-                      onChange={(e) => setCustomAnswer(e.target.value)}
-                      placeholder="Type your answer here..."
+                      value={settings?.workingRemotelyFrom || ''}
+                      onChange={(e) => handleSettingsChange('workingRemotelyFrom', e.target.value)}
+                      placeholder="e.g. New York, NY"
                       style={{
                         background: 'var(--input, var(--background))',
                         border: '1px solid var(--border-glass)',
@@ -1085,358 +1373,293 @@ export function InterventionPanel({
                         padding: '0.75rem',
                         borderRadius: '8px',
                         fontSize: '0.875rem',
-                        width: '100%',
                       }}
                     />
-                  )}
-                </div>
-              )}
+                  </div>
 
-              {showAuthForm && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: isAuthReason || questionData ? '1px solid var(--border-glass)' : 'none', paddingTop: isAuthReason || questionData ? '1.25rem' : '0' }}>
-                  <div className="auto-apply-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>US Work Authorization</label>
-                      <select
-                        value={settings?.usWorkAuthorization || ''}
-                        onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)}
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <option value="">Select...</option>
-                        <option value="Yes">Yes, I am authorized to work in the US</option>
-                        <option value="No">No, I am not authorized</option>
-                      </select>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Country</label>
+                    <input
+                      type="text"
+                      value={settings?.country || ''}
+                      onChange={(e) => handleSettingsChange('country', e.target.value)}
+                      placeholder="e.g. United States"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Visa Sponsorship</label>
-                      <select
-                        value={settings?.visaSponsorship || ''}
-                        onChange={(e) => handleSettingsChange('visaSponsorship', e.target.value)}
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <option value="">Select...</option>
-                        <option value="Yes">Yes, I require sponsorship</option>
-                        <option value="No">No, I do not require sponsorship</option>
-                      </select>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Gender</label>
+                    <select
+                      value={settings?.eeocGender || ''}
+                      onChange={(e) => handleSettingsChange('eeocGender', e.target.value)}
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Decline">Decline</option>
+                    </select>
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Working Remotely From</label>
-                      <input
-                        type="text"
-                        value={settings?.workingRemotelyFrom || ''}
-                        onChange={(e) => handleSettingsChange('workingRemotelyFrom', e.target.value)}
-                        placeholder="e.g. New York, NY"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Race / Ethnicity</label>
+                    <select
+                      value={settings?.eeocRace || ''}
+                      onChange={(e) => handleSettingsChange('eeocRace', e.target.value)}
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Hispanic or Latino">Hispanic or Latino</option>
+                      <option value="White">White</option>
+                      <option value="Black or African American">Black or African American</option>
+                      <option value="Asian">Asian</option>
+                      <option value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</option>
+                      <option value="American Indian or Alaska Native">American Indian or Alaska Native</option>
+                      <option value="Two or More Races">Two or More Races</option>
+                      <option value="Decline">Decline</option>
+                    </select>
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Country</label>
-                      <input
-                        type="text"
-                        value={settings?.country || ''}
-                        onChange={(e) => handleSettingsChange('country', e.target.value)}
-                        placeholder="e.g. United States"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Veteran Status</label>
+                    <select
+                      value={settings?.eeocVeteran || ''}
+                      onChange={(e) => handleSettingsChange('eeocVeteran', e.target.value)}
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Yes">Yes, protected veteran</option>
+                      <option value="No">No, not a veteran</option>
+                      <option value="Decline">Decline</option>
+                    </select>
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Gender</label>
-                      <select
-                        value={settings?.eeocGender || ''}
-                        onChange={(e) => handleSettingsChange('eeocGender', e.target.value)}
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <option value="">Select...</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Decline">Decline</option>
-                      </select>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Disability Status</label>
+                    <select
+                      value={settings?.eeocDisability || ''}
+                      onChange={(e) => handleSettingsChange('eeocDisability', e.target.value)}
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                      <option value="Decline">Decline</option>
+                    </select>
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Race / Ethnicity</label>
-                      <select
-                        value={settings?.eeocRace || ''}
-                        onChange={(e) => handleSettingsChange('eeocRace', e.target.value)}
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <option value="">Select...</option>
-                        <option value="Hispanic or Latino">Hispanic or Latino</option>
-                        <option value="White">White</option>
-                        <option value="Black or African American">Black or African American</option>
-                        <option value="Asian">Asian</option>
-                        <option value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</option>
-                        <option value="American Indian or Alaska Native">American Indian or Alaska Native</option>
-                        <option value="Two or More Races">Two or More Races</option>
-                        <option value="Decline">Decline</option>
-                      </select>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Phone Number</label>
+                    <input
+                      type="tel"
+                      value={settings?.phone || ''}
+                      onChange={(e) => handleSettingsChange('phone', e.target.value)}
+                      placeholder="e.g. +1 (555) 000-0000"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Veteran Status</label>
-                      <select
-                        value={settings?.eeocVeteran || ''}
-                        onChange={(e) => handleSettingsChange('eeocVeteran', e.target.value)}
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <option value="">Select...</option>
-                        <option value="Yes">Yes, protected veteran</option>
-                        <option value="No">No, not a veteran</option>
-                        <option value="Decline">Decline</option>
-                      </select>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Street Address</label>
+                    <input
+                      type="text"
+                      value={settings?.streetAddress || ''}
+                      onChange={(e) => handleSettingsChange('streetAddress', e.target.value)}
+                      placeholder="e.g. 123 Main St, Apt 4B"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Disability Status</label>
-                      <select
-                        value={settings?.eeocDisability || ''}
-                        onChange={(e) => handleSettingsChange('eeocDisability', e.target.value)}
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <option value="">Select...</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                        <option value="Decline">Decline</option>
-                      </select>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>City</label>
+                    <input
+                      type="text"
+                      value={settings?.city || ''}
+                      onChange={(e) => {
+                        const newCity = e.target.value;
+                        handleSettingsChange('city', newCity);
+                        const st = settings?.state || '';
+                        if (newCity || st) handleSettingsChange('location', [newCity, st].filter(Boolean).join(', '));
+                      }}
+                      placeholder="e.g. San Francisco"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Phone Number</label>
-                      <input
-                        type="tel"
-                        value={settings?.phone || ''}
-                        onChange={(e) => handleSettingsChange('phone', e.target.value)}
-                        placeholder="e.g. +1 (555) 000-0000"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>State / Province</label>
+                    <input
+                      type="text"
+                      value={settings?.state || ''}
+                      onChange={(e) => {
+                        const newSt = e.target.value;
+                        handleSettingsChange('state', newSt);
+                        const ct = settings?.city || '';
+                        if (ct || newSt) handleSettingsChange('location', [ct, newSt].filter(Boolean).join(', '));
+                      }}
+                      placeholder="e.g. CA"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Street Address</label>
-                      <input
-                        type="text"
-                        value={settings?.streetAddress || ''}
-                        onChange={(e) => handleSettingsChange('streetAddress', e.target.value)}
-                        placeholder="e.g. 123 Main St, Apt 4B"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>ZIP / Postal Code</label>
+                    <input
+                      type="text"
+                      value={settings?.postalCode || ''}
+                      onChange={(e) => handleSettingsChange('postalCode', e.target.value)}
+                      placeholder="e.g. 94105"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>City</label>
-                      <input
-                        type="text"
-                        value={settings?.city || ''}
-                        onChange={(e) => {
-                          const newCity = e.target.value;
-                          handleSettingsChange('city', newCity);
-                          const st = settings?.state || '';
-                          if (newCity || st) handleSettingsChange('location', [newCity, st].filter(Boolean).join(', '));
-                        }}
-                        placeholder="e.g. San Francisco"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>LinkedIn URL</label>
+                    <input
+                      type="url"
+                      value={settings?.linkedinUrl || ''}
+                      onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)}
+                      placeholder="e.g. https://linkedin.com/in/username"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>State / Province</label>
-                      <input
-                        type="text"
-                        value={settings?.state || ''}
-                        onChange={(e) => {
-                          const newSt = e.target.value;
-                          handleSettingsChange('state', newSt);
-                          const ct = settings?.city || '';
-                          if (ct || newSt) handleSettingsChange('location', [ct, newSt].filter(Boolean).join(', '));
-                        }}
-                        placeholder="e.g. CA"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Salary / Compensation Expectation</label>
+                    <input
+                      type="text"
+                      value={settings?.expectedSalary || ''}
+                      onChange={(e) => handleSettingsChange('expectedSalary', e.target.value)}
+                      placeholder="e.g. $140,000 or 140000"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>ZIP / Postal Code</label>
-                      <input
-                        type="text"
-                        value={settings?.postalCode || ''}
-                        onChange={(e) => handleSettingsChange('postalCode', e.target.value)}
-                        placeholder="e.g. 94105"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Available Start Date</label>
+                    <input
+                      type="text"
+                      value={settings?.startDate || ''}
+                      onChange={(e) => handleSettingsChange('startDate', e.target.value)}
+                      placeholder="e.g. Immediately or 2 weeks"
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    />
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>LinkedIn URL</label>
-                      <input
-                        type="url"
-                        value={settings?.linkedinUrl || ''}
-                        onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)}
-                        placeholder="e.g. https://linkedin.com/in/username"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Salary / Compensation Expectation</label>
-                      <input
-                        type="text"
-                        value={settings?.expectedSalary || ''}
-                        onChange={(e) => handleSettingsChange('expectedSalary', e.target.value)}
-                        placeholder="e.g. $140,000 or 140000"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Available Start Date</label>
-                      <input
-                        type="text"
-                        value={settings?.startDate || ''}
-                        onChange={(e) => handleSettingsChange('startDate', e.target.value)}
-                        placeholder="e.g. Immediately or 2 weeks"
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Willing to Relocate</label>
-                      <select
-                        value={settings?.willingToRelocate || ''}
-                        onChange={(e) => handleSettingsChange('willingToRelocate', e.target.value)}
-                        style={{
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <option value="">Select...</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                        <option value="Negotiable">Negotiable</option>
-                      </select>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Willing to Relocate</label>
+                    <select
+                      value={settings?.willingToRelocate || ''}
+                      onChange={(e) => handleSettingsChange('willingToRelocate', e.target.value)}
+                      style={{
+                        background: 'var(--input, var(--background))',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-primary)',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                      <option value="Negotiable">Negotiable</option>
+                    </select>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 

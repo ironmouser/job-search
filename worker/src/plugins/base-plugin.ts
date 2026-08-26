@@ -811,7 +811,7 @@ export abstract class ATSPlugin {
         else if (/veteran/i.test(lower)) {
           if (profile.eeocVeteran && lower.includes(profile.eeocVeteran.toLowerCase())) {
             await radio.check({ force: true }).catch(() => {});
-          } else if (/not a protected veteran|not a veteran|decline|prefer not/i.test(lower)) {
+          } else if (profile.skipSelfId && /not a protected veteran|not a veteran|decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
         }
@@ -819,15 +819,15 @@ export abstract class ATSPlugin {
         else if (/disability/i.test(lower)) {
           if (profile.eeocDisability && lower.includes(profile.eeocDisability.toLowerCase())) {
             await radio.check({ force: true }).catch(() => {});
-          } else if (/no, i (do not|don't) have a disability|do not have a disability|decline|do not wish to answer|prefer not/i.test(lower)) {
+          } else if (profile.skipSelfId && /no, i (do not|don't) have a disability|do not have a disability|decline|do not wish to answer|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
         }
         // Gender
-        else if (/gender|sex\b/i.test(lower)) {
+        else if (/gender|sex\b/i.test(lower) && !/transgender|identity/i.test(lower)) {
           if (profile.eeocGender && lower.includes(profile.eeocGender.toLowerCase())) {
             await radio.check({ force: true }).catch(() => {});
-          } else if (/decline|prefer not/i.test(lower)) {
+          } else if (profile.skipSelfId && /decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
         }
@@ -835,7 +835,7 @@ export abstract class ATSPlugin {
         else if (/race|ethnicity|hispanic|latino/i.test(lower)) {
           if (profile.eeocRace && lower.includes(profile.eeocRace.toLowerCase())) {
             await radio.check({ force: true }).catch(() => {});
-          } else if (/decline|prefer not/i.test(lower)) {
+          } else if (profile.skipSelfId && /decline|prefer not/i.test(lower)) {
             await radio.check({ force: true }).catch(() => {});
           }
         }
@@ -857,19 +857,19 @@ export abstract class ATSPlugin {
 
         if (/veteran/i.test(lower)) {
           const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocVeteran && new RegExp(profile.eeocVeteran, 'i').test(o.text)) || /not a protected veteran|decline/i.test(o.text));
+          const match = options.find((o) => (profile.eeocVeteran && new RegExp(profile.eeocVeteran, 'i').test(o.text)) || (profile.skipSelfId && /not a protected veteran|decline/i.test(o.text)));
           if (match) await sel.selectOption(match.value).catch(() => {});
         } else if (/disability/i.test(lower)) {
           const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocDisability && new RegExp(profile.eeocDisability, 'i').test(o.text)) || /no|decline|do not wish/i.test(o.text));
+          const match = options.find((o) => (profile.eeocDisability && new RegExp(profile.eeocDisability, 'i').test(o.text)) || (profile.skipSelfId && /no|decline|do not wish/i.test(o.text)));
           if (match) await sel.selectOption(match.value).catch(() => {});
-        } else if (/gender|sex\b/i.test(lower)) {
+        } else if (/gender|sex\b/i.test(lower) && !/transgender|identity/i.test(lower)) {
           const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocGender && new RegExp(profile.eeocGender, 'i').test(o.text)) || /decline|prefer not/i.test(o.text));
+          const match = options.find((o) => (profile.eeocGender && new RegExp(profile.eeocGender, 'i').test(o.text)) || (profile.skipSelfId && /decline|prefer not/i.test(o.text)));
           if (match) await sel.selectOption(match.value).catch(() => {});
         } else if (/race|ethnicity|hispanic/i.test(lower)) {
           const options = await sel.$$eval('option', (opts) => opts.map((o) => ({ value: o.value, text: o.textContent || '' })));
-          const match = options.find((o) => (profile.eeocRace && new RegExp(profile.eeocRace, 'i').test(o.text)) || /decline|prefer not/i.test(o.text));
+          const match = options.find((o) => (profile.eeocRace && new RegExp(profile.eeocRace, 'i').test(o.text)) || (profile.skipSelfId && /decline|prefer not/i.test(o.text)));
           if (match) await sel.selectOption(match.value).catch(() => {});
         }
       }
@@ -1180,6 +1180,27 @@ export abstract class ATSPlugin {
           const errText = ((await errEl.textContent().catch(() => '')) || '').trim();
           if (errText.length > 0 && !/cookie|privacy/i.test(errText)) {
             await logger.warn('submission_validation_error', `Form field validation error detected on ${platform}: ${errText.slice(0, 100)}`);
+            try {
+              const { UniversalQuestionResolver } = await import('./question-resolver');
+              const unanswered = await (UniversalQuestionResolver as any).extractUnfilledQuestions(ctx);
+              if (unanswered && unanswered.length > 0) {
+                const questionPayload = unanswered.map((u: any) => ({
+                  fieldKey: u.fieldKey,
+                  label: u.label,
+                  fieldType: u.type,
+                  options: u.options?.length > 0 ? u.options : undefined,
+                  required: u.required,
+                }));
+                throw new InterventionError(
+                  InterventionReason.UNKNOWN_QUESTION,
+                  `[QUESTION_DATA:${JSON.stringify(questionPayload)}] Application needs your input on ${platform}: ${unanswered.map((u: any) => `"${u.label.slice(0, 60)}"`).join(', ')}`,
+                  page.url()
+                );
+              }
+            } catch (innerErr) {
+              if (innerErr instanceof InterventionError) throw innerErr;
+            }
+
             throw new InterventionError(
               InterventionReason.UNKNOWN_QUESTION,
               `Application requires additional input on ${platform}: "${errText.slice(0, 150)}"`,
@@ -1195,6 +1216,27 @@ export abstract class ATSPlugin {
         combinedText.includes('select a country')
       ) {
         await logger.warn('submission_validation_error', `Required field validation error on ${platform}`);
+        try {
+          const { UniversalQuestionResolver } = await import('./question-resolver');
+          const unanswered = await (UniversalQuestionResolver as any).extractUnfilledQuestions(ctx);
+          if (unanswered && unanswered.length > 0) {
+            const questionPayload = unanswered.map((u: any) => ({
+              fieldKey: u.fieldKey,
+              label: u.label,
+              fieldType: u.type,
+              options: u.options?.length > 0 ? u.options : undefined,
+              required: u.required,
+            }));
+            throw new InterventionError(
+              InterventionReason.UNKNOWN_QUESTION,
+              `[QUESTION_DATA:${JSON.stringify(questionPayload)}] Application form on ${platform} has required fields that need your input: ${unanswered.map((u: any) => `"${u.label.slice(0, 60)}"`).join(', ')}`,
+              page.url()
+            );
+          }
+        } catch (innerErr) {
+          if (innerErr instanceof InterventionError) throw innerErr;
+        }
+
         throw new InterventionError(
           InterventionReason.UNKNOWN_QUESTION,
           `Application form on ${platform} has required fields that need your input.`,

@@ -25,6 +25,40 @@ export interface AnswerItem {
  * Uses candidate profile, resume markdown, and job details with callAI to generate
  * tailored answers adhering to all content rules (no em-dashes, no filler words, professional tone).
  */
+/**
+ * Detect if a question is a demographic / EEOC / voluntary self-identification question.
+ * The bot MUST NOT guess or assume answers for these questions.
+ */
+export function isDemographicQuestion(label: string, fieldKey?: string): boolean {
+  const text = `${label} ${fieldKey || ''}`.toLowerCase();
+
+  // Sexual orientation / sexuality
+  if (/sexual\s*(?:orientation|identity|preference)|sexuality/i.test(text)) return true;
+
+  // Transgender / gender identity / cisgender
+  if (/transgender|\btrans\b|gender\s*identity|gender\s*expression|cisgender/i.test(text)) return true;
+
+  // Pronouns
+  if (/\bpronouns?\b|preferred\s*pronouns/i.test(text)) return true;
+
+  // Gender / Sex (exclude words like 'generation', 'general', 'section')
+  if (/\b(?:gender|sex|biological\s*sex)\b/i.test(text) && !/generation|general|section/i.test(text)) return true;
+
+  // Race / Ethnicity / Hispanic / Latino
+  if (/\b(?:race|ethnicity|hispanic|latino|latina|latinx|racial|ethnic)\b/i.test(text)) return true;
+
+  // Veteran / Military
+  if (/\b(?:veteran|military\s*status|protected\s*veteran|armed\s*forces|active\s*duty)\b/i.test(text)) return true;
+
+  // Disability
+  if (/\b(?:disability|impairment|handicap)\b|special\s*accommodations?/i.test(text)) return true;
+
+  // General EEOC / Self-ID / Diversity
+  if (/\b(?:eeoc|eeo)\b|voluntary\s*self[-\s]*identification|self[-\s]*identify|diversity\s*(?:&|and)\s*inclusion/i.test(text)) return true;
+
+  return false;
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ sessionId: string }> }
@@ -78,7 +112,11 @@ export async function POST(
     const company = session.job?.company || 'Company';
     const jobDescription = session.job?.description || '';
 
-    const customAnswers = ((prefs?.sources as any)?.customAnswers as Record<string, string>) || {};
+    const sessionAnswers = ((session.browserMetadata as any)?.sessionAnswers as Record<string, string>) || {};
+    const customAnswers = {
+      ...(((prefs?.sources as any)?.customAnswers as Record<string, string>) || {}),
+      ...sessionAnswers,
+    };
     const streetAddress = prefs?.streetAddress || customAnswers['addressLine1'] || customAnswers['Address Line 1'] || customAnswers['streetAddress'] || '';
     const city = prefs?.city || customAnswers['city'] || customAnswers['City'] || (prefs?.location ? prefs.location.split(',')[0]?.trim() : '');
     const state = prefs?.state || customAnswers['state'] || customAnswers['State'] || (prefs?.location ? prefs.location.split(',')[1]?.trim() : '');
@@ -90,8 +128,81 @@ export async function POST(
     // Pre-resolve from customAnswers or profile attributes
     for (const q of body.questions) {
       const lowerLabel = q.label.toLowerCase();
+      const cleanLabel = q.label.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
       const lowerId = (q.id || '').toLowerCase();
-      const customVal = customAnswers[q.id] || customAnswers[q.label] || customAnswers[q.label.trim()];
+
+      // Look up saved custom answer
+      let customVal =
+        customAnswers[q.id] ||
+        customAnswers[q.label] ||
+        customAnswers[q.label.trim()] ||
+        customAnswers[q.label.replace(/\*/g, '').trim()];
+
+      if (customVal === undefined || customVal === null || String(customVal).trim().length === 0) {
+        for (const [k, v] of Object.entries(customAnswers)) {
+          const cleanK = k.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+          if (
+            cleanK === cleanLabel ||
+            (cleanK.length > 5 && cleanLabel.includes(cleanK)) ||
+            (cleanLabel.length > 5 && cleanK.includes(cleanLabel)) ||
+            (cleanK.length > 4 && lowerId.includes(cleanK))
+          ) {
+            customVal = v;
+            break;
+          }
+        }
+      }
+
+      // Check if this is a demographic question
+      const isDemographic = isDemographicQuestion(q.label, q.id);
+
+      if (isDemographic) {
+        // Check for specific demographic values in preferences or customAnswers
+        let demoAnswer = customVal;
+
+        if (!demoAnswer) {
+          if (/gender|sex\b/i.test(lowerLabel) && !/transgender|identity/i.test(lowerLabel)) {
+            demoAnswer = prefs?.eeocGender;
+          } else if (/race|ethnicity|hispanic|latino/i.test(lowerLabel)) {
+            demoAnswer = prefs?.eeocRace;
+          } else if (/veteran|military/i.test(lowerLabel)) {
+            demoAnswer = prefs?.eeocVeteran;
+          } else if (/disability/i.test(lowerLabel)) {
+            demoAnswer = prefs?.eeocDisability;
+          }
+        }
+
+        if (demoAnswer !== undefined && demoAnswer !== null && String(demoAnswer).trim().length > 0) {
+          let resolvedOption = String(demoAnswer).trim();
+          if (q.options && q.options.length > 0) {
+            const matchedOpt = q.options.find(
+              (o) =>
+                o.toLowerCase() === resolvedOption.toLowerCase() ||
+                o.toLowerCase().includes(resolvedOption.toLowerCase()) ||
+                resolvedOption.toLowerCase().includes(o.toLowerCase())
+            );
+            if (matchedOpt) {
+              resolvedOption = matchedOpt;
+            }
+          }
+
+          answers.push({
+            id: q.id,
+            answer: resolvedOption,
+            confidence: 100,
+            requiresHumanInput: false,
+          });
+        } else {
+          // If no answer exists in DB for this demographic question, NEVER let AI guess!
+          answers.push({
+            id: q.id,
+            answer: null,
+            confidence: 0,
+            requiresHumanInput: true,
+          });
+        }
+        continue;
+      }
 
       const isCityQuestion = /^city\b|\bcity\b|location\s*\(\s*city\s*\)/i.test(lowerLabel) || /^city\b|candidate-location/i.test(lowerId);
       const isStateQuestion = /^state\b|\bstate\b|province|region|location\s*\(\s*state\s*\)/i.test(lowerLabel) || /^state\b|candidate-state/i.test(lowerId);
@@ -200,6 +311,7 @@ CONTENT WRITING RULES (STRICT):
 6. For dropdowns or radio choices with Allowed Options, YOU MUST SELECT ONE OF THE EXACT ALLOWED OPTIONS verbatim.
 7. For salary or compensation questions: If candidate has a configured salary expectation ("${prefs?.expectedSalary || ''}"), provide that value (clean number if required, e.g. 150000 or $150,000 depending on field type). If not specified, use a reasonable market rate for the role or the job's salary range ("${session.job?.salaryRange || ''}").
 8. If a question is highly personal, confidential, or impossible to deduce safely, mark requiresHumanInput as true and answer as null.
+9. CRITICAL DEMOGRAPHIC RULE: Never guess, assume, or invent answers to demographic, diversity, sexual orientation, transgender, gender identity, pronouns, race, veteran, or disability questions. If not explicitly provided in candidate information, return null and mark requiresHumanInput as true.
 
 OUTPUT FORMAT:
 Return a valid JSON array of objects with the exact structure:
@@ -233,9 +345,19 @@ Return a valid JSON array of objects with the exact structure:
       }
 
       if (Array.isArray(parsedAnswers) && parsedAnswers.length > 0) {
-        for (const q of body.questions) {
+        for (const q of questionsForAI) {
           const matched = parsedAnswers.find((a: any) => a.id === q.id || a.label === q.label);
-          if (matched && matched.answer !== undefined && matched.answer !== null) {
+          const isDemo = isDemographicQuestion(q.label, q.id);
+
+          if (isDemo) {
+            // Demographic questions should NEVER be answered by AI
+            answers.push({
+              id: q.id,
+              answer: null,
+              confidence: 0,
+              requiresHumanInput: true,
+            });
+          } else if (matched && matched.answer !== undefined && matched.answer !== null) {
             answers.push({
               id: q.id,
               answer: String(matched.answer).trim(),
@@ -253,7 +375,7 @@ Return a valid JSON array of objects with the exact structure:
         }
       } else {
         // Fallback for all
-        for (const q of body.questions) {
+        for (const q of questionsForAI) {
           answers.push({
             id: q.id,
             answer: null,
@@ -264,7 +386,7 @@ Return a valid JSON array of objects with the exact structure:
       }
     } catch (aiErr: any) {
       console.error('[answer-questions] AI call failed:', aiErr);
-      for (const q of body.questions) {
+      for (const q of questionsForAI) {
         answers.push({
           id: q.id,
           answer: null,

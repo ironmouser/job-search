@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Demographic Questions Test Fixture</title>
+  <style>
+    .field-wrapper { margin-bottom: 16px; }
+    label { display: block; margin-bottom: 4px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <form id="application-form">
+    <!-- Demographic Dropdown: Sexual Orientation -->
+    <div class="field-wrapper" id="wrap-sexual-orientation">
+      <label for="sexual-orientation">What is your sexual orientation? *</label>
+      <select id="sexual-orientation" name="sexual_orientation" required>
+        <option value="">Select an option...</option>
+        <option value="Heterosexual / Straight">Heterosexual / Straight</option>
+        <option value="Gay / Lesbian">Gay / Lesbian</option>
+        <option value="Bisexual">Bisexual</option>
+        <option value="Queer">Queer</option>
+        <option value="Prefer not to say">Prefer not to say</option>
+      </select>
+    </div>
+
+    <!-- Demographic Radio Group: Transgender Status -->
+    <div class="field-wrapper" id="wrap-transgender">
+      <fieldset>
+        <legend class="field-label">Do you identify as transgender? *</legend>
+        <label><input type="radio" name="transgender_status" value="Yes"> Yes</label>
+        <label><input type="radio" name="transgender_status" value="No"> No</label>
+        <label><input type="radio" name="transgender_status" value="Decline to state"> Decline to state</label>
+      </fieldset>
+    </div>
+
+    <!-- Demographic Dropdown: Gender Identity -->
+    <div class="field-wrapper" id="wrap-gender-identity">
+      <label for="gender-identity">Gender Identity *</label>
+      <select id="gender-identity" name="gender_identity" required>
+        <option value="">Choose gender identity...</option>
+        <option value="Man">Man</option>
+        <option value="Woman">Woman</option>
+        <option value="Non-binary">Non-binary</option>
+        <option value="Prefer not to disclose">Prefer not to disclose</option>
+      </select>
+    </div>
+
+    <!-- Demographic Dropdown: Pronouns -->
+    <div class="field-wrapper" id="wrap-pronouns">
+      <label for="pronouns">Preferred Pronouns</label>
+      <select id="pronouns" name="pronouns">
+        <option value="">Select pronouns...</option>
+        <option value="he/him">He / Him</option>
+        <option value="she/her">She / Her</option>
+        <option value="they/them">They / Them</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+
+    <!-- Non-Demographic Question: Years of Experience -->
+    <div class="field-wrapper" id="wrap-experience">
+      <label for="years-exp">Years of Experience with TypeScript *</label>
+      <input type="text" id="years-exp" name="years_experience" required />
+    </div>
+
+    <button type="submit" id="submit-btn">Submit Application</button>
+  </form>
+</body>
+</html>

@@ -49,6 +49,40 @@ export interface UnansweredFieldData {
   suggestedAnswer?: string;
 }
 
+/**
+ * Detect if a question is a demographic / EEOC / voluntary self-identification question.
+ * The bot MUST NOT guess or assume answers for these questions.
+ */
+export function isDemographicQuestion(label: string, fieldKey?: string): boolean {
+  const text = `${label} ${fieldKey || ''}`.toLowerCase();
+
+  // Sexual orientation / sexuality
+  if (/sexual\s*(?:orientation|identity|preference)|sexuality/i.test(text)) return true;
+
+  // Transgender / gender identity / cisgender
+  if (/transgender|\btrans\b|gender\s*identity|gender\s*expression|cisgender/i.test(text)) return true;
+
+  // Pronouns
+  if (/\bpronouns?\b|preferred\s*pronouns/i.test(text)) return true;
+
+  // Gender / Sex (exclude words like 'generation', 'general', 'section')
+  if (/\b(?:gender|sex|biological\s*sex)\b/i.test(text) && !/generation|general|section/i.test(text)) return true;
+
+  // Race / Ethnicity / Hispanic / Latino
+  if (/\b(?:race|ethnicity|hispanic|latino|latina|latinx|racial|ethnic)\b/i.test(text)) return true;
+
+  // Veteran / Military
+  if (/\b(?:veteran|military\s*status|protected\s*veteran|armed\s*forces|active\s*duty)\b/i.test(text)) return true;
+
+  // Disability
+  if (/\b(?:disability|impairment|handicap)\b|special\s*accommodations?/i.test(text)) return true;
+
+  // General EEOC / Self-ID / Diversity
+  if (/\b(?:eeoc|eeo)\b|voluntary\s*self[-\s]*identification|self[-\s]*identify|diversity\s*(?:&|and)\s*inclusion/i.test(text)) return true;
+
+  return false;
+}
+
 /** Read back the committed value of an extracted text-type question's input. */
 async function readTextQuestionValue(ctx: Page | Frame, q: ExtractedQuestion): Promise<string | null> {
   const input = q.container.locator('input[type="text"], input[type="url"], input[type="tel"], input:not([type])').first();
@@ -102,102 +136,149 @@ export class UniversalQuestionResolver {
     const unanswered: UnansweredFieldData[] = [];
 
     for (const q of questions) {
+      const isDemographic = isDemographicQuestion(q.label, q.fieldKey);
       const match = aiAnswers.find((a) => a.id === q.id);
       let answer = match?.answer;
       let requiresHuman = match?.requiresHumanInput || !answer;
 
-      // Profile and customAnswers fallback if AI did not return an answer
+      // Profile and customAnswers fallback
       if (!answer) {
         const lowerQ = q.label.toLowerCase();
         const lowerKey = q.fieldKey.toLowerCase();
+        const cleanQ = q.label.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
         const customAnswers = context.userProfile.customAnswers || {};
-        const customVal = customAnswers[q.fieldKey] || customAnswers[q.label] || customAnswers[q.label.trim()];
 
-        const isCityQuestion = /^city\b|\bcity\b|location\s*\(\s*city\s*\)/i.test(lowerQ) || /^city\b|candidate-location/i.test(lowerKey);
-        const isStateQuestion = /^state\b|\bstate\b|province|region|location\s*\(\s*state\s*\)/i.test(lowerQ) || /^state\b|candidate-state/i.test(lowerKey);
-        const isAddressQuestion = /address\s*(?:line\s*1)?|street\s*address/i.test(lowerQ) || /address\s*line\s*1|street\s*address|address1/i.test(lowerKey);
-        const isPostalQuestion = /postal|zip\s*code/i.test(lowerQ) || /postal|zip/i.test(lowerKey);
-        const isCountryQuestion = /^country\b|\bcountry\b/i.test(lowerQ) || /^country\b/i.test(lowerKey);
+        let customVal =
+          customAnswers[q.fieldKey] ||
+          customAnswers[q.label] ||
+          customAnswers[q.label.trim()] ||
+          customAnswers[q.label.replace(/\*/g, '').trim()] ||
+          customAnswers[q.id];
 
-        if (isCityQuestion && (context.userProfile.city || context.userProfile.location)) {
-          const c = context.userProfile.city || (context.userProfile.location ? context.userProfile.location.split(',')[0]?.trim() : '');
-          if (c) {
-            answer = c;
-            requiresHuman = false;
+        if (customVal === undefined || customVal === null || String(customVal).trim().length === 0) {
+          for (const [k, v] of Object.entries(customAnswers)) {
+            const cleanK = k.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (
+              cleanK === cleanQ ||
+              (cleanK.length > 5 && cleanQ.includes(cleanK)) ||
+              (cleanQ.length > 5 && cleanK.includes(cleanQ)) ||
+              (cleanK.length > 4 && lowerKey.includes(cleanK))
+            ) {
+              customVal = v;
+              break;
+            }
           }
-        } else if (isStateQuestion && (context.userProfile.state || context.userProfile.location)) {
-          const s = context.userProfile.state || (context.userProfile.location ? context.userProfile.location.split(',')[1]?.trim() : '');
-          if (s) {
-            answer = s;
-            requiresHuman = false;
+        }
+
+        if (isDemographic) {
+          // Check for specific demographic field in userProfile
+          let demoAnswer: string | undefined = customVal;
+          if (!demoAnswer) {
+            if (/gender|sex\b/i.test(lowerQ) && !/transgender|identity/i.test(lowerQ)) {
+              demoAnswer = context.userProfile.eeocGender;
+            } else if (/race|ethnicity|hispanic|latino/i.test(lowerQ)) {
+              demoAnswer = context.userProfile.eeocRace;
+            } else if (/veteran|military/i.test(lowerQ)) {
+              demoAnswer = context.userProfile.eeocVeteran;
+            } else if (/disability/i.test(lowerQ)) {
+              demoAnswer = context.userProfile.eeocDisability;
+            }
           }
-        } else if (isAddressQuestion && (context.userProfile.streetAddress || context.userProfile.location)) {
-          const addr = context.userProfile.streetAddress || context.userProfile.location;
-          if (addr) {
-            answer = addr;
+
+          if (demoAnswer !== undefined && demoAnswer !== null && String(demoAnswer).trim().length > 0) {
+            answer = String(demoAnswer).trim();
             requiresHuman = false;
+          } else {
+            // Demographic question without saved answer strictly requires human intervention
+            requiresHuman = true;
           }
-        } else if (isPostalQuestion && context.userProfile.postalCode) {
-          answer = context.userProfile.postalCode;
-          requiresHuman = false;
-        } else if (isCountryQuestion && (context.userProfile.country || customVal)) {
-          answer = context.userProfile.country || customVal || 'United States';
-          requiresHuman = false;
-        } else if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
-          answer = String(customVal).trim();
-          requiresHuman = false;
-        } else if (/salary|compensation|desired pay|expected pay|pay expectation|target salary/i.test(lowerQ) && context.userProfile.expectedSalary) {
-          answer = context.userProfile.expectedSalary;
-          requiresHuman = false;
-        } else if (/start date|availability|notice period|available to start|when can you start/i.test(lowerQ) && (context.userProfile as any).startDate) {
-          answer = (context.userProfile as any).startDate;
-          requiresHuman = false;
-        } else if (/relocat/i.test(lowerQ) && (context.userProfile as any).willingToRelocate) {
-          answer = (context.userProfile as any).willingToRelocate;
-          requiresHuman = false;
-        } else if (/address\s*line\s*2|apt|suite|unit/i.test(lowerQ) || /address\s*line\s*2|address2/i.test(lowerKey)) {
-          answer = context.userProfile.streetAddress2 || '';
-          requiresHuman = false;
-        } else if (/postal|zip\s*code/i.test(lowerQ) || /postal|zip/i.test(lowerKey)) {
-          if (context.userProfile.postalCode) {
+        } else {
+          const isCityQuestion = /^city\b|\bcity\b|location\s*\(\s*city\s*\)/i.test(lowerQ) || /^city\b|candidate-location/i.test(lowerKey);
+          const isStateQuestion = /^state\b|\bstate\b|province|region|location\s*\(\s*state\s*\)/i.test(lowerQ) || /^state\b|candidate-state/i.test(lowerKey);
+          const isAddressQuestion = /address\s*(?:line\s*1)?|street\s*address/i.test(lowerQ) || /address\s*line\s*1|street\s*address|address1/i.test(lowerKey);
+          const isPostalQuestion = /postal|zip\s*code/i.test(lowerQ) || /postal|zip/i.test(lowerKey);
+          const isCountryQuestion = /^country\b|\bcountry\b/i.test(lowerQ) || /^country\b/i.test(lowerKey);
+
+          if (isCityQuestion && (context.userProfile.city || context.userProfile.location)) {
+            const c = context.userProfile.city || (context.userProfile.location ? context.userProfile.location.split(',')[0]?.trim() : '');
+            if (c) {
+              answer = c;
+              requiresHuman = false;
+            }
+          } else if (isStateQuestion && (context.userProfile.state || context.userProfile.location)) {
+            const s = context.userProfile.state || (context.userProfile.location ? context.userProfile.location.split(',')[1]?.trim() : '');
+            if (s) {
+              answer = s;
+              requiresHuman = false;
+            }
+          } else if (isAddressQuestion && (context.userProfile.streetAddress || context.userProfile.location)) {
+            const addr = context.userProfile.streetAddress || context.userProfile.location;
+            if (addr) {
+              answer = addr;
+              requiresHuman = false;
+            }
+          } else if (isPostalQuestion && context.userProfile.postalCode) {
             answer = context.userProfile.postalCode;
             requiresHuman = false;
-          }
-        } else if (/^country\b|\bcountry\b/i.test(lowerQ) || /^country\b/i.test(lowerKey)) {
-          answer = context.userProfile.country || 'United States';
-          requiresHuman = false;
-        } else if (/first\s*name/i.test(lowerQ) || /first\s*name/i.test(lowerKey)) {
-          answer = context.userProfile.name?.split(' ')[0] || '';
-          if (answer) requiresHuman = false;
-        } else if (/last\s*name/i.test(lowerQ) || /last\s*name/i.test(lowerKey)) {
-          answer = context.userProfile.name?.split(' ').slice(1).join(' ') || '';
-          if (answer) requiresHuman = false;
-        } else if (/phone|mobile|tel/i.test(lowerQ) || /phone|mobile/i.test(lowerKey)) {
-          if (context.userProfile.phone) {
-            answer = context.userProfile.phone;
+          } else if (isCountryQuestion && (context.userProfile.country || customVal)) {
+            answer = context.userProfile.country || customVal || 'United States';
+            requiresHuman = false;
+          } else if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
+            answer = String(customVal).trim();
+            requiresHuman = false;
+          } else if (/salary|compensation|desired pay|expected pay|pay expectation|target salary/i.test(lowerQ) && context.userProfile.expectedSalary) {
+            answer = context.userProfile.expectedSalary;
+            requiresHuman = false;
+          } else if (/start date|availability|notice period|available to start|when can you start/i.test(lowerQ) && (context.userProfile as any).startDate) {
+            answer = (context.userProfile as any).startDate;
+            requiresHuman = false;
+          } else if (/relocat/i.test(lowerQ) && (context.userProfile as any).willingToRelocate) {
+            answer = (context.userProfile as any).willingToRelocate;
+            requiresHuman = false;
+          } else if (/address\s*line\s*2|apt|suite|unit/i.test(lowerQ) || /address\s*line\s*2|address2/i.test(lowerKey)) {
+            answer = context.userProfile.streetAddress2 || '';
+            requiresHuman = false;
+          } else if (/postal|zip\s*code/i.test(lowerQ) || /postal|zip/i.test(lowerKey)) {
+            if (context.userProfile.postalCode) {
+              answer = context.userProfile.postalCode;
+              requiresHuman = false;
+            }
+          } else if (/^country\b|\bcountry\b/i.test(lowerQ) || /^country\b/i.test(lowerKey)) {
+            answer = context.userProfile.country || 'United States';
+            requiresHuman = false;
+          } else if (/first\s*name/i.test(lowerQ) || /first\s*name/i.test(lowerKey)) {
+            answer = context.userProfile.name?.split(' ')[0] || '';
+            if (answer) requiresHuman = false;
+          } else if (/last\s*name/i.test(lowerQ) || /last\s*name/i.test(lowerKey)) {
+            answer = context.userProfile.name?.split(' ').slice(1).join(' ') || '';
+            if (answer) requiresHuman = false;
+          } else if (/phone|mobile|tel/i.test(lowerQ) || /phone|mobile/i.test(lowerKey)) {
+            if (context.userProfile.phone) {
+              answer = context.userProfile.phone;
+              requiresHuman = false;
+            }
+          } else if (/email/i.test(lowerQ) || /email/i.test(lowerKey)) {
+            if (context.userProfile.email) {
+              answer = context.userProfile.email;
+              requiresHuman = false;
+            }
+          } else if (/linkedin/i.test(lowerQ) || /linkedin/i.test(lowerKey)) {
+            if (context.userProfile.linkedinUrl) {
+              answer = context.userProfile.linkedinUrl;
+              requiresHuman = false;
+            }
+          } else if (/website|portfolio/i.test(lowerQ) || /website|portfolio/i.test(lowerKey)) {
+            if (context.userProfile.websiteUrl) {
+              answer = context.userProfile.websiteUrl;
+              requiresHuman = false;
+            }
+          } else if (/authorized to work|work authorization/i.test(lowerQ)) {
+            answer = context.userProfile.usWorkAuthorization === 'No' ? 'No' : 'Yes';
+            requiresHuman = false;
+          } else if (/require sponsorship|visa sponsorship/i.test(lowerQ)) {
+            answer = context.userProfile.visaSponsorship === 'Yes' ? 'Yes' : 'No';
             requiresHuman = false;
           }
-        } else if (/email/i.test(lowerQ) || /email/i.test(lowerKey)) {
-          if (context.userProfile.email) {
-            answer = context.userProfile.email;
-            requiresHuman = false;
-          }
-        } else if (/linkedin/i.test(lowerQ) || /linkedin/i.test(lowerKey)) {
-          if (context.userProfile.linkedinUrl) {
-            answer = context.userProfile.linkedinUrl;
-            requiresHuman = false;
-          }
-        } else if (/website|portfolio/i.test(lowerQ) || /website|portfolio/i.test(lowerKey)) {
-          if (context.userProfile.websiteUrl) {
-            answer = context.userProfile.websiteUrl;
-            requiresHuman = false;
-          }
-        } else if (/authorized to work|work authorization/i.test(lowerQ)) {
-          answer = context.userProfile.usWorkAuthorization === 'No' ? 'No' : 'Yes';
-          requiresHuman = false;
-        } else if (/require sponsorship|visa sponsorship/i.test(lowerQ)) {
-          answer = context.userProfile.visaSponsorship === 'Yes' ? 'Yes' : 'No';
-          requiresHuman = false;
         }
       }
 
@@ -407,19 +488,31 @@ export class UniversalQuestionResolver {
       const nativeSelect = container.locator('select').first();
       const reactSelect = container.locator('.select__control, .select-shell, input.select__input, [role="combobox"]').first();
 
-      if (await nativeSelect.count() > 0 && (await nativeSelect.isVisible().catch(() => false))) {
-        const val = await nativeSelect.inputValue().catch(() => '');
-        const options = await nativeSelect.locator('option').allTextContents().catch(() => []);
-        const filteredOptions = options.map((o) => o.trim()).filter((o) => o && !/select|choose|please/i.test(o));
+      let dropdownOptions: string[] = [];
+      if (await nativeSelect.count() > 0) {
+        const rawOpts = await nativeSelect.locator('option').allTextContents().catch(() => []);
+        dropdownOptions = rawOpts.map((o) => o.trim()).filter((o) => o && !/^(select|choose|please\s*select|\-\-)/i.test(o));
+      }
 
-        if (!val || val === '' || val === '0') {
+      if (dropdownOptions.length === 0 && (await reactSelect.count() > 0)) {
+        const customOpts = await container.locator('[role="option"], .select__option, [class*="option" i]').allTextContents().catch(() => []);
+        dropdownOptions = customOpts.map((o) => o.trim()).filter((o) => o && !/^(select|choose|please\s*select|\-\-)/i.test(o));
+      }
+
+      if (await nativeSelect.count() > 0) {
+        const val = await nativeSelect.inputValue().catch(() => '');
+        const reactText = ((await container.locator('.select__single-value, .select-value, .selected').textContent().catch(() => '')) || '').toLowerCase();
+        const containerText = ((await container.textContent().catch(() => '')) || '').toLowerCase();
+        const isUnfilled = !val || val === '' || val === '0' || reactText.includes('select') || containerText.includes('select...') || containerText.includes('choose...');
+
+        if (isUnfilled) {
           qIndex++;
           extracted.push({
             id: `q_${qIndex}`,
             fieldKey: (await nativeSelect.getAttribute('name')) || (await nativeSelect.getAttribute('id')) || `select_${qIndex}`,
             label: cleanLabel,
             type: 'select',
-            options: filteredOptions,
+            options: dropdownOptions,
             required: isRequired,
             container,
           });
@@ -427,15 +520,15 @@ export class UniversalQuestionResolver {
         }
       } else if (await reactSelect.count() > 0 && (await reactSelect.isVisible().catch(() => false))) {
         const text = (await container.textContent().catch(() => ''))?.toLowerCase() || '';
-        // If it still says "select..." or "select a country"
-        if (text.includes('select...') || text.includes('select a country') || text.includes('choose...')) {
+        // If it still says "select..." or "choose..." or is blank
+        if (text.includes('select...') || text.includes('select a country') || text.includes('choose...') || text.includes('select an option') || !text.trim()) {
           qIndex++;
           extracted.push({
             id: `q_${qIndex}`,
-            fieldKey: (await reactSelect.getAttribute('name')) || `react_select_${qIndex}`,
+            fieldKey: (await reactSelect.getAttribute('name')) || (await reactSelect.getAttribute('id')) || `react_select_${qIndex}`,
             label: cleanLabel,
             type: 'select',
-            options: [],
+            options: dropdownOptions,
             required: isRequired,
             container,
           });
