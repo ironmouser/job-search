@@ -251,6 +251,30 @@ describe('UIObstructionClassifier', () => {
     assert.strictEqual(UIObstructionClassifier.isSafe(res.type), false);
   });
 
+  it('classifies Dice sign-in / account creation modal as LOGIN_MODAL and UNSAFE', () => {
+    const res = UIObstructionClassifier.classify({
+      blockingElement: {
+        tag: 'div',
+        role: 'dialog',
+        id: 'dice-auth-modal',
+        className: 'auth-container',
+        text: "Let's get you hired. Create an account or sign in to continue. Email address: name@yourdomain.com. Please enter your email to sign in. Continue with email. Continue with Google. Continue with Apple.",
+        zIndex: 9999,
+        position: 'fixed',
+        opacity: 1,
+        pointerEvents: 'auto',
+        ariaModal: true,
+        isDialog: true,
+        isInViewport: true,
+        boundingBox: { x: 150, y: 100, width: 500, height: 600 },
+      },
+    });
+
+    assert.strictEqual(res.type, ObstructionType.LOGIN_MODAL);
+    assert.strictEqual(res.isSafeToDismiss, false);
+    assert.strictEqual(UIObstructionClassifier.isSafe(res.type), false);
+  });
+
   it('classifies unknown fixed overlays as UNSAFE unknown overlays', () => {
     const res = UIObstructionClassifier.classify({
       blockingElement: {

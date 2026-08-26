@@ -59,6 +59,52 @@ export class DiceApplyPlugin extends ATSPlugin {
     };
   }
 
+  private async checkDiceAuthGating(
+    browser: BrowserSession,
+    page: any,
+    context: WorkflowContext,
+    logger: ExecutionLogger
+  ): Promise<void> {
+    const html = await browser.getHtml().catch(() => '');
+    const lowerHtml = html.toLowerCase();
+
+    const isLoggedOutText =
+      lowerHtml.includes('log in to apply') ||
+      lowerHtml.includes('create an account or sign in') ||
+      lowerHtml.includes("let's get you hired") ||
+      lowerHtml.includes("let’s get you hired") ||
+      lowerHtml.includes('please enter your email to sign in') ||
+      lowerHtml.includes('continue with email');
+
+    const authElementSelectors = [
+      'button:has-text("Log In to Apply")',
+      'a:has-text("Log In to Apply")',
+      'input[placeholder*="yourdomain.com"]',
+      'input[type="email"]',
+      'button:has-text("Continue with email")',
+      'button:has-text("Continue with Google")',
+      'button:has-text("Continue with Apple")',
+    ];
+
+    let hasAuthElement = false;
+    for (const sel of authElementSelectors) {
+      const el = await page.$(sel).catch(() => null);
+      if (el && (await el.isVisible().catch(() => false))) {
+        hasAuthElement = true;
+        break;
+      }
+    }
+
+    if (!context.connectedSession && (isLoggedOutText || hasAuthElement)) {
+      await logger.warn('dice_auth_required', 'Dice candidate account login/registration modal detected.');
+      throw new InterventionError(
+        InterventionReason.JOB_BOARD_AUTH_REQUIRED,
+        'Dice requires you to connect your account or sign in before JAHQ can automate applications.',
+        page.url()
+      );
+    }
+  }
+
   async prepare(
     browser: BrowserSession,
     context: WorkflowContext,
@@ -70,19 +116,8 @@ export class DiceApplyPlugin extends ATSPlugin {
     // Proactively dismiss any cookie or privacy consent modal
     await this.dismissCookieBannerIfPresent(page, logger);
 
-    // 1. Check authentication requirements
-    const html = await browser.getHtml();
-    const isLoggedOut =
-      html.includes('Log In to Apply') ||
-      (await page.$('button:has-text("Log In to Apply"), a:has-text("Log In to Apply")').catch(() => null)) !== null;
-
-    if (!context.connectedSession && isLoggedOut) {
-      throw new InterventionError(
-        InterventionReason.JOB_BOARD_AUTH_REQUIRED,
-        'Dice requires you to connect your account before JAHQ can automate applications.',
-        page.url()
-      );
-    }
+    // 1. Check authentication requirements before clicking apply
+    await this.checkDiceAuthGating(browser, page, context, logger);
 
     // 2. Click Easy Apply / Apply button
     const applyButtonSelectors = [
@@ -109,9 +144,12 @@ export class DiceApplyPlugin extends ATSPlugin {
       await logger.warn('dice_no_apply_btn', 'Could not locate standard Dice Easy Apply button');
     }
 
-    // Wait for the slide-over drawer to appear and dismiss any newly triggered cookie overlays
+    // Wait for the slide-over drawer / modal to appear and dismiss any newly triggered cookie overlays
     await page.waitForTimeout(2000);
     await this.dismissCookieBannerIfPresent(page, logger);
+
+    // 3. Re-check authentication requirements (clicking apply often launches the sign-in modal)
+    await this.checkDiceAuthGating(browser, page, context, logger);
   }
 
   async apply(
@@ -125,8 +163,16 @@ export class DiceApplyPlugin extends ATSPlugin {
     // Dismiss any cookie modal before proceeding with drawer fields
     await this.dismissCookieBannerIfPresent(page, logger);
 
+    // Verify session isn't gated behind sign-in modal
+    await this.checkDiceAuthGating(browser, page, context, logger);
+
     // 1. Upload or select resume
-    await this.uploadResumeFile(browser, page, context, logger);
+    try {
+      await this.uploadResumeFile(browser, page, context, logger);
+    } catch (uploadErr) {
+      await this.checkDiceAuthGating(browser, page, context, logger);
+      throw uploadErr;
+    }
 
     // 1b. Cover letter (optional)
     if (context.coverLetterMarkdown) {

@@ -175,8 +175,8 @@ export class GenericPageAnalyzer {
       const hasPassword = !!document.querySelector('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]');
       const hasEmailOrUserInput = !!document.querySelector('input[type="email"], input[name*="email" i], input[name*="user" i], input[name*="login" i], [data-automation-id*="email" i]');
       let hasSignInHeader = false;
-      document.querySelectorAll('h1, h2, h3').forEach(h => {
-        if (/sign in to apply|log in to apply|create account to apply/i.test(h.textContent || '')) {
+      document.querySelectorAll('h1, h2, h3, h4, [role="heading"], strong, div, p').forEach(h => {
+        if (/\b(sign in to apply|log in to apply|create account to apply|create an account to apply|create an account or sign in|create an account to continue|let'?s get you hired|let’s get you hired)\b/i.test(h.textContent || '')) {
           hasSignInHeader = true;
         }
       });
