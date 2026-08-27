@@ -144,16 +144,17 @@ export async function normalizeAndSaveJobs(
     });
 
     // Stage 3: User Personal Deterministic Location & Keyword Filters
+    // Note: Per requirements, Location Preference does NOT disqualify email synced jobs.
     let normalizedJobs = [...deduplicatedJobs];
 
-    if (remoteOnly) {
+    if (!isEmailSync && remoteOnly) {
         const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => isRemoteLocation(j.location || ''));
         const dropped = before - normalizedJobs.length;
         if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} non-remote listing${dropped === 1 ? '' : 's'} based on your location preferences`);
     }
 
-    if (noInternational) {
+    if (!isEmailSync && noInternational) {
         const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => !isInternationalLocation(j.location || ''));
         const dropped = before - normalizedJobs.length;
@@ -189,10 +190,9 @@ export async function normalizeAndSaveJobs(
     if (includeTerms.length > 0) {
         const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => {
-            const desc = j.description || '';
-            const isStubOrShortEmail = isEmailSync && (desc.length < 500 || /^found via email link:\s*https?:/i.test(desc.trim()));
-            if (isStubOrShortEmail) return true;
+            if (isEmailSync) return true;
 
+            const desc = j.description || '';
             const contentLower = `${j.title} ${desc}`.toLowerCase();
             const match = includeTerms.some(term => {
                 try {

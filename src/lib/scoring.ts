@@ -507,6 +507,7 @@ export async function extractJobsFromEmailText(
     options?: {
         searchKeyword?: string;
         jobLevel?: string;
+        searchLocation?: string;
         includeKeywords?: string;
         excludeKeywords?: string;
     }
@@ -514,13 +515,20 @@ export async function extractJobsFromEmailText(
     if (!process.env.OPENAI_API_KEY && !process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY) return [];
 
     let criteriaPrompt = '';
-    if (options?.searchKeyword) {
-        criteriaPrompt += `\nCANDIDATE PRIMARY CRITERIA:\n`;
-        criteriaPrompt += `Target Job Title / Field: ${options.searchKeyword}\n`;
-        if (options.jobLevel) criteriaPrompt += `Preferred Level: ${options.jobLevel}\n`;
-        if (options.includeKeywords) criteriaPrompt += `Target Keywords: ${options.includeKeywords}\n`;
-        if (options.excludeKeywords) criteriaPrompt += `Exclude Keywords: ${options.excludeKeywords}\n`;
-        criteriaPrompt += `\nEXTRACTION GUIDELINES: Extract job postings that are relevant, adjacent, or in the same general career field as the target job title (for example, if target is Software Engineer, include Frontend, Backend, Full Stack, Platform, or Tech Lead roles). Exclude completely unrelated industries/fields (e.g. retail, warehouse, or driving jobs if candidate is in tech).\n`;
+    if (options?.searchKeyword || options?.includeKeywords || options?.excludeKeywords) {
+        criteriaPrompt += `\nCANDIDATE JOB DISCOVERY SETTINGS & PREFERENCES:\n`;
+        if (options.searchKeyword) criteriaPrompt += `Target Job Title(s) / Role(s): ${options.searchKeyword}\n`;
+        if (options.jobLevel) criteriaPrompt += `Target Seniority Level: ${options.jobLevel}\n`;
+        if (options.includeKeywords) criteriaPrompt += `Target Required/Included Keywords: ${options.includeKeywords}\n`;
+        if (options.excludeKeywords) criteriaPrompt += `Excluded Keywords: ${options.excludeKeywords}\n`;
+        if (options.searchLocation) criteriaPrompt += `Location Preference: ${options.searchLocation} (Note: Location Preference is a soft preference and does NOT disqualify a job)\n`;
+
+        criteriaPrompt += `\nEXTRACTION & MATCHING GUIDELINES:
+- Extract all open job postings that match, are relevant to, or are in the same general career field / discipline as the user's target job title (e.g. if the target is "Software Engineer", extract Full Stack, Frontend, Backend, Systems, Cloud, Mobile, or Staff/Lead Software roles; if target is "Product Manager", extract Associate, Technical, Senior, or Group PM roles).
+- If the candidate's target job title specifies multiple comma-separated roles, extract jobs that match ANY of those roles.
+- DISCOVERY SETTINGS COMPLIANCE: Use the candidate's job discovery settings (job title, seniority level, included/excluded keywords) as the guiding criteria for which roles to extract.
+- LOCATION PREFERENCE RULE: Location Preference does NOT disqualify a job from being a valid job result. Extract all legitimate matching roles regardless of whether they are Remote, Hybrid, On-site, or in a different city, state, or country.
+- Exclude jobs that match excluded keywords or are in completely unrelated professions/industries (e.g. cashier, truck driver, nurse when user is in software).\n`;
     }
 
     const prompt = `You are an expert data extraction assistant.
@@ -532,6 +540,8 @@ CRITICAL EXTRACTION RULES:
 - ONLY extract actual specific open positions/roles.
 - NEVER extract company profile/overview pages, agency directory links (e.g. dice.com/company-profile/..., linkedin.com/company/..., indeed.com/cmp/...), or email sponsor/branding headers as job postings.
 - The job title must be an actual position title (e.g. "Senior Product Manager", "Data Analyst"), NOT a company name or "Overview".
+- Always associate each job with its specific direct link from the email or links list whenever available.
+
 
 Return a JSON object strictly matching this schema:
 {

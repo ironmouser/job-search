@@ -1,6 +1,7 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { prisma } from './prisma';
+import { getUserSettings } from './settings';
 import { normalizeAndSaveJobs } from './jobs';
 import { cleanCompanyName } from './cleaners';
 import { isNonJobUrl, cleanJobUrl } from './urlUtils';
@@ -127,9 +128,7 @@ export async function fetchEmailsAndExtractJobs(
   onProgress?: (foundCount: number, message: string) => void
 ) {
   onProgress?.(0, 'Connecting to IMAP mail server...');
-  const prefs = await prisma.userPreferences.findUnique({
-    where: { userId },
-  });
+  const prefs = await getUserSettings(userId);
 
   if (!prefs?.emailAddress || !prefs?.emailAppPassword) {
     throw new Error('Email credentials are not configured in your settings.');
@@ -174,29 +173,29 @@ export async function fetchEmailsAndExtractJobs(
       const totalInBox = client.mailbox ? (client.mailbox as any).exists || 0 : 0;
       console.log(`[Email Sync] Mailbox INBOX opened. Total messages in INBOX: ${totalInBox}`);
 
+      // Extract candidate keywords from Job Discovery Settings (target titles and included keywords)
+      const userKeywords = [prefs.searchKeyword, prefs.includeKeywords]
+        .filter(Boolean)
+        .flatMap(s => String(s).toLowerCase().split(/[\s,]+/))
+        .map(t => t.trim())
+        .filter(t => t.length > 2);
+
       for await (const message of client.fetch({ since: sinceDate }, { envelope: true, uid: true })) {
         const subject = message.envelope?.subject || '';
         const fromAddress = message.envelope?.from?.[0]?.address?.toLowerCase() || '';
         const fromName = message.envelope?.from?.[0]?.name?.toLowerCase() || '';
 
+        const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
         const isFromSelf = Boolean(userEmail && fromAddress === userEmail);
         const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
-
-        // Skip non-self personal domain senders to avoid spam/phishing
-        if (!isFromSelf && isPersonalSender) {
-          continue;
-        }
-
-        const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
         const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
         const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
-
-        // Dynamically check against the candidate's target job titles / search keywords
-        const userKeywords = [prefs.searchKeyword]
-          .filter(Boolean)
-          .flatMap(s => String(s).toLowerCase().split(/[\s,]+/))
-          .filter(t => t.length > 2);
         const matchesUserKeyword = userKeywords.some(kw => combinedHeader.includes(kw));
+
+        // Only skip personal domains if the email has no job or user keyword signals
+        if (!isFromSelf && isPersonalSender && !hasJobKeyword && !matchesUserKeyword) {
+          continue;
+        }
 
         if (isFromSelf || isKnownJobSender || hasJobKeyword || matchesUserKeyword) {
           candidateHeaders.push({
@@ -218,22 +217,16 @@ export async function fetchEmailsAndExtractJobs(
           const fromAddress = message.envelope?.from?.[0]?.address?.toLowerCase() || '';
           const fromName = message.envelope?.from?.[0]?.name?.toLowerCase() || '';
 
+          const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
           const isFromSelf = Boolean(userEmail && fromAddress === userEmail);
           const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
-
-          if (!isFromSelf && isPersonalSender) {
-            continue;
-          }
-
-          const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
           const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
           const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
-
-          const userKeywords = [prefs.searchKeyword]
-            .filter(Boolean)
-            .flatMap(s => String(s).toLowerCase().split(/[\s,]+/))
-            .filter(t => t.length > 2);
           const matchesUserKeyword = userKeywords.some(kw => combinedHeader.includes(kw));
+
+          if (!isFromSelf && isPersonalSender && !hasJobKeyword && !matchesUserKeyword) {
+            continue;
+          }
 
           if (isFromSelf || isKnownJobSender || hasJobKeyword || matchesUserKeyword) {
             candidateHeaders.push({
@@ -310,12 +303,8 @@ export async function fetchEmailsAndExtractJobs(
           // Pre-AI filter: An email must have at least one valid external link to be a usable job listing
           if (allUrls.length === 0) continue;
 
-          // Payload Trimming: Strip legal disclaimers and footer noise to minimize LLM tokens and latency
-          const cleanedText = effectiveText
-            .replace(/(you are receiving this email because|unsubscribe from this email|preferences & notifications|privacy policy|terms of use|all rights reserved)[\s\S]*$/i, '')
-            .trim();
-
-          const textSnippet = (cleanedText.length > 50 ? cleanedText : effectiveText).slice(0, 8000);
+          // Provide up to 35,000 characters to ensure full multi-job digest emails are processed without premature truncation
+          const textSnippet = effectiveText.slice(0, 35000);
           if (!textSnippet && allUrls.length === 0) continue;
 
           candidatePayloads.push({
@@ -328,7 +317,7 @@ EMAIL TEXT:
 ${textSnippet}
 
 LINKS FOUND IN EMAIL:
-${allUrls.slice(0, 40).join('\n')}
+${allUrls.slice(0, 120).join('\n')}
             `.trim(),
           });
         } catch (msgErr) {
@@ -355,6 +344,7 @@ ${allUrls.slice(0, 40).join('\n')}
               const extracted = await extractJobsFromEmailText(emailContentForAI, {
                 searchKeyword: prefs.searchKeyword || undefined,
                 jobLevel: prefs.jobLevel || undefined,
+                searchLocation: prefs.searchLocation || undefined,
                 includeKeywords: prefs.includeKeywords || undefined,
                 excludeKeywords: prefs.excludeKeywords || undefined,
               });
