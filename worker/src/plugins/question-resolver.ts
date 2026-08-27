@@ -28,6 +28,13 @@ import {
   isOptionTransgender,
   isOptionCisgender,
   matchesOptionSafely,
+  US_STATES,
+  COMMON_COUNTRIES,
+  US_STATE_OPTIONS,
+  normalizeStateName,
+  normalizeStateAbbr,
+  isStateMatch,
+  isCountryMatch,
 } from '../utils/demographic-matching';
 
 export {
@@ -35,6 +42,13 @@ export {
   isOptionTransgender,
   isOptionCisgender,
   matchesOptionSafely,
+  US_STATES,
+  COMMON_COUNTRIES,
+  US_STATE_OPTIONS,
+  normalizeStateName,
+  normalizeStateAbbr,
+  isStateMatch,
+  isCountryMatch,
 };
 
 export interface ExtractedQuestion {
@@ -97,7 +111,7 @@ export function isDemographicQuestion(label: string, fieldKey?: string): boolean
 }
 
 /**
- * Detect if a question label implies selection / dropdown choices (e.g. Work authorization, EEOC, relocation, Yes/No).
+ * Detect if a question label implies selection / dropdown choices (e.g. Work authorization, EEOC, relocation, Country, State, Yes/No).
  */
 export function isSemanticDropdownQuestion(label: string): boolean {
   const text = label.toLowerCase();
@@ -112,6 +126,8 @@ export function isSemanticDropdownQuestion(label: string): boolean {
     /willing to travel/i.test(text) ||
     /highest.*education|degree\b/i.test(text) ||
     /years of experience|how many years/i.test(text) ||
+    /^country\b|\bcountry\b/i.test(text) ||
+    /^state\b|\bstate\b|province|region|u\.s\.\s*state/i.test(text) ||
     /^(?:are you|do you|will you|have you)\b/i.test(text.trim()) ||
     /\b(?:select one|please select|choose one)\b/i.test(text)
   );
@@ -122,6 +138,16 @@ export function isSemanticDropdownQuestion(label: string): boolean {
  */
 export function getSemanticDropdownOptions(label: string): string[] {
   const text = label.toLowerCase();
+
+  // Country
+  if (/^country\b|\bcountry\b/i.test(text)) {
+    return COMMON_COUNTRIES;
+  }
+
+  // U.S. State / Province / Region
+  if (/^state\b|\bstate\b|province|region|u\.s\.\s*state|which.*state/i.test(text)) {
+    return US_STATE_OPTIONS;
+  }
 
   // Work authorization
   if (/authorized|eligible to work|legally permitted|legal right to work/i.test(text)) {
@@ -242,14 +268,23 @@ async function readQuestionValue(ctx: Page | Frame, q: ExtractedQuestion): Promi
   // 1. If question is a select or container has custom dropdown/combobox
   const isSelectElement =
     q.type === 'select' ||
-    (await container.locator('select, .select__control, .select-shell, [role="combobox"], [class*="singleValue" i]').count().catch(() => 0)) > 0;
+    (await container.locator('select, .select__control, .select-shell, [role="combobox"], [class*="singleValue" i], [class*="ValueContainer" i], button[aria-haspopup="listbox"]').count().catch(() => 0)) > 0;
 
   if (isSelectElement) {
-    // Check React-Select / custom singleValue
+    // Check React-Select / custom singleValue / ValueContainer
     const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i], [class*="ValueContainer" i]').first();
     if ((await valContainer.count().catch(() => 0)) > 0) {
       const text = (await valContainer.textContent().catch(() => ''))?.trim();
-      if (text && !/^(select\.\.\.|choose\.\.\.|select an option|\-\-)/i.test(text)) {
+      if (text && !/^(select\.\.\.|choose\.\.\.|select an option|select a country|\-\-)/i.test(text)) {
+        return text;
+      }
+    }
+
+    // Check button combobox / listbox trigger
+    const btnCombobox = container.locator('button[role="combobox"], button[aria-haspopup="listbox"], [role="combobox"]').first();
+    if ((await btnCombobox.count().catch(() => 0)) > 0) {
+      const text = (await btnCombobox.textContent().catch(() => ''))?.trim();
+      if (text && !/^(select\.\.\.|choose\.\.\.|select an option|select a country|\-\-)/i.test(text)) {
         return text;
       }
     }
@@ -417,6 +452,10 @@ export class UniversalQuestionResolver {
             const s = context.userProfile.state || (context.userProfile.location ? context.userProfile.location.split(',')[1]?.trim() : '');
             if (s) {
               answer = s;
+              if (q.options.length > 0) {
+                const opt = q.options.find((o) => matchesOptionSafely(o, s) || isStateMatch(o, s));
+                if (opt) answer = opt;
+              }
               requiresHuman = false;
             }
           } else if (isAddressQuestion && (context.userProfile.streetAddress || context.userProfile.location)) {
@@ -429,7 +468,12 @@ export class UniversalQuestionResolver {
             answer = context.userProfile.postalCode;
             requiresHuman = false;
           } else if (isCountryQuestion && (context.userProfile.country || customVal)) {
-            answer = context.userProfile.country || customVal || 'United States';
+            const rawCountry = context.userProfile.country || customVal || 'United States';
+            answer = rawCountry;
+            if (q.options.length > 0) {
+              const opt = q.options.find((o) => matchesOptionSafely(o, rawCountry) || isCountryMatch(o, rawCountry));
+              if (opt) answer = opt;
+            }
             requiresHuman = false;
           } else if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
             answer = String(customVal).trim();

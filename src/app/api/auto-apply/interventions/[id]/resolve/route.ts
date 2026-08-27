@@ -191,6 +191,11 @@ export async function POST(
           else if (/race|ethnicity|hispanic|latino/i.test(lower)) extraData.eeocRace = v;
           else if (/veteran|military/i.test(lower)) extraData.eeocVeteran = v;
           else if (/disability/i.test(lower)) extraData.eeocDisability = v;
+          else if (/^state\b|\bstate\b|province|region|u\.s\.\s*state|which.*state/i.test(lower)) extraData.state = v;
+          else if (/^city\b|\bcity\b/i.test(lower)) extraData.city = v;
+          else if (/^country\b|\bcountry\b/i.test(lower)) extraData.country = v;
+          else if (/postal|zip\s*code/i.test(lower)) extraData.postalCode = v;
+          else if (/address\s*(?:line\s*1)?|street\s*address/i.test(lower)) extraData.streetAddress = v;
         }
 
         await prisma.userPreferences.update({

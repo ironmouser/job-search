@@ -111,12 +111,55 @@ function getReasonIcon(reason: string, isClosed: boolean, isUnsupportedOrFatal: 
   }
 }
 
+const COMMON_COUNTRIES = [
+  'United States',
+  'Canada',
+  'United Kingdom',
+  'Australia',
+  'Germany',
+  'France',
+  'India',
+  'Netherlands',
+  'Ireland',
+  'Israel',
+  'Spain',
+  'Italy',
+  'Sweden',
+  'Switzerland',
+  'Brazil',
+  'Mexico',
+  'Singapore',
+  'Japan',
+  'Other',
+];
+
+const US_STATE_OPTIONS = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
+  'Delaware', 'District of Columbia', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois',
+  'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts',
+  'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+  'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota',
+  'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Puerto Rico', 'Rhode Island', 'South Carolina',
+  'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
+  'West Virginia', 'Wisconsin', 'Wyoming',
+];
+
 function getDropdownOptionsForField(q: { label: string; fieldType?: string; options?: string[] }): string[] {
   if (q.options && q.options.length > 0) {
     return q.options;
   }
 
   const text = q.label.toLowerCase();
+
+  // Country
+  if (/^country\b|\bcountry\b/i.test(text)) {
+    return COMMON_COUNTRIES;
+  }
+
+  // U.S. State / Province / Region
+  if (/^state\b|\bstate\b|province|region|u\.s\.\s*state|which.*state/i.test(text)) {
+    return US_STATE_OPTIONS;
+  }
 
   // Work authorization
   if (/authorized|eligible to work|legally permitted|legal right to work/i.test(text)) {
@@ -253,6 +296,8 @@ function getEffectiveFieldType(q: { label: string; fieldType?: string; options?:
     /years of experience|how many years/i.test(text) ||
     /hear\s*about|referral|source|first\s*hear/i.test(text) ||
     /consent|personal\s*information|retain\s*data/i.test(text) ||
+    /^country\b|\bcountry\b/i.test(text) ||
+    /^state\b|\bstate\b|province|region|u\.s\.\s*state|which.*state/i.test(text) ||
     /\b(?:select one|please select|choose one|select from the dropdown|dropdown)\b/i.test(text)
   ) {
     return 'select';

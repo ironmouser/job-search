@@ -5,6 +5,170 @@
  * and safely matching dropdown / radio options without false-positive substring hits.
  */
 
+export const US_STATES: Record<string, string> = {
+  AL: 'Alabama',
+  AK: 'Alaska',
+  AZ: 'Arizona',
+  AR: 'Arkansas',
+  CA: 'California',
+  CO: 'Colorado',
+  CT: 'Connecticut',
+  DE: 'Delaware',
+  FL: 'Florida',
+  GA: 'Georgia',
+  HI: 'Hawaii',
+  ID: 'Idaho',
+  IL: 'Illinois',
+  IN: 'Indiana',
+  IA: 'Iowa',
+  KS: 'Kansas',
+  KY: 'Kentucky',
+  LA: 'Louisiana',
+  ME: 'Maine',
+  MD: 'Maryland',
+  MA: 'Massachusetts',
+  MI: 'Michigan',
+  MN: 'Minnesota',
+  MS: 'Mississippi',
+  MO: 'Missouri',
+  MT: 'Montana',
+  NE: 'Nebraska',
+  NV: 'Nevada',
+  NH: 'New Hampshire',
+  NJ: 'New Jersey',
+  NM: 'New Mexico',
+  NY: 'New York',
+  NC: 'North Carolina',
+  ND: 'North Dakota',
+  OH: 'Ohio',
+  OK: 'Oklahoma',
+  OR: 'Oregon',
+  PA: 'Pennsylvania',
+  RI: 'Rhode Island',
+  SC: 'South Carolina',
+  SD: 'South Dakota',
+  TN: 'Tennessee',
+  TX: 'Texas',
+  UT: 'Utah',
+  VT: 'Vermont',
+  VA: 'Virginia',
+  WA: 'Washington',
+  WV: 'West Virginia',
+  WI: 'Wisconsin',
+  WY: 'Wyoming',
+  DC: 'District of Columbia',
+  PR: 'Puerto Rico',
+  VI: 'Virgin Islands',
+  GU: 'Guam',
+  AS: 'American Samoa',
+  MP: 'Northern Mariana Islands',
+};
+
+export const COMMON_COUNTRIES = [
+  'United States',
+  'Canada',
+  'United Kingdom',
+  'Australia',
+  'Germany',
+  'France',
+  'India',
+  'Netherlands',
+  'Ireland',
+  'Israel',
+  'Spain',
+  'Italy',
+  'Sweden',
+  'Switzerland',
+  'Brazil',
+  'Mexico',
+  'Singapore',
+  'Japan',
+  'Other',
+];
+
+export const US_STATE_OPTIONS = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
+  'Delaware', 'District of Columbia', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois',
+  'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts',
+  'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada',
+  'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota',
+  'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Puerto Rico', 'Rhode Island', 'South Carolina',
+  'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington',
+  'West Virginia', 'Wisconsin', 'Wyoming',
+];
+
+export function normalizeStateName(state: string): string {
+  const trimmed = state.trim();
+  const upper = trimmed.toUpperCase();
+  if (US_STATES[upper]) return US_STATES[upper];
+  const lower = trimmed.toLowerCase();
+  for (const [abbr, name] of Object.entries(US_STATES)) {
+    if (name.toLowerCase() === lower) return name;
+  }
+  return trimmed;
+}
+
+export function normalizeStateAbbr(state: string): string {
+  const trimmed = state.trim();
+  const upper = trimmed.toUpperCase();
+  if (US_STATES[upper]) return upper;
+  const lower = trimmed.toLowerCase();
+  for (const [abbr, name] of Object.entries(US_STATES)) {
+    if (name.toLowerCase() === lower) return abbr;
+  }
+  return trimmed;
+}
+
+export function isStateMatch(optionText: string, targetState: string): boolean {
+  const opt = optionText.trim().toLowerCase();
+  const target = targetState.trim();
+  if (!opt || !target) return false;
+
+  const targetFullName = normalizeStateName(target).toLowerCase();
+  const targetAbbr = normalizeStateAbbr(target).toLowerCase();
+
+  if (opt === targetFullName || opt === targetAbbr) return true;
+
+  const optFullName = normalizeStateName(optionText).toLowerCase();
+  const optAbbr = normalizeStateAbbr(optionText).toLowerCase();
+
+  if (optFullName === targetFullName || (optAbbr.length === 2 && optAbbr === targetAbbr)) return true;
+
+  const escapedFullName = targetFullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  try {
+    const fullNameRegex = new RegExp(`\\b${escapedFullName}\\b`, 'i');
+    if (fullNameRegex.test(opt)) return true;
+  } catch {}
+
+  if (targetAbbr.length === 2) {
+    const escapedAbbr = targetAbbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+      const abbrRegex = new RegExp(`\\b${escapedAbbr}\\b`, 'i');
+      if (abbrRegex.test(opt)) return true;
+    } catch {}
+  }
+
+  return false;
+}
+
+export function isCountryMatch(optionText: string, targetCountry: string): boolean {
+  const opt = optionText.trim().toLowerCase();
+  const target = targetCountry.trim().toLowerCase();
+  if (!opt || !target) return false;
+
+  if (opt === target) return true;
+
+  const isTargetUS = /^(united states|usa|u\.s\.a\.|us|u\.s\.|united states of america)$/i.test(target);
+  const isOptUS = /^(united states|usa|u\.s\.a\.|us|u\.s\.|united states of america)$/i.test(opt) ||
+    /\bunited\s*states\b|\bu\.s\.a\.\b|\busa\b/i.test(opt);
+
+  if (isTargetUS && isOptUS) return true;
+  if (isTargetUS && !isOptUS) return false;
+  if (!isTargetUS && isOptUS) return false;
+
+  return false;
+}
+
 /**
  * Check if a question specifically asks about transgender status,
  * gender identity, gender expression, or cisgender status.
@@ -37,7 +201,9 @@ export function isOptionCisgender(text: string): boolean {
  * 1. If target does not contain 'trans', option containing 'trans' will NEVER match (e.g. 'Trans Man/Male' will not match 'Male').
  * 2. If target is 'Male' or 'Man', only match 'Male', 'Man', 'Man / Male', 'Male (He/Him)', 'Cisgender Man/Male', etc., strictly excluding 'Trans...'.
  * 3. If target is 'Female' or 'Woman', only match 'Female', 'Woman', 'Woman / Female', strictly excluding 'Trans...'.
- * 4. Word-boundary or exact matching is enforced.
+ * 4. State abbreviations <-> Full names safely match (e.g., 'CA' <-> 'California').
+ * 5. Country variations safely match (e.g., 'United States' <-> 'USA').
+ * 6. Word-boundary or exact matching is enforced.
  */
 export function matchesOptionSafely(optionText: string, targetValue: string): boolean {
   const opt = optionText.trim().toLowerCase();
@@ -46,6 +212,18 @@ export function matchesOptionSafely(optionText: string, targetValue: string): bo
 
   // Exact match
   if (opt === target) return true;
+
+  // Country match
+  if (/^(united states|usa|u\.s\.a\.|us|u\.s\.|united states of america|canada|united kingdom|uk|australia|germany|france|india)$/i.test(target)) {
+    if (isCountryMatch(optionText, targetValue)) return true;
+  }
+
+  // State match
+  if (normalizeStateAbbr(targetValue).length === 2 && normalizeStateAbbr(targetValue) !== targetValue.toUpperCase()) {
+    if (isStateMatch(optionText, targetValue)) return true;
+  } else if (US_STATES[targetValue.trim().toUpperCase()]) {
+    if (isStateMatch(optionText, targetValue)) return true;
+  }
 
   const targetHasTrans = isOptionTransgender(target);
   const optHasTrans = isOptionTransgender(opt);

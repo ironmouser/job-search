@@ -279,9 +279,10 @@ export async function POST(
       }
 
       const isCityQuestion = /^city\b|\bcity\b|location\s*\(\s*city\s*\)/i.test(lowerLabel) || /^city\b|candidate-location/i.test(lowerId);
-      const isStateQuestion = /^state\b|\bstate\b|province|region|location\s*\(\s*state\s*\)/i.test(lowerLabel) || /^state\b|candidate-state/i.test(lowerId);
+      const isStateQuestion = /^state\b|\bstate\b|province|region|location\s*\(\s*state\s*\)|u\.s\.\s*state|which.*state/i.test(lowerLabel) || /^state\b|candidate-state/i.test(lowerId);
       const isAddressQuestion = /address\s*(?:line\s*1)?|street\s*address/i.test(lowerLabel) || /address\s*line\s*1|street\s*address|address1/i.test(lowerId);
       const isPostalQuestion = /postal|zip\s*code/i.test(lowerLabel) || /postal|zip/i.test(lowerId);
+      const isCountryQuestion = /^country\b|\bcountry\b/i.test(lowerLabel) || /^country\b/i.test(lowerId);
 
       if (isCityQuestion && city) {
         answers.push({
@@ -291,9 +292,27 @@ export async function POST(
           requiresHumanInput: false,
         });
       } else if (isStateQuestion && state) {
+        let resolvedState = state;
+        if (q.options && q.options.length > 0) {
+          const matchedOpt = q.options.find((o) => matchesOptionSafely(o, state));
+          if (matchedOpt) resolvedState = matchedOpt;
+        }
         answers.push({
           id: q.id,
-          answer: state,
+          answer: resolvedState,
+          confidence: 100,
+          requiresHumanInput: false,
+        });
+      } else if (isCountryQuestion) {
+        const rawCountry = prefs?.country || customAnswers['country'] || customAnswers['Country'] || 'United States';
+        let resolvedCountry = rawCountry;
+        if (q.options && q.options.length > 0) {
+          const matchedOpt = q.options.find((o) => matchesOptionSafely(o, rawCountry));
+          if (matchedOpt) resolvedCountry = matchedOpt;
+        }
+        answers.push({
+          id: q.id,
+          answer: resolvedCountry,
           confidence: 100,
           requiresHumanInput: false,
         });
@@ -384,8 +403,11 @@ CONTENT WRITING RULES (STRICT):
 5. For open-ended questions (text / textarea), write crisp, direct, 1-3 sentence answers referencing candidate strengths and past achievements where relevant.
 6. For dropdowns or radio choices with Allowed Options, YOU MUST SELECT ONE OF THE EXACT ALLOWED OPTIONS verbatim.
 7. For salary or compensation questions: If candidate has a configured salary expectation ("${prefs?.expectedSalary || ''}"), provide that value (clean number if required, e.g. 150000 or $150,000 depending on field type). If not specified, use a reasonable market rate for the role or the job's salary range ("${session.job?.salaryRange || ''}").
-8. If a question is highly personal, confidential, or impossible to deduce safely, mark requiresHumanInput as true and answer as null.
-9. CRITICAL DEMOGRAPHIC RULE: Never guess, assume, or invent answers to demographic, diversity, sexual orientation, transgender, gender identity, pronouns, race, veteran, or disability questions. Generic gender settings (Male/Female) must never be used to assume or select transgender or gender-identity options (e.g. Trans Man/Male, Cisgender, etc.). If not explicitly provided in candidate information, return null and mark requiresHumanInput as true.
+8. Technical & Professional Experience Questions (e.g. "Have you professionally shipped an AI feature?", "Have you worked with React/Node/Python?", "Do you have experience in full-stack engineering?", "Have you managed production deployments?"):
+   - Inspect the candidate's resume, technical skills, and work experience. If the candidate has relevant technical/engineering experience, answer affirmatively ("Yes" for Yes/No select/radio options, or a concise professional highlight for open text).
+   - Do NOT mark requiresHumanInput as true for standard technical background or experience screening questions when the candidate has an engineering/tech background.
+9. If a question is highly confidential or requires external IDs/documents not in the candidate's profile (e.g. Security Clearance PIN, Government ID Number), mark requiresHumanInput as true and answer as null.
+10. CRITICAL DEMOGRAPHIC RULE: Never guess, assume, or invent answers to demographic, diversity, sexual orientation, transgender, gender identity, pronouns, race, veteran, or disability questions. Generic gender settings (Male/Female) must never be used to assume or select transgender or gender-identity options (e.g. Trans Man/Male, Cisgender, etc.). If not explicitly provided in candidate information, return null and mark requiresHumanInput as true.
 
 OUTPUT FORMAT:
 Return a valid JSON array of objects with the exact structure:
