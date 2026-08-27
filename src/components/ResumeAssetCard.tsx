@@ -121,6 +121,7 @@ export default function ResumeAssetCard({
         setIsLoading(true);
         setError('');
         setSavedPref(false);
+        const contentBeforeRegen = content; // snapshot before we start
         if (content) {
             setPreviousContent(content);
         }
@@ -156,7 +157,26 @@ export default function ResumeAssetCard({
                 setContent(cleanedContent);
                 setEditContent(cleanedContent);
             }
-            
+
+            const finalContent = cleanContent(newContent).trim();
+
+            // Warn if the AI returned empty or identical content (allocation guard)
+            if (!finalContent) {
+                setError('The regenerated resume appears to be empty. Please try again.');
+                // Restore previous content so the card isn't blank
+                if (contentBeforeRegen) {
+                    setContent(contentBeforeRegen);
+                    setEditContent(contentBeforeRegen);
+                }
+                return; // don't increment counter
+            }
+
+            if (finalContent === contentBeforeRegen?.trim()) {
+                setError('Content unchanged — the AI produced the same result. Try a different instruction.');
+                return; // don't increment counter for identical output
+            }
+
+            // Only increment counter on genuine new content
             setRegensUsed(prev => prev + 1);
             router.refresh();
         } catch (err: any) {

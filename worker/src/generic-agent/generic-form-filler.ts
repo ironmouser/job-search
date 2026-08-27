@@ -28,6 +28,7 @@ import {
   matchesOptionSafely,
 } from '../utils/demographic-matching';
 import { getAssetFilename } from '../utils/asset-names';
+import { StagehandFallback } from './stagehand-fallback';
 
 export class GenericFormFiller {
   /**
@@ -94,6 +95,8 @@ export class GenericFormFiller {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
+    const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+
     // First Name
     if (firstName) {
       const filled = await this.tryFillInput(ctx, [
@@ -104,7 +107,11 @@ export class GenericFormFiller {
         'input[placeholder*="First Name" i]',
         'input[aria-label*="First Name" i]',
       ], firstName);
-      if (filled) await logger.info('field_filled', `First name populated: ${firstName}`);
+      if (filled) {
+        await logger.info('field_filled', `First name populated: ${firstName}`);
+      } else if (page) {
+        await StagehandFallback.fillField(page, 'First Name', firstName, logger);
+      }
     }
 
     // Last Name
@@ -117,12 +124,16 @@ export class GenericFormFiller {
         'input[placeholder*="Last Name" i]',
         'input[aria-label*="Last Name" i]',
       ], lastName);
-      if (filled) await logger.info('field_filled', `Last name populated: ${lastName}`);
+      if (filled) {
+        await logger.info('field_filled', `Last name populated: ${lastName}`);
+      } else if (page) {
+        await StagehandFallback.fillField(page, 'Last Name', lastName, logger);
+      }
     }
 
     // Full Name (if single full name input exists and first/last was not separate)
     if (profile.name) {
-      await this.tryFillInput(ctx, [
+      const filled = await this.tryFillInput(ctx, [
         'input[name="full_name" i]',
         'input[name="fullName" i]',
         'input[name="name" i]',
@@ -130,6 +141,9 @@ export class GenericFormFiller {
         'input[placeholder*="Full Name" i]',
         'input[aria-label*="Full Name" i]',
       ], profile.name);
+      if (!filled && page) {
+        await StagehandFallback.fillField(page, 'Full Name', profile.name, logger);
+      }
     }
 
     // Email
@@ -142,7 +156,11 @@ export class GenericFormFiller {
         'input[placeholder*="Email" i]',
         'input[aria-label*="Email" i]',
       ], profile.email);
-      if (filled) await logger.info('field_filled', `Email populated: ${profile.email}`);
+      if (filled) {
+        await logger.info('field_filled', `Email populated: ${profile.email}`);
+      } else if (page) {
+        await StagehandFallback.fillField(page, 'Email Address', profile.email, logger);
+      }
     }
 
     // Phone
@@ -156,35 +174,45 @@ export class GenericFormFiller {
         'input[placeholder*="Phone" i]',
         'input[aria-label*="Phone" i]',
       ], profile.phone);
-      if (filled) await logger.info('field_filled', `Phone populated: ${profile.phone}`);
+      if (filled) {
+        await logger.info('field_filled', `Phone populated: ${profile.phone}`);
+      } else if (page) {
+        await StagehandFallback.fillField(page, 'Phone Number', profile.phone, logger);
+      }
     }
 
     // Street Address
     if (profile.streetAddress) {
-      await this.tryFillInput(ctx, [
+      const filled = await this.tryFillInput(ctx, [
         'input[name*="address" i]',
         'input[name*="street" i]',
         'input[id*="address" i]',
         'input[placeholder*="Address" i]',
       ], profile.streetAddress);
+      if (!filled && page) {
+        await StagehandFallback.fillField(page, 'Street Address', profile.streetAddress, logger);
+      }
     }
 
     // City (Phenom renders City as an rbt-typeahead too)
     if (profile.city) {
       const phenomHandled = await this.fillPhenomTypeahead(ctx, 'city', profile.city, logger);
       if (!phenomHandled) {
-        await this.tryFillInput(ctx, [
+        const filled = await this.tryFillInput(ctx, [
           'input[name="city" i]',
           'input[name*="city" i]',
           'input[id*="city" i]',
           'input[placeholder*="City" i]',
         ], profile.city);
+        if (!filled && page) {
+          await StagehandFallback.fillField(page, 'City', profile.city, logger);
+        }
       }
     }
 
     // Postal / Zip Code
     if (profile.postalCode) {
-      await this.tryFillInput(ctx, [
+      const filled = await this.tryFillInput(ctx, [
         'input[name*="postal" i]',
         'input[name*="zip" i]',
         'input[id*="postal" i]',
@@ -192,18 +220,24 @@ export class GenericFormFiller {
         'input[placeholder*="Zip" i]',
         'input[placeholder*="Postal" i]',
       ], profile.postalCode);
+      if (!filled && page) {
+        await StagehandFallback.fillField(page, 'Zip / Postal Code', profile.postalCode, logger);
+      }
     }
 
     // State / Province (also a typeahead on some Phenom forms)
     if (profile.state) {
       const phenomHandled = await this.fillPhenomTypeahead(ctx, 'state', profile.state, logger);
       if (!phenomHandled) {
-        await this.tryFillInput(ctx, [
+        const filled = await this.tryFillInput(ctx, [
           'input[name*="state" i]',
           'input[name*="province" i]',
           'input[id*="state" i]',
           'input[placeholder*="State" i]',
         ], profile.state);
+        if (!filled && page) {
+          await StagehandFallback.selectDropdown(page, 'State', profile.state, logger);
+        }
       }
     }
 
@@ -213,42 +247,51 @@ export class GenericFormFiller {
       // Try dedicated Phenom People rbt-typeahead handler first
       const phenomHandled = await this.fillPhenomTypeahead(ctx, 'location', locationVal, logger);
       if (!phenomHandled) {
-        await this.tryFillInput(ctx, [
+        const filled = await this.tryFillInput(ctx, [
           'input[name*="location" i]',
           'input[id*="location" i]',
           'input[placeholder*="Location" i]',
           'input[aria-label*="Location" i]',
           'input[data-automation*="location" i]',
         ], locationVal);
+        if (!filled && page) {
+          await StagehandFallback.fillField(page, 'Location', locationVal, logger);
+        }
       }
     }
 
     // LinkedIn URL
     if (profile.linkedinUrl) {
-      await this.tryFillInput(ctx, [
+      const filled = await this.tryFillInput(ctx, [
         'input[name*="linkedin" i]',
         'input[id*="linkedin" i]',
         'input[placeholder*="LinkedIn" i]',
         'input[aria-label*="LinkedIn" i]',
       ], profile.linkedinUrl);
+      if (!filled && page) {
+        await StagehandFallback.fillField(page, 'LinkedIn Profile URL', profile.linkedinUrl, logger);
+      }
     }
 
     // Portfolio / Website URL
     if (profile.websiteUrl) {
-      await this.tryFillInput(ctx, [
+      const filled = await this.tryFillInput(ctx, [
         'input[name*="website" i]',
         'input[name*="portfolio" i]',
         'input[id*="website" i]',
         'input[placeholder*="Website" i]',
         'input[placeholder*="Portfolio" i]',
       ], profile.websiteUrl);
+      if (!filled && page) {
+        await StagehandFallback.fillField(page, 'Website or Portfolio URL', profile.websiteUrl, logger);
+      }
     }
 
     // Country (Phenom often renders this as an rbt-typeahead dropdown)
     if (profile.country) {
       const phenomHandled = await this.fillPhenomTypeahead(ctx, 'country', profile.country, logger);
       if (!phenomHandled) {
-        await this.tryFillInput(ctx, [
+        const filled = await this.tryFillInput(ctx, [
           'select[name*="country" i]',
           'select[id*="country" i]',
           'input[name*="country" i]',
@@ -256,6 +299,9 @@ export class GenericFormFiller {
           'input[placeholder*="Country" i]',
           'input[aria-label*="Country" i]',
         ], profile.country);
+        if (!filled && page) {
+          await StagehandFallback.selectDropdown(page, 'Country', profile.country, logger);
+        }
       }
     }
   }

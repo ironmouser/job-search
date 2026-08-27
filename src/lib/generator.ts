@@ -256,6 +256,23 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
         assets = parseOrRepairJson(rawText2, 2);
     }
 
+
+    // Content quality gate: validate all three core assets have meaningful content before saving.
+    // If any are empty or too short, throw so the outer retry logic fires a second attempt.
+    const MIN_RESUME_LEN = 500;
+    const MIN_COVER_LEN = 300;
+    const MIN_NETWORKING_LEN = 50;
+
+    if (!assets.tailored_resume || assets.tailored_resume.trim().length < MIN_RESUME_LEN) {
+        throw new Error(`Generated resume is empty or too short (${(assets.tailored_resume || '').trim().length} chars). Retrying...`);
+    }
+    if (!assets.cover_letter || assets.cover_letter.trim().length < MIN_COVER_LEN) {
+        throw new Error(`Generated cover letter is empty or too short (${(assets.cover_letter || '').trim().length} chars). Retrying...`);
+    }
+    if (!assets.networking_message || assets.networking_message.trim().length < MIN_NETWORKING_LEN) {
+        throw new Error(`Generated networking message is empty or too short (${(assets.networking_message || '').trim().length} chars). Retrying...`);
+    }
+
     try {
         const data = await prisma.applicationAsset.upsert({
             where: { userId_jobId: { userId, jobId } },

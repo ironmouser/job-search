@@ -183,15 +183,32 @@ export function validateGeneratedAsset(
         }
     }
 
-    // 2. Minimum structural length checks
-    if (assetType === 'coverLetter' && cleanOutput.length < 150) {
-        warnings.push('Cover letter output is unusually brief.');
-    } else if (assetType === 'networking' && cleanOutput.length < 40) {
-        warnings.push('Networking message output is unusually brief.');
-    } else if (assetType === 'resume' && cleanOutput.length < 100) {
-        warnings.push('Tailored resume output is unusually brief.');
+    // 2. Minimum structural length checks — below these thresholds the output is considered corrupted/empty
+    // and treated as a severe hallucination so the DB write is blocked and the client gets a proper error.
+    if (assetType === 'coverLetter' && cleanOutput.length < 300) {
+        return {
+            isValid: false,
+            warnings: [`Cover letter output is too short (${cleanOutput.length} chars). Expected at least 300 chars.`],
+            severeHallucination: true
+        };
+    } else if (assetType === 'networking' && cleanOutput.length < 50) {
+        return {
+            isValid: false,
+            warnings: [`Networking message output is too short (${cleanOutput.length} chars). Expected at least 50 chars.`],
+            severeHallucination: true
+        };
+    } else if (assetType === 'resume' && cleanOutput.length < 500) {
+        return {
+            isValid: false,
+            warnings: [`Tailored resume output is too short (${cleanOutput.length} chars). Expected at least 500 chars.`],
+            severeHallucination: true
+        };
     } else if (assetType === 'qa' && cleanOutput.length < 30) {
-        warnings.push('Q&A answer output is unusually brief.');
+        return {
+            isValid: false,
+            warnings: [`Q&A answer output is too short (${cleanOutput.length} chars). Expected at least 30 chars.`],
+            severeHallucination: true
+        };
     }
 
     return {

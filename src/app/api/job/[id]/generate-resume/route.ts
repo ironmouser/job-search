@@ -87,24 +87,28 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         const baseResumeText = userPrefs?.resumeMarkdown || '';
         const outputValidation = validateGeneratedAsset(newTailoredResume, baseResumeText, userJob.job.description || '', 'resume');
 
-        if (!outputValidation.severeHallucination) {
-            const updatedAsset = await prisma.applicationAsset.update({
-                where: { id: asset.id },
-                data: {
-                    tailoredResumeMarkdown: newTailoredResume,
-                    previousTailoredResumeMarkdown: asset.tailoredResumeMarkdown || null,
-                    resumeRegensUsed: asset.resumeRegensUsed + 1
-                }
-            });
-
-            if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
-                await prisma.userJob.update({
-                    where: { userId_jobId: { userId: session.user.id, jobId } },
-                    data: { status: 'asset_generated' }
-                }).catch(err => console.warn('Failed to update userJob status:', err));
-            }
-        } else {
+        if (outputValidation.severeHallucination) {
             console.warn('[Output Validation] Resume generation rejected due to severe hallucination:', outputValidation.warnings);
+            return NextResponse.json(
+                { error: 'The generated resume was too short or corrupted. Please try again.' },
+                { status: 422 }
+            );
+        }
+
+        const updatedAsset = await prisma.applicationAsset.update({
+            where: { id: asset.id },
+            data: {
+                tailoredResumeMarkdown: newTailoredResume,
+                previousTailoredResumeMarkdown: asset.tailoredResumeMarkdown || null,
+                resumeRegensUsed: asset.resumeRegensUsed + 1
+            }
+        });
+
+        if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
+            await prisma.userJob.update({
+                where: { userId_jobId: { userId: session.user.id, jobId } },
+                data: { status: 'asset_generated' }
+            }).catch(err => console.warn('Failed to update userJob status:', err));
         }
 
         return new Response(newTailoredResume, {

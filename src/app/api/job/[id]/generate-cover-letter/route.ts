@@ -88,24 +88,28 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         const baseResumeText = userPrefs?.resumeMarkdown || '';
         const outputValidation = validateGeneratedAsset(newCoverLetter, baseResumeText, userJob.job.description || '', 'coverLetter');
 
-        if (!outputValidation.severeHallucination) {
-            const updatedAsset = await prisma.applicationAsset.update({
-                where: { id: asset.id },
-                data: {
-                    coverLetterMarkdown: newCoverLetter,
-                    previousCoverLetterMarkdown: asset.coverLetterMarkdown || null,
-                    coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
-                }
-            });
-
-            if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
-                await prisma.userJob.update({
-                    where: { userId_jobId: { userId: session.user.id, jobId } },
-                    data: { status: 'asset_generated' }
-                }).catch(err => console.warn('Failed to update userJob status:', err));
-            }
-        } else {
+        if (outputValidation.severeHallucination) {
             console.warn('[Output Validation] Cover letter generation rejected due to severe hallucination:', outputValidation.warnings);
+            return NextResponse.json(
+                { error: 'The generated cover letter was too short or corrupted. Please try again.' },
+                { status: 422 }
+            );
+        }
+
+        const updatedAsset = await prisma.applicationAsset.update({
+            where: { id: asset.id },
+            data: {
+                coverLetterMarkdown: newCoverLetter,
+                previousCoverLetterMarkdown: asset.coverLetterMarkdown || null,
+                coverLetterRegensUsed: asset.coverLetterRegensUsed + 1
+            }
+        });
+
+        if (updatedAsset.tailoredResumeMarkdown?.trim() && updatedAsset.coverLetterMarkdown?.trim()) {
+            await prisma.userJob.update({
+                where: { userId_jobId: { userId: session.user.id, jobId } },
+                data: { status: 'asset_generated' }
+            }).catch(err => console.warn('Failed to update userJob status:', err));
         }
 
         return new Response(newCoverLetter, {

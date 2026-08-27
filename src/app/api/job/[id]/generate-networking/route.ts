@@ -79,18 +79,22 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         const baseResumeText = userPrefs?.resumeMarkdown || '';
         const outputValidation = validateGeneratedAsset(newNetworkingMessage, baseResumeText, userJob.job.description || '', 'networking');
 
-        if (!outputValidation.severeHallucination) {
-            await prisma.applicationAsset.update({
-                where: { id: asset.id },
-                data: {
-                    networkingMessage: newNetworkingMessage,
-                    previousNetworkingMessage: asset.networkingMessage || null,
-                    networkingMessageRegensUsed: asset.networkingMessageRegensUsed + 1
-                }
-            });
-        } else {
+        if (outputValidation.severeHallucination) {
             console.warn('[Output Validation] Networking message generation rejected due to severe hallucination:', outputValidation.warnings);
+            return NextResponse.json(
+                { error: 'The generated networking message was too short or corrupted. Please try again.' },
+                { status: 422 }
+            );
         }
+
+        await prisma.applicationAsset.update({
+            where: { id: asset.id },
+            data: {
+                networkingMessage: newNetworkingMessage,
+                previousNetworkingMessage: asset.networkingMessage || null,
+                networkingMessageRegensUsed: asset.networkingMessageRegensUsed + 1
+            }
+        });
 
         return new Response(newNetworkingMessage, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },

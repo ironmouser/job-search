@@ -23,6 +23,7 @@ import {
   toSlashDate,
 } from '../utils/form-commit';
 import { valuesClose } from '../utils/typeahead';
+import { StagehandFallback } from '../generic-agent/stagehand-fallback';
 import {
   isTransgenderOrGenderIdentityQuestion,
   isOptionTransgender,
@@ -338,14 +339,15 @@ export class UniversalQuestionResolver {
       `Found ${questions.length} custom/screening question(s) to process`
     );
 
-    // Prepare payload for AI question answering (only for required questions)
-    const requiredQuestions = questions.filter((q) => q.required);
-    if (requiredQuestions.length === 0) {
-      await logger.info('all_questions_optional', 'All detected questions are optional — skipping form questions');
-      return;
-    }
+    // Prepare payload for AI question answering (only for questions needing answers)
+    const questionsNeedingAI = questions.filter((q) => {
+      if (q.required) return true;
+      const customAnswers = context.userProfile?.customAnswers || {};
+      const cleanQ = q.label.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+      return !!(customAnswers[q.fieldKey] || customAnswers[q.label] || Object.keys(customAnswers).some(k => k.toLowerCase().includes(cleanQ) || cleanQ.includes(k.toLowerCase())));
+    });
 
-    const questionsPayload = requiredQuestions.map((q) => ({
+    const questionsPayload = questionsNeedingAI.map((q) => ({
       id: q.id,
       label: q.label,
       type: q.type,
@@ -355,7 +357,7 @@ export class UniversalQuestionResolver {
 
     let aiAnswers: Array<{ id: string; answer: string | null; confidence: number; requiresHumanInput: boolean }> = [];
 
-    if (apiClient && context.sessionId) {
+    if (apiClient && context.sessionId && questionsPayload.length > 0) {
       try {
         aiAnswers = await apiClient.answerQuestions(context.sessionId, questionsPayload);
       } catch (err: any) {
@@ -366,15 +368,6 @@ export class UniversalQuestionResolver {
     const unanswered: UnansweredFieldData[] = [];
 
     for (const q of questions) {
-      // 1. Skip optional questions completely — do not answer, do not fill, do not escalate
-      if (!q.required) {
-        await logger.info(
-          'question_skipped_optional',
-          `Skipping optional question (${q.type}): "${q.label.slice(0, 60)}"`
-        );
-        continue;
-      }
-
       const isDemographic = isDemographicQuestion(q.label, q.fieldKey);
       const match = aiAnswers.find((a) => a.id === q.id);
       let answer = match?.answer;
@@ -1303,6 +1296,18 @@ export class UniversalQuestionResolver {
             await radio.check({ force: true }).catch(() => null);
             return true;
           }
+        }
+      }
+
+      // Stagehand AI Fallback if deterministic filling failed
+      const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+      if (page) {
+        if (question.type === 'select') {
+          const selected = await StagehandFallback.selectDropdown(page, question.label, answer, logger);
+          if (selected) return true;
+        } else if (question.type === 'text' || question.type === 'textarea') {
+          const filled = await StagehandFallback.fillField(page, question.label, answer, logger);
+          if (filled) return true;
         }
       }
     } catch (err: any) {
