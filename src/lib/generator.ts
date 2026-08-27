@@ -235,42 +235,52 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
         return responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
     };
 
+    const normalizeAssetKeys = (raw: any) => {
+        if (!raw || typeof raw !== 'object') return {};
+        return {
+            tailored_resume: (raw.tailored_resume || raw.tailoredResume || raw.resume || raw.resume_markdown || raw.tailored_resume_markdown || '').trim(),
+            cover_letter: (raw.cover_letter || raw.coverLetter || raw.coverLetterMarkdown || raw.cover_letter_markdown || '').trim(),
+            networking_message: (raw.networking_message || raw.networkingMessage || raw.networking || raw.linkedin_message || raw.linkedinMessage || '').trim(),
+            portfolio_recommendation: (raw.portfolio_recommendation || raw.portfolioRecommendation || raw.portfolio || raw.portfolio_note || '').trim()
+        };
+    };
+
+    const parseAndValidate = (rawText: string, attempt: number) => {
+        const parsed = parseOrRepairJson(rawText, attempt);
+        const normalized = normalizeAssetKeys(parsed);
+
+        if (!normalized.tailored_resume || normalized.tailored_resume.length < 100) {
+            throw new Error(`Generated resume is missing or too short (${normalized.tailored_resume.length} chars)`);
+        }
+        if (!normalized.cover_letter || normalized.cover_letter.length < 80) {
+            throw new Error(`Generated cover letter is missing or too short (${normalized.cover_letter.length} chars)`);
+        }
+        if (!normalized.networking_message || normalized.networking_message.length < 20) {
+            throw new Error(`Generated networking message is missing or too short (${normalized.networking_message.length} chars)`);
+        }
+        return normalized;
+    };
+
     let assets;
     try {
         const rawText = await fetchRawAssets(1);
         try {
-            assets = parseOrRepairJson(rawText, 1);
+            assets = parseAndValidate(rawText, 1);
         } catch (localRepairErr) {
-            console.warn('Local JSON parse/repair failed on attempt 1. Invoking AI JSON repair subflow before full retry...');
+            console.warn('Attempt 1 parse/validate failed, invoking AI repair...', (localRepairErr as Error).message);
             try {
-                assets = await repairJsonWithAi(rawText, userId);
+                const repaired = await repairJsonWithAi(rawText, userId);
+                assets = parseAndValidate(repaired, 99);
             } catch (aiRepairErr) {
-                console.warn('AI JSON repair subflow also failed. Performing full asset generation retry...', (aiRepairErr as Error).message);
+                console.warn('AI repair failed, retrying full asset generation attempt 2...', (aiRepairErr as Error).message);
                 const rawText2 = await fetchRawAssets(2);
-                assets = parseOrRepairJson(rawText2, 2);
+                assets = parseAndValidate(rawText2, 2);
             }
         }
     } catch (firstErr) {
         console.warn('First asset generation attempt failed, retrying with second attempt...', (firstErr as Error).message);
         const rawText2 = await fetchRawAssets(2);
-        assets = parseOrRepairJson(rawText2, 2);
-    }
-
-
-    // Content quality gate: validate all three core assets have meaningful content before saving.
-    // If any are empty or too short, throw so the outer retry logic fires a second attempt.
-    const MIN_RESUME_LEN = 500;
-    const MIN_COVER_LEN = 300;
-    const MIN_NETWORKING_LEN = 50;
-
-    if (!assets.tailored_resume || assets.tailored_resume.trim().length < MIN_RESUME_LEN) {
-        throw new Error(`Generated resume is empty or too short (${(assets.tailored_resume || '').trim().length} chars). Retrying...`);
-    }
-    if (!assets.cover_letter || assets.cover_letter.trim().length < MIN_COVER_LEN) {
-        throw new Error(`Generated cover letter is empty or too short (${(assets.cover_letter || '').trim().length} chars). Retrying...`);
-    }
-    if (!assets.networking_message || assets.networking_message.trim().length < MIN_NETWORKING_LEN) {
-        throw new Error(`Generated networking message is empty or too short (${(assets.networking_message || '').trim().length} chars). Retrying...`);
+        assets = parseAndValidate(rawText2, 2);
     }
 
     try {
