@@ -186,6 +186,8 @@ async function selectBestSuggestion(
   await input.press('Enter', { timeout: OP_TIMEOUT_MS }).catch(() => null);
 }
 
+import { isCountryMatch, isStateMatch } from './demographic-matching';
+
 /** Lenient equality used for post-fill verification. */
 export function valuesClose(actual: string, expected: string): boolean {
   if (!actual) return false;
@@ -193,6 +195,8 @@ export function valuesClose(actual: string, expected: string): boolean {
   const b = norm(expected);
   if (!a || !b) return false;
   if (a === b) return true;
+  if (isCountryMatch(actual, expected)) return true;
+  if (isStateMatch(actual, expected)) return true;
   // Actual may carry suffix detail added by selection ("austin tx usa")
   return a.startsWith(b) || b.startsWith(a);
 }

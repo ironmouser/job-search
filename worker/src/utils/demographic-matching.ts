@@ -159,12 +159,22 @@ export function isCountryMatch(optionText: string, targetCountry: string): boole
   if (opt === target) return true;
 
   const isTargetUS = /^(united states|usa|u\.s\.a\.|us|u\.s\.|united states of america)$/i.test(target);
-  const isOptUS = /^(united states|usa|u\.s\.a\.|us|u\.s\.|united states of america)$/i.test(opt) ||
-    /\bunited\s*states\b|\bu\.s\.a\.\b|\busa\b/i.test(opt);
+  const isOptUS = /^(united states|usa|u\.s\.a\.|us|u\.s\.|united states of america|\+1|1|us \(\+1\)|united states \(\+1\)|\+1 \(us\))$/i.test(opt) ||
+    /\bunited\s*states\b|\bu\.s\.a\.\b|\busa\b|^\+1\b/i.test(opt);
 
   if (isTargetUS && isOptUS) return true;
   if (isTargetUS && !isOptUS) return false;
   if (!isTargetUS && isOptUS) return false;
+
+  // Canada (+1)
+  const isTargetCA = /^(canada|ca)$/i.test(target);
+  const isOptCA = /^(canada|ca|\+1|1|ca \(\+1\)|canada \(\+1\)|\+1 \(ca\))$/i.test(opt) || /\bcanada\b/i.test(opt);
+  if (isTargetCA && isOptCA) return true;
+
+  // United Kingdom (+44)
+  const isTargetUK = /^(united kingdom|uk|u\.k\.)$/i.test(target);
+  const isOptUK = /^(united kingdom|uk|u\.k\.|\+44|44|uk \(\+44\)|\+44 \(uk\))$/i.test(opt) || /\bunited\s*kingdom\b/i.test(opt);
+  if (isTargetUK && isOptUK) return true;
 
   return false;
 }

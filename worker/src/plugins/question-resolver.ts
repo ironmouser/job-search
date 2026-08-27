@@ -723,7 +723,9 @@ export class UniversalQuestionResolver {
         /^linkedin/i.test(normLabel) ||
         /^website/i.test(normLabel) ||
         /^portfolio/i.test(normLabel) ||
-        /^github/i.test(normLabel)
+        /^github/i.test(normLabel) ||
+        /country\s*code|dialing\s*code|phone\s*country/i.test(normLabel) ||
+        ((await container.locator('input[type="tel"], input[name*="phone" i], [id*="phone" i]').count().catch(() => 0)) > 0 && /country/i.test(normLabel))
       ) {
         continue;
       }
@@ -815,9 +817,7 @@ export class UniversalQuestionResolver {
       if (await nativeSelect.count() > 0) {
         const val = await nativeSelect.inputValue().catch(() => '');
         const selText = ((await nativeSelect.evaluate((el: HTMLSelectElement) => el.options[el.selectedIndex]?.text || '').catch(() => '')) || '').trim().toLowerCase();
-        const reactText = ((await container.locator('.select__single-value, .select-value, .selected').textContent().catch(() => '')) || '').toLowerCase();
-        const containerText = ((await container.textContent().catch(() => '')) || '').toLowerCase();
-        const isUnfilled = !val || val === '' || val === '0' || /^(select|choose|please\s*select|\-\-)/i.test(selText) || reactText.includes('select...') || containerText.includes('select...');
+        const isUnfilled = !val || val === '' || val === '0' || /^(?:select\.\.\.|choose\.\.\.|please\s*select|select an option|select a country|\-\-)$/i.test(selText);
 
         if (isUnfilled) {
           qIndex++;
@@ -834,7 +834,7 @@ export class UniversalQuestionResolver {
           continue;
         }
       } else if (await customSelect.count() > 0 && (await customSelect.isVisible().catch(() => false))) {
-        const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i]').first();
+        const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i], [class*="ValueContainer" i]').first();
         let currentText = '';
         if (await valContainer.count() > 0) {
           currentText = ((await valContainer.textContent().catch(() => '')) || '').trim();
@@ -842,7 +842,7 @@ export class UniversalQuestionResolver {
           currentText = ((await customSelect.textContent().catch(() => '')) || '').trim();
         }
         // Truly unfilled only if it holds placeholder text or is empty (do NOT force unfilled if already filled with Yes/No/etc.)
-        const isUnfilled = !currentText || /select\.\.\.|choose\.\.\.|select an option|select a country|^select$/i.test(currentText);
+        const isUnfilled = !currentText || /^(?:select\.\.\.|choose\.\.\.|select an option|select a country|select one|please select|\-\-)$/i.test(currentText) || /select\.\.\./i.test(currentText);
         if (isUnfilled) {
           qIndex++;
           seenLabels.add(normLabel);
