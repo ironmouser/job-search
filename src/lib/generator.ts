@@ -104,12 +104,13 @@ function parseOrRepairJson(rawText: string, attempt: number = 1): any {
     throw new Error('No JSON object found in the AI response.');
 }
 
-async function repairJsonWithAi(rawText: string, userId?: string): Promise<any> {
+async function repairJsonWithAi(rawText: string, userId?: string, model?: string): Promise<any> {
     console.log('Attempting AI JSON repair subflow for malformed response...');
     const repairSystem = `You are a strict JSON repair utility. Fix the provided text so that it is a valid JSON object matching the required schema. Output ONLY valid JSON without any markdown formatting or explanations. Key names MUST be: "tailored_resume", "cover_letter", "networking_message", "portfolio_recommendation".`;
     const repairUser = `Fix and output valid JSON for this text:\n\n${rawText.slice(0, 8000)}`;
     const repairedText = await callAI({
         task: 'repair',
+        model: model,
         messages: [
             { role: 'system', content: repairSystem },
             { role: 'user', content: repairUser }
@@ -249,38 +250,63 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
         const parsed = parseOrRepairJson(rawText, attempt);
         const normalized = normalizeAssetKeys(parsed);
 
-        if (!normalized.tailored_resume || normalized.tailored_resume.length < 100) {
-            throw new Error(`Generated resume is missing or too short (${normalized.tailored_resume.length} chars)`);
+        // Reinstated structural length thresholds
+        if (!normalized.tailored_resume || normalized.tailored_resume.length < 500) {
+            throw new Error(`Generated resume is missing or too short (${normalized.tailored_resume.length} chars. Minimum 500)`);
         }
-        if (!normalized.cover_letter || normalized.cover_letter.length < 80) {
-            throw new Error(`Generated cover letter is missing or too short (${normalized.cover_letter.length} chars)`);
+        if (!normalized.cover_letter || normalized.cover_letter.length < 300) {
+            throw new Error(`Generated cover letter is missing or too short (${normalized.cover_letter.length} chars. Minimum 300)`);
         }
-        if (!normalized.networking_message || normalized.networking_message.length < 20) {
-            throw new Error(`Generated networking message is missing or too short (${normalized.networking_message.length} chars)`);
+        if (!normalized.networking_message || normalized.networking_message.length < 50) {
+            throw new Error(`Generated networking message is missing or too short (${normalized.networking_message.length} chars. Minimum 50)`);
         }
         return normalized;
     };
 
-    let assets;
-    try {
-        const rawText = await fetchRawAssets(1);
+    const runGenerationCycle = async (modelOverride?: string) => {
+        const fetchRaw = async (attempt: number) => {
+            let responseText = await callAiService({
+                system: systemPrompt,
+                userPrompt: userPrompt,
+                maxTokens: 8192,
+                jsonMode: true,
+                userId: userId,
+                temperature: jsonTemp,
+                model: modelOverride
+            });
+            return responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
+        };
+
+        const rawText = await fetchRaw(1);
         try {
-            assets = parseAndValidate(rawText, 1);
+            return parseAndValidate(rawText, 1);
         } catch (localRepairErr) {
-            console.warn('Attempt 1 parse/validate failed, invoking AI repair...', (localRepairErr as Error).message);
+            console.warn(`[${modelOverride || 'primary'}] Attempt 1 parse/validate failed, invoking AI repair subflow...`, (localRepairErr as Error).message);
             try {
-                const repaired = await repairJsonWithAi(rawText, userId);
-                assets = parseAndValidate(repaired, 99);
+                const repaired = await repairJsonWithAi(rawText, userId, modelOverride);
+                return parseAndValidate(repaired, 99);
             } catch (aiRepairErr) {
-                console.warn('AI repair failed, retrying full asset generation attempt 2...', (aiRepairErr as Error).message);
-                const rawText2 = await fetchRawAssets(2);
-                assets = parseAndValidate(rawText2, 2);
+                console.warn(`[${modelOverride || 'primary'}] AI repair subflow failed, retrying full asset generation attempt 2...`, (aiRepairErr as Error).message);
+                const rawText2 = await fetchRaw(2);
+                return parseAndValidate(rawText2, 2);
             }
         }
-    } catch (firstErr) {
-        console.warn('First asset generation attempt failed, retrying with second attempt...', (firstErr as Error).message);
-        const rawText2 = await fetchRawAssets(2);
-        assets = parseAndValidate(rawText2, 2);
+    };
+
+    let assets;
+    try {
+        // 1. Primary provider (DeepSeek V4 Flash): attempt 1 -> repair subflow -> attempt 2
+        assets = await runGenerationCycle('deepseek-v4-flash');
+    } catch (deepseekErr: any) {
+        console.warn('DeepSeek attempts & repair subflow failed. Cascading to fallback model (Gemini 3.1 Flash-Lite)...', deepseekErr.message);
+        try {
+            // 2. Fallback provider 1 (Gemini 3.1 Flash-Lite): attempt 1 -> repair subflow -> attempt 2
+            assets = await runGenerationCycle('gemini-3.1-flash-lite');
+        } catch (geminiErr: any) {
+            console.warn('Gemini fallback failed. Cascading to OpenAI GPT-5 nano...', geminiErr.message);
+            // 3. Fallback provider 2 (OpenAI GPT-5 nano): attempt 1 -> repair subflow -> attempt 2
+            assets = await runGenerationCycle('gpt-5-nano');
+        }
     }
 
     try {

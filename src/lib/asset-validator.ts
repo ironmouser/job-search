@@ -183,29 +183,30 @@ export function validateGeneratedAsset(
         }
     }
 
-    // 2. Minimum structural length checks — catches truly empty, placeholder, or truncated responses
-    if (assetType === 'coverLetter' && cleanOutput.length < 100) {
+    // 2. Minimum structural length checks — below these thresholds the output is considered corrupted/empty
+    // and treated as a severe hallucination so the DB write is blocked and the client gets a proper error.
+    if (assetType === 'coverLetter' && cleanOutput.length < 300) {
         return {
             isValid: false,
-            warnings: [`Cover letter output is too short (${cleanOutput.length} chars). Expected at least 100 chars.`],
+            warnings: [`Cover letter output is too short (${cleanOutput.length} chars). Expected at least 300 chars.`],
             severeHallucination: true
         };
-    } else if (assetType === 'networking' && cleanOutput.length < 25) {
+    } else if (assetType === 'networking' && cleanOutput.length < 50) {
         return {
             isValid: false,
-            warnings: [`Networking message output is too short (${cleanOutput.length} chars). Expected at least 25 chars.`],
+            warnings: [`Networking message output is too short (${cleanOutput.length} chars). Expected at least 50 chars.`],
             severeHallucination: true
         };
-    } else if (assetType === 'resume' && cleanOutput.length < 150) {
+    } else if (assetType === 'resume' && cleanOutput.length < 500) {
         return {
             isValid: false,
-            warnings: [`Tailored resume output is too short (${cleanOutput.length} chars). Expected at least 150 chars.`],
+            warnings: [`Tailored resume output is too short (${cleanOutput.length} chars). Expected at least 500 chars.`],
             severeHallucination: true
         };
-    } else if (assetType === 'qa' && cleanOutput.length < 15) {
+    } else if (assetType === 'qa' && cleanOutput.length < 30) {
         return {
             isValid: false,
-            warnings: [`Q&A answer output is too short (${cleanOutput.length} chars). Expected at least 15 chars.`],
+            warnings: [`Q&A answer output is too short (${cleanOutput.length} chars). Expected at least 30 chars.`],
             severeHallucination: true
         };
     }

@@ -50,7 +50,7 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                 }
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s fast-fail timeout
+                const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
                 const res = await fetch('https://api.deepseek.com/chat/completions', {
                     method: 'POST',
@@ -67,33 +67,20 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
                     const errData = await res.json().catch(() => ({}));
                     const errMsg = errData.error?.message || `HTTP ${res.status} ${res.statusText}`;
 
-                    // On 5xx server errors (e.g. 502 Bad Gateway, 503 Unavailable), fail fast immediately to trigger Gemini fallback
-                    if (res.status >= 500) {
-                        console.warn(`[DeepSeek ${res.status}] Upstream server error, triggering immediate Gemini fallback: ${errMsg}`);
-                        lastError = new Error(`DeepSeek server error (${res.status}): ${errMsg}`);
-                        break;
-                    }
-
-                    // Transient rate limit: check retry-after
-                    if (res.status === 429 && attempt < maxAttempts - 1) {
+                    // Transient rate limit or server error: retry attempt 2 before failing
+                    if ((res.status === 429 || res.status >= 500) && attempt < maxAttempts - 1) {
                         const retryAfterHeader = res.headers.get('retry-after');
                         const retryAfterSeconds = retryAfterHeader ? parseFloat(retryAfterHeader) : null;
+                        const delayMs = retryAfterSeconds ? retryAfterSeconds * 1000 : 1500;
 
-                        if (retryAfterSeconds && retryAfterSeconds > 2) {
-                            console.warn(`[DeepSeek 429] Retry-After is ${retryAfterSeconds}s, triggering immediate Gemini fallback.`);
-                            lastError = new Error(`DeepSeek rate limited (${modelName}): ${errMsg}`);
-                            break;
-                        }
-
-                        const delayMs = retryAfterSeconds ? retryAfterSeconds * 1000 : 1000;
-                        console.warn(`[DeepSeek 429] Retrying ${modelName} in ${delayMs}ms: ${errMsg}`);
+                        console.warn(`[DeepSeek ${res.status}] Retrying ${modelName} in ${delayMs}ms (attempt ${attempt + 1}/${maxAttempts}): ${errMsg}`);
                         await new Promise(r => setTimeout(r, delayMs));
                         continue;
                     }
 
-                    console.warn(`[DeepSeek ${res.status}] Model ${modelName} failed, trying fallback: ${errMsg}`);
+                    console.warn(`[DeepSeek ${res.status}] Model ${modelName} failed: ${errMsg}`);
                     lastError = new Error(`DeepSeek API error (${modelName}): ${errMsg}`);
-                    break; // Fall back to Gemini via callAI
+                    break;
                 }
 
                 const data = await res.json();

@@ -117,7 +117,7 @@ export async function callAI(options: CallAIOptions): Promise<string> {
             if (hasGemini) {
                 return await callGemini({
                     model: 'gemini-3.1-flash-lite',
-                    fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                    fallbackModels,
                     messages: messages as GeminiMessage[],
                     jsonMode,
                     temperature,
@@ -134,7 +134,7 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                 try {
                     return await callGemini({
                         model: 'gemini-3.1-flash-lite',
-                        fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                        fallbackModels,
                         messages: messages as GeminiMessage[],
                         jsonMode,
                         temperature,
@@ -193,7 +193,7 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                 try {
                     return await callGemini({
                         model: 'gemini-3.1-flash-lite',
-                        fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                        fallbackModels,
                         messages: messages as GeminiMessage[],
                         jsonMode,
                         temperature,
@@ -239,7 +239,7 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                 try {
                     return await callGemini({
                         model: 'gemini-3.1-flash-lite',
-                        fallbackModels: ['gemini-3.7-flash', ...fallbackModels],
+                        fallbackModels,
                         messages: messages as GeminiMessage[],
                         jsonMode,
                         temperature,
