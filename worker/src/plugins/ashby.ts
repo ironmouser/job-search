@@ -65,10 +65,38 @@ export class AshbyPlugin extends ATSPlugin {
     await browser.navigate(context.jobUrl, 'domcontentloaded');
     await logger.info('page_navigated', `Loaded page: ${context.jobUrl}`);
 
-    // Allow dynamic iframe or SPA form components to load
-    await browser.page.waitForTimeout(2000);
+    await browser.page.waitForTimeout(1500);
     await this.dismissCookieBannerIfPresent(browser.page, logger);
     await this.checkClosedJob(browser, logger, context.jobUrl);
+
+    // 1. Ensure "Application" tab is activated if Ashby renders a dual Overview/Application layout
+    const appTabSelectors = [
+      '[role="tab"]:has-text("Application")',
+      'button:has-text("Application")',
+      'a:has-text("Application")',
+      'a[href*="/application"]',
+      '[data-testid*="application" i]',
+    ];
+    for (const sel of appTabSelectors) {
+      const tabEl = browser.page.locator(sel).first();
+      if ((await tabEl.count().catch(() => 0)) > 0 && (await tabEl.isVisible().catch(() => false))) {
+        await tabEl.click({ force: true }).catch(() => null);
+        await logger.info('tab_switched', 'Switched to Ashby Application tab');
+        break;
+      }
+    }
+
+    // 2. Wait for Ashby SPA "Fetching application form" loader to resolve
+    const startTime = Date.now();
+    while (Date.now() - startTime < 15000) {
+      const isFetching = (await browser.page.locator('text="Fetching application form", text="Loading", [class*="spinner" i]').count().catch(() => 0)) > 0;
+      const hasFormElements = (await browser.page.locator('input[name="name"], input[autocomplete="name"], input[type="file"], .ashby-application-form, form').count().catch(() => 0)) > 0;
+
+      if (hasFormElements && !isFetching) {
+        break;
+      }
+      await browser.page.waitForTimeout(500);
+    }
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {
@@ -79,8 +107,9 @@ export class AshbyPlugin extends ATSPlugin {
       'input[autocomplete="name"]',
       'input[type="file"]',
       'button[type="submit"]',
+      '.ashby-application-form',
       'form',
-    ]);
+    ], 15000);
 
     const profile = context.userProfile;
 

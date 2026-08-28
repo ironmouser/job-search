@@ -295,21 +295,29 @@ export class BrowserSession {
   /**
    * Finds the frame (or main page) containing any of the specified selectors.
    * Enables seamless automation on custom sites embedding ATS forms in iframes (e.g. Ashby/Greenhouse/Lever).
+   * Polls with a retry loop to give dynamically loaded SPA / GraphQL forms time to render.
    */
-  async findFormFrame(selectors: string[]): Promise<Frame | Page> {
+  async findFormFrame(selectors: string[], timeoutMs: number = 15000): Promise<Frame | Page> {
     const page = this.page;
-    for (const selector of selectors) {
-      if (await page.$(selector).catch(() => null)) {
-        return page;
-      }
-    }
-    for (const frame of page.frames()) {
-      if (frame === page.mainFrame()) continue;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
       for (const selector of selectors) {
-        if (await frame.$(selector).catch(() => null)) {
-          return frame;
+        const el = await page.$(selector).catch(() => null);
+        if (el && (await el.isVisible().catch(() => true))) {
+          return page;
         }
       }
+      for (const frame of page.frames()) {
+        if (frame === page.mainFrame()) continue;
+        for (const selector of selectors) {
+          const el = await frame.$(selector).catch(() => null);
+          if (el && (await el.isVisible().catch(() => true))) {
+            return frame;
+          }
+        }
+      }
+      await page.waitForTimeout(500);
     }
     return page;
   }
