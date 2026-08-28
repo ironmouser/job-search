@@ -234,7 +234,18 @@ export async function POST(
             demoAnswer = customVal;
           } else if (/gender|sex\b/i.test(lowerLabel) && !isTransgenderOrGenderIdentityQuestion(lowerLabel)) {
             demoAnswer = prefs?.eeocGender;
-          } else if (/race|ethnicity|hispanic|latino/i.test(lowerLabel)) {
+          } else if (/hispanic|latino/i.test(lowerLabel)) {
+            if (prefs?.eeocRace) {
+              const lowerRace = prefs.eeocRace.toLowerCase();
+              if (q.options && q.options.some((o) => /^yes$/i.test(o.trim()))) {
+                demoAnswer = /hispanic|latino|spanish/i.test(lowerRace) ? 'Yes' : 'No';
+              } else {
+                demoAnswer = prefs.eeocRace;
+              }
+            } else if (prefs?.skipSelfId && q.options && q.options.some((o) => /^no$/i.test(o.trim()))) {
+              demoAnswer = 'No';
+            }
+          } else if (/race|ethnicity/i.test(lowerLabel)) {
             demoAnswer = prefs?.eeocRace;
           } else if (/veteran|military/i.test(lowerLabel)) {
             demoAnswer = prefs?.eeocVeteran;
@@ -268,7 +279,34 @@ export async function POST(
           }
         }
 
-        // If no answer exists in DB for this demographic question, NEVER let AI guess!
+        // If no saved demographic answer:
+        const declineOption = q.options && q.options.length > 0
+          ? q.options.find((o) => /decline|prefer not|choose not|do not wish/i.test(o))
+          : undefined;
+
+        if (q.required === false) {
+          // Optional demographic question with no user answer: leave blank without requiring human input
+          answers.push({
+            id: q.id,
+            answer: null,
+            confidence: 100,
+            requiresHumanInput: false,
+          });
+          continue;
+        }
+
+        if (declineOption) {
+          // Required demographic question with available decline option: safely select decline
+          answers.push({
+            id: q.id,
+            answer: declineOption,
+            confidence: 100,
+            requiresHumanInput: false,
+          });
+          continue;
+        }
+
+        // Required demographic question without saved answer or decline option strictly requires human input
         answers.push({
           id: q.id,
           answer: null,

@@ -326,26 +326,50 @@ export function matchesOptionSafely(optionText: string, targetValue: string): bo
 }
 
 /**
- * Resolves a safe answer for Hispanic/Latino screening questions when options are boolean (Yes/No).
+ * Resolves a safe answer for Hispanic/Latino screening questions.
+ * Only returns "Decline to self-identify" when the options actually support a decline option.
+ * If the options are strictly boolean (Yes/No), returns "Yes" or "No" based on profile.
  */
 export function resolveHispanicEthnicityAnswer(
   eeocRace: string | undefined | null,
-  skipSelfId?: boolean
+  skipSelfId?: boolean,
+  options?: string[],
+  required?: boolean
 ): string {
+  const hasDeclineOption = options && options.length > 0
+    ? options.find((o) => /decline|prefer not|choose not/i.test(o))
+    : undefined;
+
   if (skipSelfId) {
-    return 'Decline to self-identify';
-  }
-  if (!eeocRace) {
+    if (hasDeclineOption) {
+      return hasDeclineOption;
+    }
+    if (eeocRace) {
+      const lower = eeocRace.toLowerCase();
+      if (lower.includes('hispanic') || lower.includes('latino') || lower.includes('spanish')) {
+        return 'Yes';
+      }
+    }
+    // If no decline option exists on a boolean (Yes/No) prompt, safely answer "No"
     return 'No';
   }
+
+  if (!eeocRace) {
+    if (hasDeclineOption) {
+      return hasDeclineOption;
+    }
+    return 'No';
+  }
+
   const lower = eeocRace.toLowerCase();
   if (lower.includes('hispanic') || lower.includes('latino') || lower.includes('spanish')) {
     return 'Yes';
   }
   if (/decline|prefer not|choose not/i.test(lower)) {
-    return 'Decline to self-identify';
+    return hasDeclineOption || 'No';
   }
   // User has specified non-Hispanic race (e.g. Asian, White, Black, Two or more, etc.)
   return 'No';
 }
+
 

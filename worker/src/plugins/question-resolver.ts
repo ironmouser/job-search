@@ -370,53 +370,62 @@ export class UniversalQuestionResolver {
     const unanswered: UnansweredFieldData[] = [];
 
     for (const q of questions) {
-      const isDemographic = isDemographicQuestion(q.label, q.fieldKey);
-      const match = aiAnswers.find((a) => a.id === q.id);
-      let answer = match?.answer;
-      let requiresHuman = match?.requiresHumanInput || !answer;
+      const lowerQ = q.label.toLowerCase();
+      const lowerKey = q.fieldKey.toLowerCase();
+      const cleanQ = q.label.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const customAnswers = context.userProfile.customAnswers || {};
 
-      // Profile and customAnswers fallback
-      if (!answer) {
-        const lowerQ = q.label.toLowerCase();
-        const lowerKey = q.fieldKey.toLowerCase();
-        const cleanQ = q.label.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-        const customAnswers = context.userProfile.customAnswers || {};
+      // Build a case-insensitive index so answers stored by the intervention
+      // panel (original case) always match the resolver's lowercased lookups.
+      const ciIndex = new Map<string, string>();
+      for (const [k, v] of Object.entries(customAnswers)) {
+        ciIndex.set(k.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase(), v);
+      }
 
-        // Build a case-insensitive index so answers stored by the intervention
-        // panel (original case) always match the resolver's lowercased lookups.
-        const ciIndex = new Map<string, string>();
+      const cleanFieldKey = q.fieldKey.replace(/\[\]$/, '').trim().toLowerCase();
+      let customVal =
+        ciIndex.get(cleanFieldKey) ||
+        ciIndex.get(cleanQ) ||
+        ciIndex.get(q.id.toLowerCase()) ||
+        customAnswers[q.fieldKey] ||
+        customAnswers[q.label] ||
+        customAnswers[q.label.trim()] ||
+        customAnswers[q.label.replace(/\*/g, '').trim()] ||
+        customAnswers[cleanQ] ||
+        customAnswers[q.id];
+
+      if (customVal === undefined || customVal === null || String(customVal).trim().length === 0) {
         for (const [k, v] of Object.entries(customAnswers)) {
-          ciIndex.set(k.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase(), v);
-        }
-
-        const cleanFieldKey = q.fieldKey.replace(/\[\]$/, '').trim().toLowerCase();
-        let customVal =
-          ciIndex.get(cleanFieldKey) ||
-          ciIndex.get(cleanQ) ||
-          ciIndex.get(q.id.toLowerCase()) ||
-          customAnswers[q.fieldKey] ||
-          customAnswers[q.label] ||
-          customAnswers[q.label.trim()] ||
-          customAnswers[q.label.replace(/\*/g, '').trim()] ||
-          customAnswers[cleanQ] ||
-          customAnswers[q.id];
-
-        if (customVal === undefined || customVal === null || String(customVal).trim().length === 0) {
-          for (const [k, v] of Object.entries(customAnswers)) {
-            const cleanK = k.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-            if (
-              cleanK === cleanQ ||
-              cleanK === cleanFieldKey ||
-              (cleanK.length > 4 && cleanQ.includes(cleanK)) ||
-              (cleanQ.length > 4 && cleanK.includes(cleanQ)) ||
-              (cleanK.length > 3 && (lowerKey.includes(cleanK) || cleanFieldKey.includes(cleanK)))
-            ) {
-              customVal = v;
-              break;
-            }
+          const cleanK = k.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+          if (
+            cleanK === cleanQ ||
+            cleanK === cleanFieldKey ||
+            (cleanK.length > 4 && cleanQ.includes(cleanK)) ||
+            (cleanQ.length > 4 && cleanK.includes(cleanQ)) ||
+            (cleanK.length > 3 && (lowerKey.includes(cleanK) || cleanFieldKey.includes(cleanK)))
+          ) {
+            customVal = v;
+            break;
           }
         }
+      }
 
+      const isDemographic = isDemographicQuestion(q.label, q.fieldKey);
+      const match = aiAnswers.find((a) => a.id === q.id);
+      let answer: string | undefined = undefined;
+      let requiresHuman = false;
+
+      if (customVal !== undefined && customVal !== null && String(customVal).trim().length > 0) {
+        // User explicit custom / session answer always takes top priority
+        answer = String(customVal).trim();
+        requiresHuman = false;
+      } else if (match?.answer) {
+        answer = match.answer;
+        requiresHuman = !!match.requiresHumanInput;
+      }
+
+      // Profile and fallback heuristics if no user or AI answer
+      if (!answer) {
         if (isDemographic) {
           // Check for specific demographic field in userProfile
           let demoAnswer: string | undefined = customVal;
@@ -428,11 +437,12 @@ export class UniversalQuestionResolver {
             } else if (/gender|sex\b/i.test(lowerQ) && !isTransgenderOrGenderIdentityQuestion(lowerQ)) {
               demoAnswer = context.userProfile.eeocGender;
             } else if (/hispanic|latino/i.test(lowerQ)) {
-              if (q.options.length > 0 && q.options.some((o) => /^yes$/i.test(o.trim()))) {
-                demoAnswer = resolveHispanicEthnicityAnswer(context.userProfile.eeocRace, context.userProfile.skipSelfId);
-              } else {
-                demoAnswer = context.userProfile.eeocRace;
-              }
+              demoAnswer = resolveHispanicEthnicityAnswer(
+                context.userProfile.eeocRace,
+                context.userProfile.skipSelfId,
+                q.options,
+                q.required
+              );
             } else if (/race|ethnicity/i.test(lowerQ)) {
               demoAnswer = context.userProfile.eeocRace;
             } else if (/veteran|military/i.test(lowerQ)) {
@@ -442,11 +452,24 @@ export class UniversalQuestionResolver {
             }
           }
 
+          const declineOption = q.options.length > 0
+            ? q.options.find((o) => /decline|prefer not|choose not|do not wish/i.test(o))
+            : undefined;
+
           if (demoAnswer !== undefined && demoAnswer !== null && String(demoAnswer).trim().length > 0) {
             answer = String(demoAnswer).trim();
             requiresHuman = false;
+          } else if (!q.required) {
+            // Optional demographic question with no user answer: leave completely blank
+            answer = undefined;
+            requiresHuman = false;
+            continue;
+          } else if (declineOption) {
+            // Required demographic question with available decline option: safely select decline
+            answer = declineOption;
+            requiresHuman = false;
           } else {
-            // Demographic question without saved answer strictly requires human intervention if required
+            // Required demographic question without saved answer or decline option strictly requires human intervention
             requiresHuman = true;
           }
         } else {
@@ -857,15 +880,36 @@ export class UniversalQuestionResolver {
           continue;
         }
       } else if (await customSelect.count() > 0 && (await customSelect.isVisible().catch(() => false))) {
-        const valContainer = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i], [class*="ValueContainer" i]').first();
-        let currentText = '';
-        if (await valContainer.count() > 0) {
-          currentText = ((await valContainer.textContent().catch(() => '')) || '').trim();
-        } else {
-          currentText = ((await customSelect.textContent().catch(() => '')) || '').trim();
+        const singleValueEl = container.locator('.select__single-value, .select-value, .selected, [class*="singleValue" i]').first();
+        const placeholderEl = container.locator('.select__placeholder, [class*="placeholder" i]').first();
+        const hiddenInputEl = container.locator('input[type="hidden"], input[name]:not(.select__input)').first();
+
+        let hasSelectedValue = false;
+        if ((await singleValueEl.count().catch(() => 0)) > 0) {
+          const text = ((await singleValueEl.textContent().catch(() => '')) || '').trim();
+          if (text && !/^(?:select\.\.\.|choose\.\.\.|select an option|select a country|select one|please select|\-\-)$/i.test(text)) {
+            hasSelectedValue = true;
+          }
         }
-        // Truly unfilled only if it holds placeholder text or is empty (do NOT force unfilled if already filled with Yes/No/etc.)
-        const isUnfilled = !currentText || /^(?:select\.\.\.|choose\.\.\.|select an option|select a country|select one|please select|\-\-)$/i.test(currentText) || /select\.\.\./i.test(currentText);
+
+        if (!hasSelectedValue && (await hiddenInputEl.count().catch(() => 0)) > 0) {
+          const val = ((await hiddenInputEl.inputValue().catch(() => '')) || '').trim();
+          if (val && val !== '0' && !/^(?:select|choose|\-\-)$/i.test(val)) {
+            hasSelectedValue = true;
+          }
+        }
+
+        if (!hasSelectedValue && (await placeholderEl.count().catch(() => 0)) === 0) {
+          const btnCombobox = container.locator('button[role="combobox"], button[aria-haspopup="listbox"], [role="combobox"]').first();
+          if ((await btnCombobox.count().catch(() => 0)) > 0) {
+            const text = ((await btnCombobox.textContent().catch(() => '')) || '').trim();
+            if (text && !/^(?:select\.\.\.|choose\.\.\.|select an option|select a country|select one|please select|\-\-)$/i.test(text)) {
+              hasSelectedValue = true;
+            }
+          }
+        }
+
+        const isUnfilled = !hasSelectedValue;
         if (isUnfilled) {
           qIndex++;
           seenLabels.add(normLabel);
@@ -1259,7 +1303,10 @@ export class UniversalQuestionResolver {
             if (!matchedAndClicked && (await reactInput.count() > 0)) {
               const searchKeyword = answer.split(/[\(,]/)[0].trim();
               await reactInput.focus().catch(() => null);
-              await replaceValue(reactInput, searchKeyword);
+              await reactInput.fill('').catch(() => null);
+              for (const char of searchKeyword) {
+                await reactInput.pressSequentially(char, { delay: 20 }).catch(() => null);
+              }
               await page.waitForTimeout(300);
 
               let filteredOptions = await ctx.locator('.select__option, [id*="-option-"], [role="option"], [data-automation-id*="promptOption" i], li[role="option"]').all().catch(() => []);
