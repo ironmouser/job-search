@@ -1772,10 +1772,11 @@ export abstract class ATSPlugin {
     }
 
     // If timeout is reached and no positive confirmation was found:
-    await logger.warn('confirmation_not_found', `No submission confirmation detected on ${platform} after ${maxWait}ms`);
+    const elapsedSeconds = Math.round((Date.now() - startTime) / 1000);
+    await logger.warn('confirmation_not_found', `No submission confirmation detected on ${platform} after ${elapsedSeconds}s`);
     throw new InterventionError(
       InterventionReason.UNEXPECTED_PAGE,
-      `No confirmation received after submitting the ${platform} application. Please verify submission directly on the portal.`,
+      `No confirmation received after submitting the ${platform} application (${elapsedSeconds}s elapsed). Please verify submission directly on the portal.`,
       page.url()
     );
   }
