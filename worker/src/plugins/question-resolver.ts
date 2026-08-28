@@ -1317,19 +1317,48 @@ export class UniversalQuestionResolver {
         // Single checkbox
         const checkbox = container.locator('input[type="checkbox"]').first();
         if (await checkbox.count() > 0) {
-          const isAffirmative = /^(yes|true|1|agree|confirm|accept)$/i.test(answer.trim());
-          if (isAffirmative && (await checkbox.isChecked().catch(() => false)) === false) {
-            await checkbox.check({ force: true }).catch(() => null);
-          } else if (!isAffirmative && (await checkbox.isChecked().catch(() => false)) === true) {
-            await checkbox.uncheck({ force: true }).catch(() => null);
+          const isAffirmative = /^(yes|true|1|agree|confirm|accept)/i.test(answer.trim());
+          const currentlyChecked = await checkbox.isChecked().catch(() => false);
+
+          if (isAffirmative && !currentlyChecked) {
+            // 1. Try clicking label or checkbox UI wrapper (triggers React synthetic handlers)
+            const labelOrWrapper = container.locator('label:has(input[type="checkbox"]), label, [class*="checkbox" i], [class*="control" i]').first();
+            if ((await labelOrWrapper.count().catch(() => 0)) > 0) {
+              await labelOrWrapper.click({ force: true }).catch(() => null);
+            }
+            // 2. Direct check if still unchecked
+            if (!(await checkbox.isChecked().catch(() => false))) {
+              await checkbox.check({ force: true }).catch(() => null);
+            }
+            // 3. Dispatch synthetic events for React state setters
+            await checkbox.evaluate((el: HTMLInputElement) => {
+              el.checked = true;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+            }).catch(() => {});
+          } else if (!isAffirmative && currentlyChecked) {
+            const labelOrWrapper = container.locator('label:has(input[type="checkbox"]), label, [class*="checkbox" i]').first();
+            if ((await labelOrWrapper.count().catch(() => 0)) > 0) {
+              await labelOrWrapper.click({ force: true }).catch(() => null);
+            }
+            if (await checkbox.isChecked().catch(() => false)) {
+              await checkbox.uncheck({ force: true }).catch(() => null);
+            }
+            await checkbox.evaluate((el: HTMLInputElement) => {
+              el.checked = false;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+            }).catch(() => {});
           }
-          return true;
+
+          const finalChecked = await checkbox.isChecked().catch(() => false);
+          return isAffirmative ? finalChecked : !finalChecked;
         }
 
         // ARIA switch / toggle (Material, Chakra, Workday custom widgets)
         const ariaSwitch = container.locator('[role="switch"], [aria-checked]').first();
         if (await ariaSwitch.count() > 0) {
-          const isAffirmative = /^(yes|true|1|agree|confirm|accept)$/i.test(answer.trim());
+          const isAffirmative = /^(yes|true|1|agree|confirm|accept)/i.test(answer.trim());
           const result = await setSwitchState(ariaSwitch, isAffirmative);
           return result === true;
         }

@@ -1296,7 +1296,21 @@ export abstract class ATSPlugin {
       }
     }
 
-    // 3. Check for active validation error banners
+    // 3. Check for any required checkboxes that are still unchecked
+    const uncheckedRequiredBoxes = await ctx.locator('input[type="checkbox"][required]:not(:checked), [aria-required="true"][type="checkbox"]:not(:checked)').all().catch(() => []);
+    for (const box of uncheckedRequiredBoxes) {
+      if (await box.isVisible().catch(() => false)) {
+        const boxLabel = await box.evaluate((el: HTMLInputElement) => {
+          const parent = el.closest('label') || el.closest('div') || el.parentElement;
+          return parent?.textContent || el.getAttribute('name') || el.getAttribute('aria-label') || '';
+        }).catch(() => '');
+        if (boxLabel.trim()) {
+          rawIssues.push(`Required checkbox not checked: ${boxLabel.trim().slice(0, 60)}`);
+        }
+      }
+    }
+
+    // 4. Check for active validation error banners
     const defaultErrorSelectors = [
       '[role="alert"]',
       '.invalid-field',
@@ -1611,8 +1625,6 @@ export abstract class ATSPlugin {
       ];
       const hasChallengePhrase = activeChallengePhrases.some((phrase) => combinedText.includes(phrase));
 
-      // Note: We deliberately exclude passive Google reCAPTCHA v3 badge anchors (e.g. iframe[src*="recaptcha/api2/anchor"] or .grecaptcha-badge)
-      // which are present harmlessly on all Greenhouse / ATS pages. We only match active challenge puzzles or interactive frames.
       const hasActiveChallengeElement = (await page.locator(
         'iframe[title*="recaptcha challenge" i]:visible, iframe[src*="recaptcha/api2/bframe"]:visible, iframe[src*="recaptcha/enterprise/bframe"]:visible, iframe[src*="hcaptcha.com"][src*="frame=challenge"]:visible, iframe[src*="challenges.cloudflare.com"]:not([hidden]):visible, .cf-turnstile:visible'
       ).count().catch(() => 0)) > 0;
@@ -1655,10 +1667,8 @@ export abstract class ATSPlugin {
       }
 
       // ─── 4. Check Positive Confirmation Indicators ─────────────────────────
-      // URL pattern match
       const urlConfirmed = allUrlKeywords.some((kw) => currentUrl.includes(kw));
 
-      // Custom or platform confirmation selectors
       let selectorConfirmed = false;
       if (options.confirmationSelectors && options.confirmationSelectors.length > 0) {
         for (const sel of options.confirmationSelectors) {
@@ -1677,7 +1687,6 @@ export abstract class ATSPlugin {
         }
       }
 
-      // Body text keyword match
       const textConfirmed = allConfirmKeywords.some((kw) => combinedText.includes(kw));
 
       if (urlConfirmed || selectorConfirmed || textConfirmed) {
@@ -1701,12 +1710,55 @@ export abstract class ATSPlugin {
         if (await errorEl.isVisible().catch(() => false)) {
           const errText = ((await errorEl.textContent().catch(() => '')) || '').trim();
           if (errText.length > 0) {
-            // Ignore benign non-errors (e.g. cookie consent notices)
             if (!/cookie|privacy/i.test(errText)) {
               await logger.warn('submission_form_error', `Form error banner detected on ${platform}: ${errText.slice(0, 100)}`);
+
+              // Check if this error banner indicates missing/invalid fields and parse them into an interactive UNKNOWN_QUESTION intervention
+              try {
+                const { UniversalQuestionResolver } = await import('./question-resolver');
+                const unanswered = await (UniversalQuestionResolver as any).extractUnfilledQuestions(ctx);
+                if (unanswered && unanswered.length > 0) {
+                  const questionPayload = unanswered.map((u: any) => ({
+                    fieldKey: u.fieldKey,
+                    label: u.label,
+                    fieldType: u.type,
+                    options: u.options?.length > 0 ? u.options : undefined,
+                    required: u.required,
+                  }));
+                  throw new InterventionError(
+                    InterventionReason.UNKNOWN_QUESTION,
+                    `[QUESTION_DATA:${JSON.stringify(questionPayload)}] Application form on ${platform} needs your input: ${unanswered.map((u: any) => `"${u.label.slice(0, 60)}"`).join(', ')}`,
+                    page.url()
+                  );
+                }
+              } catch (innerErr) {
+                if (innerErr instanceof InterventionError) throw innerErr;
+              }
+
+              // Fallback: Parse "Missing entry for required field: <Label>" patterns
+              const missingFieldMatches = Array.from(errText.matchAll(/Missing entry for required field:\s*([^.\n]+?)(?:Missing entry|\n|$)/gi));
+              if (missingFieldMatches.length > 0) {
+                const questionPayload = missingFieldMatches.map((m, idx) => {
+                  const label = m[1].trim();
+                  const isCheck = /confirm|agree|certify|consent/i.test(label);
+                  return {
+                    fieldKey: `missing_field_${idx}`,
+                    label,
+                    fieldType: isCheck ? 'checkbox' : 'text',
+                    options: isCheck ? ['Yes', 'No'] : undefined,
+                    required: true,
+                  };
+                });
+                throw new InterventionError(
+                  InterventionReason.UNKNOWN_QUESTION,
+                  `[QUESTION_DATA:${JSON.stringify(questionPayload)}] Application form on ${platform} needs your input: ${questionPayload.map((q) => `"${q.label.slice(0, 60)}"`).join(', ')}`,
+                  page.url()
+                );
+              }
+
               throw new InterventionError(
-                InterventionReason.UNEXPECTED_PAGE,
-                `${platform} reported a submission error: "${errText.slice(0, 150)}"`,
+                InterventionReason.UNKNOWN_QUESTION,
+                `Application form on ${platform} requires correction: "${errText.slice(0, 150)}"`,
                 page.url()
               );
             }
