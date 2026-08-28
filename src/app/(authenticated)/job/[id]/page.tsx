@@ -244,7 +244,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             {/* Step 1: Review Job Description */}
             <section id="step-1-review">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>1</div>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>1</div>
                 <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Review Job Description</h2>
               </div>
               <div className="glass-card" data-tour="job-detail-description">
@@ -277,7 +277,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             {/* Step 2: Application Assets */}
             <section id="step-2-assets" data-tour="job-detail-assets">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>2</div>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>2</div>
                 <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Tailor Application</h2>
               </div>
               
@@ -352,7 +352,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             {/* Step 3: Apply & Auto Apply */}
             <section id="step-3-apply" data-tour="job-detail-apply">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>3</div>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>3</div>
                 <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Apply</h2>
               </div>
               <ApplyStepAccordion
@@ -374,7 +374,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
             {/* Step 4: Application Q&A */}
             <section id="step-4-qa" style={{ marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>4</div>
                 <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Application Q&A</h2>
               </div>
               <ApplicationQA

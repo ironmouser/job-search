@@ -106,7 +106,7 @@ export default function GenerateAssetsButton({
         <button
           onClick={handleGenerateClick}
           disabled={isGenerating}
-          className="btn-outline full-width-mobile"
+          className="btn-primary full-width-mobile"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', whiteSpace: 'nowrap', minHeight: '44px', width: '100%' }}
         >
           {isGenerating ? (
@@ -117,7 +117,7 @@ export default function GenerateAssetsButton({
           ) : (
             <>
               <FileText size={16} />
-              {buttonLabel || 'Generate Tailor Resume & Cover Letter for'}
+              {buttonLabel || 'Generate Tailored Resume & Cover Letter'}
             </>
           )}
         </button>

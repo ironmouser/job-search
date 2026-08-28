@@ -422,7 +422,7 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
           {/* Step 1: Review Job Description */}
           <section id="step-1-review" data-tour="job-detail-description">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>1</div>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>1</div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Review Job Description</h2>
             </div>
             
@@ -461,7 +461,7 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
           {/* Step 2: Application Assets */}
           <section id="step-2-assets" data-tour="job-detail-assets">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>2</div>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>2</div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Tailor Application</h2>
             </div>
             
@@ -541,7 +541,7 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
           {/* Step 3: Apply & Auto Apply */}
           <section id="step-3-apply" data-tour="job-detail-apply" style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>3</div>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>3</div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Apply</h2>
             </div>
             <ApplyStepAccordion
@@ -568,7 +568,7 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
           {/* Step 4: Application Q&A */}
           <section id="step-4-qa" style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>4</div>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>4</div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Application Q&A</h2>
             </div>
             <ApplicationQA

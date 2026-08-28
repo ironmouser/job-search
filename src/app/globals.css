@@ -57,7 +57,7 @@
   --text-primary: #ededed;
   --text-secondary: #a3a3a3;
   --accent-primary: #0070f3;
-  --accent-secondary: #0060df;
+  --accent-secondary: #2db5a5;
   --accent-glow: rgba(0, 112, 243, 0.15);
   --success: #10b981;
   --warning: #f59e0b;
@@ -131,6 +131,7 @@ body.light-theme {
   --border-color: rgba(0, 0, 0, 0.12);
   --text-primary: #0a0a0a;
   --text-secondary: #737373;
+  --accent-secondary: #2db5a5;
   --accent-glow: rgba(0, 112, 243, 0.1);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -210,7 +211,7 @@ a {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-secondary);
+  background-color: #0060df;
   box-shadow: 0 2px 8px var(--accent-glow);
 }
 
@@ -268,7 +269,7 @@ table .btn-primary {
 
 .glass-card .btn-primary:hover:not(:disabled),
 table .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-secondary);
+  background-color: #0060df;
   box-shadow: 0 2px 8px var(--accent-glow);
 }
 
@@ -461,6 +462,11 @@ body.light-theme .dashboard-top-section .add-job-url-btn:hover {
 }
 
 @media (max-width: 1024px) {
+  .dashboard-top-section .prepare-app-section {
+    margin-top: 2.5rem !important;
+    margin-bottom: 2rem !important;
+  }
+
   .dashboard-top-section .prepare-app-btn {
     width: 100% !important;
     display: flex !important;
@@ -1783,6 +1789,7 @@ details.glass-card>summary::marker {
     gap: 1rem !important;
     flex-wrap: wrap !important;
     width: 100% !important;
+    margin-bottom: 5rem !important;
   }
 
   .matches-search-field-group {
@@ -1998,6 +2005,7 @@ body.light-theme .card-more-btn:hover {
     gap: 1rem !important;
     width: 100% !important;
     height: auto !important;
+    margin-bottom: 5rem !important;
   }
 
   .matches-header-left-group {

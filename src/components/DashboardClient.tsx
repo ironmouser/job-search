@@ -1521,7 +1521,7 @@ export default function DashboardClient({
           </div>
 
           {/* Prepare an Application Action Section (Mockup Spec) */}
-          <div style={{ marginTop: '1.25rem' }}>
+          <div className="prepare-app-section" style={{ marginTop: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Prepare an application
