@@ -14,7 +14,7 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AgentConfig {
-  /** Primary navigation/reasoning model (DeepSeek V4 Flash) */
+  /** Primary navigation/reasoning model (GLM-5.3-Flash, DeepSeek V4 Flash) */
   primaryAgentModel: string;
 
   /** Visual fallback model (Gemini Flash-Lite) */
@@ -36,7 +36,7 @@ export interface AgentConfig {
   /** Enable/disable Gemini screenshot fallback entirely */
   visionFallbackEnabled: boolean;
 
-  /** Enable/disable AI-assisted navigation (DeepSeek + Gemini layers) */
+  /** Enable/disable AI-assisted navigation (GLM + DeepSeek + Gemini layers) */
   aiNavigationEnabled: boolean;
 
   /** Enable/disable strategy memory (store/reuse successful navigation paths) */
@@ -45,11 +45,20 @@ export interface AgentConfig {
   /** Path for strategy memory JSON file */
   strategyMemoryPath: string;
 
+  /** GLM API key */
+  glmApiKey: string | undefined;
+
+  /** GLM API base URL */
+  glmApiBaseUrl: string;
+
   /** DeepSeek API key */
   deepseekApiKey: string | undefined;
 
   /** Gemini API key */
   geminiApiKey: string | undefined;
+
+  /** Max seconds to wait for a GLM navigation response */
+  glmNavigationTimeoutMs: number;
 
   /** Max seconds to wait for a DeepSeek navigation response */
   deepseekNavigationTimeoutMs: number;
@@ -91,7 +100,7 @@ function parseString(key: string, defaultValue: string): string {
 // ─── Singleton config ─────────────────────────────────────────────────────────
 
 export const agentConfig: AgentConfig = {
-  primaryAgentModel: parseString('PRIMARY_AGENT_MODEL', 'deepseek-v4-flash'),
+  primaryAgentModel: parseString('PRIMARY_AGENT_MODEL', 'glm-5.3-flash'),
   visionFallbackModel: parseString('VISION_FALLBACK_MODEL', 'gemini-3.1-flash-lite'),
 
   highConfidenceThreshold: parseFloat_('AGENT_HIGH_CONFIDENCE_THRESHOLD', 0.90),
@@ -106,9 +115,12 @@ export const agentConfig: AgentConfig = {
     '/tmp/jahq-strategy-memory.json'
   ),
 
+  glmApiKey: process.env.GLM_API_KEY || process.env.ZHIPU_API_KEY,
+  glmApiBaseUrl: parseString('GLM_API_BASE_URL', 'https://open.bigmodel.cn/api/paas/v4'),
   deepseekApiKey: process.env.DEEPSEEK_API_KEY,
   geminiApiKey: process.env.GEMINI_API_KEY,
 
+  glmNavigationTimeoutMs: parseInt_('GLM_NAVIGATION_TIMEOUT_MS', 20000),
   deepseekNavigationTimeoutMs: parseInt_('DEEPSEEK_NAVIGATION_TIMEOUT_MS', 20000),
   geminiNavigationTimeoutMs: parseInt_('GEMINI_NAVIGATION_TIMEOUT_MS', 30000),
 
@@ -117,14 +129,15 @@ export const agentConfig: AgentConfig = {
 
 // ─── Startup validation ───────────────────────────────────────────────────────
 
-export function validateAIConfig(): { deepseekAvailable: boolean; geminiAvailable: boolean } {
+export function validateAIConfig(): { glmAvailable: boolean; deepseekAvailable: boolean; geminiAvailable: boolean } {
+  const glmAvailable = !!agentConfig.glmApiKey;
   const deepseekAvailable = !!agentConfig.deepseekApiKey;
   const geminiAvailable = !!agentConfig.geminiApiKey;
 
-  if (agentConfig.aiNavigationEnabled && !deepseekAvailable) {
+  if (agentConfig.aiNavigationEnabled && !glmAvailable && !deepseekAvailable) {
     console.warn(
-      '[AgentConfig] AI_NAVIGATION_ENABLED=true but DEEPSEEK_API_KEY is not set. ' +
-      'DeepSeek navigation layer will be skipped — falling back to Gemini or manual intervention.'
+      '[AgentConfig] AI_NAVIGATION_ENABLED=true but neither GLM_API_KEY nor DEEPSEEK_API_KEY is set. ' +
+      'AI navigation layer will be skipped — falling back to Gemini or manual intervention.'
     );
   }
 
@@ -135,5 +148,5 @@ export function validateAIConfig(): { deepseekAvailable: boolean; geminiAvailabl
     );
   }
 
-  return { deepseekAvailable, geminiAvailable };
+  return { glmAvailable, deepseekAvailable, geminiAvailable };
 }

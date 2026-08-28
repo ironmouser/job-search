@@ -34,6 +34,7 @@ import {
 } from './types';
 import { GenericPageAnalyzer } from './page-analyzer';
 import { AXTreeBuilder } from './axtree-builder';
+import { GLMNavigator } from './glm-navigator';
 import { DeepSeekNavigator } from './deepseek-navigator';
 import { GeminiVisualFallback } from './gemini-visual-fallback';
 import { AgentStateMachine } from './agent-state-machine';
@@ -283,83 +284,146 @@ export class GenericApplicationAgent {
         }
       }
 
-      // ─── Step 6: Tier 2 — DeepSeek AXTree Reasoning ────────────────────────
-      if (!controlSelected && agentConfig.aiNavigationEnabled && agentConfig.deepseekApiKey) {
+      // ─── Step 6: Tier 2 — GLM & DeepSeek AXTree Reasoning ──────────────────
+      if (!controlSelected && agentConfig.aiNavigationEnabled && (agentConfig.glmApiKey || agentConfig.deepseekApiKey)) {
         const snapshot = await AXTreeBuilder.build(page);
 
         if (snapshot.elements.length < 3) {
           // AXTree is too sparse — DOM likely not hydrated yet or page is bot-blocked.
-          // DeepSeek cannot reason about an empty tree; skip to Gemini visual fallback.
+          // AI cannot reason about an empty tree; skip to Gemini visual fallback.
           await logger.warn('axtree_sparse',
-            `AXTree has only ${snapshot.elements.length} element(s) — DOM may not be fully hydrated or page is bot-blocked. Skipping DeepSeek, falling through to Gemini visual fallback.`);
+            `AXTree has only ${snapshot.elements.length} element(s) — DOM may not be fully hydrated or page is bot-blocked. Skipping AI reasoning, falling through to Gemini visual fallback.`);
         } else {
-          await logger.info('ai_reasoning', 'Deterministic confidence is moderate/ambiguous — invoking DeepSeek AXTree navigation engine...');
+          // 6a. Try GLM-5.3-Flash primary reasoning
+          if (agentConfig.glmApiKey) {
+            await logger.info('ai_reasoning', 'Deterministic confidence is moderate/ambiguous — invoking GLM-5.3-Flash AXTree navigation engine...');
 
-          const dsResult = await DeepSeekNavigator.decideAction(snapshot, stateMachine.current, {
-            jobTitle: analysis.pageMetadata.schemaJobTitle,
-          });
+            const glmResult = await GLMNavigator.decideAction(snapshot, stateMachine.current, {
+              jobTitle: analysis.pageMetadata.schemaJobTitle,
+            });
 
-          if (dsResult.decision.action === 'click' && dsResult.decision.target_id) {
-            const targetEl = AXTreeBuilder.findElementById(snapshot, dsResult.decision.target_id);
-            if (targetEl) {
-              const loc = await AXTreeBuilder.resolveLocator(page, targetEl);
-              if (loc && (await loc.isVisible().catch(() => false))) {
-                await logger.info('deepseek_decision', `DeepSeek selected ${targetEl.id} ("${targetEl.name}") with confidence ${dsResult.decision.confidence}`);
-                controlSelected = {
-                  source: 'deepseek',
-                  locator: loc,
-                  decision: dsResult.decision,
-                  candidate: {
-                    index: 0,
-                    text: targetEl.name,
-                    ariaLabel: targetEl.ariaLabel,
-                    role: targetEl.role,
-                    tagName: targetEl.tag,
-                    href: targetEl.href || null,
-                    resolvedHref: targetEl.href || null,
-                    confidence: Math.round(dsResult.decision.confidence * 100),
-                    confidenceTier: dsResult.decision.confidence >= 0.75 ? 'HIGH' : 'MEDIUM',
-                    positiveSignals: ['deepseek:axtree_reasoning'],
-                    negativeSignals: [],
-                    isButton: targetEl.role === 'button' || targetEl.tag === 'button',
-                    isVisible: true,
-                    isEnabled: targetEl.enabled,
-                    isInViewport: targetEl.inViewport,
-                  },
-                };
+            if (glmResult.decision.action === 'click' && glmResult.decision.target_id) {
+              const targetEl = AXTreeBuilder.findElementById(snapshot, glmResult.decision.target_id);
+              if (targetEl) {
+                const loc = await AXTreeBuilder.resolveLocator(page, targetEl);
+                if (loc && (await loc.isVisible().catch(() => false))) {
+                  await logger.info('glm_decision', `GLM-5.3-Flash selected ${targetEl.id} ("${targetEl.name}") with confidence ${glmResult.decision.confidence}`);
+                  controlSelected = {
+                    source: 'glm',
+                    locator: loc,
+                    decision: glmResult.decision,
+                    candidate: {
+                      index: 0,
+                      text: targetEl.name,
+                      ariaLabel: targetEl.ariaLabel,
+                      role: targetEl.role,
+                      tagName: targetEl.tag,
+                      href: targetEl.href || null,
+                      resolvedHref: targetEl.href || null,
+                      confidence: Math.round(glmResult.decision.confidence * 100),
+                      confidenceTier: glmResult.decision.confidence >= 0.75 ? 'HIGH' : 'MEDIUM',
+                      positiveSignals: ['glm:axtree_reasoning'],
+                      negativeSignals: [],
+                      isButton: targetEl.role === 'button' || targetEl.tag === 'button',
+                      isVisible: true,
+                      isEnabled: targetEl.enabled,
+                      isInViewport: targetEl.inViewport,
+                    },
+                  };
+                }
               }
-            }
-          } else if (dsResult.decision.action === 'manual_intervention' || dsResult.decision.action === 'stop') {
-            if (dsResult.decision.confidence > 0.5) {
-              // High-confidence model reasoning — the model genuinely determined there
-              // is no applicable action. Trust the stop decision.
-              await telemetry.record(telemetry.buildEntry({
-                currentState: stateMachine.current,
-                previousState: stateMachine.previous,
-                url: currentUrl,
-                action: dsResult.decision.action,
-                actionSource: 'deepseek',
-                model: agentConfig.primaryAgentModel,
-                modelConfidence: dsResult.decision.confidence,
-                reason: dsResult.decision.reason,
-                result: 'failed',
-                latencyMs: Date.now() - hopStartTime,
-                deepseekPromptTokens: dsResult.promptTokens,
-                deepseekCompletionTokens: dsResult.completionTokens,
-              }));
+            } else if (glmResult.decision.action === 'manual_intervention' || glmResult.decision.action === 'stop') {
+              if (glmResult.decision.confidence > 0.5) {
+                await telemetry.record(telemetry.buildEntry({
+                  currentState: stateMachine.current,
+                  previousState: stateMachine.previous,
+                  url: currentUrl,
+                  action: glmResult.decision.action,
+                  actionSource: 'glm',
+                  model: 'glm-5.3-flash',
+                  modelConfidence: glmResult.decision.confidence,
+                  reason: glmResult.decision.reason,
+                  result: 'failed',
+                  latencyMs: Date.now() - hopStartTime,
+                }));
 
-              throw new InterventionError(
-                InterventionReason.APPLICATION_NOT_FOUND,
-                `Navigation stopped by AI reasoning: ${dsResult.decision.reason}`,
-                currentUrl
-              );
-            }
+                throw new InterventionError(
+                  InterventionReason.APPLICATION_NOT_FOUND,
+                  `Navigation stopped by GLM reasoning: ${glmResult.decision.reason}`,
+                  currentUrl
+                );
+              }
 
-            // confidence ≤ 0.5 = parse failure or low-confidence uncertainty.
-            // Do NOT throw — fall through so Gemini visual fallback can attempt
-            // to find the apply button via screenshot coordinate reasoning.
-            await logger.warn('deepseek_low_confidence_stop',
-              `DeepSeek returned '${dsResult.decision.action}' with low confidence (${dsResult.decision.confidence}) — falling through to Gemini visual fallback. Reason: ${dsResult.decision.reason}`);
+              await logger.warn('glm_low_confidence_stop',
+                `GLM returned '${glmResult.decision.action}' with low confidence (${glmResult.decision.confidence}) — falling through to DeepSeek/Gemini fallback. Reason: ${glmResult.decision.reason}`);
+            }
+          }
+
+          // 6b. Try DeepSeek V4 Flash fallback if GLM was not configured or did not select a control
+          if (!controlSelected && agentConfig.deepseekApiKey) {
+            await logger.info('ai_reasoning', 'GLM unresolved or unconfigured — invoking DeepSeek AXTree navigation engine...');
+
+            const dsResult = await DeepSeekNavigator.decideAction(snapshot, stateMachine.current, {
+              jobTitle: analysis.pageMetadata.schemaJobTitle,
+            });
+
+            if (dsResult.decision.action === 'click' && dsResult.decision.target_id) {
+              const targetEl = AXTreeBuilder.findElementById(snapshot, dsResult.decision.target_id);
+              if (targetEl) {
+                const loc = await AXTreeBuilder.resolveLocator(page, targetEl);
+                if (loc && (await loc.isVisible().catch(() => false))) {
+                  await logger.info('deepseek_decision', `DeepSeek selected ${targetEl.id} ("${targetEl.name}") with confidence ${dsResult.decision.confidence}`);
+                  controlSelected = {
+                    source: 'deepseek',
+                    locator: loc,
+                    decision: dsResult.decision,
+                    candidate: {
+                      index: 0,
+                      text: targetEl.name,
+                      ariaLabel: targetEl.ariaLabel,
+                      role: targetEl.role,
+                      tagName: targetEl.tag,
+                      href: targetEl.href || null,
+                      resolvedHref: targetEl.href || null,
+                      confidence: Math.round(dsResult.decision.confidence * 100),
+                      confidenceTier: dsResult.decision.confidence >= 0.75 ? 'HIGH' : 'MEDIUM',
+                      positiveSignals: ['deepseek:axtree_reasoning'],
+                      negativeSignals: [],
+                      isButton: targetEl.role === 'button' || targetEl.tag === 'button',
+                      isVisible: true,
+                      isEnabled: targetEl.enabled,
+                      isInViewport: targetEl.inViewport,
+                    },
+                  };
+                }
+              }
+            } else if (dsResult.decision.action === 'manual_intervention' || dsResult.decision.action === 'stop') {
+              if (dsResult.decision.confidence > 0.5) {
+                await telemetry.record(telemetry.buildEntry({
+                  currentState: stateMachine.current,
+                  previousState: stateMachine.previous,
+                  url: currentUrl,
+                  action: dsResult.decision.action,
+                  actionSource: 'deepseek',
+                  model: 'deepseek-v4-flash',
+                  modelConfidence: dsResult.decision.confidence,
+                  reason: dsResult.decision.reason,
+                  result: 'failed',
+                  latencyMs: Date.now() - hopStartTime,
+                  deepseekPromptTokens: dsResult.promptTokens,
+                  deepseekCompletionTokens: dsResult.completionTokens,
+                }));
+
+                throw new InterventionError(
+                  InterventionReason.APPLICATION_NOT_FOUND,
+                  `Navigation stopped by AI reasoning: ${dsResult.decision.reason}`,
+                  currentUrl
+                );
+              }
+
+              await logger.warn('deepseek_low_confidence_stop',
+                `DeepSeek returned '${dsResult.decision.action}' with low confidence (${dsResult.decision.confidence}) — falling through to Gemini visual fallback. Reason: ${dsResult.decision.reason}`);
+            }
           }
         }
       }

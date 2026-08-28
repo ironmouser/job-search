@@ -90,6 +90,10 @@ export async function logAiCost(model: string, inputTokens: number, outputTokens
         costUsd = (inputTokens / 1_000_000) * 0.22 + (outputTokens / 1_000_000) * 0.66;
     } else if (model.includes('deepseek-v4-pro') || model.includes('deepseek-reasoner')) {
         costUsd = (inputTokens / 1_000_000) * 0.55 + (outputTokens / 1_000_000) * 2.19;
+    } else if (model.toLowerCase().includes('glm-5.3-flash') || model.toLowerCase().includes('glm-4-flash')) {
+        costUsd = (inputTokens / 1_000_000) * 0.10 + (outputTokens / 1_000_000) * 0.10;
+    } else if (model.toLowerCase().includes('glm')) {
+        costUsd = (inputTokens / 1_000_000) * 0.50 + (outputTokens / 1_000_000) * 0.50;
     } else {
         // Fallback generic cost
         costUsd = (inputTokens / 1_000_000) * 0.25 + (outputTokens / 1_000_000) * 1.00;

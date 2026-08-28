@@ -512,6 +512,7 @@ export function AutoApplyPanel({
             style={{
               position: 'absolute',
               top: '21px',
+              transform: 'translateY(-50%)',
               left: '10%',
               right: '10%',
               height: '2px',
@@ -526,6 +527,7 @@ export function AutoApplyPanel({
             style={{
               position: 'absolute',
               top: '21px',
+              transform: 'translateY(-50%)',
               left: '10%',
               width: `calc(80% * ${progressPercent / 100})`,
               height: '2px',
@@ -569,14 +571,14 @@ export function AutoApplyPanel({
                     height: '42px',
                     borderRadius: '50%',
                     background: isCompleted
-                      ? 'rgba(16, 185, 129, 0.12)'
+                      ? 'linear-gradient(rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.15)), var(--card, #111111)'
                       : isIntervention
-                      ? 'rgba(245, 158, 11, 0.12)'
+                      ? 'linear-gradient(rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.15)), var(--card, #111111)'
                       : isFailed
-                      ? 'rgba(239, 68, 68, 0.12)'
+                      ? 'linear-gradient(rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.15)), var(--card, #111111)'
                       : isCurrent
-                      ? 'var(--accent-glow, rgba(0, 112, 243, 0.15))'
-                      : 'var(--card-header-bg, rgba(255, 255, 255, 0.04))',
+                      ? 'linear-gradient(var(--accent-glow, rgba(0, 112, 243, 0.15)), var(--accent-glow, rgba(0, 112, 243, 0.15))), var(--card, #111111)'
+                      : 'var(--card, #111111)',
                     border: isCompleted
                       ? '2px solid #10b981'
                       : isIntervention

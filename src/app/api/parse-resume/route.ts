@@ -153,8 +153,54 @@ Do NOT wrap the output in conversational commentary or filler. Return ONLY the f
 If the document is completely blank, empty, or contains no readable candidate/resume content whatsoever, respond ONLY with: ERROR_NO_RESUME_CONTENT`;
 
     const base64Data = buffer.toString('base64');
+    const glmApiKey = process.env.GLM_API_KEY || process.env.ZHIPU_API_KEY;
+    const glmBaseUrl = (process.env.GLM_API_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
 
-    // Multimodal extraction strictly via Gemini 3.1 Flash-Lite (No fallback)
+    // 1. Try GLM-5.3-Flash Multimodal
+    if (glmApiKey) {
+        try {
+            const res = await fetch(`${glmBaseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${glmApiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'glm-5.3-flash',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: [
+                                { type: 'text', text: prompt },
+                                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+                            ]
+                        }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 4096
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const content = data.choices?.[0]?.message?.content;
+                if (content) {
+                    const cleaned = cleanMarkdownFences(content);
+                    if (cleaned.includes('ERROR_NO_RESUME_CONTENT')) {
+                        return null;
+                    }
+                    if (cleaned.length > 20) {
+                        await logAiCost('glm-5.3-flash', estimateTokens(prompt) + Math.ceil(buffer.length / 100), estimateTokens(cleaned), userId);
+                        return cleaned;
+                    }
+                }
+            }
+        } catch (err: any) {
+            console.warn('GLM-5.3-Flash multimodal extraction failed, falling back to Gemini:', err.message);
+        }
+    }
+
+    // 2. Multimodal extraction fallback via Gemini 3.1 Flash-Lite
     if (process.env.GEMINI_API_KEY) {
         try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`, {
