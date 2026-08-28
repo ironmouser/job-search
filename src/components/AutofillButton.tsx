@@ -167,27 +167,26 @@ export default function AutofillButton({
   };
 
   return (
-    <div className="full-width-mobile" style={{ width: '100%' }}>
-      <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-        <button
-          onClick={handleApplyClick}
-          disabled={isLaunching}
-          className="btn-primary full-width-mobile"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            width: '100%',
-            minHeight: '44px',
-            ...(copied ? { background: '#10b981', color: '#fff' } : {}),
-            transition: 'background 0.3s'
-          }}
-        >
-          {isLocked ? <Lock size={18} /> : copied ? <Copy size={18} /> : <Bot size={18} className={isLaunching ? "animate-pulse" : ""} />}
-          {isLocked ? 'Apply to Job (Locked)' : isLaunching ? 'Preparing...' : copied ? 'Cover Letter Copied! Opening...' : 'Apply to Job (New Tab)'}
-        </button>
-      </div>
+    <div className="full-width-mobile full-width-tablet" style={{ display: 'inline-flex', width: 'auto' }}>
+      <button
+        onClick={handleApplyClick}
+        disabled={isLaunching}
+        className="btn-primary full-width-mobile full-width-tablet"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem',
+          width: 'auto',
+          minHeight: '40px',
+          padding: '0.6rem 1.25rem',
+          ...(copied ? { background: '#10b981', color: '#fff' } : {}),
+          transition: 'background 0.3s'
+        }}
+      >
+        {isLocked ? <Lock size={18} /> : copied ? <Copy size={18} /> : <Bot size={18} className={isLaunching ? "animate-pulse" : ""} />}
+        {isLocked ? 'Apply to Job (Locked)' : isLaunching ? 'Preparing...' : copied ? 'Cover Letter Copied! Opening...' : 'Apply to Job (New Tab)'}
+      </button>
 
       {showUpgradePrompt && (
         <UpgradePrompt

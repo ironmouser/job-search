@@ -521,19 +521,21 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
                 />
               </div>
             ) : (
-              <div className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', padding: '1.5rem' }}>
+              <div className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem' }}>
                 <div>
-                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>Tailored Application Assets</h3>
-                  <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '540px', lineHeight: 1.5, fontSize: '0.9rem' }}>
+                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 700 }}>Tailored Application Assets</h3>
+                  <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '640px', lineHeight: 1.5, fontSize: '0.9rem' }}>
                     Generate a highly personalized cover letter, networking message, and resume extract tailored specifically to this role using your profile and the job description.
                   </p>
                 </div>
-                <GenerateAssetsButton 
-                  jobId={job.id} 
-                  userPlanTier={planTier} 
-                  generationsLeftThisWeek={assetGenerationsLeft} 
-                  hasResume={hasBaseResume} 
-                />
+                <div>
+                  <GenerateAssetsButton 
+                    jobId={job.id} 
+                    userPlanTier={planTier} 
+                    generationsLeftThisWeek={assetGenerationsLeft} 
+                    hasResume={hasBaseResume} 
+                  />
+                </div>
               </div>
             )}
           </section>

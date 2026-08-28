@@ -384,8 +384,8 @@ export function ApplyStepAccordion({
             </p>
           </div>
 
-          {/* Full-width Action Button */}
-          <div style={{ marginTop: '0.5rem', width: '100%' }}>
+          {/* Action Button */}
+          <div style={{ marginTop: '0.5rem' }}>
             <AutofillButton
               jobId={jobId}
               jobUrl={activeUrl}

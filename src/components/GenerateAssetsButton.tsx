@@ -102,12 +102,12 @@ export default function GenerateAssetsButton({
 
   return (
     <>
-      <div className="full-width-mobile" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+      <div className="full-width-mobile full-width-tablet" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: 'auto' }}>
         <button
           onClick={handleGenerateClick}
           disabled={isGenerating}
-          className="btn-primary full-width-mobile"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', whiteSpace: 'nowrap', minHeight: '44px', width: '100%' }}
+          className="btn-primary full-width-mobile full-width-tablet"
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', whiteSpace: 'nowrap', minHeight: '40px', padding: '0.6rem 1.25rem', width: 'auto' }}
         >
           {isGenerating ? (
             <>
@@ -122,7 +122,7 @@ export default function GenerateAssetsButton({
           )}
         </button>
         {!isPro && (
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.35rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.35rem', textAlign: 'left', whiteSpace: 'nowrap' }}>
             {generationsLeftThisWeek !== undefined
               ? `${generationsLeftThisWeek} generation${generationsLeftThisWeek === 1 ? '' : 's'} left this week`
               : '1 generation left this week'}

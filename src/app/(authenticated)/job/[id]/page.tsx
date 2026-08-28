@@ -337,14 +337,16 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                   />
                 </div>
               ) : (
-                <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', padding: '2rem' }}>
+                <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '2rem' }}>
                   <div>
-                    <h3 style={{ margin: '0 0 0.5rem 0' }}>Tailored Application Assets</h3>
-                    <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '600px', lineHeight: 1.5 }}>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 700 }}>Tailored Application Assets</h3>
+                    <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
                       Generate a highly personalized cover letter, networking message, and resume extract tailored specifically to this role using your profile and the job description.
                     </p>
                   </div>
-                  <GenerateAssetsButton jobId={job.id} userPlanTier={planTier} generationsLeftThisWeek={assetGenerationsLeft} hasResume={hasBaseResume} />
+                  <div>
+                    <GenerateAssetsButton jobId={job.id} userPlanTier={planTier} generationsLeftThisWeek={assetGenerationsLeft} hasResume={hasBaseResume} />
+                  </div>
                 </div>
               )}
             </section>

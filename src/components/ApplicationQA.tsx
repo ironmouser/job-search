@@ -215,7 +215,7 @@ export default function ApplicationQA({
             <option value="Highly technical and detailed">Highly Technical</option>
           </select>
           
-          <div className="card-action-grid" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+          <div className="full-width-mobile full-width-tablet" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem', width: 'auto' }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
               Generations left: {regensLeft} / {limit}
             </span>
@@ -225,12 +225,13 @@ export default function ApplicationQA({
               className="btn-primary full-width-mobile full-width-tablet"
               title={regensLeft <= 0 && !isPro ? "Upgrade to Pro for more generations" : ""}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
-                width: '100%',
-                minHeight: '44px'
+                width: 'auto',
+                minHeight: '40px',
+                padding: '0.6rem 1.25rem'
               }}
             >
               {isLoading && !answer ? (
