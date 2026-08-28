@@ -64,12 +64,10 @@ export class BrowserSession {
         const useSticky = process.env.SCRAPERAPI_STICKY_SESSION !== 'false';
 
         // Sticky sessions reuse the same residential IP across multi-step forms
-        let username = `scraperapi.country_code=${countryCode}`;
+        let username = `scraperapi.premium=true.country_code=${countryCode}`;
         if (useSticky) {
           const stickySessionId = Math.floor(Math.random() * 899999) + 100000;
           username += `.session_number=${stickySessionId}`;
-        } else {
-          username += `.premium=true`;
         }
 
         proxy = {
