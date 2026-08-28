@@ -36,6 +36,7 @@ import {
   normalizeStateAbbr,
   isStateMatch,
   isCountryMatch,
+  resolveHispanicEthnicityAnswer,
 } from '../utils/demographic-matching';
 
 export {
@@ -43,6 +44,7 @@ export {
   isOptionTransgender,
   isOptionCisgender,
   matchesOptionSafely,
+  resolveHispanicEthnicityAnswer,
   US_STATES,
   COMMON_COUNTRIES,
   US_STATE_OPTIONS,
@@ -380,21 +382,25 @@ export class UniversalQuestionResolver {
         const cleanQ = q.label.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
         const customAnswers = context.userProfile.customAnswers || {};
 
+        const cleanFieldKey = q.fieldKey.replace(/\[\]$/, '').trim().toLowerCase();
         let customVal =
           customAnswers[q.fieldKey] ||
+          customAnswers[cleanFieldKey] ||
           customAnswers[q.label] ||
           customAnswers[q.label.trim()] ||
           customAnswers[q.label.replace(/\*/g, '').trim()] ||
+          customAnswers[cleanQ] ||
           customAnswers[q.id];
 
         if (customVal === undefined || customVal === null || String(customVal).trim().length === 0) {
           for (const [k, v] of Object.entries(customAnswers)) {
-            const cleanK = k.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const cleanK = k.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             if (
               cleanK === cleanQ ||
-              (cleanK.length > 5 && cleanQ.includes(cleanK)) ||
-              (cleanQ.length > 5 && cleanK.includes(cleanQ)) ||
-              (cleanK.length > 4 && lowerKey.includes(cleanK))
+              cleanK === cleanFieldKey ||
+              (cleanK.length > 4 && cleanQ.includes(cleanK)) ||
+              (cleanQ.length > 4 && cleanK.includes(cleanQ)) ||
+              (cleanK.length > 3 && (lowerKey.includes(cleanK) || cleanFieldKey.includes(cleanK)))
             ) {
               customVal = v;
               break;
@@ -412,7 +418,13 @@ export class UniversalQuestionResolver {
               demoAnswer = customVal;
             } else if (/gender|sex\b/i.test(lowerQ) && !isTransgenderOrGenderIdentityQuestion(lowerQ)) {
               demoAnswer = context.userProfile.eeocGender;
-            } else if (/race|ethnicity|hispanic|latino/i.test(lowerQ)) {
+            } else if (/hispanic|latino/i.test(lowerQ)) {
+              if (q.options.length > 0 && q.options.some((o) => /^yes$/i.test(o.trim()))) {
+                demoAnswer = resolveHispanicEthnicityAnswer(context.userProfile.eeocRace, context.userProfile.skipSelfId);
+              } else {
+                demoAnswer = context.userProfile.eeocRace;
+              }
+            } else if (/race|ethnicity/i.test(lowerQ)) {
               demoAnswer = context.userProfile.eeocRace;
             } else if (/veteran|military/i.test(lowerQ)) {
               demoAnswer = context.userProfile.eeocVeteran;
@@ -429,6 +441,7 @@ export class UniversalQuestionResolver {
             requiresHuman = true;
           }
         } else {
+
           const isCityQuestion = /^city\b|\bcity\b|location\s*\(\s*city\s*\)/i.test(lowerQ) || /^city\b|candidate-location/i.test(lowerKey);
           const isStateQuestion = /^state\b|\bstate\b|province|region|location\s*\(\s*state\s*\)/i.test(lowerQ) || /^state\b|candidate-state/i.test(lowerKey);
           const isAddressQuestion = /address\s*(?:line\s*1)?|street\s*address/i.test(lowerQ) || /address\s*line\s*1|street\s*address|address1/i.test(lowerKey);
@@ -548,9 +561,17 @@ export class UniversalQuestionResolver {
               answer = 'Job Board';
             }
             requiresHuman = false;
+          } else if (/have\s*you\s*(?:ever\s*)?been\s*employed\s*by|currently\s*(?:or\s*previously\s*)?employed\s*by|former\s*employee\s*of|worked\s*for.*in\s*the\s*past/i.test(lowerQ)) {
+            answer = 'No';
+            if (q.options.length > 0) {
+              const noOpt = q.options.find((o) => /^no\b/i.test(o.trim())) || 'No';
+              answer = noOpt;
+            }
+            requiresHuman = false;
           }
         }
       }
+
 
       if (answer) {
         const filled = await this.fillSingleQuestion(ctx, q, answer, logger);
@@ -955,11 +976,11 @@ export class UniversalQuestionResolver {
             (await textInput.getAttribute('readonly').catch(() => '')) !== null ||
             (await textInput.getAttribute('class').catch(() => ''))?.toLowerCase().includes('select') ||
             (await textInput.getAttribute('class').catch(() => ''))?.toLowerCase().includes('dropdown') ||
-            (await container.locator('[role="combobox"], [aria-haspopup], [class*="select" i], [class*="dropdown" i]').count().catch(() => 0)) > 0 ||
-            isSemanticDropdownQuestion(cleanLabel);
+            (await container.locator('[role="combobox"], [aria-haspopup], [class*="select" i], [class*="dropdown" i]').count().catch(() => 0)) > 0;
 
           qIndex++;
           seenLabels.add(normLabel);
+
           if (isComboboxOrDropdown) {
             const opts = getSemanticDropdownOptions(cleanLabel);
             extracted.push({
@@ -1265,6 +1286,32 @@ export class UniversalQuestionResolver {
               }
             }
 
+            if (matchedAndClicked) {
+              await container.evaluate((node, targetAns) => {
+                const inputs = node.querySelectorAll('input, select');
+                inputs.forEach((inp: any) => {
+                  try {
+                    if (inp.tagName.toLowerCase() === 'select') {
+                      inp.value = targetAns;
+                      inp.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else if (inp.type === 'hidden') {
+                      if (!inp.value) inp.value = targetAns;
+                      inp.dispatchEvent(new Event('input', { bubbles: true }));
+                      inp.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else {
+                      inp.dispatchEvent(new Event('input', { bubbles: true }));
+                      inp.dispatchEvent(new Event('change', { bubbles: true }));
+                      inp.dispatchEvent(new Event('blur', { bubbles: true }));
+                    }
+                  } catch {}
+                });
+              }, answer).catch(() => null);
+
+              if (await reactInput.count() > 0) {
+                await reactInput.dispatchEvent('blur').catch(() => null);
+              }
+            }
+
             await page.waitForTimeout(250);
 
             // 3. Verify whether value committed
@@ -1277,6 +1324,7 @@ export class UniversalQuestionResolver {
             }
 
             return matchedAndClicked;
+
           }
         }
       } else if (question.type === 'radio') {

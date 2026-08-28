@@ -15,7 +15,9 @@ import { UniversalQuestionResolver } from './question-resolver';
 import {
   isTransgenderOrGenderIdentityQuestion,
   matchesOptionSafely,
+  resolveHispanicEthnicityAnswer,
 } from '../utils/demographic-matching';
+
 
 /**
  * GreenhousePlugin — automation plugin for Greenhouse ATS.
@@ -556,12 +558,16 @@ export class GreenhousePlugin extends ATSPlugin {
             }
             targetValue = profile.eeocGender || '';
           }
-        } else if (label.includes('race') || label.includes('ethnicity')) {
-          if (profile.skipSelfId && !profile.eeocRace) {
-            await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
-            continue;
+        } else if (label.includes('race') || label.includes('ethnicity') || label.includes('hispanic') || label.includes('latino')) {
+          if (/hispanic|latino/i.test(label)) {
+            targetValue = resolveHispanicEthnicityAnswer(profile.eeocRace, profile.skipSelfId);
+          } else {
+            if (profile.skipSelfId && !profile.eeocRace) {
+              await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
+              continue;
+            }
+            targetValue = profile.eeocRace || '';
           }
-          targetValue = profile.eeocRace || '';
         } else if (label.includes('veteran')) {
           if (profile.skipSelfId && !profile.eeocVeteran) {
             await logger.info('self_id_skipped', `Skipping optional Self-ID question: "${label.substring(0, 60)}" (skipSelfId=true)`);
@@ -628,6 +634,29 @@ export class GreenhousePlugin extends ATSPlugin {
                 }
 
                 if (matchedAndClicked) {
+                  await container.evaluate((node, targetAns) => {
+                    const inputs = node.querySelectorAll('input, select');
+                    inputs.forEach((inp: any) => {
+                      try {
+                        if (inp.tagName.toLowerCase() === 'select') {
+                          inp.value = targetAns;
+                          inp.dispatchEvent(new Event('change', { bubbles: true }));
+                        } else if (inp.type === 'hidden') {
+                          if (!inp.value) inp.value = targetAns;
+                          inp.dispatchEvent(new Event('input', { bubbles: true }));
+                          inp.dispatchEvent(new Event('change', { bubbles: true }));
+                        } else {
+                          inp.dispatchEvent(new Event('input', { bubbles: true }));
+                          inp.dispatchEvent(new Event('change', { bubbles: true }));
+                          inp.dispatchEvent(new Event('blur', { bubbles: true }));
+                        }
+                      } catch {}
+                    });
+                  }, targetValue).catch(() => null);
+
+                  if (await reactInput.count() > 0) {
+                    await reactInput.dispatchEvent('blur').catch(() => null);
+                  }
                   await logger.info('question_answered', `React Select answered (${targetValue}): "${label.substring(0, 50)}"`);
                 }
               }
@@ -638,6 +667,7 @@ export class GreenhousePlugin extends ATSPlugin {
         }
         continue;
       }
+
 
       // 2. Real text inputs (LinkedIn, Website, Phone, Location, etc.) — strictly excluding dropdown combobox inputs
       const textInput = container.locator('input[type="text"]:not(.select__input):not([role="combobox"]), input[type="url"], input[type="tel"]').first();

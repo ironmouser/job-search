@@ -283,6 +283,22 @@ export function matchesOptionSafely(optionText: string, targetValue: string): bo
     return /^no\b|negative|i do not|none|decline|do not consent/i.test(opt);
   }
 
+  // Numeric range matching (e.g. target "5" matching "3-5 years", "5-7 years", "5+ years")
+  const numTarget = parseInt(target, 10);
+  if (!isNaN(numTarget) && /^\d+$/.test(target.trim())) {
+    const rangeMatch = opt.match(/(\d+)\s*(?:[-–to]+)\s*(\d+)/i);
+    if (rangeMatch) {
+      const min = parseInt(rangeMatch[1], 10);
+      const max = parseInt(rangeMatch[2], 10);
+      if (numTarget >= min && numTarget <= max) return true;
+    }
+    const plusMatch = opt.match(/(\d+)\s*\+/);
+    if (plusMatch) {
+      const min = parseInt(plusMatch[1], 10);
+      if (numTarget >= min) return true;
+    }
+  }
+
   // Punctuation & whitespace normalized exact/substring matching (e.g., "Job Board (Indeed, Glassdoor, etc.)" vs "Job Board")
   const cleanOpt = opt.replace(/[\(\)\[\],.\-\/]/g, ' ').replace(/\s+/g, ' ').trim();
   const cleanTarget = target.replace(/[\(\)\[\],.\-\/]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -308,3 +324,28 @@ export function matchesOptionSafely(optionText: string, targetValue: string): bo
 
   return false;
 }
+
+/**
+ * Resolves a safe answer for Hispanic/Latino screening questions when options are boolean (Yes/No).
+ */
+export function resolveHispanicEthnicityAnswer(
+  eeocRace: string | undefined | null,
+  skipSelfId?: boolean
+): string {
+  if (skipSelfId) {
+    return 'Decline to self-identify';
+  }
+  if (!eeocRace) {
+    return 'No';
+  }
+  const lower = eeocRace.toLowerCase();
+  if (lower.includes('hispanic') || lower.includes('latino') || lower.includes('spanish')) {
+    return 'Yes';
+  }
+  if (/decline|prefer not|choose not/i.test(lower)) {
+    return 'Decline to self-identify';
+  }
+  // User has specified non-Hispanic race (e.g. Asian, White, Black, Two or more, etc.)
+  return 'No';
+}
+

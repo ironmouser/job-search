@@ -42,6 +42,9 @@ const STRICT_CLOSED_PATTERNS: RegExp[] = [
   /job is inactive/i,
   /this posting is inactive/i,
   /this listing is inactive/i,
+  /the (?:job|page|opening|position) you are (?:looking for|trying to view) (?:does not exist|cannot be found|could not be found)/i,
+  /the job posting you are looking for does not exist/i,
+  /this job is no longer accepting responses/i,
 ];
 
 // Short standalone badge/chip patterns (matched against trimmed text in dedicated status elements)
@@ -73,6 +76,19 @@ export async function detectJobClosed(
   }
 
   try {
+    // Check URL parameters (e.g. ?error=true on Greenhouse boards or /job-closed)
+    const currentUrl = page.url() || '';
+    if (/[?&]error=true/i.test(currentUrl) || /[?&]job_closed=true/i.test(currentUrl)) {
+      if (logger) {
+        await logger.warn('job_closed_detected_url', `Detected error/closed query param in URL: "${currentUrl}"`);
+      }
+      return {
+        isClosed: true,
+        reason: 'This job is no longer available or the listing has expired.',
+        matchedText: currentUrl,
+      };
+    }
+
     // 1. Evaluate DOM elements & clean innerText directly from the browser context
     const domDetection = await page.evaluate(() => {
       const docTitle = document.title || '';

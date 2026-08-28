@@ -189,10 +189,11 @@ describe('Demographic question detection & intervention flow', () => {
       assert.strictEqual(caughtError.reason, InterventionReason.UNKNOWN_QUESTION);
 
       // Verify QUESTION_DATA JSON payload format
-      const match = caughtError.description.match(/\[QUESTION_DATA:(.*?)\]/);
+      const match = caughtError.description.match(/\[QUESTION_DATA:(\[[\s\S]*?\])\](?:\s|$)/);
       assert.ok(match, 'Error description must include [QUESTION_DATA:...] payload');
       const questionData = JSON.parse(match[1]);
       assert.ok(Array.isArray(questionData), 'QUESTION_DATA must be an array of fields');
+
 
       // Check that sexual orientation field is captured with type 'select' and all options
       const sexualOrientationField = questionData.find((q: any) => /sexual orientation/i.test(q.label));
