@@ -65,13 +65,13 @@ export function ApplyStepAccordion({
   const [mode, setMode] = useState<'manual' | 'auto'>('manual');
 
   useEffect(() => {
-    if (applicationUrl) {
-      setActiveUrl(applicationUrl);
-      setCustomUrl(applicationUrl);
-    } else {
-      setActiveUrl(initialUrl);
-    }
-  }, [applicationUrl, initialUrl]);
+    setActiveUrl(applicationUrl || initialUrl);
+    setCustomUrl(applicationUrl || '');
+    setConfidenceData(null);
+    setIsCheckingConfidence(false);
+    setSavedSuccess(false);
+    setIsSavingUrl(false);
+  }, [jobId, applicationUrl, initialUrl]);
 
   const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
   const [confidenceData, setConfidenceData] = useState<{ platform: string; confidence: number } | null>(null);

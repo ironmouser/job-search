@@ -179,6 +179,14 @@ export function AutoApplyPanel({
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    setSession(null);
+    setIsStarting(false);
+    setShowLogs(false);
+    setIsScreenshotModalOpen(false);
+    setActiveModalScreenshotUrl(null);
+  }, [jobId]);
+
   const isActive = isStarting || (session ? ACTIVE_STATUSES.has(session.status as AutoApplyStatus) : false);
   const isAggregatorJob = isAggregatorUrl(jobUrl);
 
