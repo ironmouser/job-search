@@ -1489,15 +1489,18 @@ export abstract class ATSPlugin {
       ...(options.expectedUrlKeywords || []).map((k) => k.toLowerCase()),
     ];
 
-    while (Date.now() - startTime < maxWait || (Date.now() - startTime < 45000)) {
+    while (Date.now() - startTime < maxWait || (Date.now() - startTime < 60000)) {
       await page.waitForTimeout(1000);
 
-      const isSubmittingActive = (await ctx.locator(
-        'button:disabled, button[aria-disabled="true"], button[aria-busy="true"], [class*="submitting" i], [class*="loading" i], [class*="spinner" i], .ashby-application-form-submit-button:disabled, button:has([class*="spinner" i]), [data-testid*="submitting" i]'
-      ).count().catch(() => 0)) > 0;
+      const spinnerSelectors = 'button:disabled, button[aria-disabled="true"], button[aria-busy="true"], [class*="submitting" i], [class*="loading" i], [class*="spinner" i], .ashby-application-form-submit-button:disabled, button:has(svg), button svg, [data-testid*="submitting" i]';
+      const pageActive = (await page.locator(spinnerSelectors).count().catch(() => 0)) > 0;
+      const frameActive = ctx !== page ? (await ctx.locator(spinnerSelectors).count().catch(() => 0)) > 0 : false;
+      const isSubmittingActive = pageActive || frameActive;
 
       if (isSubmittingActive && Date.now() - startTime >= maxWait) {
-        await logger.info('submission_in_progress', `Waiting for ${platform} submission mutation to complete...`);
+        if (Math.floor((Date.now() - startTime) / 1000) % 5 === 0) {
+          await logger.info('submission_in_progress', `Waiting for ${platform} submission mutation to complete (${Math.round((Date.now() - startTime) / 1000)}s elapsed)...`);
+        }
       } else if (Date.now() - startTime >= maxWait && !isSubmittingActive) {
         break;
       }
