@@ -1279,6 +1279,20 @@ export abstract class ATSPlugin {
         );
       }
 
+      // ─── 3.1 Check Email Security Code / MFA Verification Gate ─────────────
+      const hasSecurityCodeField = (await page.locator(
+        'input[name*="security_code" i]:visible, input[id*="security_code" i]:visible, input[placeholder*="security code" i]:visible, input[aria-label*="security code" i]:visible, input[name*="verification_code" i]:visible, input[id*="verification_code" i]:visible, input[autocomplete="one-time-code"]:visible'
+      ).count().catch(() => 0)) > 0;
+
+      if (hasSecurityCodeField || (combinedText.includes('security code') && (combinedText.includes('email') || combinedText.includes('resubmit')))) {
+        await logger.warn('submission_mfa_required', `Email security verification code requested on ${platform}`);
+        throw new InterventionError(
+          InterventionReason.MFA_REQUIRED,
+          `${platform} sent a security verification code to your email. Please enter the code in the intervention drawer to complete your application.`,
+          page.url()
+        );
+      }
+
       // ─── 3. Check Explicit Submission Rejection Errors ────────────────────
       if (
         combinedText.includes('you have exceeded the maximum number of applications') ||

@@ -151,6 +151,15 @@ export async function POST(
         if (normK !== k) sessionAnswers[normK] = v;
       }
 
+      if (body.otp && typeof body.otp === 'string' && body.otp.trim()) {
+        const trimmedOtp = body.otp.trim();
+        sessionAnswers['security_code'] = trimmedOtp;
+        sessionAnswers['security code'] = trimmedOtp;
+        sessionAnswers['verification_code'] = trimmedOtp;
+        sessionAnswers['verification code'] = trimmedOtp;
+        sessionAnswers['otp'] = trimmedOtp;
+      }
+
       const updatedMetadata = {
         ...existingMetadata,
         sessionAnswers,
@@ -159,7 +168,7 @@ export async function POST(
               emailVerification: {
                 receivedAt: new Date().toISOString(),
                 primaryUrl: body.verificationUrl || null,
-                otp: body.otp || null,
+                otp: body.otp ? body.otp.trim() : null,
                 token: body.token || null,
                 source: 'intervention_resolve_ui',
               },

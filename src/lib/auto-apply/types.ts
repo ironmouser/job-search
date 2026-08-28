@@ -156,6 +156,8 @@ export interface UserProfile {
   accountPassword?: string;
   accountEmail?: string;
   accountAuthMode?: 'sign_in' | 'create_account';
+  otpCode?: string;
+  customAnswers?: Record<string, string>;
 }
 
 export interface WorkflowResult {

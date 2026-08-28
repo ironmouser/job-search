@@ -336,6 +336,9 @@ export function InterventionPanel({
     reason === 'application_blocked_by_login' ||
     reason === 'application_blocked_by_authentication';
   const isAuthReason = isAtsAuthReason || isJobBoardAuthReason;
+  const isMfaReason =
+    reason === 'mfa_required' ||
+    /security code|verification code|mfa|otp|one-time code/i.test(description || '');
 
   const [accountMode, setAccountMode] = useState<'sign_in' | 'create_account'>('sign_in');
   const [showPassword, setShowPassword] = useState(false);
@@ -1428,6 +1431,59 @@ export function InterventionPanel({
             </div>
           )}
 
+          {/* Dedicated Security Code / MFA Verification Form */}
+          {isMfaReason && !isAuthReason && (
+            <div
+              style={{
+                background: 'var(--secondary, var(--card-header-bg))',
+                borderRadius: '10px',
+                padding: '1.25rem',
+                border: '1px solid var(--border-glass)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+              }}
+            >
+              <div>
+                <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
+                  <Smartphone size={17} color="#fbbf24" />
+                  Security Verification Code Required
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                  {portalDisplayName} sent a verification security code to your email. Enter the code below to complete and submit your application.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Security Code
+                </label>
+                <input
+                  type="text"
+                  value={emailVerificationCode}
+                  onChange={(e) => setEmailVerificationCode(e.target.value)}
+                  placeholder="e.g. NX6MTa6T or 6-digit code"
+                  autoFocus
+                  style={{
+                    background: 'var(--input, var(--background))',
+                    border: '1px solid var(--border-glass)',
+                    color: 'var(--text-primary)',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontFamily: 'monospace',
+                    fontWeight: 600,
+                    letterSpacing: '1px',
+                    width: '100%',
+                  }}
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  Copy the code from the email sent by {portalDisplayName} and paste it here.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Account Auth Credentials Form */}
           {isAuthReason && !loadingSettings && (
             <div
@@ -1585,7 +1641,11 @@ export function InterventionPanel({
                 <button
                   className="btn-primary"
                   onClick={() => resolve('completed')}
-                  disabled={resolving || (isAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress))}
+                  disabled={
+                    resolving ||
+                    (isAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress)) ||
+                    (isMfaReason && !isAuthReason && !emailVerificationCode.trim())
+                  }
                   style={{
                     flex: 2,
                     minWidth: '180px',
@@ -1607,7 +1667,9 @@ export function InterventionPanel({
                         <Check size={16} color="#ffffff" />
                         {isAuthReason
                           ? (accountMode === 'sign_in' ? 'Sign In & Resume Application' : 'Create Account & Resume')
-                          : 'Resume Automation'}
+                          : isMfaReason
+                            ? 'Submit Code & Continue'
+                            : 'Resume Automation'}
                       </>
                     )}
                 </button>

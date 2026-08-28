@@ -17,6 +17,7 @@ import {
   matchesOptionSafely,
   resolveHispanicEthnicityAnswer,
 } from '../utils/demographic-matching';
+import { replaceValue } from '../utils/form-commit';
 
 
 /**
@@ -403,6 +404,9 @@ export class GreenhousePlugin extends ATSPlugin {
       };
     }
 
+    // Check if security code gate is present before submitting
+    await this.handleSecurityCodeGate(targetContext, context, logger);
+
     // Live mode — click the submit button.
     const submitBtn = await this.findSubmitButton(
       targetContext,
@@ -425,7 +429,43 @@ export class GreenhousePlugin extends ATSPlugin {
       );
     }
 
-    await submitBtn.click();
+    // Check if submit button is disabled
+    const isDisabled = await submitBtn.isDisabled().catch(() => false);
+    if (isDisabled) {
+      // Check if disabled due to security code requirement
+      await this.handleSecurityCodeGate(targetContext, context, logger);
+
+      // If still disabled without security code, inspect unanswered required fields
+      const unanswered = await (UniversalQuestionResolver as any).extractUnfilledQuestions(targetContext);
+      if (unanswered && unanswered.length > 0) {
+        const questionPayload = unanswered.map((u: any) => ({
+          fieldKey: u.fieldKey,
+          label: u.label,
+          fieldType: u.type,
+          options: u.options?.length > 0 ? u.options : undefined,
+          required: u.required,
+        }));
+        throw new InterventionError(
+          InterventionReason.UNKNOWN_QUESTION,
+          `[QUESTION_DATA:${JSON.stringify(questionPayload)}] Greenhouse submit button is disabled — required fields need your input: ${unanswered.map((u: any) => `"${u.label.slice(0, 60)}"`).join(', ')}`,
+          page.url()
+        );
+      }
+
+      throw new InterventionError(
+        InterventionReason.APPLICATION_FOUND_BUT_NOT_ACTIONABLE,
+        'Greenhouse submit button is disabled. Please verify your application details.',
+        page.url()
+      );
+    }
+
+    try {
+      await submitBtn.click({ timeout: 6000 });
+    } catch (clickErr: any) {
+      // If click timed out because element is not enabled, re-check security code gate immediately
+      await this.handleSecurityCodeGate(targetContext, context, logger);
+      throw clickErr;
+    }
 
     // Verify post-submission status (checks for confirmation, anti-bot challenges, limits, and form error banners)
     await this.verifyPostSubmission(browser, page, logger, {
@@ -465,6 +505,75 @@ export class GreenhousePlugin extends ATSPlugin {
   }
 
   // ─── Private helpers ──────────────────────────────────────────────────────
+
+  /**
+   * Scans for Greenhouse candidate email verification / security code input fields.
+   * If found and an OTP code is available in profile/context, fills the field.
+   * If found and no code is available, throws an InterventionError(MFA_REQUIRED).
+   */
+  private async handleSecurityCodeGate(
+    ctx: Frame | Page,
+    context: WorkflowContext,
+    logger: ExecutionLogger
+  ): Promise<void> {
+    const securityCodeSelectors = [
+      'input[name*="security_code" i]',
+      'input[id*="security_code" i]',
+      'input[placeholder*="security code" i]',
+      'input[aria-label*="security code" i]',
+      'input[name*="verification_code" i]',
+      'input[id*="verification_code" i]',
+      'input[placeholder*="verification code" i]',
+      'input[autocomplete="one-time-code"]',
+      '#candidate_security_code',
+      '#security_code',
+    ];
+
+    let targetInput: import('playwright').Locator | null = null;
+    for (const sel of securityCodeSelectors) {
+      const loc = ctx.locator(sel).first();
+      if (await loc.isVisible().catch(() => false)) {
+        targetInput = loc;
+        break;
+      }
+    }
+
+    const page = 'page' in ctx ? ctx.page() : ctx;
+    const pageText = ((await ctx.textContent('body').catch(() => '')) || '').toLowerCase();
+    const hasSecurityCodePrompt =
+      pageText.includes('security code') &&
+      (pageText.includes('copy and paste this code') ||
+       pageText.includes('enter the code') ||
+       pageText.includes('resubmit your application') ||
+       pageText.includes('verification code'));
+
+    if (targetInput || hasSecurityCodePrompt) {
+      const profile = context.userProfile;
+      const code =
+        profile.otpCode ||
+        profile.customAnswers?.['security_code'] ||
+        profile.customAnswers?.['security code'] ||
+        profile.customAnswers?.['verification_code'] ||
+        profile.customAnswers?.['verification code'] ||
+        profile.customAnswers?.['otp'];
+
+      if (code && code.trim()) {
+        const cleanCode = code.trim();
+        if (targetInput) {
+          await replaceValue(targetInput, cleanCode).catch(() => {});
+          await logger.info('security_code_filled', `Filled Greenhouse security code into form (${cleanCode.length} chars)`);
+          await page.waitForTimeout(500);
+        }
+      } else {
+        await logger.warn('security_code_required', 'Greenhouse security code required to proceed with submission');
+        throw new InterventionError(
+          InterventionReason.MFA_REQUIRED,
+          'Greenhouse sent a security verification code to your email. Please enter the code in the intervention drawer to complete your application.',
+          page.url()
+        );
+      }
+    }
+  }
 
   /**
    * Fill a text input if it exists; log and skip silently if not found.
