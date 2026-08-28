@@ -3486,6 +3486,13 @@ body.light-theme .accordion-card-header:hover {
   color: var(--accent-primary, #0070f3);
 }
 
+.text-accent,
+.accordion-card-header h3 svg,
+.accordion-card-header h3 .text-accent,
+.accordion-card-header .text-accent {
+  color: var(--accent-secondary, #2db5a5) !important;
+}
+
 .accordion-summary-box {
   margin-top: 0.75rem;
   padding: 0.75rem 1rem;
