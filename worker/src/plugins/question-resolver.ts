@@ -382,10 +382,19 @@ export class UniversalQuestionResolver {
         const cleanQ = q.label.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
         const customAnswers = context.userProfile.customAnswers || {};
 
+        // Build a case-insensitive index so answers stored by the intervention
+        // panel (original case) always match the resolver's lowercased lookups.
+        const ciIndex = new Map<string, string>();
+        for (const [k, v] of Object.entries(customAnswers)) {
+          ciIndex.set(k.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase(), v);
+        }
+
         const cleanFieldKey = q.fieldKey.replace(/\[\]$/, '').trim().toLowerCase();
         let customVal =
+          ciIndex.get(cleanFieldKey) ||
+          ciIndex.get(cleanQ) ||
+          ciIndex.get(q.id.toLowerCase()) ||
           customAnswers[q.fieldKey] ||
-          customAnswers[cleanFieldKey] ||
           customAnswers[q.label] ||
           customAnswers[q.label.trim()] ||
           customAnswers[q.label.replace(/\*/g, '').trim()] ||

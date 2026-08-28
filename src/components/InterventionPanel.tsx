@@ -556,6 +556,12 @@ export function InterventionPanel({
             answersMap[key] = val;
             answersMap[f.label] = val;
             answersMap[f.label.replace(/\*/g, '').trim()] = val;
+            // Store under normalized lowercase keys so the worker's
+            // case-insensitive lookup always matches
+            const normKey = key.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const normLabel = f.label.replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (normKey !== key) answersMap[normKey] = val;
+            if (normLabel !== f.label) answersMap[normLabel] = val;
           }
         } else if (customAnswer) {
           const qKey = questionData?.fieldKey || questionData?.label || 'answer';

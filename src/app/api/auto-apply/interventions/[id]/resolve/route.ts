@@ -59,10 +59,15 @@ export async function POST(
       if (sessionRec) {
         if (body.resolution === 'completed') {
           const existingMeta = (sessionRec.browserMetadata as Record<string, any>) || {};
-          const sessionAnswers = {
+          const sessionAnswers: Record<string, string> = {
             ...(existingMeta.sessionAnswers || {}),
             ...(body.answers || {}),
           };
+          // Store normalized lowercase keys for reliable worker-side lookup
+          for (const [k, v] of Object.entries(body.answers || {})) {
+            const normK = k.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (normK !== k) sessionAnswers[normK] = v;
+          }
 
           await prisma.autoApplySession.update({
             where: { id: sessionRec.id },
@@ -136,10 +141,15 @@ export async function POST(
         select: { browserMetadata: true },
       });
       const existingMetadata = (sessionRec?.browserMetadata as Record<string, any>) || {};
-      const sessionAnswers = {
+      const sessionAnswers: Record<string, string> = {
         ...(existingMetadata.sessionAnswers || {}),
         ...(body.answers || {}),
       };
+      // Store normalized lowercase keys for reliable worker-side lookup
+      for (const [k, v] of Object.entries(body.answers || {})) {
+        const normK = k.replace(/\[\]$/, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+        if (normK !== k) sessionAnswers[normK] = v;
+      }
 
       const updatedMetadata = {
         ...existingMetadata,
