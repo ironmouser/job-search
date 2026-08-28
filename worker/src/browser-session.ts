@@ -15,6 +15,7 @@ import * as os from 'os';
  *  - Close cleanly on shutdown or error
  */
 export class BrowserSession {
+  public proxyInfo: string = 'Direct Network (No Proxy)';
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private _page: Page | null = null;
@@ -77,6 +78,8 @@ export class BrowserSession {
         };
       }
     }
+
+    this.proxyInfo = proxy ? (proxy.server.includes('scraperapi') ? 'ScraperAPI Premium Residential Proxy' : `Proxy (${proxy.server})`) : 'Direct Network (No Proxy)';
 
     this.browser = await chromium.launch({
       headless: true,

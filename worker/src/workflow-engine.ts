@@ -93,6 +93,8 @@ export class WorkflowEngine {
           : 'Browser launched'
       );
 
+      await logger.info('browser_routing', `Network routing: ${browser.proxyInfo}`);
+
       // ─── Step 3: Detect ATS ──────────────────────────────────────────────
       await logger.info('page_navigated', `Navigating to ${context.jobUrl}`);
       await browser.navigate(context.jobUrl);
