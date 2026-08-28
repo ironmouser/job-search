@@ -5,6 +5,8 @@ import { cleanJobUrl, isNonJobUrl } from './urlUtils';
 import { callAI } from './ai';
 import { isInternationalLocation, isRemoteLocation } from './locationUtils';
 import { cleanCompanyName } from './cleaners';
+import { bulkSniffAndRegisterSources } from './sourceDiscovery';
+import { detectAtsFromUrl, ATSPlatform } from './atsDetector';
 
 const cleanNullBytes = (str: string | null | undefined): string => {
     if (!str) return '';
@@ -13,6 +15,9 @@ const cleanNullBytes = (str: string | null | undefined): string => {
 
 export async function bulkIngestRawJobsToGlobalDb(rawJobs: any[]) {
     if (!rawJobs || rawJobs.length === 0) return;
+    // Passively discover and register any direct employer ATS sources in background
+    bulkSniffAndRegisterSources(rawJobs).catch(() => {});
+
     try {
         const createData: any[] = [];
         const seenUrls = new Set<string>();
@@ -33,6 +38,18 @@ export async function bulkIngestRawJobsToGlobalDb(rawJobs: any[]) {
             const safeSalaryRange = cleanNullBytes(j.salary_range || j.salary);
             const safeDescription = cleanNullBytes(j.description) || `Found via job search: ${cleanedUrl}`;
             const safeSource = cleanNullBytes(j.source) || 'Direct';
+            const discoverySource = j.discoverySource || safeSource;
+            const discoveryUrl = j.discoveryUrl || cleanedUrl;
+
+            let atsPlatform = j.atsPlatform || null;
+            let atsJobId = j.atsJobId || null;
+            if (!atsPlatform) {
+                const detected = detectAtsFromUrl(j.applicationUrl || cleanedUrl, safeCompany);
+                if (detected.platform !== ATSPlatform.UNKNOWN) {
+                    atsPlatform = detected.platform;
+                    atsJobId = detected.jobId || null;
+                }
+            }
 
             createData.push({
                 title: safeTitle,
@@ -41,7 +58,12 @@ export async function bulkIngestRawJobsToGlobalDb(rawJobs: any[]) {
                 salaryRange: safeSalaryRange || null,
                 description: safeDescription,
                 url: cleanedUrl,
-                source: safeSource
+                applicationUrl: j.applicationUrl ? cleanJobUrl(j.applicationUrl) : null,
+                source: safeSource,
+                discoverySource,
+                discoveryUrl,
+                atsPlatform,
+                atsJobId
             });
         }
 
@@ -367,15 +389,31 @@ export async function normalizeAndSaveJobs(
         const cleanedUrl = cleanJobUrl(jobData.url);
         if (!cleanedUrl || uniqueJobsMap.has(cleanedUrl)) continue;
 
+        const safeCompany = cleanNullBytes(jobData.company) || 'Unknown Company';
+        const rawAppUrl = jobData.applicationUrl || null;
+        let atsPlatform = jobData.atsPlatform || null;
+        let atsJobId = jobData.atsJobId || null;
+        if (!atsPlatform) {
+            const detected = detectAtsFromUrl(rawAppUrl || cleanedUrl, safeCompany);
+            if (detected.platform !== ATSPlatform.UNKNOWN) {
+                atsPlatform = detected.platform;
+                atsJobId = detected.jobId || null;
+            }
+        }
+
         uniqueJobsMap.set(cleanedUrl, {
             title: cleanNullBytes(jobData.title) || 'Untitled Position',
-            company: cleanNullBytes(jobData.company) || 'Unknown Company',
+            company: safeCompany,
             location: cleanNullBytes(jobData.location) || 'Remote',
             salaryRange: cleanNullBytes(jobData.salaryRange) || null,
             description: cleanNullBytes(jobData.description) || `Found via job search: ${cleanedUrl}`,
             url: cleanedUrl,
-            applicationUrl: jobData.applicationUrl || null,
+            applicationUrl: rawAppUrl,
             source: cleanNullBytes(jobData.source) || 'Direct',
+            discoverySource: jobData.discoverySource || cleanNullBytes(jobData.source) || 'Direct',
+            discoveryUrl: jobData.discoveryUrl || cleanedUrl,
+            atsPlatform,
+            atsJobId,
             isEasyApply: !!jobData.isEasyApply
         });
     }
@@ -396,6 +434,10 @@ export async function normalizeAndSaveJobs(
                     url: j.url,
                     applicationUrl: j.applicationUrl,
                     source: j.source,
+                    discoverySource: j.discoverySource,
+                    discoveryUrl: j.discoveryUrl,
+                    atsPlatform: j.atsPlatform,
+                    atsJobId: j.atsJobId,
                     isEasyApply: j.isEasyApply
                 })),
                 skipDuplicates: true
@@ -408,11 +450,12 @@ export async function normalizeAndSaveJobs(
     // Bulk fetch all relevant Job records by URL
     const dbJobs = await prisma.job.findMany({
         where: { url: { in: processedUrls } },
-        select: { id: true, url: true, title: true, description: true, applicationUrl: true, isEasyApply: true }
+        select: { id: true, url: true, title: true, description: true, applicationUrl: true, isEasyApply: true, source: true, discoverySource: true, discoveryUrl: true }
     });
     const dbJobByUrl = new Map(dbJobs.map(j => [j.url, j]));
 
     // Batch enrich any existing jobs that lacked description or applicationUrl
+    const DIRECT_SOURCES = new Set(['Greenhouse', 'Lever', 'Ashby', 'Workable', 'SmartRecruiters', 'Workday', 'Direct Career Page']);
     const updatePromises: Promise<any>[] = [];
     for (const prep of preparedJobs) {
         const existing = dbJobByUrl.get(prep.url);
@@ -427,6 +470,18 @@ export async function normalizeAndSaveJobs(
         }
         if (!existing.isEasyApply && prep.isEasyApply) {
             updates.isEasyApply = true;
+        }
+        if (prep.source && DIRECT_SOURCES.has(prep.source) && (!existing.source || !DIRECT_SOURCES.has(existing.source))) {
+            if (!existing.discoverySource) {
+                updates.discoverySource = existing.source || 'Aggregator';
+            }
+            if (!existing.discoveryUrl) {
+                updates.discoveryUrl = existing.url;
+            }
+            updates.source = prep.source;
+            updates.isCustomCareerPage = true;
+            if (prep.atsPlatform) updates.atsPlatform = prep.atsPlatform;
+            if (prep.atsJobId) updates.atsJobId = prep.atsJobId;
         }
         if (Object.keys(updates).length > 0) {
             updatePromises.push(

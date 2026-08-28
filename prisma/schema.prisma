@@ -20,6 +20,10 @@ model Job {
   requirements     String?
   url              String    @unique
   applicationUrl   String?   @map("application_url")
+  discoverySource  String?   @map("discovery_source")
+  discoveryUrl     String?   @map("discovery_url")
+  atsPlatform      String?   @map("ats_platform")
+  atsJobId         String?   @map("ats_job_id")
   consecutiveAutoFailures Int @default(0) @map("consecutive_auto_failures")
   source           String?
   status           String    @default("discovered")
@@ -1099,5 +1103,42 @@ model PlacementEvent {
   @@map("placement_events")
 }
 
+// ─── Direct Employer & Career Source Registry ─────────────────────────────────
 
+enum JobSourceType {
+  DIRECT_CORPORATE
+  ATS
+  JOB_BOARD
+  AGGREGATOR
+  GOVERNMENT
+}
 
+enum JobSourceStatus {
+  ACTIVE
+  BLOCKED
+  REQUIRES_MANUAL_REVIEW
+  TEMPORARILY_UNAVAILABLE
+  INACTIVE
+}
+
+model CareerSource {
+  id                  String          @id @default(uuid()) @db.Uuid
+  name                String          // e.g. "Stripe", "Airbnb", "Datadog"
+  domain              String          @unique // e.g. "stripe.com"
+  careerUrl           String          @map("career_url") // e.g. "https://stripe.com/jobs"
+  sourceType          JobSourceType   @default(DIRECT_CORPORATE) @map("source_type")
+  atsPlatform         String?         @map("ats_platform") // "greenhouse", "lever", "ashby", "workday", etc.
+  atsCompanySlug      String?         @map("ats_company_slug") // e.g. "stripe"
+  status              JobSourceStatus @default(ACTIVE)
+  crawlFrequencyHours Int             @default(24) @map("crawl_frequency_hours")
+  lastCrawledAt       DateTime?       @map("last_crawled_at") @db.Timestamptz(6)
+  lastSuccessAt       DateTime?       @map("last_success_at") @db.Timestamptz(6)
+  lastFailureAt       DateTime?       @map("last_failure_at") @db.Timestamptz(6)
+  lastError           String?         @map("last_error")
+  activeJobsCount     Int             @default(0) @map("active_jobs_count")
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, lastCrawledAt])
+  @@map("career_sources")
+}
