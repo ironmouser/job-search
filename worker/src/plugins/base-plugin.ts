@@ -911,7 +911,7 @@ export abstract class ATSPlugin {
           if ((await el.count().catch(() => 0)) > 0) {
             await el.setInputFiles(resumePath).catch(() => {});
             await logger.info('resume_uploaded', `Resume uploaded via specific selector: "${sel}"`);
-            await browser.page.waitForTimeout(1000);
+            await this.waitForResumeParserSettlement(browser, ctx, logger);
             return true;
           }
         }
@@ -932,7 +932,7 @@ export abstract class ATSPlugin {
         if ((await fileInput.count().catch(() => 0)) > 0) {
           await fileInput.setInputFiles(resumePath).catch(() => {});
           await logger.info('resume_uploaded', `Resume uploaded via scoped Resume container on ${this.displayName}`);
-          await browser.page.waitForTimeout(1000);
+          await this.waitForResumeParserSettlement(browser, ctx, logger);
           return true;
         }
       }
@@ -945,7 +945,7 @@ export abstract class ATSPlugin {
       if ((await targetedResumeInput.count().catch(() => 0)) > 0) {
         await targetedResumeInput.setInputFiles(resumePath).catch(() => {});
         await logger.info('resume_uploaded', `Resume uploaded via targeted attribute selector on ${this.displayName}`);
-        await browser.page.waitForTimeout(1000);
+        await this.waitForResumeParserSettlement(browser, ctx, logger);
         return true;
       }
 
@@ -969,7 +969,7 @@ export abstract class ATSPlugin {
             await mainPageInput.setInputFiles(resumePath).catch(() => {});
           }
           await logger.info('resume_uploaded', `Resume uploaded to primary file input on ${this.displayName}`);
-          await browser.page.waitForTimeout(1000);
+          await this.waitForResumeParserSettlement(browser, ctx, logger);
           return true;
         }
       }
@@ -977,6 +977,7 @@ export abstract class ATSPlugin {
       if (totalInputs > 0) {
         await allFileInputs.first().setInputFiles(resumePath).catch(() => {});
         await logger.info('resume_uploaded', `Resume uploaded to first available file input on ${this.displayName}`);
+        await this.waitForResumeParserSettlement(browser, ctx, logger);
         return true;
       }
 
@@ -986,6 +987,352 @@ export abstract class ATSPlugin {
       await logger.warn('resume_upload_failed', `Could not upload resume on ${this.displayName}: ${err.message}`);
       return false;
     }
+  }
+
+  /**
+   * Universal helper to wait for any client-side resume OCR/autofill parsers
+   * (e.g. Ashby, SmartRecruiters, Greenhouse, Workday) to settle before continuing.
+   */
+  protected async waitForResumeParserSettlement(
+    browser: BrowserSession,
+    ctx: import('playwright').Frame | import('playwright').Page,
+    logger: ExecutionLogger
+  ): Promise<void> {
+    const page = browser.page;
+    const parserLoadingSelectors = [
+      '[class*="spinner" i]',
+      '[class*="loading" i]',
+      '[data-testid*="loading" i]',
+      '[data-testid*="spinner" i]',
+      '[aria-busy="true"]',
+      '.ashby-application-form-file-upload-status',
+      '[class*="autofill-status" i]',
+      '[class*="upload-progress" i]',
+    ];
+
+    try {
+      let isBusy = false;
+      for (const sel of parserLoadingSelectors) {
+        const el = ctx.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0 && (await el.isVisible().catch(() => false))) {
+          isBusy = true;
+          break;
+        }
+      }
+
+      if (isBusy) {
+        await logger.info('resume_parser_active', 'Waiting for resume autofill parser to settle...');
+        const startWait = Date.now();
+        while (Date.now() - startWait < 8000) {
+          await page.waitForTimeout(600);
+          let stillBusy = false;
+          for (const sel of parserLoadingSelectors) {
+            const el = ctx.locator(sel).first();
+            if ((await el.count().catch(() => 0)) > 0 && (await el.isVisible().catch(() => false))) {
+              stillBusy = true;
+              break;
+            }
+          }
+          if (!stillBusy) break;
+        }
+      } else {
+        await page.waitForTimeout(1000);
+      }
+    } catch {}
+  }
+
+  /**
+   * Universal helper to autofill common standard candidate identity and contact fields
+   * across any ATS using framework-safe synthetic commits and broad semantic selectors.
+   */
+  protected async autofillStandardFields(
+    ctx: import('playwright').Frame | import('playwright').Page,
+    profile: import('../types').UserProfile,
+    logger: ExecutionLogger,
+    context?: WorkflowContext
+  ): Promise<void> {
+    const nameParts = (profile.name || '').split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // 1. Separate First Name & Last Name (if dedicated inputs exist)
+    const hasSeparateFirstLast = (await ctx.locator('input[name="firstName"], input[name="first_name"], input[name="first-name"], #first_name, #firstName, #first-name-input').count().catch(() => 0)) > 0;
+
+    if (hasSeparateFirstLast) {
+      if (firstName) {
+        const fnSelectors = [
+          'input[name="firstName"]',
+          'input[name="first_name"]',
+          'input[name="first-name"]',
+          'input[autocomplete="given-name"]',
+          'input[placeholder*="First Name" i]',
+          'input[aria-label*="First Name" i]',
+          '#first_name',
+          '#firstName',
+          '#first-name-input',
+        ];
+        for (const sel of fnSelectors) {
+          const el = ctx.locator(sel).first();
+          if ((await el.count().catch(() => 0)) > 0) {
+            await replaceValue(el, firstName);
+            await logger.info('field_filled', `Filled First Name: ${firstName}`);
+            break;
+          }
+        }
+      }
+
+      if (lastName) {
+        const lnSelectors = [
+          'input[name="lastName"]',
+          'input[name="last_name"]',
+          'input[name="last-name"]',
+          'input[autocomplete="family-name"]',
+          'input[placeholder*="Last Name" i]',
+          'input[aria-label*="Last Name" i]',
+          '#last_name',
+          '#lastName',
+          '#last-name-input',
+        ];
+        for (const sel of lnSelectors) {
+          const el = ctx.locator(sel).first();
+          if ((await el.count().catch(() => 0)) > 0) {
+            await replaceValue(el, lastName);
+            await logger.info('field_filled', `Filled Last Name: ${lastName}`);
+            break;
+          }
+        }
+      }
+    } else if (profile.name) {
+      // 1b. Combined Full Name
+      const fullNameSelectors = [
+        'input[name="name"]',
+        'input[name="_name_"]',
+        'input[autocomplete="name"]',
+        'input[placeholder*="Full Name" i]',
+        'input[aria-label*="Full Name" i]',
+        'input[id*="full_name" i]',
+        'input[id*="fullName" i]',
+        '#name',
+      ];
+      for (const sel of fullNameSelectors) {
+        const el = ctx.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0) {
+          await replaceValue(el, profile.name);
+          await logger.info('field_filled', `Filled Full Name: ${profile.name}`);
+          break;
+        }
+      }
+    }
+
+    // 2. Email
+    if (profile.email) {
+      const emailSelectors = [
+        'input[name="email"]',
+        'input[name="emailAddress"]',
+        'input[name="email_address"]',
+        'input[type="email"]',
+        'input[autocomplete="email"]',
+        'input[placeholder*="Email" i]',
+        'input[aria-label*="Email" i]',
+        '#email',
+        '#email-input',
+      ];
+      for (const sel of emailSelectors) {
+        const el = ctx.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0) {
+          await replaceValue(el, profile.email);
+          await logger.info('field_filled', `Filled Email: ${profile.email}`);
+          break;
+        }
+      }
+    }
+
+    // 3. Phone Number
+    if (profile.phone) {
+      const phoneSelectors = [
+        'input[name="phone"]',
+        'input[name="phoneNumber"]',
+        'input[name="phone_number"]',
+        'input[type="tel"]',
+        'input[autocomplete="tel"]',
+        'input[placeholder*="Phone" i]',
+        'input[aria-label*="Phone" i]',
+        '#phone',
+        '#phone-number-input',
+      ];
+      for (const sel of phoneSelectors) {
+        const el = ctx.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0) {
+          await replaceValue(el, profile.phone);
+          await logger.info('field_filled', `Filled Phone: ${profile.phone}`);
+          break;
+        }
+      }
+    }
+
+    // 4. Location / City / State / Address
+    if (profile.location) {
+      const locationSelectors = [
+        '#job_application_location',
+        '#location',
+        'input[name*="location" i]',
+        'input[id*="location" i]',
+        'input[placeholder*="Location" i]',
+        'input[placeholder*="City" i]',
+        'input[aria-label*="Location" i]',
+      ];
+      for (const sel of locationSelectors) {
+        const el = ctx.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0) {
+          await replaceValue(el, profile.location);
+          await logger.info('field_filled', `Filled Location: ${profile.location}`);
+          break;
+        }
+      }
+    }
+
+    // 5. Current Company / Employer
+    let currentCompany = (profile as any).currentCompany ||
+      (profile.customAnswers && (profile.customAnswers['Current Company'] || profile.customAnswers['current_company'] || profile.customAnswers['company'] || profile.customAnswers['Company'])) || '';
+    if (!currentCompany && context?.resumeMarkdown) {
+      const parsedMatch = context.resumeMarkdown.match(/(?:^|\n)###?\s*(?:Experience|Work Experience|Employment History)[\s\S]*?(?:^|\n)\*{1,2}([A-Z][A-Za-z0-9\s.,&-]{2,40}?)\*{1,2}\s*(?:[—–|-]|\n)/i) ||
+        context.resumeMarkdown.match(/(?:^|\n)\*{1,2}(?:Company|Employer):\*{1,2}\s*([A-Z][A-Za-z0-9\s.,&-]{2,40})/i);
+      if (parsedMatch && parsedMatch[1]) {
+        currentCompany = parsedMatch[1].trim();
+      }
+    }
+    if (currentCompany) {
+      const companySelectors = [
+        'input[name*="company" i]',
+        'input[name*="employer" i]',
+        'input[placeholder*="Company" i]',
+        'input[placeholder*="Employer" i]',
+        'input[id*="company" i]',
+        'input[id*="employer" i]',
+        'input[aria-label*="Company" i]',
+      ];
+      for (const sel of companySelectors) {
+        const el = ctx.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0) {
+          await replaceValue(el, currentCompany);
+          await logger.info('field_filled', `Filled Current Company: ${currentCompany}`);
+          break;
+        }
+      }
+    }
+
+    // 6. LinkedIn URL
+    if (profile.linkedinUrl) {
+      const linkedinSelectors = [
+        'input[name*="linkedin" i]',
+        'input[placeholder*="LinkedIn" i]',
+        'input[id*="linkedin" i]',
+        'input[aria-label*="LinkedIn" i]',
+      ];
+      for (const sel of linkedinSelectors) {
+        const el = ctx.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0) {
+          await replaceValue(el, profile.linkedinUrl);
+          await logger.info('field_filled', 'Filled LinkedIn URL');
+          break;
+        }
+      }
+    }
+
+    // 7. Website / Portfolio URL
+    const portfolioUrl = profile.websiteUrl || (profile.customAnswers && (profile.customAnswers['Portfolio URL'] || profile.customAnswers['website']));
+    if (portfolioUrl) {
+      const websiteSelectors = [
+        'input[name*="website" i]',
+        'input[name*="portfolio" i]',
+        'input[placeholder*="Website" i]',
+        'input[placeholder*="Portfolio" i]',
+        'input[id*="website" i]',
+        'input[id*="portfolio" i]',
+        'input[aria-label*="Website" i]',
+      ];
+      for (const sel of websiteSelectors) {
+        const el = ctx.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0) {
+          await replaceValue(el, portfolioUrl);
+          await logger.info('field_filled', 'Filled Website/Portfolio URL');
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * Universal helper to validate form state before submission across any ATS.
+   * Inspects mandatory identity fields, unfilled required controls, and active inline error banners.
+   */
+  protected async validateStandardForm(
+    ctx: import('playwright').Frame | import('playwright').Page,
+    profile: import('../types').UserProfile,
+    logger: ExecutionLogger,
+    options?: { errorSelectors?: string[]; requiredSelectors?: string[] }
+  ): Promise<{ valid: boolean; issues: string[] }> {
+    const rawIssues: string[] = [];
+
+    // 1. Check Name field
+    const nameEl = ctx.locator('input[name="name"], input[name="firstName"], input[name="first_name"], input[autocomplete="name"], input[placeholder*="name" i], #name, #first_name').first();
+    if ((await nameEl.count().catch(() => 0)) > 0) {
+      const nameVal = await nameEl.inputValue().catch(() => '');
+      if (!nameVal && profile.name) {
+        await replaceValue(nameEl, profile.name).catch(() => {});
+      } else if (!nameVal && !profile.name) {
+        rawIssues.push('Name field is required');
+      }
+    }
+
+    // 2. Check Email field
+    const emailEl = ctx.locator('input[type="email"], input[name*="email" i], input[autocomplete="email"], #email, #email-input').first();
+    if ((await emailEl.count().catch(() => 0)) > 0) {
+      const emailVal = await emailEl.inputValue().catch(() => '');
+      if (!emailVal && profile.email) {
+        await replaceValue(emailEl, profile.email).catch(() => {});
+      } else if (!emailVal && !profile.email) {
+        rawIssues.push('Email field is required');
+      }
+    }
+
+    // 3. Check for active validation error banners
+    const defaultErrorSelectors = [
+      '[role="alert"]',
+      '.invalid-field',
+      '[aria-invalid="true"]',
+      '.field_with_errors',
+      'p.error',
+      '.error-message',
+      '[class*="errorBanner" i]',
+      '[class*="errorMessage" i]',
+      '[class*="error-message" i]',
+      '.ashby-application-form-error',
+      '.error-text',
+      ...(options?.errorSelectors || []),
+    ];
+
+    for (const sel of defaultErrorSelectors) {
+      const els = await ctx.locator(sel).all().catch(() => []);
+      for (const el of els) {
+        if (await el.isVisible().catch(() => false)) {
+          const text = (await el.textContent().catch(() => ''))?.trim();
+          if (text && /missing|required|correct|invalid|error|fix/i.test(text) && !/no error/i.test(text)) {
+            rawIssues.push(text);
+          }
+        }
+      }
+    }
+
+    const issues = Array.from(new Set(rawIssues));
+
+    if (issues.length > 0) {
+      await logger.warn('validation_issues', `${issues.length} validation issue(s) detected`, { issues });
+    } else {
+      await logger.info('validation_passed', 'Form validation passed — ready to submit');
+    }
+
+    return { valid: issues.length === 0, issues };
   }
 
   /**

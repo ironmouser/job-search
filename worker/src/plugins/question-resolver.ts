@@ -562,6 +562,36 @@ export class UniversalQuestionResolver {
               answer = context.userProfile.websiteUrl;
               requiresHuman = false;
             }
+          } else if (/current\s*company|current\s*employer|organization|company\s*name/i.test(lowerQ) || /current[-_]?company|employer|company/i.test(lowerKey)) {
+            const profileCompany = (context.userProfile as any).currentCompany ||
+              (customAnswers['Current Company'] || customAnswers['current_company'] || customAnswers['company'] || customAnswers['Company']);
+            if (profileCompany) {
+              answer = String(profileCompany).trim();
+              requiresHuman = false;
+            } else if (context.resumeMarkdown) {
+              const companyMatch = context.resumeMarkdown.match(/(?:^|\n)###?\s*(?:Experience|Work Experience|Employment History)[\s\S]*?(?:^|\n)\*{1,2}([A-Z][A-Za-z0-9\s.,&-]{2,40}?)\*{1,2}\s*(?:[—–|-]|\n)/i) ||
+                context.resumeMarkdown.match(/(?:^|\n)\*{1,2}(?:Company|Employer):\*{1,2}\s*([A-Z][A-Za-z0-9\s.,&-]{2,40})/i) ||
+                context.resumeMarkdown.match(/(?:###|##|\*\*)\s*(?:Experience|Work History|Employment)[\s\S]*?(?:###|##|\*\*|\|)\s*([^,\n\*\#]+)/i);
+              if (companyMatch && companyMatch[1]?.trim()) {
+                answer = companyMatch[1].trim();
+                requiresHuman = false;
+              }
+            }
+          } else if (/confirm\s*(?:that\s*)?you\s*can\s*work|work\s*from\s*the\s*.*office|hybrid.*office|workplace.*policy/i.test(lowerQ)) {
+            answer = 'Yes';
+            if (q.options.length > 0) {
+              const yesOpt = q.options.find((o) => /^(yes|i confirm|agree|accept)/i.test(o.trim())) || q.options[0];
+              if (yesOpt) answer = yesOpt;
+            }
+            requiresHuman = false;
+          } else if (/authorized\s*to\s*work\s*in\s*(?:usa|us|united\s*states|canada)/i.test(lowerQ) || /authorized.*(?:usa|canada)/i.test(lowerQ)) {
+            answer = context.userProfile.usWorkAuthorization === 'No' ? 'No' : 'Yes';
+            if (q.options.length > 0) {
+              const yesOpt = q.options.find((o) => /^(yes|i am|authorized)/i.test(o.trim())) || q.options[0];
+              const noOpt = q.options.find((o) => /^(no|not)/i.test(o.trim())) || 'No';
+              answer = (answer === 'Yes') ? yesOpt : noOpt;
+            }
+            requiresHuman = false;
           } else if (/authorized to work|work authorization|legal authorization|legally authorized|eligible to work/i.test(lowerQ) || /work_auth|authorized/i.test(lowerKey)) {
             answer = context.userProfile.usWorkAuthorization === 'No' ? 'No' : (context.userProfile.usWorkAuthorization || 'Yes');
             if (q.options.length > 0) {
@@ -694,7 +724,7 @@ export class UniversalQuestionResolver {
     const extracted: ExtractedQuestion[] = [];
     const seenLabels = new Set<string>();
 
-    // Common containers across Greenhouse, Lever, Ashby, Workday, SmartRecruiters, etc.
+    // Common containers across Greenhouse, Lever, Ashby, Workday, SmartRecruiters, Phenom, etc.
     const containerSelectors = [
       '.field-wrapper',
       '.field',
@@ -708,8 +738,14 @@ export class UniversalQuestionResolver {
       '.question',
       // Workday
       '[data-automation-id*="questionItem"], [data-automation-id="checkbox"], [data-automation-id*="radioGroup"]',
-      // Greenhouse / Lever / Ashby
+      // Greenhouse / Lever / Ashby / Generic Modern ATS & CSS Modules
       '.application-field, .field-wrapper-b, li.application-question-item, .custom-question, .fields > .field',
+      '[class*="fieldContainer" i], [class*="formField" i], [class*="fieldWrapper" i], [class*="inputContainer" i]',
+      '[class*="formGroup" i], [class*="form-group" i], [class*="formItem" i], [class*="formRow" i]',
+      '[class*="_field" i], [class*="field_" i], [class*="_form_" i], [class*="question" i], [class*="Question" i]',
+      'fieldset, [role="group"]',
+      'div:has(> label)',
+      'div:has(> [class*="label" i])',
       // Phenom People (ph- prefixed widgets)
       '[class*="ph-form-field"], [class*="Phenom__FieldWrapper"], [class*="legal-section"] div:has(> input), div[aria-label*="question" i]',
       // SmartRecruiters
@@ -734,7 +770,7 @@ export class UniversalQuestionResolver {
       if (isInsideObstruction) continue;
 
       // Extract label
-      const labelEl = container.locator('label, legend, .field-label, .question-label, h3, h4, .text').first();
+      const labelEl = container.locator('label, legend, .field-label, .question-label, [class*="label" i], [class*="title" i], [class*="prompt" i], [class*="heading" i], [data-testid*="label" i], h3, h4, .text').first();
       let label = '';
       if (await labelEl.count() > 0) {
         label = (await labelEl.textContent({ timeout: 1000 }).catch(() => ''))?.trim() ?? '';
@@ -1066,6 +1102,159 @@ export class UniversalQuestionResolver {
         }
       }
     }
+
+    // Second pass: sweep any visible interactive inputs not captured in container pass
+    try {
+      const interactiveInputs = await ctx.locator(
+        'input:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):visible, textarea:visible, select:visible, [role="combobox"]:visible, [role="radiogroup"]:visible'
+      ).all().catch(() => []);
+
+      for (const el of interactiveInputs) {
+        const isAlreadyCovered = await el.evaluate((inputEl, coveredKeys) => {
+          const name = (inputEl as HTMLInputElement).name || inputEl.id || '';
+          if (name && coveredKeys.includes(name.toLowerCase())) return true;
+          return false;
+        }, extracted.map((e) => e.fieldKey.toLowerCase())).catch(() => false);
+
+        if (isAlreadyCovered) continue;
+
+        const isFilled = await el.evaluate((inputEl) => {
+          if (inputEl.tagName.toLowerCase() === 'textarea') {
+            return !!(inputEl as HTMLTextAreaElement).value?.trim();
+          }
+          if (inputEl.tagName.toLowerCase() === 'select') {
+            const sel = inputEl as HTMLSelectElement;
+            return !!sel.value && sel.value !== '0' && !/^(select|choose|\-\-)/i.test(sel.options[sel.selectedIndex]?.text || '');
+          }
+          if (inputEl.getAttribute('role') === 'combobox') {
+            const text = inputEl.textContent?.trim() || (inputEl as HTMLInputElement).value?.trim() || '';
+            return !!text && !/^(select|choose|\-\-)/i.test(text);
+          }
+          const inp = inputEl as HTMLInputElement;
+          if (inp.type === 'checkbox' || inp.type === 'radio') {
+            return inp.checked;
+          }
+          return !!inp.value?.trim();
+        }).catch(() => false);
+
+        if (isFilled) continue;
+
+        const parentContainer = el.locator('xpath=ancestor-or-self::*[self::div or self::fieldset or self::li or self::tr or self::section][1]');
+        const containerToUse = (await parentContainer.count().catch(() => 0)) > 0 ? parentContainer : el;
+
+        let label = '';
+        const labelEl = containerToUse.locator('label, legend, [class*="label" i], [class*="title" i], [class*="prompt" i], h3, h4').first();
+        if ((await labelEl.count().catch(() => 0)) > 0) {
+          label = (await labelEl.textContent({ timeout: 500 }).catch(() => ''))?.trim() || '';
+        }
+        if (!label) {
+          label = (await el.getAttribute('aria-label').catch(() => '')) ||
+                  (await el.getAttribute('placeholder').catch(() => '')) ||
+                  (await el.getAttribute('name').catch(() => '')) ||
+                  '';
+        }
+        if (!label || label.length < 2) continue;
+
+        const cleanLabel = label.replace(/[\*\u204E\u2217]/g, '').replace(/\s+/g, ' ').trim();
+        const normLabel = cleanLabel.toLowerCase();
+
+        if (seenLabels.has(normLabel)) continue;
+
+        if (
+          /^(first|last)\s*name/i.test(normLabel) ||
+          /^email/i.test(normLabel) ||
+          /^phone/i.test(normLabel) ||
+          /^resume/i.test(normLabel) ||
+          /^cover\s*letter/i.test(normLabel) ||
+          /^linkedin/i.test(normLabel) ||
+          /^website/i.test(normLabel) ||
+          /^portfolio/i.test(normLabel) ||
+          /^github/i.test(normLabel)
+        ) {
+          continue;
+        }
+
+        const tagName = await el.evaluate((n) => n.tagName.toLowerCase()).catch(() => '');
+        const inputType = await el.getAttribute('type').catch(() => '') || '';
+        const isReq = (await el.getAttribute('required').catch(() => '')) !== null ||
+                      (await el.getAttribute('aria-required').catch(() => '')) === 'true' ||
+                      label.includes('*') || /[\*\u204E\u2217]/.test(label);
+
+        qIndex++;
+        seenLabels.add(normLabel);
+
+        if (tagName === 'textarea') {
+          extracted.push({
+            id: `q_sweep_${qIndex}`,
+            fieldKey: (await el.getAttribute('name')) || (await el.getAttribute('id')) || `textarea_${qIndex}`,
+            label: cleanLabel,
+            type: 'textarea',
+            options: [],
+            required: isReq,
+            container: containerToUse,
+          });
+        } else if (tagName === 'select') {
+          const rawOpts = await el.locator('option').allTextContents().catch(() => []);
+          const dropdownOptions = rawOpts.map((o) => o.trim()).filter((o) => o && !/^(select|choose|please\s*select|\-\-)/i.test(o));
+          extracted.push({
+            id: `q_sweep_${qIndex}`,
+            fieldKey: (await el.getAttribute('name')) || (await el.getAttribute('id')) || `select_${qIndex}`,
+            label: cleanLabel,
+            type: 'select',
+            options: dropdownOptions.length > 0 ? dropdownOptions : getSemanticDropdownOptions(cleanLabel),
+            required: isReq,
+            container: containerToUse,
+          });
+        } else if (inputType === 'radio') {
+          const radioLabels = await containerToUse.locator('label').allTextContents().catch(() => []);
+          const options = radioLabels.map((r) => r.trim()).filter((r) => r && r !== cleanLabel);
+          extracted.push({
+            id: `q_sweep_${qIndex}`,
+            fieldKey: (await el.getAttribute('name')) || `radio_${qIndex}`,
+            label: cleanLabel,
+            type: 'radio',
+            options: options.length > 0 ? options : ['Yes', 'No'],
+            required: isReq,
+            container: containerToUse,
+          });
+        } else if (inputType === 'checkbox') {
+          extracted.push({
+            id: `q_sweep_${qIndex}`,
+            fieldKey: (await el.getAttribute('name')) || (await el.getAttribute('id')) || `checkbox_${qIndex}`,
+            label: cleanLabel,
+            type: 'checkbox',
+            options: [],
+            required: isReq,
+            container: containerToUse,
+          });
+        } else {
+          const isCombobox = (await el.getAttribute('role').catch(() => '')) === 'combobox' ||
+                             (await el.getAttribute('aria-haspopup').catch(() => '')) !== null ||
+                             (await containerToUse.locator('[role="combobox"], [aria-haspopup]').count().catch(() => 0)) > 0;
+          if (isCombobox) {
+            extracted.push({
+              id: `q_sweep_${qIndex}`,
+              fieldKey: (await el.getAttribute('name')) || (await el.getAttribute('id')) || `select_${qIndex}`,
+              label: cleanLabel,
+              type: 'select',
+              options: getSemanticDropdownOptions(cleanLabel),
+              required: isReq,
+              container: containerToUse,
+            });
+          } else {
+            extracted.push({
+              id: `q_sweep_${qIndex}`,
+              fieldKey: (await el.getAttribute('name')) || (await el.getAttribute('id')) || `text_${qIndex}`,
+              label: cleanLabel,
+              type: 'text',
+              options: [],
+              required: isReq,
+              container: containerToUse,
+            });
+          }
+        }
+      }
+    } catch {}
 
     return extracted;
   }

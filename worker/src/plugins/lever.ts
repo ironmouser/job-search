@@ -161,54 +161,16 @@ export class LeverPlugin extends ATSPlugin {
     const page = browser.page;
     const profile = context.userProfile;
 
-    // ── Standard personal fields ─────────────────────────────────────────────
-    await this.fillInput(page, 'input[name="name"]', profile.name, logger, 'name');
-    await this.fillInput(page, 'input[name="email"]', profile.email, logger, 'email');
+    // ── Standard personal & URL fields ───────────────────────────────────────
+    await this.autofillStandardFields(page, profile, logger, context);
 
-    if (profile.phone) {
-      await this.fillInput(page, 'input[name="phone"]', profile.phone, logger, 'phone');
-    }
-
-    // "Current company / organization" — use location as fallback if no company in profile
+    // "Current company / organization" field specific to Lever (input[name="org"])
     const orgField = page.locator('input[name="org"]').first();
     if (await orgField.count() > 0) {
-      // We don't have a dedicated company field in UserProfile; leave blank rather than guess.
-      await logger.info('field_skipped', 'Org field present but no current company in profile — leaving blank');
-    }
-
-    // ── URL fields ───────────────────────────────────────────────────────────
-    if (profile.linkedinUrl) {
-      const linkedinSelectors = [
-        'input[name="urls[LinkedIn]"]',
-        'input[name="urls[linkedin]"]',
-        'input[placeholder*="LinkedIn"]',
-      ];
-      for (const sel of linkedinSelectors) {
-        const el = page.locator(sel).first();
-        if (await el.count() > 0) {
-          await this.typeHumanized(page, el, profile.linkedinUrl);
-          await logger.info('field_filled', 'LinkedIn URL populated');
-          break;
-        }
-      }
-    }
-
-    if (profile.websiteUrl) {
-      const websiteSelectors = [
-        'input[name="urls[Portfolio]"]',
-        'input[name="urls[Website]"]',
-        'input[name="urls[Github]"]',
-        'input[placeholder*="Portfolio"]',
-        'input[placeholder*="Website"]',
-        'input[placeholder*="Github"]',
-      ];
-      for (const sel of websiteSelectors) {
-        const el = page.locator(sel).first();
-        if (await el.count() > 0) {
-          await this.typeHumanized(page, el, profile.websiteUrl);
-          await logger.info('field_filled', `Portfolio/website URL populated via: ${sel}`);
-          break;
-        }
+      const companyVal = (profile as any).currentCompany || (profile.customAnswers && (profile.customAnswers['Current Company'] || profile.customAnswers['current_company'] || profile.customAnswers['company'] || profile.customAnswers['Company']));
+      if (companyVal) {
+        await replaceValue(orgField, String(companyVal).trim());
+        await logger.info('field_filled', `Filled Lever org field: ${companyVal}`);
       }
     }
 

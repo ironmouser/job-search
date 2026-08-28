@@ -84,58 +84,10 @@ export class AshbyPlugin extends ATSPlugin {
 
     const profile = context.userProfile;
 
-    const BROAD_NAME_SELECTOR = 'input[name="name"], input[name="_name_"], input[autocomplete="name"], input[placeholder*="Name" i], input[id*="name" i], input[aria-label*="Name" i]';
-    const BROAD_EMAIL_SELECTOR = 'input[name="email"], input[type="email"], input[autocomplete="email"], input[placeholder*="Email" i], input[id*="email" i], input[aria-label*="Email" i]';
+    // 1. Core candidate information & contact fields (Name, Email, Phone, Company, Location, LinkedIn, Portfolio)
+    await this.autofillStandardFields(targetContext, profile, logger, context);
 
-    // 1. Full Name
-    const nameInput = await targetContext.$(BROAD_NAME_SELECTOR);
-    if (nameInput && profile.name) {
-      await this.typeHumanized(targetContext, nameInput, profile.name);
-      await logger.info('field_filled', `Filled name: ${profile.name}`);
-    }
-
-    // 2. Email
-    try {
-      const emailInput = await targetContext.$(BROAD_EMAIL_SELECTOR);
-      if (emailInput && profile.email) {
-        await this.typeHumanized(targetContext, emailInput, profile.email);
-        await logger.info('field_filled', `Filled email: ${profile.email}`);
-      } else if (!profile.email) {
-        await logger.warn('field_skipped', 'No email in user profile — skipping email field');
-      } else {
-        await logger.warn('field_skipped', 'Email input not found in form context');
-      }
-    } catch (err: any) {
-      await logger.warn('field_error', `Email field fill failed: ${err.message}`);
-    }
-
-    // 3. Phone Number
-    const phoneInput = await targetContext.$(
-      'input[name="phone"], input[type="tel"], input[placeholder*="Phone" i]'
-    );
-    if (phoneInput && profile.phone) {
-      await this.typeHumanized(targetContext, phoneInput, profile.phone);
-      await logger.info('field_filled', `Filled phone: ${profile.phone}`);
-    }
-
-    // 4. Social / Portfolio Links (LinkedIn, Website)
-    const linkedinInput = await targetContext.$(
-      'input[name*="linkedin" i], input[placeholder*="LinkedIn" i], input[id*="linkedin" i]'
-    );
-    if (linkedinInput && profile.linkedinUrl) {
-      await this.typeHumanized(targetContext, linkedinInput, profile.linkedinUrl);
-      await logger.info('field_filled', `Filled LinkedIn URL`);
-    }
-
-    const websiteInput = await targetContext.$(
-      'input[name*="website" i], input[name*="portfolio" i], input[placeholder*="Website" i]'
-    );
-    if (websiteInput && profile.websiteUrl) {
-      await this.typeHumanized(targetContext, websiteInput, profile.websiteUrl);
-      await logger.info('field_filled', `Filled Portfolio/Website URL`);
-    }
-
-    // 5. Resume Upload
+    // 2. Resume Upload (automatically awaits OCR parser settlement)
     await this.uploadResumeFile(browser, targetContext, context, logger, {
       specificSelectors: [
         '.ashby-application-form-file-upload input[type="file"]',
@@ -143,18 +95,18 @@ export class AshbyPlugin extends ATSPlugin {
       ],
     });
 
-    // 5b. Cover Letter Upload (optional)
+    // 2b. Cover Letter Upload (optional)
     if (context.coverLetterMarkdown) {
       await this.uploadCoverLetterFile(browser, targetContext, context, logger);
     }
 
-    // 6. Consent & Future Opportunity Checkboxes (e.g. "Do you agree to allow Mural to contact you...")
+    // 3. Consent & Future Opportunity Checkboxes (e.g. "Do you agree to allow Mural to contact you...")
     await this.handleConsentCheckboxes(targetContext, logger);
 
-    // 7. Work Authorization, Sponsorship, and EEOC Demographics (Veteran, Disability, Gender, Race)
+    // 4. Work Authorization, Sponsorship, and EEOC Demographics (Veteran, Disability, Gender, Race)
     await this.handleEEOCDemographics(targetContext, profile, logger);
 
-    // 8. Custom questions & screening questions
+    // 5. Custom questions & screening questions
     await UniversalQuestionResolver.resolveAndFillQuestions(
       targetContext,
       browser,
@@ -167,39 +119,10 @@ export class AshbyPlugin extends ATSPlugin {
   }
 
   async validate(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<{ valid: boolean; issues: string[] }> {
-    const issues: string[] = [];
     const targetContext = await browser.findFormFrame(['input[name="name"]', 'input[type="email"]', 'form']);
-    const profile = context.userProfile;
-
-    const BROAD_NAME_SELECTOR = 'input[name="name"], input[name="_name_"], input[autocomplete="name"], input[placeholder*="Name" i], input[id*="name" i], input[aria-label*="Name" i]';
-    const BROAD_EMAIL_SELECTOR = 'input[name="email"], input[type="email"], input[autocomplete="email"], input[placeholder*="Email" i], input[id*="email" i], input[aria-label*="Email" i]';
-
-    // Check for mandatory name/email fields
-    let nameVal = await targetContext.$eval(BROAD_NAME_SELECTOR, (el: any) => el.value).catch(() => null);
-    if (!nameVal && profile.name) {
-      const nameInput = await targetContext.$(BROAD_NAME_SELECTOR);
-      if (nameInput) {
-        await this.typeHumanized(targetContext, nameInput, profile.name);
-        nameVal = profile.name;
-      }
-    }
-    if (!nameVal && !profile.name) {
-      issues.push('Name field is empty');
-    }
-
-    let emailVal = await targetContext.$eval(BROAD_EMAIL_SELECTOR, (el: any) => el.value).catch(() => null);
-    if (!emailVal && profile.email) {
-      const emailInput = await targetContext.$(BROAD_EMAIL_SELECTOR);
-      if (emailInput) {
-        await this.typeHumanized(targetContext, emailInput, profile.email);
-        emailVal = profile.email;
-      }
-    }
-    if (!emailVal && !profile.email) {
-      issues.push('Email field is empty');
-    }
-
-    return { valid: issues.length === 0, issues };
+    return this.validateStandardForm(targetContext, context.userProfile, logger, {
+      errorSelectors: ['.ashby-application-form-error'],
+    });
   }
 
   async finalize(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<WorkflowResult> {

@@ -114,45 +114,13 @@ export class SmartRecruitersPlugin extends ATSPlugin {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
 
-    // 1. First & Last Name
-    const fnInput = await targetContext.$(
-      '#first-name-input, input[name="firstName"], input[name="first-name"], input[autocomplete="given-name"]'
-    );
-    if (fnInput && firstName) {
-      await this.typeHumanized(targetContext, fnInput, firstName);
-      await browser.page.waitForTimeout(200 + Math.floor(Math.random() * 200));
-    }
+    // 1. Core candidate information & contact fields (Name, Email, Phone, Company, Location, LinkedIn, Portfolio)
+    await this.autofillStandardFields(targetContext, profile, logger, context);
 
-    const lnInput = await targetContext.$(
-      '#last-name-input, input[name="lastName"], input[name="last-name"], input[autocomplete="family-name"]'
-    );
-    if (lnInput && lastName) {
-      await this.typeHumanized(targetContext, lnInput, lastName);
-      await browser.page.waitForTimeout(200 + Math.floor(Math.random() * 200));
-    }
-
-    // 2. Email
-    const email = await targetContext.$(
-      '#email-input, input[name="email"], input[type="email"]'
-    );
-    if (email && profile.email) {
-      await this.typeHumanized(targetContext, email, profile.email);
-      await browser.page.waitForTimeout(200 + Math.floor(Math.random() * 200));
-    }
-
-    // 3. Phone
-    const phone = await targetContext.$(
-      '#phone-number-input, input[name="phoneNumber"], input[type="tel"]'
-    );
-    if (phone && profile.phone) {
-      await this.typeHumanized(targetContext, phone, profile.phone);
-      await browser.page.waitForTimeout(200 + Math.floor(Math.random() * 200));
-    }
-
-    // 4. Resume File Upload
+    // 2. Resume File Upload (automatically awaits parser settlement)
     await this.uploadResumeFile(browser, targetContext, context, logger);
 
-    // 4b. Cover Letter Upload / Message to Hiring Manager (optional)
+    // 2b. Cover Letter Upload / Message to Hiring Manager (optional)
     if (context.coverLetterMarkdown) {
       await this.uploadCoverLetterFile(browser, targetContext, context, logger, {
         specificTextAreaSelectors: [
@@ -163,13 +131,13 @@ export class SmartRecruitersPlugin extends ATSPlugin {
       });
     }
 
-    // 5. Consent & Privacy Checkboxes
+    // 3. Consent & Privacy Checkboxes
     await this.handleConsentCheckboxes(targetContext, logger);
 
-    // 6. Work Authorization & EEOC Demographics
+    // 4. Work Authorization & EEOC Demographics
     await this.handleEEOCDemographics(targetContext, profile, logger);
 
-    // 7. Custom questions & screening questions
+    // 5. Custom questions & screening questions
     await UniversalQuestionResolver.resolveAndFillQuestions(
       targetContext,
       browser,
@@ -183,17 +151,10 @@ export class SmartRecruitersPlugin extends ATSPlugin {
 
   async validate(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<{ valid: boolean; issues: string[] }> {
     await this.checkAccessRestriction(browser, logger, context.jobUrl);
-    const issues: string[] = [];
     const targetContext = await browser.findFormFrame(['input[type="email"]', '#email-input', 'form']);
-
-    const emailVal = await targetContext.$eval(
-      '#email-input, input[name="email"], input[type="email"]',
-      (el: any) => el.value
-    ).catch(() => null);
-
-    if (!emailVal) issues.push('Email field is required');
-
-    return { valid: issues.length === 0, issues };
+    return this.validateStandardForm(targetContext, context.userProfile, logger, {
+      errorSelectors: ['.smrte-error', '[class*="error" i]'],
+    });
   }
 
   async finalize(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<WorkflowResult> {

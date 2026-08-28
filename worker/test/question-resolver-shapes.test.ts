@@ -150,11 +150,19 @@ describe('Question resolver: multi-checkbox groups and date inputs', () => {
       assert.strictEqual(await session.page.inputValue('#birth-date'), '1992-06-15');
       assert.strictEqual(await session.page.inputValue('#grad-date'), '05/20/2018');
 
+      // 4. CSS module hashed container: Current Company
+      assert.strictEqual(await session.page.inputValue('#current-company'), 'Acme Corp');
+
+      // 5. CSS module hashed container: Office confirmation dropdown
+      assert.strictEqual(await session.page.inputValue('#office-confirm'), 'Yes');
+
       // Sanity: resolver reported answering the expected questions
       const answered = logs.filter((l) => l.event === 'question_answered_ai').map((l) => l.message).join('\n');
       assert.match(answered, /scheduling tools/i);
       assert.match(answered, /start date/i);
       assert.match(answered, /performance review/i);
+      assert.match(answered, /current company/i);
+      assert.match(answered, /nyc office/i);
     });
 
     it('does not throw when nothing is left unfilled on second pass', async () => {
@@ -175,6 +183,7 @@ function makeContext(): { userProfile: Record<string, unknown>; sessionId: strin
       name: 'Kurt Charles',
       email: 'kurt.charles@example.com',
       phone: '+1 512 555 0100',
+      currentCompany: 'Acme Corp',
       customAnswers: {
         'Which scheduling tools have you used? (select all that apply)': 'Cron, Apache Airflow, Quartz Scheduler',
         'Earliest start date': 'April 1, 2026',

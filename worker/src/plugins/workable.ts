@@ -77,75 +77,24 @@ export class WorkablePlugin extends ATSPlugin {
 
     const profile = context.userProfile;
     const nameParts = (profile.name || '').split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
+    // 1. Core candidate information & contact fields (Name, Email, Phone, Company, Location, LinkedIn, Portfolio)
+    await this.autofillStandardFields(targetContext, profile, logger, context);
 
-    // 1. First Name & Last Name
-    const firstNameInput = await targetContext.$(
-      'input[name="firstname"], input[name="first_name"], input[id*="firstname" i], input[autocomplete="given-name"]'
-    );
-    if (firstNameInput && firstName) {
-      await this.typeHumanized(targetContext, firstNameInput, firstName);
-      await logger.info('field_filled', `Filled first name: ${firstName}`);
-    }
-
-    const lastNameInput = await targetContext.$(
-      'input[name="lastname"], input[name="last_name"], input[id*="lastname" i], input[autocomplete="family-name"]'
-    );
-    if (lastNameInput && lastName) {
-      await this.typeHumanized(targetContext, lastNameInput, lastName);
-      await logger.info('field_filled', `Filled last name: ${lastName}`);
-    }
-
-    // Fallback single Full Name field
-    if (!firstNameInput && !lastNameInput) {
-      const nameInput = await targetContext.$('input[name="name"], input[id*="name" i]');
-      if (nameInput && profile.name) {
-        await this.typeHumanized(targetContext, nameInput, profile.name);
-      }
-    }
-
-    // 2. Email
-    const emailInput = await targetContext.$(
-      'input[name="email"], input[type="email"], input[id*="email" i]'
-    );
-    if (emailInput && profile.email) {
-      await this.typeHumanized(targetContext, emailInput, profile.email);
-      await logger.info('field_filled', `Filled email: ${profile.email}`);
-    }
-
-    // 3. Phone
-    const phoneInput = await targetContext.$(
-      'input[name="phone"], input[type="tel"], input[id*="phone" i]'
-    );
-    if (phoneInput && profile.phone) {
-      await this.typeHumanized(targetContext, phoneInput, profile.phone);
-      await logger.info('field_filled', `Filled phone: ${profile.phone}`);
-    }
-
-    // 4. Social Links
-    const linkedinInput = await targetContext.$(
-      'input[name*="linkedin" i], input[id*="linkedin" i]'
-    );
-    if (linkedinInput && profile.linkedinUrl) {
-      await this.typeHumanized(targetContext, linkedinInput, profile.linkedinUrl);
-    }
-
-    // 5. Resume File Upload
+    // 2. Resume File Upload (automatically awaits parser settlement)
     await this.uploadResumeFile(browser, targetContext, context, logger);
 
-    // 5b. Cover Letter Upload (optional)
+    // 2b. Cover Letter Upload (optional)
     if (context.coverLetterMarkdown) {
       await this.uploadCoverLetterFile(browser, targetContext, context, logger);
     }
 
-    // 6. Consent & Talent Community Checkboxes
+    // 3. Consent & Talent Community Checkboxes
     await this.handleConsentCheckboxes(targetContext, logger);
 
-    // 7. Work Authorization & EEOC Demographics
+    // 4. Work Authorization & EEOC Demographics
     await this.handleEEOCDemographics(targetContext, profile, logger);
 
-    // 8. Custom screening questions
+    // 5. Custom screening questions
     await UniversalQuestionResolver.resolveAndFillQuestions(
       targetContext,
       browser,
@@ -158,13 +107,10 @@ export class WorkablePlugin extends ATSPlugin {
   }
 
   async validate(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<{ valid: boolean; issues: string[] }> {
-    const issues: string[] = [];
     const targetContext = await browser.findFormFrame(['input[name="email"]', 'form']);
-
-    const emailVal = await targetContext.$eval('input[name="email"], input[type="email"]', (el: any) => el.value).catch(() => null);
-    if (!emailVal) issues.push('Email field is required');
-
-    return { valid: issues.length === 0, issues };
+    return this.validateStandardForm(targetContext, context.userProfile, logger, {
+      errorSelectors: ['[data-ui*="error" i]', '[class*="error" i]'],
+    });
   }
 
   async finalize(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<WorkflowResult> {
