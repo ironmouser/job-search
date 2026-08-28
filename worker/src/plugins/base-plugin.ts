@@ -1433,16 +1433,7 @@ export abstract class ATSPlugin {
         return true;
       }
 
-      // 5. If multiple file inputs exist on the page (e.g. Input 1 = Resume, Input 2 = Cover Letter)
-      const allFileInputs = ctx.locator('input[type="file"]');
-      const totalInputs = await allFileInputs.count().catch(() => 0);
-      if (totalInputs >= 2) {
-        const secondInput = allFileInputs.nth(1);
-        await secondInput.setInputFiles(clPath).catch(() => {});
-        await logger.info('cover_letter_uploaded', `Cover letter uploaded to secondary file input on ${this.displayName}`);
-        return true;
-      }
-
+      await logger.info('cover_letter_skipped', `No dedicated cover letter field found on ${this.displayName} — skipping cover letter`);
       return false;
     } catch (err: any) {
       await logger.warn('cover_letter_upload_failed', `Could not upload cover letter on ${this.displayName}: ${err.message}`);
