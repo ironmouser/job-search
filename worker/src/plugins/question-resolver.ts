@@ -776,12 +776,18 @@ export class UniversalQuestionResolver {
         continue;
       }
 
-      const hasRequiredAttr = (await container.locator('[aria-required="true"], [required], .required, [data-required="true"], [class*="required" i]').count().catch(() => 0)) > 0;
+      const hasRequiredAttr = (await container.locator('[aria-required="true"], [required], .required, [data-required="true"], [class*="required" i], [aria-invalid="true"]').count().catch(() => 0)) > 0;
       const hasAsterisk = label.includes('*') || /[\*\u204E\u2217]/.test(label);
-      const hasRequiredWord = /\b(required)\b/i.test(label);
-      const hasOptionalWord = /\b(optional)\b/i.test(label) || /\(optional\)/i.test(label) || /\[optional\]/i.test(label);
+      const hasValidationError = (await container.locator(':has-text("This field is required"), :has-text("Is a required property"), :has-text("please fill out this field" i), .error, .field-error').count().catch(() => 0)) > 0;
+      const hasRequiredWord = /\brequired\b/i.test(label);
+      const hasExplicitOptionalTag =
+        /\(\s*optional\s*\)/i.test(label) ||
+        /\[\s*optional\s*\]/i.test(label) ||
+        /(?:^|\s*[-–—:|]\s*)\boptional\s*$/i.test(label) ||
+        /\boptional\s*$/i.test(label.trim());
 
-      const isRequired = (hasRequiredAttr || hasAsterisk || hasRequiredWord) && !hasOptionalWord;
+      // DOM attributes, asterisks, and active validation errors always take definitive precedence
+      const isRequired = hasRequiredAttr || hasAsterisk || hasValidationError || (hasRequiredWord && !hasExplicitOptionalTag);
 
       // Check field types:
       // 1. Textarea

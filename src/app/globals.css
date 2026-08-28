@@ -1780,7 +1780,7 @@ details.glass-card>summary::marker {
     display: flex !important;
     align-items: flex-end !important;
     align-content: flex-start !important;
-    gap: 0.65rem !important;
+    gap: 1rem !important;
     flex-wrap: wrap !important;
     width: 100% !important;
   }
@@ -1995,7 +1995,7 @@ body.light-theme .card-more-btn:hover {
     flex-wrap: nowrap !important;
     align-items: stretch !important;
     align-content: flex-start !important;
-    gap: 0.5rem !important;
+    gap: 1rem !important;
     width: 100% !important;
     height: auto !important;
   }
