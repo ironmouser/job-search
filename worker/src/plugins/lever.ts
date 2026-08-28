@@ -11,6 +11,7 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { pluginRegistry } from '../registry';
 import { UniversalQuestionResolver } from './question-resolver';
+import { replaceValue } from '../utils/form-commit';
 
 /**
  * LeverPlugin — automation plugin for Lever ATS.
