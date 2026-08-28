@@ -200,7 +200,7 @@ export class AshbyPlugin extends ATSPlugin {
         '[class*="errorBanner" i]',
         '[class*="Banner" i]',
       ],
-      maxWaitMs: 8000,
+      maxWaitMs: 30000,
     });
 
     const screenshotPath = await browser.screenshot('ashby-submitted.png');

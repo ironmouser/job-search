@@ -1460,7 +1460,7 @@ export abstract class ATSPlugin {
     }
   ): Promise<void> {
     const page = browser.page;
-    const maxWait = options.maxWaitMs ?? 8000;
+    const maxWait = options.maxWaitMs ?? 30000;
     const startTime = Date.now();
     const platform = options.platformDisplayName;
 
@@ -1489,8 +1489,18 @@ export abstract class ATSPlugin {
       ...(options.expectedUrlKeywords || []).map((k) => k.toLowerCase()),
     ];
 
-    while (Date.now() - startTime < maxWait) {
+    while (Date.now() - startTime < maxWait || (Date.now() - startTime < 45000)) {
       await page.waitForTimeout(1000);
+
+      const isSubmittingActive = (await ctx.locator(
+        'button:disabled, button[aria-disabled="true"], button[aria-busy="true"], [class*="submitting" i], [class*="loading" i], [class*="spinner" i], .ashby-application-form-submit-button:disabled, button:has([class*="spinner" i]), [data-testid*="submitting" i]'
+      ).count().catch(() => 0)) > 0;
+
+      if (isSubmittingActive && Date.now() - startTime >= maxWait) {
+        await logger.info('submission_in_progress', `Waiting for ${platform} submission mutation to complete...`);
+      } else if (Date.now() - startTime >= maxWait && !isSubmittingActive) {
+        break;
+      }
 
       const currentUrl = (page.url() || '').toLowerCase();
       const pageText = ((await page.textContent('body').catch(() => '')) || '').toLowerCase();
