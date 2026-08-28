@@ -255,10 +255,11 @@ export async function searchJobDescriptionFromSerpApi(
   if (!apiKey || !title || !company) return null;
 
   try {
-    const cleanTitle = title.trim();
-    const cleanCompany = company.trim();
-    const query = `"${cleanTitle}" "${cleanCompany}"`;
+    const cleanComp = cleanCompanyName(company).trim();
+    const cleanTit = title.replace(/\([^)]*\)/g, '').trim(); // Remove parentheticals for search
+    if (!cleanComp || !cleanTit) return null;
 
+    const query = `"${cleanComp}" ${cleanTit}`;
     console.info(`[SerpAPI Fallback] Searching Google Jobs for: ${query}`);
 
     const params = new URLSearchParams({
@@ -282,26 +283,57 @@ export async function searchJobDescriptionFromSerpApi(
       const jobResults = Array.isArray(data?.jobs_results) ? data.jobs_results : [];
 
       if (jobResults.length > 0) {
+        const targetCompanyTokens = cleanComp
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(t => t.length > 2 && !['inc', 'llc', 'corp', 'company', 'the', 'group', 'services'].includes(t));
+
+        const targetTitleTokens = cleanTit
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(t => t.length > 2);
+
         for (const item of jobResults) {
           const desc = (item.description || '').trim();
-          if (desc && desc.length > 200) {
-            const applyOptions: Array<{ title?: string; link?: string }> = Array.isArray(item.apply_options)
-              ? item.apply_options
-              : [];
-            let directAtsUrl: string | null = null;
-            for (const opt of applyOptions) {
-              if (opt.link && isKnownATSUrl(opt.link)) {
-                directAtsUrl = cleanJobUrl(opt.link);
-                break;
-              }
-            }
-            const primaryUrl = applyOptions.length > 0 && applyOptions[0].link ? cleanJobUrl(applyOptions[0].link) : item.share_link;
-            return {
-              description: desc,
-              applicationUrl: directAtsUrl || primaryUrl || null,
-              finalUrl: primaryUrl || item.share_link || undefined
-            };
+          if (!desc || desc.length < 200) continue;
+
+          const itemCompany = cleanCompanyName(item.company_name || '').toLowerCase();
+          const itemTitle = (item.title || '').toLowerCase();
+
+          // 1. Verify Company Match: Check token overlap or substring match
+          const companyDirectMatch =
+            itemCompany.includes(cleanComp.toLowerCase()) ||
+            cleanComp.toLowerCase().includes(itemCompany);
+
+          const companyTokenMatch = targetCompanyTokens.some(tok => itemCompany.includes(tok));
+
+          if (!companyDirectMatch && !companyTokenMatch) {
+            // Unrelated company returned by Google search
+            continue;
           }
+
+          // 2. Verify Title Match: At least some title keyword overlap
+          const titleOverlap = targetTitleTokens.filter(tok => itemTitle.includes(tok));
+          if (targetTitleTokens.length > 0 && titleOverlap.length === 0) {
+            continue;
+          }
+
+          const applyOptions: Array<{ title?: string; link?: string }> = Array.isArray(item.apply_options)
+            ? item.apply_options
+            : [];
+          let directAtsUrl: string | null = null;
+          for (const opt of applyOptions) {
+            if (opt.link && isKnownATSUrl(opt.link)) {
+              directAtsUrl = cleanJobUrl(opt.link);
+              break;
+            }
+          }
+          const primaryUrl = applyOptions.length > 0 && applyOptions[0].link ? cleanJobUrl(applyOptions[0].link) : item.share_link;
+          return {
+            description: desc,
+            applicationUrl: directAtsUrl || primaryUrl || null,
+            finalUrl: primaryUrl || item.share_link || undefined
+          };
         }
       }
     }

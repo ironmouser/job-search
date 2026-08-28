@@ -226,3 +226,80 @@ export async function restoreMissingJobTitles(): Promise<{
         restoredUsers
     };
 }
+
+/**
+ * Scans the database for jobs where applicationUrl or description was incorrectly set
+ * to a mismatched third-party URL (e.g. Ashby GPTZero) when the job company is NOT GPTZero,
+ * and resets those fields so the job can be accurately scraped, viewed, and applied to.
+ */
+export async function cleanMismatchedJobs(): Promise<{
+    cleanedJobCount: number;
+    cleanedJobs: Array<{ id: string; title: string; company: string; previousUrl: string | null }>;
+}> {
+    const corruptedJobs = await prisma.job.findMany({
+        where: {
+            OR: [
+                { applicationUrl: { contains: 'GPTZero' } },
+                { applicationUrl: { contains: 'gptzero' } },
+                { applicationUrl: { contains: '65467d13-846b-4bf1-b125-caae861f2f00' } }
+            ]
+        },
+        select: {
+            id: true,
+            title: true,
+            company: true,
+            url: true,
+            applicationUrl: true,
+            description: true,
+        }
+    });
+
+    const cleanedJobs: Array<{ id: string; title: string; company: string; previousUrl: string | null }> = [];
+
+    for (const job of corruptedJobs) {
+        // Only clean if the company is NOT genuinely GPTZero
+        if (!job.company.toLowerCase().includes('gptzero')) {
+            const previousUrl = job.applicationUrl;
+            
+            // Clean description if it was contaminated with GPTZero's description
+            let newDesc = job.description;
+            if (newDesc && (newDesc.toLowerCase().includes('gptzero') || newDesc.includes('65467d13-846b-4bf1-b125-caae861f2f00'))) {
+                // Strip the corrupted GPTZero trailing text or reset to original stub if available
+                newDesc = newDesc.replace(/\n*Apply at: https:\/\/jobs\.ashbyhq\.com\/GPTZero[^\n]*/gi, '').trim();
+            }
+
+            await prisma.job.update({
+                where: { id: job.id },
+                data: {
+                    applicationUrl: null,
+                    description: newDesc || job.description
+                }
+            });
+
+            // Also clean any ApplicationAsset records for this job that were tailored against GPTZero instead of the real company
+            await prisma.applicationAsset.deleteMany({
+                where: {
+                    jobId: job.id,
+                    OR: [
+                        { tailoredResumeMarkdown: { contains: 'GPTZero' } },
+                        { coverLetterMarkdown: { contains: 'GPTZero' } },
+                        { networkingMessage: { contains: 'GPTZero' } }
+                    ]
+                }
+            });
+
+            cleanedJobs.push({
+                id: job.id,
+                title: job.title,
+                company: job.company,
+                previousUrl
+            });
+        }
+    }
+
+    return {
+        cleanedJobCount: cleanedJobs.length,
+        cleanedJobs
+    };
+}
+

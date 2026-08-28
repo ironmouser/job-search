@@ -6,7 +6,17 @@ import { RefreshCw, Edit3, Save, ExternalLink, Copy, Check } from 'lucide-react'
 import SyncOverlay from './SyncOverlay';
 import { safeCopyToClipboard } from '@/lib/clipboard';
 
-export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription }: { jobId: string; jobUrl?: string | null; initialDescription?: string | null }) {
+export default function AutoFetchJobDetails({ 
+  jobId, 
+  jobUrl, 
+  initialDescription,
+  onDetailsFetched
+}: { 
+  jobId: string; 
+  jobUrl?: string | null; 
+  initialDescription?: string | null;
+  onDetailsFetched?: () => void;
+}) {
   const router = useRouter();
   const [status, setStatus] = useState<'fetching' | 'scoring' | 'error'>('fetching');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -92,6 +102,11 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
         if (!isMounted) return;
         setStatus('scoring');
         
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('job-assets-updated', { detail: { jobId } }));
+        }
+        onDetailsFetched?.();
+
         // Reload page to show the newly updated and scored data
         router.refresh();
       } catch (err: any) {
@@ -131,6 +146,11 @@ export default function AutoFetchJobDetails({ jobId, jobUrl, initialDescription 
         
         await fetch('/api/score', { method: 'POST', body: JSON.stringify({ jobId: targetJobId }) });
         
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('job-assets-updated', { detail: { jobId: targetJobId } }));
+        }
+        onDetailsFetched?.();
+
         if (targetJobId !== jobId) {
             router.push(`/job/${targetJobId}`);
         } else {

@@ -432,6 +432,10 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
                   jobId={job.id} 
                   jobUrl={job.url || ''} 
                   initialDescription={job.description || ''} 
+                  onDetailsFetched={() => {
+                    jobDetailCache.delete(job.id);
+                    fetchJobData(job.id, true);
+                  }}
                 />
               ) : (
                 <div 
@@ -534,6 +538,10 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
                     userPlanTier={planTier} 
                     generationsLeftThisWeek={assetGenerationsLeft} 
                     hasResume={hasBaseResume} 
+                    onSuccess={() => {
+                      jobDetailCache.delete(job.id);
+                      fetchJobData(job.id, true);
+                    }}
                   />
                 </div>
               </div>

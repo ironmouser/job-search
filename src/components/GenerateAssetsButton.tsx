@@ -19,6 +19,7 @@ interface GenerateAssetsButtonProps {
   totalResumesGenerated?: number;
   totalApplied?: number;
   buttonLabel?: string;
+  onSuccess?: () => void;
 }
 
 export default function GenerateAssetsButton({
@@ -31,6 +32,7 @@ export default function GenerateAssetsButton({
   totalResumesGenerated,
   totalApplied,
   buttonLabel,
+  onSuccess,
 }: GenerateAssetsButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -59,9 +61,13 @@ export default function GenerateAssetsButton({
       });
 
       if (res.ok) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('job-assets-updated', { detail: { jobId } }));
+        }
         if (scrollToTopOnClick) {
           scrollToTop();
         }
+        onSuccess?.();
         router.refresh();
       } else {
         const data = await res.json();

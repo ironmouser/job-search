@@ -8,8 +8,8 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
     if (!desc) return false;
     const clean = desc.trim();
 
-    // Hard minimum: real descriptions are always >= 1000 chars
-    if (clean.length < 1000) return false;
+    // Absolute minimum: anything under 150 chars cannot be a real job description
+    if (clean.length < 150) return false;
 
     const lower = clean.toLowerCase();
 
@@ -17,7 +17,7 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
     if (
       lower.includes("click link to view full details") ||
       (lower.includes("job listing for ") && lower.includes("click link")) ||
-      (lower.includes("job opportunity imported from your email") && clean.length < 1500) ||
+      (lower.includes("job opportunity imported from your email") && clean.length < 500) ||
       lower.startsWith("apply at:") ||
       /^\s*job listing for .* click link to view full details/i.test(clean)
     ) {
@@ -25,8 +25,8 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
     }
 
     // "Found via email link: <url>" — the URL alone can be hundreds of chars but is not a description
-    if (/found via email/i.test(clean)) return false;
-    if (/position at/i.test(clean) && clean.length < 1200) return false;
+    if (/found via email/i.test(clean) && clean.length < 600) return false;
+    if (/position at/i.test(clean) && clean.length < 500) return false;
 
     // Content that is almost entirely a single URL
     if (/^https?:\/\/\S+$/.test(clean)) return false;
@@ -54,5 +54,13 @@ export function isDescriptionAdequate(desc?: string | null): boolean {
       return false;
     }
 
-    return true;
+    // Real descriptions >= 400 chars that pass all stub/checkpoint checks are adequate
+    if (clean.length >= 400) return true;
+
+    // For descriptions between 150 and 400 chars, verify presence of structured job content
+    const hasJobStructure = 
+      /[•\-\*]/.test(clean) ||
+      /\b(requirement|qualification|responsibilit|skill|experience|duties|overview|about the role|contractjob|job description)\b/i.test(clean);
+
+    return hasJobStructure;
 }
