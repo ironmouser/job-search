@@ -139,8 +139,8 @@ export async function fetchSmartRecruitersJobs(
     return {
       success: false,
       jobs: [],
-      error: `SmartRecruiters returned HTTP ${res.statusCode}`,
-      statusCode: res.statusCode,
+      error: `SmartRecruiters returned HTTP ${htmlRes.statusCode}`,
+      statusCode: htmlRes.statusCode,
     };
   } catch (err: any) {
     return {
