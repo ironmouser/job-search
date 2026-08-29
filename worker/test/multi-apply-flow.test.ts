@@ -260,4 +260,66 @@ describe('Multi-Apply Button Navigation & Application Element Detection Tests', 
       await page.close();
     }
   });
+
+  // ─── Test 4: Application Tab Clicking ──────────────────────────────────────
+  it('Test 4 — Clicks Application Tab to reveal application form when initial tab only shows Job Details', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.setContent(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Ashby Style Job Details</title></head>
+        <body>
+          <div class="nav-tabs" role="tablist">
+            <button role="tab" id="tab-overview" class="active" aria-selected="true" onclick="showOverview()">Job Details</button>
+            <button role="tab" id="tab-application" aria-selected="false" onclick="showApplication()">Application</button>
+          </div>
+          <div id="tab-content">
+            <div id="overview-pane">
+              <h1>Lead Systems Architect</h1>
+              <p>Job description and requirements...</p>
+            </div>
+          </div>
+          <script>
+            function showOverview() {
+              document.getElementById('tab-content').innerHTML = '<div id="overview-pane"><h1>Lead Systems Architect</h1></div>';
+            }
+            function showApplication() {
+              document.getElementById('tab-content').innerHTML = '<form id="app-form"><input name="first_name" placeholder="First Name"/><input name="last_name" placeholder="Last Name"/><input type="file" name="resume"/></form>';
+            }
+          </script>
+        </body>
+        </html>
+      `);
+
+      const browserSession = new BrowserSession();
+      browserSession.page = page;
+      const mockLogger = new ExecutionLogger('test-session-tab', {
+        log: async () => {},
+        updateSession: async () => ({ session: {} as any }),
+      } as any);
+
+      const context: WorkflowContext = {
+        sessionId: 'test-session-tab',
+        userId: 'user-1',
+        jobId: 'job-1',
+        jobUrl: 'https://jobs.ashbyhq.com/example/job-1',
+        resumeMarkdown: '# Resume',
+        coverLetterMarkdown: '# Cover',
+        userProfile: { name: 'Jordan Lee', email: 'jordan@example.com' } as any,
+      };
+
+      const agent = new GenericApplicationAgent();
+      const result = await agent.initiateApplication(browserSession, context, mockLogger);
+
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.reachedForm, true);
+
+      // Verify form elements are now visible
+      const formInputs = await page.locator('input[name="first_name"], input[name="last_name"]').count();
+      assert.strictEqual(formInputs, 2);
+    } finally {
+      await page.close();
+    }
+  });
 });

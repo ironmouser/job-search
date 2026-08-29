@@ -318,6 +318,21 @@ export class GenericPageAnalyzer {
         const nameInputs = Array.from(document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="first" i], input[id*="last" i], input[id*="name" i], input[autocomplete*="name" i], input[placeholder*="name" i], input[aria-label*="name" i], [data-automation-id*="firstName" i], [data-automation-id*="lastName" i], [data-automation-id*="legalName" i]')).filter(el => !isObstructionOrNav(el));
         if (nameInputs.length > 0) hasName = true;
 
+        // Check for application tabs (e.g. Ashby/Jobvite "Application" tabs)
+        let hasAppTab = false;
+        const tabCandidates = Array.from(document.querySelectorAll('[role="tab"], button, a, li[role="tab"], [class*="tab" i], [data-tab*="app" i], [data-testid*="application" i]')).filter(el => !isObstructionOrNav(el));
+        for (const tab of tabCandidates) {
+          const t = (tab.textContent || '').trim().toLowerCase();
+          const role = tab.getAttribute('role') || '';
+          const testId = tab.getAttribute('data-testid') || tab.getAttribute('data-tab') || tab.className || '';
+          if (role === 'tab' || /tab|pill/i.test(testId) || /tab/i.test(tab.className)) {
+            if (/application|apply online|job application|application form|^apply$/i.test(t)) {
+              hasAppTab = true;
+              break;
+            }
+          }
+        }
+
         const allInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, textarea')).filter(el => !isObstructionOrNav(el));
         totalInputs = allInputs.length;
 
@@ -339,6 +354,7 @@ export class GenericPageAnalyzer {
           hasEmail,
           hasName,
           hasLogin,
+          hasAppTab,
           hasSubmit,
           hasNext,
         };
@@ -358,6 +374,7 @@ export class GenericPageAnalyzer {
           hasEmailInput: presence.hasEmail,
           hasNameInput: presence.hasName,
           hasLoginInput: presence.hasLogin,
+          hasApplicationTab: presence.hasAppTab,
           hasSubmitButton: presence.hasSubmit,
           hasWizardNextButton: presence.hasNext,
           frameContextsCount: frames.length,
@@ -382,6 +399,7 @@ export class GenericPageAnalyzer {
       hasEmailInput: false,
       hasNameInput: false,
       hasLoginInput: false,
+      hasApplicationTab: false,
       hasSubmitButton: false,
       hasWizardNextButton: false,
       frameContextsCount: frames.length,
@@ -396,6 +414,7 @@ export class GenericPageAnalyzer {
     hasResumeUpload: boolean;
     hasLoginInput: boolean;
     hasNameInput: boolean;
+    hasApplicationTab: boolean;
     inputCount: number;
   }> {
     const presence = await this.inspectFormPresence(page);
@@ -404,12 +423,13 @@ export class GenericPageAnalyzer {
       hasResumeUpload: presence.hasResumeUpload,
       hasLoginInput: presence.hasLoginInput,
       hasNameInput: presence.hasNameInput,
+      hasApplicationTab: !!presence.hasApplicationTab,
       inputCount: presence.inputCount,
     };
   }
 
   /**
-   * Scans the page for candidate interactive controls (buttons, links, inputs)
+   * Scans the page for candidate interactive controls (buttons, links, inputs, tabs)
    * and ranks them by application-intent confidence score (0–100).
    */
   static async discoverAndRankControls(
@@ -440,7 +460,7 @@ export class GenericPageAnalyzer {
         bbox: { x: number; y: number; width: number; height: number } | null;
       }> = [];
 
-      const elements = Array.from(document.querySelectorAll('button, a, input[type="button"], input[type="submit"], [role="button"]'));
+      const elements = Array.from(document.querySelectorAll('button, a, input[type="button"], input[type="submit"], [role="button"], [role="tab"], li[role="tab"], [data-testid*="application" i], [data-testid*="apply" i], [data-tab*="application" i], [data-tab*="apply" i]'));
 
       elements.forEach((el, idx) => {
         const isInsideCookieBanner = !!el.closest(
@@ -523,7 +543,13 @@ export class GenericPageAnalyzer {
       const negativeSignals: string[] = [];
 
       // 1. Positive semantic text check
-      if (POSITIVE_APPLY_TEXT_REGEX.test(allText)) {
+      if (/application|apply/i.test(allText) && (c.role === 'tab' || /tab|pill/i.test(allAttrs))) {
+        score += 65;
+        positiveSignals.push('element:application_tab');
+      } else if (/^application$/i.test(allText) || /^application form$/i.test(allText) || /^apply online$/i.test(allText)) {
+        score += 65;
+        positiveSignals.push('text:application_tab_label');
+      } else if (POSITIVE_APPLY_TEXT_REGEX.test(allText)) {
         if (/apply now|start application|start your application|start my application|begin application|apply for this job|apply directly|i'm interested|i am interested|interested|i have a resume|i have an updated resume|continue without documents|continue without resume|continue application/i.test(allText)) {
           score += 65;
           positiveSignals.push('text:explicit_apply_action');

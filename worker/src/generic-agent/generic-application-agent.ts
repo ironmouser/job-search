@@ -707,11 +707,28 @@ export class GenericApplicationAgent {
       `a:has-text("Autofill with Resume")`,
       `button:has-text("Apply Online")`,
       `a:has-text("Apply Online")`,
+      `[role="tab"]:has-text("Application")`,
+      `[role="tab"]:has-text("Apply")`,
+      `[role="tab"]:has-text("Application Form")`,
+      `button[role="tab"]:has-text("Application")`,
+      `a[role="tab"]:has-text("Application")`,
+      `button:has-text("Application Form")`,
+      `a:has-text("Application Form")`,
+      `button:has-text("Application")`,
+      `a:has-text("Application")`,
       `button:has-text("Apply")`,
       `a:has-text("Apply")`,
       `[data-automation-id*="apply" i]`,
+      `[data-testid*="application" i]`,
       `[data-testid*="apply" i]`,
+      `[data-tab*="application" i]`,
+      `[data-tab*="apply" i]`,
+      `[aria-controls*="application" i]`,
+      `[aria-controls*="apply" i]`,
       `a[href*="/apply" i]`,
+      `a[href*="/application" i]`,
+      `a[href*="#application" i]`,
+      `a[href*="#apply" i]`,
     ];
 
     for (const sel of selectors) {
@@ -727,12 +744,27 @@ export class GenericApplicationAgent {
   }
 
   /**
-   * Scans page and child frames for any visible, credible Apply button or link.
+   * Scans page and child frames for any visible, credible Apply button, application tab, or link.
    */
   private async findAnyApplyButton(
     page: Page
   ): Promise<{ text: string; locator: Locator } | null> {
     const applySelectors = [
+      '[role="tab"]:has-text("Application")',
+      '[role="tab"]:has-text("Apply")',
+      '[role="tab"]:has-text("Application Form")',
+      'button[role="tab"]:has-text("Application")',
+      'a[role="tab"]:has-text("Application")',
+      'button:has-text("Application Form")',
+      'a:has-text("Application Form")',
+      'button:has-text("Application")',
+      'a:has-text("Application")',
+      '[data-testid*="application" i]',
+      '[data-testid*="apply" i]',
+      '[data-tab*="application" i]',
+      '[data-tab*="apply" i]',
+      '[aria-controls*="application" i]',
+      '[aria-controls*="apply" i]',
       'button:has-text("Apply for this job")',
       'a:has-text("Apply for this job")',
       'button:has-text("Apply Now")',
@@ -769,6 +801,9 @@ export class GenericApplicationAgent {
       'a[data-automation-id*="apply" i]',
       'a.postings-btn',
       'a[href*="/apply" i]',
+      'a[href*="/application" i]',
+      'a[href*="#application" i]',
+      'a[href*="#apply" i]',
       'button:has-text("I\'m interested")',
       'a:has-text("I\'m interested")',
       'button:has-text("I have a resume")',

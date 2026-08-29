@@ -97,6 +97,7 @@ export interface FormPresenceInfo {
   hasEmailInput: boolean;
   hasNameInput: boolean;
   hasLoginInput: boolean;
+  hasApplicationTab?: boolean;
   hasSubmitButton: boolean;
   hasWizardNextButton: boolean;
   frameContextsCount: number;
