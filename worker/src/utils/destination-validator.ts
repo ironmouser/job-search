@@ -174,10 +174,10 @@ const NAV_PATHS = [
   '/careers', '/jobs', // job listing pages (not the apply link itself)
   '/faq', '/help', '/support',
   '/home', '/',
-  '/companies',
+  '/companies', '/remote-companies', '/remote-jobs',
 ];
 
-const NAV_TEXT_REGEX = /\b(about us|contact us|home|pricing|our team|our story|browse jobs|view all jobs|back to jobs|back to search|create job alert|share this job|report this job|follow company|bookmark)\b/i;
+const NAV_TEXT_REGEX = /\b(about(\s+us)?|contact(\s+us)?|home|pricing|our team|our story|browse jobs|view all jobs|view more jobs|back to jobs|back to search|create job alert|share this job|report this job|follow company|bookmark|careers?|support(\s+us)?|company profile|advertise|testimonials?|for companies|for engineers|case studies|how we vet|rate calculator|job descriptions|interview questions|partner program)\b/i;
 
 const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|start your application|start my application|begin application|submit application|continue to (application|employer|company)|proceed to application|apply with resume|apply online|go to application|i'm interested|i am interested|interested in (this )?(job|role|position)?|express interest|i have a resume|i have an updated resume|continue with resume|continue without documents|continue without (a )?resume|continue application|upload resume|upload your resume|yes,? i have a resume|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
 
@@ -234,9 +234,11 @@ function getHostname(url: string): string {
 
 function getPathname(url: string): string {
   try {
-    return new URL(url).pathname.toLowerCase();
+    const raw = new URL(url).pathname.toLowerCase();
+    return raw.replace(/\/+$/, '') || '/';
   } catch {
-    return url.toLowerCase();
+    const clean = url.toLowerCase().split('?')[0].split('#')[0];
+    return clean.replace(/\/+$/, '') || '/';
   }
 }
 
@@ -305,7 +307,7 @@ export function classifyCandidate(
 
   // ── 2. Auth / signup gates (reject general login links, but allow "Sign In to Apply" action buttons) ───
   const isApplyAuthAction = APPLY_AUTH_TEXT_REGEX.test(allText);
-  if (!isApplyAuthAction && (AUTH_PATHS.some(p => pathname.startsWith(p)) || AUTH_TEXT_REGEX.test(allText))) {
+  if (!isApplyAuthAction && (AUTH_PATHS.some(p => pathname === p || pathname.startsWith(`${p}/`)) || AUTH_TEXT_REGEX.test(allText))) {
     return { classification: CandidateClassification.AUTH_LINK, accepted: false, reason: 'Matches auth/signup path or text', resolvedHref };
   }
 
@@ -314,28 +316,38 @@ export function classifyCandidate(
     return { classification: CandidateClassification.SOCIAL_LINK, accepted: false, reason: 'Matches social media domain', resolvedHref };
   }
 
-  // ── 4. Direct ATS link ────────────────────────────────────────────────────
+  // ── 4. Navigation links (Reject purely navigational text/paths unless explicit apply text is present) ──
+  const isExplicitApplyText = APPLY_TEXT_REGEX.test(allText);
+  const isNavPath = NAV_PATHS.some(p => pathname === p || pathname.startsWith(`${p}/`));
+  const isNavText = NAV_TEXT_REGEX.test(allText);
+
+  if (!isExplicitApplyText && (isNavText || (isNavPath && !APPLICATION_INDICATOR_REGEX.test(pathname)))) {
+    return { classification: CandidateClassification.NAV_LINK, accepted: false, reason: 'Matches navigation page path or text', resolvedHref };
+  }
+
+  // ── 5. Direct ATS link ────────────────────────────────────────────────────
   if (resolvedHref && isKnownATSDomain(resolvedHref)) {
+    // If the ATS URL is just a generic company home / careers directory without a specific job path/query or apply context, reject as nav link
+    if (!isExplicitApplyText && (pathname === '/' || isNavPath)) {
+      return { classification: CandidateClassification.NAV_LINK, accepted: false, reason: 'Generic ATS portal root / careers directory without specific job ID or apply action', resolvedHref };
+    }
     return { classification: CandidateClassification.DIRECT_ATS_LINK, accepted: true, reason: 'Points to known ATS domain', resolvedHref };
   }
 
-  // ── 5. Aggregator redirect URL pattern ────────────────────────────────────
+  // ── 6. Aggregator redirect URL pattern ────────────────────────────────────
   if (resolvedHref && AGGREGATOR_REDIRECT_URL_REGEX.test(resolvedHref)) {
     return { classification: CandidateClassification.AGGREGATOR_REDIRECT, accepted: true, reason: 'Matches aggregator external apply redirect pattern', resolvedHref };
   }
 
-  // ── 6. Navigation links ───────────────────────────────────────────────────
-  if (NAV_PATHS.some(p => pathname === p || pathname.startsWith(`${p}/`)) || NAV_TEXT_REGEX.test(allText)) {
-    return { classification: CandidateClassification.NAV_LINK, accepted: false, reason: 'Matches navigation page path or text', resolvedHref };
-  }
-
   // ── 7. Application action buttons (with or without extractable URL) ──────
-  // ── 7. Application action buttons (with or without extractable URL) ──────
-  const isExplicitApplyText = APPLY_TEXT_REGEX.test(allText);
   const isApplyAttrOnly = !isExplicitApplyText && /apply/i.test(allAttrs);
   const isBlocklistedText = /^(share|save|report|follow|bookmark|flag|close|back|cancel|return|reject all|accept all|cookie settings|manage cookies|privacy choices)\b/i;
 
   if (isExplicitApplyText || (isApplyAttrOnly && !isBlocklistedText && text.length < 60)) {
+    // If it points to a known ATS domain with explicit apply text
+    if (resolvedHref && isKnownATSDomain(resolvedHref)) {
+      return { classification: CandidateClassification.DIRECT_ATS_LINK, accepted: true, reason: 'Apply action linking directly to ATS', resolvedHref };
+    }
     // If it has an external href pointing away from the job board, it's an APPLICATION_LINK
     if (resolvedHref && !isAggregatorDomain(resolvedHref) && resolvedHref.startsWith('http')) {
       return { classification: CandidateClassification.APPLICATION_LINK, accepted: true, reason: 'External link with apply-context text', resolvedHref };

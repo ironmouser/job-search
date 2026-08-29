@@ -113,6 +113,86 @@ function runTests() {
   );
   console.log('✓ Test 8 Passed: "I have a resume" option correctly accepted as application trigger');
 
+  // Test 9: Rejection of generic footer Careers link pointing to ATS domain
+  const genericAtsFooterCandidate = classifyCandidate({
+    text: 'Careers',
+    href: 'https://lemonio.bamboohr.com/careers/',
+    ariaLabel: '',
+    title: '',
+    dataTracking: '',
+    id: '',
+    className: '',
+    tagName: 'a',
+    role: 'link',
+  }, 'https://lemon.io/for-developers/');
+
+  console.assert(genericAtsFooterCandidate.accepted === false, 'Expected generic ATS footer Careers link to be rejected');
+  console.assert(
+    genericAtsFooterCandidate.classification === CandidateClassification.NAV_LINK,
+    `Expected NAV_LINK for generic ATS footer, got ${genericAtsFooterCandidate.classification}`
+  );
+  console.log('✓ Test 9 Passed: Generic ATS footer "Careers" link rejected as NAV_LINK');
+
+  // Test 10: Acceptance of explicit "Apply now" button to custom external application portal
+  const explicitApplyCandidate = classifyCandidate({
+    text: 'Apply now',
+    href: 'https://me.lemon.io/escape-the-matrix',
+    ariaLabel: '',
+    title: '',
+    dataTracking: '',
+    id: '',
+    className: 'btn-apply',
+    tagName: 'a',
+    role: 'link',
+  }, 'https://lemon.io/for-developers/');
+
+  console.assert(explicitApplyCandidate.accepted === true, 'Expected explicit Apply now button to be accepted');
+  console.assert(
+    explicitApplyCandidate.classification === CandidateClassification.APPLICATION_LINK,
+    `Expected APPLICATION_LINK, got ${explicitApplyCandidate.classification}`
+  );
+  console.log('✓ Test 10 Passed: Explicit "Apply now" button correctly accepted as APPLICATION_LINK');
+
+  // Test 11: Specific job post link to ATS domain is accepted as DIRECT_ATS_LINK
+  const specificAtsJobCandidate = classifyCandidate({
+    text: 'Senior Software Engineer',
+    href: 'https://jobs.lever.co/netflix/abc-123-def',
+    ariaLabel: '',
+    title: '',
+    dataTracking: '',
+    id: '',
+    className: '',
+    tagName: 'a',
+    role: 'link',
+  }, 'https://nodesk.co/remote-jobs/netflix-senior-software-engineer');
+
+  console.assert(specificAtsJobCandidate.accepted === true, 'Expected specific ATS job link to be accepted');
+  console.assert(
+    specificAtsJobCandidate.classification === CandidateClassification.DIRECT_ATS_LINK,
+    `Expected DIRECT_ATS_LINK, got ${specificAtsJobCandidate.classification}`
+  );
+  console.log('✓ Test 11 Passed: Specific ATS job posting URL correctly accepted as DIRECT_ATS_LINK');
+
+  // Test 12: Generic root career directory link with company profile text is rejected as NAV_LINK
+  const companyProfileCandidate = classifyCandidate({
+    text: 'Company profile',
+    href: 'https://nodesk.co/remote-companies/lemon-io/',
+    ariaLabel: '',
+    title: '',
+    dataTracking: '',
+    id: '',
+    className: '',
+    tagName: 'a',
+    role: 'link',
+  }, 'https://nodesk.co/remote-jobs/lemon-io-senior-product-manager');
+
+  console.assert(companyProfileCandidate.accepted === false, 'Expected Company profile link to be rejected');
+  console.assert(
+    companyProfileCandidate.classification === CandidateClassification.NAV_LINK,
+    `Expected NAV_LINK, got ${companyProfileCandidate.classification}`
+  );
+  console.log('✓ Test 12 Passed: "Company profile" navigation link correctly rejected as NAV_LINK');
+
   console.log('All destination extractor tests passed successfully!');
 }
 

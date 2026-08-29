@@ -304,22 +304,40 @@ export class BrowserSession {
     const page = this.page;
     const startTime = Date.now();
 
-    while (Date.now() - startTime < timeoutMs) {
-      for (const selector of selectors) {
-        const el = await page.$(selector).catch(() => null);
-        if (el && (await el.isVisible().catch(() => true))) {
-          return page;
-        }
+    // Priority 1: Check frames whose URL explicitly matches known ATS domains
+    const atsDomains = ['greenhouse.io', 'lever.co', 'ashbyhq.com', 'smartrecruiters.com', 'myworkdayjobs.com', 'icims.com', 'workable.com', 'taleo.net'];
+    for (const frame of page.frames()) {
+      if (frame === page.mainFrame()) continue;
+      const frameUrl = frame.url().toLowerCase();
+      if (atsDomains.some((d) => frameUrl.includes(d))) {
+        return frame;
       }
+    }
+
+    // Filter out overly generic selectors when probing page vs child frames
+    const specificSelectors = selectors.filter((s) => s !== 'form' && s !== 'input[type="email"]');
+    const searchSelectors = specificSelectors.length > 0 ? specificSelectors : selectors;
+
+    while (Date.now() - startTime < timeoutMs) {
+      // 1. Check non-main frames first for application form selectors
       for (const frame of page.frames()) {
         if (frame === page.mainFrame()) continue;
-        for (const selector of selectors) {
+        for (const selector of searchSelectors) {
           const el = await frame.$(selector).catch(() => null);
           if (el && (await el.isVisible().catch(() => true))) {
             return frame;
           }
         }
       }
+
+      // 2. Check main page for specific application form selectors
+      for (const selector of searchSelectors) {
+        const el = await page.$(selector).catch(() => null);
+        if (el && (await el.isVisible().catch(() => true))) {
+          return page;
+        }
+      }
+
       await page.waitForTimeout(500);
     }
     return page;

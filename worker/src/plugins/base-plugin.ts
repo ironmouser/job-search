@@ -572,52 +572,78 @@ export abstract class ATSPlugin {
     // and save-draft buttons, not on final-submission buttons.
     const BLOCKLIST = /\b(next|continue|back|previous|save|cancel|skip|draft)\b/i;
 
-    // ── Tier 1: platform-specific semantic selectors ───────────────────────
-    for (const sel of semanticSelectors) {
-      const el = await ctx.$(sel).catch(() => null);
-      if (el) {
-        await logger.info('submit_btn_found', `Submit button located via semantic selector: "${sel}"`);
-        return el;
+    const searchInContext = async (targetCtx: import('playwright').Frame | import('playwright').Page) => {
+      // ── Tier 1: platform-specific semantic selectors ───────────────────────
+      for (const sel of semanticSelectors) {
+        const el = await targetCtx.$(sel).catch(() => null);
+        if (el) {
+          await logger.info('submit_btn_found', `Submit button located via semantic selector: "${sel}"`);
+          return el;
+        }
       }
-    }
 
-    // ── Tier 2: standard HTML submit attribute ─────────────────────────────
-    const tier2 = await ctx.$('button[type="submit"], input[type="submit"]').catch(() => null);
-    if (tier2) {
-      await logger.info('submit_btn_found', 'Submit button located via type="submit"');
-      return tier2;
-    }
-
-    // ── Tier 3: fuzzy attribute/class contains "submit", text-validated ────
-    // CSS attribute selectors support case-insensitive matching via the `i` flag.
-    const FUZZY_SELECTOR = [
-      'button[class*="submit" i]',
-      'button[id*="submit" i]',
-      'button[name*="submit" i]',
-      'button[data-testid*="submit" i]',
-      'button[aria-label*="submit" i]',
-      'input[id*="submit" i]',
-      'input[name*="submit" i]',
-      'input[data-testid*="submit" i]',
-    ].join(', ');
-
-    const candidates = await ctx.$$(FUZZY_SELECTOR).catch(() => []);
-    for (const candidate of candidates) {
-      const text = ((await candidate.textContent().catch(() => null)) ?? '').trim();
-      if (!BLOCKLIST.test(text)) {
-        await logger.info('submit_btn_found', `Submit button located via fuzzy attr/class match (text: "${text}")`);
-        return candidate;
+      // ── Tier 2: standard HTML submit attribute ─────────────────────────────
+      const tier2 = await targetCtx.$('button[type="submit"], input[type="submit"]').catch(() => null);
+      if (tier2) {
+        await logger.info('submit_btn_found', 'Submit button located via type="submit"');
+        return tier2;
       }
-    }
 
-    // ── Tier 4: visible text contains "submit", blocklist-validated ─────────
-    const allClickable = await ctx.$$('button, a[role="button"]').catch(() => []);
-    for (const el of allClickable) {
-      const text = ((await el.textContent().catch(() => null)) ?? '').trim();
-      if (/submit/i.test(text) && !BLOCKLIST.test(text)) {
-        await logger.info('submit_btn_found', `Submit button located via text-content scan (text: "${text}")`);
-        return el;
+      // ── Tier 3: fuzzy attribute/class contains "submit", text-validated ────
+      const FUZZY_SELECTOR = [
+        'button[class*="submit" i]',
+        'button[id*="submit" i]',
+        'button[name*="submit" i]',
+        'button[data-testid*="submit" i]',
+        'button[aria-label*="submit" i]',
+        'input[id*="submit" i]',
+        'input[name*="submit" i]',
+        'input[data-testid*="submit" i]',
+      ].join(', ');
+
+      const candidates = await targetCtx.$$(FUZZY_SELECTOR).catch(() => []);
+      for (const candidate of candidates) {
+        const text = ((await candidate.textContent().catch(() => null)) ?? '').trim();
+        if (!BLOCKLIST.test(text)) {
+          await logger.info('submit_btn_found', `Submit button located via fuzzy attr/class match (text: "${text}")`);
+          return candidate;
+        }
       }
+
+      // ── Tier 4: visible text contains "submit", blocklist-validated ─────────
+      const allClickable = await targetCtx.$$('button, a[role="button"]').catch(() => []);
+      for (const el of allClickable) {
+        const text = ((await el.textContent().catch(() => null)) ?? '').trim();
+        if (/submit/i.test(text) && !BLOCKLIST.test(text)) {
+          await logger.info('submit_btn_found', `Submit button located via text-content scan (text: "${text}")`);
+          return el;
+        }
+      }
+      return null;
+    };
+
+    const pageObj = 'page' in ctx ? ctx.page() : ctx;
+
+    // Retry loop for up to 10 seconds to allow SPA rendering / async iframe loading
+    const startTime = Date.now();
+    while (Date.now() - startTime < 10000) {
+      // 1. Check given context
+      const foundInCtx = await searchInContext(ctx);
+      if (foundInCtx) return foundInCtx;
+
+      // 2. Check all other frames on page as fallback
+      if (pageObj) {
+        for (const frame of pageObj.frames()) {
+          if (frame === ctx) continue;
+          const foundInFrame = await searchInContext(frame);
+          if (foundInFrame) {
+            await logger.info('submit_btn_found', `Submit button located inside frame: ${frame.url()}`);
+            return foundInFrame;
+          }
+        }
+      }
+
+      await (pageObj || ctx).waitForTimeout(1000);
     }
 
     await logger.warn('submit_btn_not_found', 'All four tiers exhausted — submit button not found');
@@ -979,6 +1005,21 @@ export abstract class ATSPlugin {
         await logger.info('resume_uploaded', `Resume uploaded to first available file input on ${this.displayName}`);
         await this.waitForResumeParserSettlement(browser, ctx, logger);
         return true;
+      }
+
+      // Fallback: Check child frames if ctx was main page
+      const pageObj = 'page' in ctx ? ctx.page() : ctx;
+      if (pageObj) {
+        for (const frame of pageObj.frames()) {
+          if (frame === ctx) continue;
+          const frameFileInputs = frame.locator('input[type="file"]');
+          if ((await frameFileInputs.count().catch(() => 0)) > 0) {
+            await frameFileInputs.first().setInputFiles(resumePath).catch(() => {});
+            await logger.info('resume_uploaded', `Resume uploaded to file input inside iframe on ${this.displayName}`);
+            await this.waitForResumeParserSettlement(browser, frame, logger);
+            return true;
+          }
+        }
       }
 
       await logger.warn('resume_upload_skipped', `No file upload inputs detected on ${this.displayName}`);
@@ -1431,6 +1472,25 @@ export abstract class ATSPlugin {
         await logger.info('cover_letter_uploaded', `Cover letter uploaded via targeted selector on ${this.displayName}`);
         await browser.page.waitForTimeout(1000);
         return true;
+      }
+
+      // Fallback: Check child frames if ctx was main page
+      const pageObj = 'page' in ctx ? ctx.page() : ctx;
+      if (pageObj) {
+        for (const frame of pageObj.frames()) {
+          if (frame === ctx) continue;
+          const frameClInput = frame.locator('input[type="file"][name*="cover" i], input[type="file"][id*="cover" i], textarea[name*="cover" i]').first();
+          if ((await frameClInput.count().catch(() => 0)) > 0) {
+            if (await frameClInput.evaluate((el) => el.tagName.toLowerCase() === 'textarea').catch(() => false)) {
+              await replaceValue(frameClInput, context.coverLetterMarkdown);
+            } else {
+              await frameClInput.setInputFiles(clPath).catch(() => {});
+            }
+            await logger.info('cover_letter_uploaded', `Cover letter uploaded inside iframe on ${this.displayName}`);
+            await browser.page.waitForTimeout(1000);
+            return true;
+          }
+        }
       }
 
       await logger.info('cover_letter_skipped', `No dedicated cover letter field found on ${this.displayName} — skipping cover letter`);

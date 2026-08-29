@@ -603,9 +603,13 @@ export class AggregatorHandler {
           if (result.resolvedHref && result.resolvedHref.startsWith('http')) {
             const validation = isLegitimateApplicationDestination(result.resolvedHref, sourceBoardUrl);
             if (validation.valid) {
+              const hasExplicitApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
               let priority = 1;
-              if (result.classification === CandidateClassification.DIRECT_ATS_LINK) priority = 3;
+              if (result.classification === CandidateClassification.DIRECT_ATS_LINK && hasExplicitApplyText) priority = 4;
+              else if (result.classification === CandidateClassification.APPLICATION_LINK && hasExplicitApplyText) priority = 3;
+              else if (result.classification === CandidateClassification.DIRECT_ATS_LINK) priority = 2;
               else if (result.classification === CandidateClassification.APPLICATION_LINK) priority = 2;
+              else if (result.classification === CandidateClassification.AGGREGATOR_REDIRECT) priority = 1;
 
               if (priority > directUrlPriority) {
                 directUrl = result.resolvedHref;
@@ -744,9 +748,13 @@ export class AggregatorHandler {
           if (result.resolvedHref && result.resolvedHref.startsWith('http')) {
             const validation = isLegitimateApplicationDestination(result.resolvedHref, sourceBoardUrl);
             if (validation.valid) {
+              const hasExplicitApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
               let priority = 1;
-              if (result.classification === CandidateClassification.DIRECT_ATS_LINK) priority = 3;
+              if (result.classification === CandidateClassification.DIRECT_ATS_LINK && hasExplicitApplyText) priority = 4;
+              else if (result.classification === CandidateClassification.APPLICATION_LINK && hasExplicitApplyText) priority = 3;
+              else if (result.classification === CandidateClassification.DIRECT_ATS_LINK) priority = 2;
               else if (result.classification === CandidateClassification.APPLICATION_LINK) priority = 2;
+              else if (result.classification === CandidateClassification.AGGREGATOR_REDIRECT) priority = 1;
 
               if (priority > targetUrlPriority) {
                 targetUrl = result.resolvedHref;

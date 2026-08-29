@@ -42,6 +42,7 @@ import { replaceValue } from '../utils/form-commit';
 export class GreenhousePlugin extends ATSPlugin {
   readonly platform = ATSPlatform.GREENHOUSE;
   readonly displayName = 'Greenhouse';
+  private formFrame: Frame | null = null;
 
   // ─── Detection ────────────────────────────────────────────────────────────
 
@@ -100,6 +101,8 @@ export class GreenhousePlugin extends ATSPlugin {
     const page = browser.page;
     await logger.info('plugin_loaded', `Greenhouse plugin active — navigating to ${context.jobUrl}`);
 
+    this.formFrame = null;
+
     // Greenhouse embeds the apply form directly on the job posting page.
     // The page may lazy-load the form inside an iframe or via JS, so we wait
     // for either the direct form container or the Greenhouse iframe.
@@ -126,25 +129,49 @@ export class GreenhousePlugin extends ATSPlugin {
     ];
 
     let formFound = false;
-    for (const sel of formSelectors) {
-      const el = page.locator(sel).first();
-      if ((await el.count().catch(() => 0)) > 0) {
-        formFound = true;
-        await logger.info('form_located', `Located Greenhouse form container via: ${sel}`);
-        break;
-      }
-    }
 
-    if (!formFound) {
-      // Some companies embed Greenhouse in an iframe — check for that
+    // Poll for up to 10 seconds to allow dynamically injected frames/elements to render
+    const startTime = Date.now();
+    while (Date.now() - startTime < 10000) {
+      // 1. Check if form is embedded in any child iframe
       const frames = page.frames();
       for (const frame of frames) {
-        if (frame.url().includes('greenhouse.io')) {
-          await logger.info('form_located', 'Greenhouse form detected inside iframe');
+        if (frame === page.mainFrame()) continue;
+        const frameUrl = frame.url().toLowerCase();
+        if (frameUrl.includes('greenhouse.io') || frameUrl.includes('grnhse')) {
+          this.formFrame = frame;
           formFound = true;
+          await logger.info('form_located', `Greenhouse form detected inside iframe: ${frame.url()}`);
+          break;
+        }
+
+        // Check if iframe contains application form elements
+        for (const sel of formSelectors) {
+          const el = await frame.$(sel).catch(() => null);
+          if (el) {
+            this.formFrame = frame;
+            formFound = true;
+            await logger.info('form_located', `Greenhouse form detected inside iframe via selector: ${sel}`);
+            break;
+          }
+        }
+        if (formFound) break;
+      }
+      if (formFound) break;
+
+      // 2. Check if form exists directly on the main page
+      for (const sel of formSelectors) {
+        const el = page.locator(sel).first();
+        if ((await el.count().catch(() => 0)) > 0) {
+          formFound = true;
+          this.formFrame = null;
+          await logger.info('form_located', `Located Greenhouse form container via: ${sel}`);
           break;
         }
       }
+      if (formFound) break;
+
+      await page.waitForTimeout(1000);
     }
 
     if (!formFound) {
@@ -176,7 +203,21 @@ export class GreenhousePlugin extends ATSPlugin {
   }
 
   private async getFormContext(browser: BrowserSession): Promise<Frame | Page> {
-    return await browser.findFormFrame([
+    if (this.formFrame && !this.formFrame.isDetached()) {
+      return this.formFrame;
+    }
+
+    // Check frames for Greenhouse domain
+    for (const frame of browser.page.frames()) {
+      if (frame === browser.page.mainFrame()) continue;
+      const fUrl = frame.url().toLowerCase();
+      if (fUrl.includes('greenhouse.io') || fUrl.includes('grnhse')) {
+        this.formFrame = frame;
+        return frame;
+      }
+    }
+
+    const frameCtx = await browser.findFormFrame([
       '#application_form',
       '#main_fields',
       'form#application',
@@ -191,10 +232,14 @@ export class GreenhousePlugin extends ATSPlugin {
       'input[name*="first_name" i]',
       'input[name*="firstName" i]',
       'input[name*="email" i]',
-      'input[type="email"]',
       'input[type="file"]',
-      'form',
     ]);
+
+    if ('page' in frameCtx) {
+      this.formFrame = frameCtx;
+    }
+
+    return frameCtx;
   }
 
   // ─── Apply ────────────────────────────────────────────────────────────────
