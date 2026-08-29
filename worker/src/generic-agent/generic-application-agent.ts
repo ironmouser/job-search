@@ -205,8 +205,8 @@ export class GenericApplicationAgent {
       if (
         analysis.classification === PageClassification.APPLICATION_FORM ||
         analysis.classification === PageClassification.APPLICATION_CONTINUATION ||
-        analysis.formPresence.hasForm ||
-        (analysis.formPresence.hasResumeUpload && analysis.formPresence.inputCount >= 2)
+        analysis.formPresence.hasApplicationElements ||
+        analysis.formPresence.hasForm
       ) {
         stateMachine.forceTransition(AgentState.APPLICATION_FORM, currentUrl, 'Application form reached');
         await telemetry.record(telemetry.buildEntry({
@@ -215,7 +215,7 @@ export class GenericApplicationAgent {
           url: currentUrl,
           action: 'classify',
           actionSource: 'deterministic',
-          reason: 'Active application form confirmed',
+          reason: 'Active application form confirmed with application elements',
           result: 'success',
           latencyMs: Date.now() - hopStartTime,
         }));
@@ -465,10 +465,12 @@ export class GenericApplicationAgent {
         }
       }
 
-      // ─── Step 8: If still no credible control selected ────────────────────
+      // ─── Step 8: Multi-Apply Button Search Before Giving Up ────────────────
+      // If elements like resume upload, logins, form fields for first name or last name are not found,
+      // try to look for another apply button before giving up.
       if (!controlSelected || !controlSelected.candidate || !controlSelected.locator) {
         // Fall back to lower confidence deterministic candidate if available
-        if (analysis.bestControl && analysis.bestControl.confidence >= 45) {
+        if (analysis.bestControl && analysis.bestControl.confidence >= 35) {
           const loc = await this.locateTargetElement(page, analysis.bestControl);
           if (loc) {
             controlSelected = {
@@ -477,6 +479,35 @@ export class GenericApplicationAgent {
               locator: loc,
             };
           }
+        }
+      }
+
+      // Comprehensive search for any other visible Apply button on the page or inside child frames
+      if (!controlSelected || !controlSelected.candidate || !controlSelected.locator) {
+        const foundApply = await this.findAnyApplyButton(page);
+        if (foundApply) {
+          await logger.info('multi_apply_search', `Found another Apply button ("${foundApply.text}") — preparing to click and resume looking for application elements`);
+          controlSelected = {
+            source: 'deterministic',
+            candidate: {
+              index: 0,
+              text: foundApply.text,
+              ariaLabel: '',
+              role: 'button',
+              tagName: 'button',
+              href: null,
+              resolvedHref: null,
+              confidence: 70,
+              confidenceTier: 'MEDIUM',
+              positiveSignals: ['multi_apply_fallback'],
+              negativeSignals: [],
+              isButton: true,
+              isVisible: true,
+              isEnabled: true,
+              isInViewport: true,
+            },
+            locator: foundApply.locator,
+          };
         }
       }
 
@@ -507,11 +538,11 @@ export class GenericApplicationAgent {
           url: currentUrl,
           action: 'stop',
           actionSource: 'deterministic',
-          reason: 'No actionable application controls detected on this page',
+          reason: 'No actionable application controls or application elements detected on this page',
           result: 'failed',
           latencyMs: Date.now() - hopStartTime,
         }));
-        await logger.warn('application_not_found', 'No actionable application controls detected on this page');
+        await logger.warn('application_not_found', 'No actionable application controls or elements detected on this page');
         throw new InterventionError(
           InterventionReason.APPLICATION_NOT_FOUND,
           'Auto Apply could not find a credible "Apply" button or application form on this employer page. Please apply manually using the link above.',
@@ -614,9 +645,10 @@ export class GenericApplicationAgent {
       if (newPage) {
         await logger.info('tab_switched', 'Application opened in a new browser tab — switching context');
         await newPage.waitForLoadState('domcontentloaded').catch(() => {});
-        (browser as any)._page = newPage;
+        browser.page = newPage;
         page = newPage;
       } else {
+        await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {});
         await page.waitForTimeout(600);
       }
 
@@ -654,18 +686,131 @@ export class GenericApplicationAgent {
       `[role="button"]:has-text("I'm interested")`,
       `a:has-text("I'm interested")`,
       `button:has-text("Apply Now")`,
-      `button:has-text("Apply")`,
       `a:has-text("Apply Now")`,
+      `button:has-text("Apply for this job")`,
+      `a:has-text("Apply for this job")`,
+      `button:has-text("Apply on company site")`,
+      `a:has-text("Apply on company site")`,
+      `button:has-text("Apply directly")`,
+      `a:has-text("Apply directly")`,
+      `button:has-text("Start Application")`,
+      `a:has-text("Start Application")`,
+      `button:has-text("Start your application")`,
+      `a:has-text("Start your application")`,
+      `button:has-text("Begin Application")`,
+      `a:has-text("Begin Application")`,
+      `button:has-text("Proceed to Application")`,
+      `a:has-text("Proceed to Application")`,
+      `button:has-text("Apply Manually")`,
+      `a:has-text("Apply Manually")`,
+      `button:has-text("Autofill with Resume")`,
+      `a:has-text("Autofill with Resume")`,
+      `button:has-text("Apply Online")`,
+      `a:has-text("Apply Online")`,
+      `button:has-text("Apply")`,
       `a:has-text("Apply")`,
+      `[data-automation-id*="apply" i]`,
+      `[data-testid*="apply" i]`,
+      `a[href*="/apply" i]`,
     ];
 
     for (const sel of selectors) {
       try {
         const loc = page.locator(sel).first();
-        if ((await loc.count().catch(() => 0)) > 0) {
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
           return loc;
         }
       } catch {}
+    }
+
+    return null;
+  }
+
+  /**
+   * Scans page and child frames for any visible, credible Apply button or link.
+   */
+  private async findAnyApplyButton(
+    page: Page
+  ): Promise<{ text: string; locator: Locator } | null> {
+    const applySelectors = [
+      'button:has-text("Apply for this job")',
+      'a:has-text("Apply for this job")',
+      'button:has-text("Apply Now")',
+      'a:has-text("Apply Now")',
+      'button:has-text("Apply on company site")',
+      'a:has-text("Apply on company site")',
+      'button:has-text("Apply on company website")',
+      'a:has-text("Apply on company website")',
+      'button:has-text("Apply on employer site")',
+      'a:has-text("Apply on employer site")',
+      'button:has-text("Apply Directly")',
+      'a:has-text("Apply Directly")',
+      'button:has-text("Start Application")',
+      'a:has-text("Start Application")',
+      'button:has-text("Start your application")',
+      'a:has-text("Start your application")',
+      'button:has-text("Begin Application")',
+      'a:has-text("Begin Application")',
+      'button:has-text("Proceed to Application")',
+      'a:has-text("Proceed to Application")',
+      'button:has-text("Continue to Application")',
+      'a:has-text("Continue to Application")',
+      'button:has-text("Apply with Resume")',
+      'a:has-text("Apply with Resume")',
+      'button:has-text("Autofill with Resume")',
+      'a:has-text("Autofill with Resume")',
+      'button:has-text("Apply Manually")',
+      'a:has-text("Apply Manually")',
+      'button:has-text("Apply Online")',
+      'a:has-text("Apply Online")',
+      '[data-automation-id="applyButton"]',
+      '[data-automation-id="Apply"]',
+      'button[data-automation-id*="apply" i]',
+      'a[data-automation-id*="apply" i]',
+      'a.postings-btn',
+      'a[href*="/apply" i]',
+      'button:has-text("I\'m interested")',
+      'a:has-text("I\'m interested")',
+      'button:has-text("I have a resume")',
+      'a:has-text("I have a resume")',
+      'button:has-text("Apply")',
+      'a:has-text("Apply")',
+      '[role="button"]:has-text("Apply")',
+      'input[type="submit"][value*="Apply" i]',
+      'input[type="button"][value*="Apply" i]',
+    ];
+
+    const isNegativeApplyText = (t: string) => {
+      return /\b(apply (filter|filters|coupon|promo|code|discount|search|changes|settings|preferences|sort|tags)|clear filters|reset filters|save search|subscribe|job alerts?)\b/i.test(t);
+    };
+
+    // 1. Scan main page
+    for (const sel of applySelectors) {
+      try {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          const txt = (await loc.textContent().catch(() => ''))?.trim() || 'Apply';
+          if (!isNegativeApplyText(txt)) {
+            return { text: txt, locator: loc };
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Scan child frames
+    for (const frame of page.frames()) {
+      if (frame === page.mainFrame()) continue;
+      for (const sel of applySelectors) {
+        try {
+          const loc = frame.locator(sel).first();
+          if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+            const txt = (await loc.textContent().catch(() => ''))?.trim() || 'Apply';
+            if (!isNegativeApplyText(txt)) {
+              return { text: txt, locator: loc };
+            }
+          }
+        } catch {}
+      }
     }
 
     return null;

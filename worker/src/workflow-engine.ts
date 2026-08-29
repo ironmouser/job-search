@@ -153,7 +153,7 @@ export class WorkflowEngine {
           try {
             const { GenericPageAnalyzer } = await import('./generic-agent/page-analyzer');
             const formPresence = await GenericPageAnalyzer.inspectFormPresence(browser.page);
-            if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
+            if (formPresence.hasApplicationElements || formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2)) {
               await logger.info(
                 'destination_discovery',
                 `Active application form detected directly on page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination convergence reached.`

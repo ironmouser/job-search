@@ -90,11 +90,13 @@ export interface PageMetadataInfo {
 
 export interface FormPresenceInfo {
   hasForm: boolean;
+  hasApplicationElements: boolean;
   inputCount: number;
   hasResumeUpload: boolean;
   hasCoverLetterUpload: boolean;
   hasEmailInput: boolean;
   hasNameInput: boolean;
+  hasLoginInput: boolean;
   hasSubmitButton: boolean;
   hasWizardNextButton: boolean;
   frameContextsCount: number;

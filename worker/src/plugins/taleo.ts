@@ -66,15 +66,15 @@ export class TaleoPlugin extends ATSPlugin {
     await browser.page.waitForTimeout(2500);
     await this.checkClosedJob(browser, logger, context.jobUrl);
 
-    // Look for "Apply Online" or "Apply" button on Taleo job description page
-    const applyBtn = await browser.page.$(
-      'a:has-text("Apply Online"), button:has-text("Apply Online"), a:has-text("Apply"), button:has-text("Apply")'
-    ).catch(() => null);
-
-    if (applyBtn) {
-      await applyBtn.click().catch(() => {});
-      await browser.page.waitForTimeout(2000);
-    }
+    // Ensure application elements (resume upload, logins, name fields) are reached via multi-apply search
+    await this.ensureApplicationFormReached(browser, context, logger, {
+      customApplySelectors: [
+        'a:has-text("Apply Online")',
+        'button:has-text("Apply Online")',
+        'a:has-text("Apply")',
+        'button:has-text("Apply")',
+      ],
+    });
 
     await this.checkAccountGate(browser.page, context.jobUrl, this.displayName, context);
   }

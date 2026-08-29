@@ -34,6 +34,10 @@ export class BrowserSession {
     return this._page;
   }
 
+  set page(p: Page) {
+    this._page = p;
+  }
+
   // ─── Lifecycle ────────────────────────────────────────────────────────────
 
   async launch(storageState?: any): Promise<void> {

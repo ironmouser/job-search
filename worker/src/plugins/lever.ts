@@ -91,41 +91,8 @@ export class LeverPlugin extends ATSPlugin {
     await logger.info('page_navigated', `Navigated to Lever apply page: ${applyUrl}`);
     await this.dismissCookieBannerIfPresent(page, logger);
 
-    // If we landed on the job listing instead of the apply form, click the Apply button
-    const currentUrl = page.url();
-    if (!currentUrl.includes('/apply')) {
-      const applyBtnSelectors = [
-        'a.postings-btn',
-        'a[href*="/apply"]',
-        'button:has-text("Apply")',
-        'a:has-text("Apply for this job")',
-      ];
-
-      let clicked = false;
-      for (const sel of applyBtnSelectors) {
-        const btn = page.locator(sel).first();
-        if (await btn.count() > 0) {
-          await btn.click();
-          clicked = true;
-          await logger.info('apply_button_clicked', `Clicked apply button via: ${sel}`);
-          // Wait for the apply form to load after click
-          await page.waitForTimeout(2000);
-          break;
-        }
-      }
-
-      if (!clicked) {
-        await this.checkClosedJob(browser, logger, currentUrl);
-        throw new InterventionError(
-          InterventionReason.UNEXPECTED_PAGE,
-          'Could not find the Apply button on this Lever job listing.',
-          currentUrl
-        );
-      }
-    }
-
-    // Wait for the Lever application form to be present in the DOM.
-    // Lever wraps the form in .application-form or form[action*="lever"]
+    // If we landed on the job listing instead of the apply form, or if application elements are not yet present,
+    // look for and click the Apply button.
     const formSelectors = [
       'form.application-form',
       'form[action*="lever"]',
@@ -134,15 +101,31 @@ export class LeverPlugin extends ATSPlugin {
       'form',
     ];
 
-    let formFound = false;
-    for (const sel of formSelectors) {
-      try {
-        await page.waitForSelector(sel, { timeout: 20_000 });
-        formFound = true;
-        await logger.info('form_located', `Lever application form found via: ${sel}`);
-        break;
-      } catch {
-        // try next
+    let hasElements = await this.hasApplicationElements(page);
+    if (!hasElements) {
+      await this.ensureApplicationFormReached(browser, context, logger, {
+        customApplySelectors: [
+          'a.postings-btn',
+          'a[href*="/apply"]',
+          'button:has-text("Apply")',
+          'a:has-text("Apply for this job")',
+        ],
+      });
+      hasElements = await this.hasApplicationElements(page);
+    }
+
+    // Wait for form container if not already found
+    let formFound = hasElements;
+    if (!formFound) {
+      for (const sel of formSelectors) {
+        try {
+          const el = page.locator(sel).first();
+          if ((await el.count().catch(() => 0)) > 0 && (await el.isVisible().catch(() => false))) {
+            formFound = true;
+            await logger.info('form_located', `Lever application form found via: ${sel}`);
+            break;
+          }
+        } catch {}
       }
     }
 

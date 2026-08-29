@@ -168,13 +168,22 @@ export class WorkdayPlugin extends ATSPlugin {
     await this.checkLoginOrCreateAccount(page, context.jobUrl, context);
 
     // If wizard or form inputs are present, mark ready
-    const hasWizard = (await page.locator('[data-automation-id="bottom-navigation-next-button"], [data-automation-id="file-upload-input-ref"], [data-automation-id="legalNameSection_firstName"], [data-automation-id="myInformationPage"]').count().catch(() => 0)) > 0;
+    let hasWizard = (await page.locator('[data-automation-id="bottom-navigation-next-button"], [data-automation-id="file-upload-input-ref"], [data-automation-id="legalNameSection_firstName"], [data-automation-id="myInformationPage"]').count().catch(() => 0)) > 0;
 
-    if (!clicked && !hasWizard && !page.url().includes('/apply')) {
+    if (!hasWizard && !page.url().includes('/apply')) {
+      const reached = await this.ensureApplicationFormReached(browser, context, logger, {
+        customApplySelectors: applySelectors,
+      });
+      if (reached) {
+        hasWizard = true;
+      }
+    }
+
+    if (!hasWizard && !page.url().includes('/apply')) {
       await this.checkClosedJob(browser, logger, context.jobUrl);
       throw new InterventionError(
         InterventionReason.UNEXPECTED_PAGE,
-        'Could not find Apply button on Workday job page',
+        'Could not find Apply button or application elements on Workday job page',
         context.jobUrl
       );
     }

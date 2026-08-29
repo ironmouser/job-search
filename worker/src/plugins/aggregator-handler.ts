@@ -126,7 +126,7 @@ export class AggregatorHandler {
       try {
         const { GenericPageAnalyzer } = await import('../generic-agent/page-analyzer');
         const formPresence = await GenericPageAnalyzer.inspectFormPresence(page);
-        if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
+        if (formPresence.hasApplicationElements || formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2)) {
           await logger.info(
             'destination_discovery',
             `Application form is already present directly on this page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination reached.`

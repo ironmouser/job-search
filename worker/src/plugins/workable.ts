@@ -59,9 +59,21 @@ export class WorkablePlugin extends ATSPlugin {
 
     await browser.navigate(applyUrl, 'domcontentloaded');
     await logger.info('page_navigated', `Loaded Workable URL: ${applyUrl}`);
-    await browser.page.waitForTimeout(2000);
+    await browser.page.waitForTimeout(1500);
     await this.dismissCookieBannerIfPresent(browser.page, logger);
     await this.checkClosedJob(browser, logger, applyUrl);
+
+    // If application elements are not yet present, look for and click the Apply button
+    await this.ensureApplicationFormReached(browser, context, logger, {
+      customApplySelectors: [
+        'button[data-ui="apply-button"]',
+        'a[data-ui="apply-button"]',
+        'button:has-text("Apply for this job")',
+        'a:has-text("Apply for this job")',
+        'button:has-text("Apply")',
+        'a:has-text("Apply")',
+      ],
+    });
   }
 
   async apply(browser: BrowserSession, context: WorkflowContext, logger: ExecutionLogger): Promise<void> {

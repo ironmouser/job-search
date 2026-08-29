@@ -88,14 +88,20 @@ export class AshbyPlugin extends ATSPlugin {
 
     // 2. Wait for Ashby SPA "Fetching application form" loader to resolve
     const startTime = Date.now();
-    while (Date.now() - startTime < 15000) {
+    let hasForm = false;
+    while (Date.now() - startTime < 10000) {
       const isFetching = (await browser.page.locator('text="Fetching application form", text="Loading", [class*="spinner" i]').count().catch(() => 0)) > 0;
       const hasFormElements = (await browser.page.locator('input[name="name"], input[autocomplete="name"], input[type="file"], .ashby-application-form, form').count().catch(() => 0)) > 0;
 
       if (hasFormElements && !isFetching) {
+        hasForm = true;
         break;
       }
       await browser.page.waitForTimeout(500);
+    }
+
+    if (!hasForm) {
+      await this.ensureApplicationFormReached(browser, context, logger);
     }
   }
 

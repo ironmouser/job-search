@@ -48,6 +48,9 @@ export class GenericFormFiller {
     // Resolve any active onboarding resume selection modal if present
     await UIObstructionResolver.handleResumeChoiceModalIfPresent(page, logger);
 
+    // Ensure genuine application elements are present. If not found, look for another apply button, click it, and resume looking for application elements.
+    await this.ensureApplicationElements(browser, context, logger);
+
     const formCtx = await browser.findFormFrame([
       'input[type="file"]',
       'input[name*="email" i]',
@@ -81,6 +84,200 @@ export class GenericFormFiller {
 
     // 6. If form is a multi-step wizard, attempt to advance steps
     await this.advanceMultiStepWizardIfPresent(browser, context, logger);
+  }
+
+  /**
+   * Checks if application elements (resume upload, logins, form fields for first name or last name)
+   * are present. If not found, looks for another apply button, clicks it, and resumes looking
+   * for application elements.
+   */
+  private async ensureApplicationElements(
+    browser: BrowserSession,
+    context: WorkflowContext,
+    logger: ExecutionLogger
+  ): Promise<void> {
+    let page = browser.page;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      const hasElements = await this.hasApplicationElements(page);
+      if (hasElements) {
+        return;
+      }
+
+      await logger.info(
+        'multi_apply_check',
+        `No application elements (resume upload, login, first/last name) detected on current view — searching for secondary Apply button (Attempt ${attempts + 1}/${maxAttempts})`
+      );
+
+      const applyBtnLoc = await this.findApplyButton(page);
+      if (!applyBtnLoc) {
+        await logger.info('multi_apply_check', 'No further Apply buttons found — proceeding with available form context');
+        return;
+      }
+
+      const btnText = (await applyBtnLoc.textContent().catch(() => ''))?.trim() || 'Apply';
+      await logger.info('multi_apply_transition', `Clicking secondary Apply button: "${btnText}"`);
+
+      const browserContext = page.context();
+      const pagePromise = browserContext.waitForEvent('page', { timeout: 2000 }).catch(() => null);
+
+      await safeClick(page, applyBtnLoc, { actionName: 'secondary_apply_click' }, logger);
+
+      const newPage = await pagePromise;
+      if (newPage) {
+        await logger.info('tab_switched', 'Secondary Apply opened a new browser tab — switching context');
+        await newPage.waitForLoadState('domcontentloaded').catch(() => {});
+        browser.page = newPage;
+        page = newPage;
+      } else {
+        await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {});
+        await page.waitForTimeout(1500);
+      }
+
+      await UIObstructionResolver.dismissCookieBannerIfPresent(page, logger);
+      await UIObstructionResolver.handleResumeChoiceModalIfPresent(page, logger);
+
+      attempts++;
+    }
+  }
+
+  /**
+   * Evaluates whether genuine application elements (resume upload, candidate logins, name fields) are present.
+   */
+  private async hasApplicationElements(ctx: Page | Frame): Promise<boolean> {
+    try {
+      const page = 'page' in ctx && typeof (ctx as any).page === 'function' ? (ctx as Frame).page() : (ctx as Page);
+
+      const result = await ctx.evaluate(() => {
+        const isObstructionOrNav = (el: Element) => {
+          return !!el.closest(
+            '#onetrust-consent-sdk, #onetrust-banner-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [class*="consent" i], [id*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy-banner" i], [id*="privacy-banner" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i], [class*="subscribe" i]'
+          );
+        };
+
+        const fileInputs = Array.from(document.querySelectorAll('input[type="file"]')).filter(el => !isObstructionOrNav(el));
+        if (fileInputs.length > 0) return true;
+
+        const resumeDropzones = Array.from(document.querySelectorAll('[class*="upload" i], [class*="resume" i], [class*="dropzone" i], [id*="resume" i], [data-automation-id*="file" i], [data-automation-id*="resume" i]')).filter(el => !isObstructionOrNav(el));
+        for (const dz of resumeDropzones) {
+          const txt = (dz.textContent || '').trim().toLowerCase();
+          if (/resume|curriculum\s*vitae|\bcv\b|upload.*resume|attach.*resume|drop.*resume/i.test(txt)) return true;
+        }
+
+        const passwordInputs = Array.from(document.querySelectorAll('input[type="password"], [data-automation-id*="password" i], input[name*="password" i]')).filter(el => !isObstructionOrNav(el));
+        if (passwordInputs.length > 0) return true;
+
+        const nameInputs = Array.from(document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="first" i], input[id*="last" i], input[id*="name" i], input[autocomplete*="name" i], input[placeholder*="name" i], input[aria-label*="name" i], [data-automation-id*="firstName" i], [data-automation-id*="lastName" i], [data-automation-id*="legalName" i]')).filter(el => !isObstructionOrNav(el));
+        if (nameInputs.length > 0) return true;
+
+        const wizardNext = Array.from(document.querySelectorAll('[data-automation-id="bottom-navigation-next-button"], .ashby-application-form, form.application-form')).filter(el => !isObstructionOrNav(el));
+        if (wizardNext.length > 0) return true;
+
+        return false;
+      }).catch(() => false);
+
+      if (result) return true;
+
+      if (page && 'frames' in page) {
+        for (const frame of page.frames()) {
+          if (frame === page.mainFrame()) continue;
+          const frameHasElements = await this.hasApplicationElements(frame).catch(() => false);
+          if (frameHasElements) return true;
+        }
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Finds any visible Apply button or link.
+   */
+  private async findApplyButton(page: Page): Promise<import('playwright').Locator | null> {
+    const applySelectors = [
+      'button:has-text("Apply for this job")',
+      'a:has-text("Apply for this job")',
+      'button:has-text("Apply Now")',
+      'a:has-text("Apply Now")',
+      'button:has-text("Apply on company site")',
+      'a:has-text("Apply on company site")',
+      'button:has-text("Apply on company website")',
+      'a:has-text("Apply on company website")',
+      'button:has-text("Apply on employer site")',
+      'a:has-text("Apply on employer site")',
+      'button:has-text("Apply Directly")',
+      'a:has-text("Apply Directly")',
+      'button:has-text("Start Application")',
+      'a:has-text("Start Application")',
+      'button:has-text("Start your application")',
+      'a:has-text("Start your application")',
+      'button:has-text("Begin Application")',
+      'a:has-text("Begin Application")',
+      'button:has-text("Proceed to Application")',
+      'a:has-text("Proceed to Application")',
+      'button:has-text("Continue to Application")',
+      'a:has-text("Continue to Application")',
+      'button:has-text("Apply with Resume")',
+      'a:has-text("Apply with Resume")',
+      'button:has-text("Autofill with Resume")',
+      'a:has-text("Autofill with Resume")',
+      'button:has-text("Apply Manually")',
+      'a:has-text("Apply Manually")',
+      'button:has-text("Apply Online")',
+      'a:has-text("Apply Online")',
+      '[data-automation-id="applyButton"]',
+      '[data-automation-id="Apply"]',
+      'button[data-automation-id*="apply" i]',
+      'a[data-automation-id*="apply" i]',
+      'a.postings-btn',
+      'a[href*="/apply" i]',
+      'button:has-text("I\'m interested")',
+      'a:has-text("I\'m interested")',
+      'button:has-text("I have a resume")',
+      'a:has-text("I have a resume")',
+      'button:has-text("Apply")',
+      'a:has-text("Apply")',
+      '[role="button"]:has-text("Apply")',
+      'input[type="submit"][value*="Apply" i]',
+      'input[type="button"][value*="Apply" i]',
+    ];
+
+    const isNegativeApplyText = (t: string) => {
+      return /\b(apply (filter|filters|coupon|promo|code|discount|search|changes|settings|preferences|sort|tags)|clear filters|reset filters|save search|subscribe|job alerts?)\b/i.test(t);
+    };
+
+    for (const sel of applySelectors) {
+      try {
+        const loc = page.locator(sel).first();
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          const txt = (await loc.textContent().catch(() => ''))?.trim() || 'Apply';
+          if (!isNegativeApplyText(txt)) {
+            return loc;
+          }
+        }
+      } catch {}
+    }
+
+    for (const frame of page.frames()) {
+      if (frame === page.mainFrame()) continue;
+      for (const sel of applySelectors) {
+        try {
+          const loc = frame.locator(sel).first();
+          if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+            const txt = (await loc.textContent().catch(() => ''))?.trim() || 'Apply';
+            if (!isNegativeApplyText(txt)) {
+              return loc;
+            }
+          }
+        } catch {}
+      }
+    }
+
+    return null;
   }
 
   /**

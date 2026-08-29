@@ -175,6 +175,26 @@ export class GreenhousePlugin extends ATSPlugin {
     }
 
     if (!formFound) {
+      // Check if application elements (resume, login, name fields) are reached via multi-apply search
+      const multiApplyReached = await this.ensureApplicationFormReached(browser, context, logger, {
+        customApplySelectors: [
+          'a#apply_button',
+          'a[href*="#app"]',
+          'button:has-text("Apply Now")',
+          'a:has-text("Apply Now")',
+          'button:has-text("Apply for this job")',
+          'a:has-text("Apply for this job")',
+          'button:has-text("Apply")',
+          'a:has-text("Apply")',
+        ],
+      });
+
+      if (multiApplyReached) {
+        formFound = true;
+      }
+    }
+
+    if (!formFound) {
       // Check if page has general form inputs with resume upload (excluding cookie banners/nav)
       const hasInputs = await page.evaluate(() => {
         const isObstructionOrNav = (el: Element) => {

@@ -66,11 +66,13 @@ export class GenericPageAnalyzer {
         pageMetadata: await this.extractPageMetadata(page),
         formPresence: {
           hasForm: false,
+          hasApplicationElements: securityBlocker.type === 'AUTHENTICATION_REQUIRED',
           inputCount: 0,
           hasResumeUpload: false,
           hasCoverLetterUpload: false,
           hasEmailInput: false,
           hasNameInput: false,
+          hasLoginInput: securityBlocker.type === 'AUTHENTICATION_REQUIRED',
           hasSubmitButton: false,
           hasWizardNextButton: false,
           frameContextsCount: page.frames().length,
@@ -95,11 +97,11 @@ export class GenericPageAnalyzer {
     let classification = PageClassification.UNKNOWN;
     let confidence = 50;
 
-    // Check if it's already an active application form
-    if (formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2) || (formPresence.hasEmailInput && formPresence.inputCount >= 3)) {
+    // Check if it's already an active application form or contains application elements (resume, login, name fields)
+    if (formPresence.hasApplicationElements || formPresence.hasForm) {
       classification = PageClassification.APPLICATION_FORM;
-      confidence = formPresence.hasResumeUpload ? 90 : 80;
-      reasons.push(`Application form detected: ${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}`);
+      confidence = (formPresence.hasResumeUpload || formPresence.hasNameInput) ? 90 : 80;
+      reasons.push(`Application elements detected: resume=${formPresence.hasResumeUpload}, login=${formPresence.hasLoginInput}, name=${formPresence.hasNameInput}, inputCount=${formPresence.inputCount}`);
     } else if (formPresence.hasWizardNextButton && formPresence.inputCount >= 1) {
       classification = PageClassification.APPLICATION_CONTINUATION;
       confidence = 85;
@@ -263,7 +265,7 @@ export class GenericPageAnalyzer {
   }
 
   /**
-   * Evaluates form presence, input counts, resume file upload presence, and buttons across page frames.
+   * Evaluates form presence, input counts, resume file upload presence, logins, and buttons across page frames.
    */
   static async inspectFormPresence(page: Page): Promise<FormPresenceInfo> {
     const frames = page.frames();
@@ -282,6 +284,7 @@ export class GenericPageAnalyzer {
         let hasCL = false;
         let hasEmail = false;
         let hasName = false;
+        let hasLogin = false;
         let hasSubmit = false;
         let hasNext = false;
 
@@ -291,10 +294,28 @@ export class GenericPageAnalyzer {
           if (fileInputs.length > 1) hasCL = true;
         }
 
+        // Also check for resume upload dropzones or containers
+        if (!hasResume) {
+          const resumeDropzones = Array.from(document.querySelectorAll('[class*="upload" i], [class*="resume" i], [class*="dropzone" i], [id*="resume" i], [data-automation-id*="file" i], [data-automation-id*="resume" i]')).filter(el => !isObstructionOrNav(el));
+          for (const dz of resumeDropzones) {
+            const txt = (dz.textContent || '').trim().toLowerCase();
+            if (/resume|curriculum\s*vitae|\bcv\b|upload.*resume|attach.*resume|drop.*resume/i.test(txt)) {
+              hasResume = true;
+              break;
+            }
+          }
+        }
+
+        // Check for password/login fields
+        const passwordInputs = Array.from(document.querySelectorAll('input[type="password"], input[data-automation-id*="password" i], input[name*="password" i]')).filter(el => !isObstructionOrNav(el));
+        if (passwordInputs.length > 0) {
+          hasLogin = true;
+        }
+
         const emailInputs = Array.from(document.querySelectorAll('input[type="email"], input[name*="email" i], input[id*="email" i]')).filter(el => !isObstructionOrNav(el));
         if (emailInputs.length > 0) hasEmail = true;
 
-        const nameInputs = Array.from(document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="name" i]')).filter(el => !isObstructionOrNav(el));
+        const nameInputs = Array.from(document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="first" i], input[id*="last" i], input[id*="name" i], input[autocomplete*="name" i], input[placeholder*="name" i], input[aria-label*="name" i], [data-automation-id*="firstName" i], [data-automation-id*="lastName" i], [data-automation-id*="legalName" i]')).filter(el => !isObstructionOrNav(el));
         if (nameInputs.length > 0) hasName = true;
 
         const allInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, textarea')).filter(el => !isObstructionOrNav(el));
@@ -317,26 +338,32 @@ export class GenericPageAnalyzer {
           hasCL,
           hasEmail,
           hasName,
+          hasLogin,
           hasSubmit,
           hasNext,
         };
       }).catch(() => null);
 
       if (presence) {
-        const hasForm = (presence.hasResume && presence.totalInputs >= 2) || (presence.hasEmail && presence.totalInputs >= 3);
+        // Genuine application elements = resume upload, logins, or name fields (first name / last name / full name)
+        const hasApplicationElements = presence.hasResume || presence.hasLogin || (presence.hasName && (presence.hasEmail || presence.totalInputs >= 2));
+        const hasForm = hasApplicationElements || (presence.hasNext && presence.totalInputs >= 1);
+
         const info: FormPresenceInfo = {
           hasForm,
+          hasApplicationElements,
           inputCount: presence.totalInputs,
           hasResumeUpload: presence.hasResume,
           hasCoverLetterUpload: presence.hasCL,
           hasEmailInput: presence.hasEmail,
           hasNameInput: presence.hasName,
+          hasLoginInput: presence.hasLogin,
           hasSubmitButton: presence.hasSubmit,
           hasWizardNextButton: presence.hasNext,
           frameContextsCount: frames.length,
         };
 
-        if (hasForm || (info.hasResumeUpload && info.inputCount >= 2)) {
+        if (hasApplicationElements || hasForm) {
           return info;
         }
 
@@ -348,14 +375,36 @@ export class GenericPageAnalyzer {
 
     return bestInfo ?? {
       hasForm: false,
+      hasApplicationElements: false,
       inputCount: 0,
       hasResumeUpload: false,
       hasCoverLetterUpload: false,
       hasEmailInput: false,
       hasNameInput: false,
+      hasLoginInput: false,
       hasSubmitButton: false,
       hasWizardNextButton: false,
       frameContextsCount: frames.length,
+    };
+  }
+
+  /**
+   * Helper to quickly check if genuine application elements are present on the page or inside child frames.
+   */
+  static async hasApplicationElements(page: Page): Promise<{
+    hasElements: boolean;
+    hasResumeUpload: boolean;
+    hasLoginInput: boolean;
+    hasNameInput: boolean;
+    inputCount: number;
+  }> {
+    const presence = await this.inspectFormPresence(page);
+    return {
+      hasElements: presence.hasApplicationElements,
+      hasResumeUpload: presence.hasResumeUpload,
+      hasLoginInput: presence.hasLoginInput,
+      hasNameInput: presence.hasNameInput,
+      inputCount: presence.inputCount,
     };
   }
 

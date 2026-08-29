@@ -93,6 +93,11 @@ export class ICIMSPlugin extends ATSPlugin {
       } catch {}
     }
 
+    // Check if application elements were reached or if an additional Apply button is needed
+    await this.ensureApplicationFormReached(browser, context, logger, {
+      customApplySelectors: applySelectors,
+    });
+
     await this.checkAccountGate(browser.page, context.jobUrl, this.displayName, context);
   }
 
