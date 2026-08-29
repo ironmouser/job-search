@@ -46,6 +46,9 @@ interface DomDiscoveryResult {
   inPageAnchorTarget: any | null;
 }
 
+const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|start your application|start my application|begin application|submit application|easy apply|quick apply|apply with resume|apply online|continue to (application|employer|company)|proceed to application|i'm interested|i am interested|interested in (this )?(job|role|position)?|express interest|i have a resume|i have an updated resume|continue with resume|upload resume|yes,? i have a resume|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
+const BUTTON_BLOCKLIST_REGEX = /\b(next|back|previous|save|cancel|skip|draft|create alert|share|report|follow|bookmark|return to search|back to search)\b/i;
+
 /**
  * AggregatorHandler
  *
@@ -510,8 +513,6 @@ export class AggregatorHandler {
     reports: CandidateReport[]
   ): Promise<DomDiscoveryResult> {
     const page = browser.page;
-    const APPLY_TEXT_REGEX = /\b(apply|apply now|apply for this job|apply on company (website|site)|apply on (employer|company) site|apply externally|apply directly|start application|start your application|start my application|begin application|submit application|easy apply|quick apply|apply with resume|apply online|continue to (application|employer|company)|proceed to application|i'm interested|i am interested|interested in (this )?(job|role|position)?|express interest|i have a resume|i have an updated resume|continue with resume|upload resume|yes,? i have a resume|sign in to (easy )?apply|log in to (easy )?apply|login to (easy )?apply|sign up to (easy )?apply|register to (easy )?apply|create account to (easy )?apply|join to (easy )?apply|join now to apply)\b/i;
-    const BUTTON_BLOCKLIST_REGEX = /\b(next|back|previous|save|cancel|skip|draft|create alert|share|report|follow|bookmark|return to search|back to search)\b/i;
 
     const candidateSelector = 'a, button, [role="button"], [role="link"], input[type="button"], input[type="submit"], [data-automation-id*="apply" i], [data-tracking-control-name*="apply" i], [id*="apply" i], [class*="apply" i], [data-url], [data-href], [data-apply-url], [data-job-url]';
     const elements = await page.$$(candidateSelector).catch(() => []);
