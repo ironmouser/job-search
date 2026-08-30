@@ -495,11 +495,16 @@ export class DiceApplyPlugin extends ATSPlugin {
 
   async validate(
     browser: BrowserSession,
-    _context: WorkflowContext,
-    _logger: ExecutionLogger
+    context: WorkflowContext,
+    logger: ExecutionLogger
   ): Promise<{ valid: boolean; issues: string[] }> {
     const page = browser.page;
     const issues: string[] = [];
+
+    // Verify essential candidate profile fields are present
+    if (!context.userProfile?.email) {
+      issues.push('Candidate email missing from profile context');
+    }
 
     const errorBanners = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error', (els) =>
       els.filter((e) => (e as HTMLElement).offsetParent !== null).map((e) => e.textContent?.trim() || '')
@@ -507,6 +512,9 @@ export class DiceApplyPlugin extends ATSPlugin {
 
     if (errorBanners.length > 0) {
       issues.push(...errorBanners);
+      await logger.warn('dice_validation_issues', `Validation issues on Dice form: ${errorBanners.join(', ')}`);
+    } else {
+      await logger.info('dice_validation_passed', 'Dice Easy Apply form validation passed');
     }
 
     return { valid: issues.length === 0, issues };
