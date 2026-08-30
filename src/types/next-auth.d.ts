@@ -1,5 +1,5 @@
-import NextAuth, { DefaultSession, DefaultUser } from "next-auth"
-import { JWT } from "next-auth/jwt"
+import { DefaultSession, DefaultUser } from "next-auth"
+import "next-auth/jwt"
 
 declare module "next-auth" {
   interface Session {
@@ -14,6 +14,8 @@ declare module "next-auth" {
       orgAccessExpiresAt: Date | null
       /** Expiry of the 7-day Pro trial (null if no trial was ever granted or trial expired) */
       trialEndsAt: Date | null
+      isTrialDeferred?: boolean
+      trialDeferralReason?: string | null
     } & DefaultSession["user"]
   }
 
@@ -26,6 +28,8 @@ declare module "next-auth" {
     isDisabled: boolean
     orgAccessExpiresAt: Date | null
     trialEndsAt: Date | null
+    isTrialDeferred?: boolean
+    trialDeferralReason?: string | null
   }
 }
 
@@ -40,5 +44,7 @@ declare module "next-auth/jwt" {
     isDisabled: boolean
     orgAccessExpiresAt: string | null
     trialEndsAt: string | null
+    isTrialDeferred?: boolean
+    trialDeferralReason?: string | null
   }
 }

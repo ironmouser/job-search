@@ -1,25 +1,31 @@
 "use client";
 
 import { signIn, signOut } from "next-auth/react";
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { Mail, Loader2, ArrowRight, ShieldCheck, LogOut } from "lucide-react";
 import { getAssetUrl } from "@/lib/assets";
 import { trackLogin } from "@/lib/analytics";
 
 function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isVerifyView, setIsVerifyView] = useState(false);
+  const [isVerifyEmailSent, setIsVerifyEmailSent] = useState(false);
   const [isTestLoading, setIsTestLoading] = useState(false);
-  const searchParams = useSearchParams();
 
-  useEffect(() => {
-    if (searchParams?.get("verify") === "true") {
-      setIsVerifyView(true);
+  const isVerifyParam = searchParams?.get("verify") === "true";
+  const isVerifyView = isVerifyParam || isVerifyEmailSent;
+
+  const handleBackToLogin = () => {
+    setIsVerifyEmailSent(false);
+    if (isVerifyParam) {
+      router.replace("/login");
     }
-  }, [searchParams]);
+  };
 
   const handleClearSession = async () => {
     try {
@@ -47,7 +53,7 @@ function LoginForm() {
       if (res?.error) {
         window.location.href = `/login?error=${encodeURIComponent(res.error)}`;
       } else {
-        setIsVerifyView(true);
+        setIsVerifyEmailSent(true);
       }
     } catch (error) {
       console.error("Sign in error:", error);
@@ -80,7 +86,7 @@ function LoginForm() {
         localStorage.removeItem("job_agent_tour_progress");
         localStorage.removeItem("onboarding_banner_close_count");
         localStorage.removeItem("onboarding_banner_never_show");
-      } catch (e) {}
+      } catch {}
       await signIn("credentials", { reset: "true", callbackUrl: "/dashboard" });
     } catch (error) {
       console.error("Test sign in error:", error);
@@ -102,13 +108,23 @@ function LoginForm() {
     errorMessage = "An authentication error occurred. Clearing your session usually fixes this.";
   }
 
+  const reasonParam = searchParams?.get("reason");
+  let reasonNotice: string | null = null;
+  if (reasonParam === "timeout") {
+    reasonNotice = "You were logged out due to 30 minutes of inactivity to protect your account. Please log in again to continue.";
+  }
+
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: "100vh", position: "relative", overflow: "hidden", padding: "2rem" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: "420px" }}>
         <div style={{ zIndex: 10, textAlign: "center", marginBottom: "1.75rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <img
+          <Image
             src={getAssetUrl('/blade.gif')}
             alt="Job Agent Robot"
+            width={140}
+            height={140}
+            unoptimized
+            priority
             style={{ height: "140px", width: "auto", display: "block", marginTop: "1.25rem" }}
           />
           <p style={{ margin: 0, fontSize: "1.5rem", color: "#333", fontWeight: 600 }}>
@@ -117,6 +133,12 @@ function LoginForm() {
         </div>
 
         <div className="glass-card" style={{ width: "100%", position: "relative", zIndex: 10 }}>
+          {reasonNotice && !errorMessage && (
+            <div style={{ padding: "0.85rem 1rem", background: "rgba(59, 130, 246, 0.12)", border: "1px solid rgba(59, 130, 246, 0.3)", borderRadius: "8px", color: "var(--text-primary, #ffffff)", fontSize: "0.85rem", marginBottom: "1.25rem", lineHeight: 1.45, display: "flex", alignItems: "flex-start", gap: "0.6rem" }}>
+              <ShieldCheck size={18} color="#60a5fa" style={{ flexShrink: 0, marginTop: "2px" }} />
+              <div>{reasonNotice}</div>
+            </div>
+          )}
           {errorMessage && (
             <div style={{ padding: "0.85rem 1rem", background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "8px", color: "#ef4444", fontSize: "0.85rem", marginBottom: "1.25rem", lineHeight: 1.4 }}>
               <div style={{ marginBottom: "0.5rem" }}>{errorMessage}</div>
@@ -152,7 +174,7 @@ function LoginForm() {
                 A sign in link has been sent to your email address. Click the link to securely sign in.
               </p>
               <button
-                onClick={() => setIsVerifyView(false)}
+                onClick={handleBackToLogin}
                 style={{ background: "none", border: "none", color: "#3695e3", cursor: "pointer", fontSize: "0.9rem", fontWeight: 500 }}
               >
                 &larr; Back to login

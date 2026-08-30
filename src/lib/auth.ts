@@ -1,4 +1,4 @@
-import { AuthOptions } from "next-auth"
+import { AuthOptions, User } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import EmailProvider from "next-auth/providers/email"
 import CredentialsProvider from "next-auth/providers/credentials"
@@ -9,10 +9,12 @@ import { parseDeviceType } from "@/lib/device-detection"
 import { evaluateAccountCollision } from "@/lib/anti-abuse/detector"
 
 export const authOptions: AuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
+  adapter: PrismaAdapter(prisma) as unknown as AuthOptions["adapter"],
   debug: process.env.NODE_ENV === "development",
   session: {
-    strategy: "jwt"
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 15 * 60, // 15 minutes
   },
   providers: [
     GoogleProvider({
@@ -38,7 +40,7 @@ export const authOptions: AuthOptions = {
           credentials: {
             reset: { label: "Reset", type: "text" }
           },
-          async authorize(credentials) {
+          async authorize() {
             try {
               let user = await prisma.user.findUnique({ where: { email: "test@example.com" } });
               if (user) {
@@ -65,7 +67,7 @@ export const authOptions: AuthOptions = {
                   }
                 });
               }
-              return user as any;
+              return user as unknown as User;
             } catch (e) {
               console.error("Error with test user, attempting safe upsert fallback:", e);
               try {
@@ -79,10 +81,10 @@ export const authOptions: AuthOptions = {
                     planTier: "FREE",
                   }
                 });
-                return user as any;
+                return user as unknown as User;
               } catch (fallbackErr) {
                 console.error("DB unavailable for Test Account:", fallbackErr);
-                return { id: "test-user-dev-id", email: "test@example.com", name: "Test User", isOnboarded: false, planTier: "PRO", role: "USER" } as any;
+                return { id: "test-user-dev-id", email: "test@example.com", name: "Test User", isOnboarded: false, planTier: "PRO", role: "USER" } as unknown as User;
               }
             }
           }
@@ -99,7 +101,7 @@ export const authOptions: AuthOptions = {
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       try {
         if (new URL(url).origin === new URL(baseUrl).origin) return url;
-      } catch (e) {
+      } catch {
         // Invalid URL
       }
       return baseUrl;
@@ -114,7 +116,7 @@ export const authOptions: AuthOptions = {
 
           if (existingUser) {
             // Block disabled organization users from signing in
-            if ((existingUser as any).isDisabled) {
+            if (existingUser.isDisabled) {
               return false;
             }
 
@@ -151,7 +153,7 @@ export const authOptions: AuthOptions = {
           }
           const detectedDevice = parseDeviceType(userAgent);
 
-          let dbUser: any = null;
+          let dbUser: { trialEndsAt: Date | null; planTier: string; isTrialDeferred: boolean; regDeviceType?: string | null } | null = null;
           try {
             dbUser = await prisma.user.findUnique({
               where: { id: user.id },
@@ -178,7 +180,12 @@ export const authOptions: AuthOptions = {
           }
 
           try {
-            const updateData: any = {
+            const updateData: {
+              lastLoginAt: Date;
+              deviceLastUsed: string;
+              lastUserAgent: string | null;
+              regDeviceType?: string;
+            } = {
               lastLoginAt: new Date(),
               deviceLastUsed: detectedDevice,
               lastUserAgent: userAgent ? userAgent.slice(0, 500) : null,
@@ -292,26 +299,26 @@ export const authOptions: AuthOptions = {
       if (!token.id) {
         // Token has no id (user deleted/disabled) — return a session with no user so the client
         // treats it as unauthenticated without crashing on Object.keys(null).
-        return { ...session, user: undefined, expires: new Date(0).toISOString() } as any;
+        return { ...session, user: undefined, expires: new Date(0).toISOString() } as unknown as typeof session;
       }
       if (session.user) {
         session.user.id = token.id as string;
-        (session.user as any).isOnboarded = token.isOnboarded as boolean;
-        (session.user as any).planTier = token.planTier as string || "FREE";
-        (session.user as any).role = token.role as string || "USER";
-        let subType = token.subscriptionType as string || "FREE";
-        const expiresAt = token.orgAccessExpiresAt ? new Date(token.orgAccessExpiresAt as string) : null;
+        session.user.isOnboarded = token.isOnboarded;
+        session.user.planTier = token.planTier || "FREE";
+        session.user.role = (token.role as "USER" | "ORGANIZATION_ADMIN" | "SYSTEM_ADMIN") || "USER";
+        let subType = token.subscriptionType || "FREE";
+        const expiresAt = token.orgAccessExpiresAt ? new Date(token.orgAccessExpiresAt) : null;
         if (subType === "GROUP" && expiresAt && expiresAt < new Date()) {
           subType = "FREE";
         }
 
-        (session.user as any).subscriptionType = subType;
-        (session.user as any).organizationId = token.organizationId as string | null;
-        (session.user as any).isDisabled = token.isDisabled as boolean || false;
-        (session.user as any).orgAccessExpiresAt = expiresAt;
-        (session.user as any).trialEndsAt = token.trialEndsAt ? new Date(token.trialEndsAt as string) : null;
-        (session.user as any).isTrialDeferred = token.isTrialDeferred as boolean || false;
-        (session.user as any).trialDeferralReason = token.trialDeferralReason as string | null;
+        session.user.subscriptionType = subType as "FREE" | "PREMIUM" | "GROUP";
+        session.user.organizationId = token.organizationId;
+        session.user.isDisabled = token.isDisabled || false;
+        session.user.orgAccessExpiresAt = expiresAt;
+        session.user.trialEndsAt = token.trialEndsAt ? new Date(token.trialEndsAt) : null;
+        session.user.isTrialDeferred = token.isTrialDeferred || false;
+        session.user.trialDeferralReason = token.trialDeferralReason || null;
         if (token.image) session.user.image = token.image as string;
         if (token.name) session.user.name = token.name as string;
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -12,7 +12,6 @@ import {
 } from '@/lib/auto-apply/failure-helpers';
 import { AutoApplyButton } from './AutoApplyButton';
 import { AutoApplyStatusBadge } from './AutoApplyStatusBadge';
-import { AutoApplyConfidenceBadge } from './AutoApplyConfidenceBadge';
 import { AutoApplyLogViewer } from './AutoApplyLogViewer';
 import { InterventionPanel } from './InterventionPanel';
 import {
@@ -30,7 +29,6 @@ import {
   Zap,
   Maximize2,
   ArrowRight,
-  ShieldAlert,
   Search,
   FileText,
   SlidersHorizontal,
@@ -79,6 +77,7 @@ interface SessionData {
   failureDetails?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
+  screenshotUrl?: string | null;
   confirmationScreenshotUrl?: string | null;
   confirmationNumber?: string | null;
   submittedAnswersSummary?: Record<string, unknown> | null;
@@ -152,6 +151,8 @@ const STEP_DEFINITIONS = [
   },
 ];
 
+const subscribe = () => () => {};
+
 export function AutoApplyPanel({
   jobId,
   jobUrl,
@@ -163,7 +164,7 @@ export function AutoApplyPanel({
 }: AutoApplyPanelProps) {
   const router = useRouter();
   const { data: authSession } = useSession();
-  const userRole = (authSession?.user as any)?.role;
+  const userRole = (authSession?.user as { role?: string } | undefined)?.role;
   const isAdmin = userRole === 'SYSTEM_ADMIN' || userRole === 'ORGANIZATION_ADMIN' || userRole === 'ADMIN';
 
   const [session, setSession] = useState<SessionData | null>(null);
@@ -173,19 +174,22 @@ export function AutoApplyPanel({
   const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
   const [activeModalScreenshotUrl, setActiveModalScreenshotUrl] = useState<string | null>(null);
   const [isDismissingFailure, setIsDismissingFailure] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false
+  );
 
-  useEffect(() => {
+  const [prevJobId, setPrevJobId] = useState(jobId);
+  if (prevJobId !== jobId) {
+    setPrevJobId(jobId);
     setSession(null);
     setIsStarting(false);
     setShowLogs(false);
     setIsScreenshotModalOpen(false);
     setActiveModalScreenshotUrl(null);
-  }, [jobId]);
+  }
 
   const isActive = isStarting || (session ? ACTIVE_STATUSES.has(session.status as AutoApplyStatus) : false);
   const isAggregatorJob = isAggregatorUrl(jobUrl);
@@ -214,8 +218,29 @@ export function AutoApplyPanel({
 
   // Initial load
   useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    let isCancelled = false;
+    async function load() {
+      try {
+        const res = await fetch(`/api/auto-apply/${jobId}/status`, { cache: 'no-store' });
+        if (res.ok && !isCancelled) {
+          const data = await res.json();
+          if (data.session) {
+            setSession(data.session);
+            setIsStarting(false);
+          }
+          if (data.quota) {
+            setQuota(data.quota);
+          }
+        }
+      } catch {
+        // Ignore network errors during initial load
+      }
+    }
+    load();
+    return () => {
+      isCancelled = true;
+    };
+  }, [jobId]);
 
   // Poll while active (every 1 second for live stepper animations)
   useEffect(() => {
@@ -305,7 +330,7 @@ export function AutoApplyPanel({
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [session?.status, session?.interventions]);
+  }, [session]);
 
   // Live intervention check (worker is paused and actively awaiting human help)
   const isLiveIntervention =
@@ -327,8 +352,8 @@ export function AutoApplyPanel({
 
   const failureScreenshotUrl =
     session?.interventions?.[0]?.screenshotUrl ||
-    (session as any)?.screenshotUrl ||
-    (session as any)?.confirmationScreenshotUrl ||
+    session?.screenshotUrl ||
+    session?.confirmationScreenshotUrl ||
     null;
 
   async function handleDismissFailure() {
@@ -674,7 +699,7 @@ export function AutoApplyPanel({
 
       {/* Submission Receipt Card when applied */}
       {session?.status === AutoApplyStatus.APPLIED && (() => {
-        const screenshotProofUrl = (session as any)?.confirmationScreenshotUrl || (session as any)?.screenshotUrl || null;
+        const screenshotProofUrl = session?.confirmationScreenshotUrl || session?.screenshotUrl || null;
         return (
           <div
             id="auto-apply-success-receipt"
@@ -797,6 +822,7 @@ export function AutoApplyPanel({
                     justifyContent: 'center',
                   }}
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={screenshotProofUrl}
                     alt="Submission confirmation screenshot proof"
@@ -927,6 +953,7 @@ export function AutoApplyPanel({
                 maxHeight: 'calc(90vh - 70px)',
               }}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={activeModalScreenshotUrl}
                 alt="Bot screenshot capture full resolution"
@@ -1042,6 +1069,7 @@ export function AutoApplyPanel({
                 }}
                 title="Click to enlarge screenshot"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={failureScreenshotUrl}
                   alt="Application screen captured when auto apply stopped"
