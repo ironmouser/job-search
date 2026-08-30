@@ -39,9 +39,14 @@ export class DiceApplyPlugin extends ATSPlugin {
 
     const hasEasyApply =
       html.includes('data-cy="easy-apply-button"') ||
+      html.includes('data-cy="dice-easy-apply"') ||
       html.includes('dice-easy-apply') ||
       html.includes('d-easy-apply') ||
-      /Easy\s*Apply/i.test(html);
+      html.includes('easy-apply-button') ||
+      html.includes('aria-label="Easy Apply"') ||
+      html.includes('aria-label="easy apply"') ||
+      /<button[^>]*>[\s\S]*?Easy\s+Apply[\s\S]*?<\/button>/i.test(html) ||
+      /<a[^>]*>[\s\S]*?Easy\s+Apply[\s\S]*?<\/a>/i.test(html);
 
     // If it doesn't have native easy apply, allow AggregatorHandler to discover external ATS links
     if (!hasEasyApply) {
