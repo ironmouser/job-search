@@ -46,9 +46,9 @@ export class DiceApplyPlugin extends ATSPlugin {
     // If it doesn't have native easy apply, allow AggregatorHandler to discover external ATS links
     if (!hasEasyApply) {
       return {
-        platform: ATSPlatform.DICE_NATIVE,
-        confidence: 20,
-        detectedFeatures: ['dice_domain'],
+        platform: ATSPlatform.UNKNOWN,
+        confidence: 0,
+        detectedFeatures: [],
         automationSupported: false,
       };
     }

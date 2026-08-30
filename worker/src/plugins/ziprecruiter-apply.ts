@@ -46,9 +46,9 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
     // If it doesn't have native 1-click apply, allow AggregatorHandler to discover external ATS links
     if (!hasOneClickApply) {
       return {
-        platform: ATSPlatform.ZIPRECRUITER_NATIVE,
-        confidence: 20,
-        detectedFeatures: ['ziprecruiter_domain'],
+        platform: ATSPlatform.UNKNOWN,
+        confidence: 0,
+        detectedFeatures: [],
         automationSupported: false,
       };
     }

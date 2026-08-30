@@ -601,10 +601,12 @@ export class AggregatorHandler {
         reports.push(report);
 
         if (result.accepted) {
+          let directUrlMatched = false;
           // If the candidate exposes a usable external destination URL
           if (result.resolvedHref && result.resolvedHref.startsWith('http')) {
             const validation = isLegitimateApplicationDestination(result.resolvedHref, sourceBoardUrl);
             if (validation.valid) {
+              directUrlMatched = true;
               const hasExplicitApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
               let priority = 1;
               if (result.classification === CandidateClassification.DIRECT_ATS_LINK && hasExplicitApplyText) priority = 4;
@@ -618,8 +620,11 @@ export class AggregatorHandler {
                 directUrlPriority = priority;
               }
             }
-          } else {
-            // Candidate has no extractable URL — save for Click + Observe fallback with priority ranking
+          }
+
+          if (!directUrlMatched) {
+            // Candidate has no direct external destination URL (or href is an internal aggregator action link/button)
+            // Save for Click + Observe fallback with priority ranking
             const hasExactApplyText = /^(apply(\s+now)?|apply for this job|apply directly|apply on (employer|company) site|easy apply|quick apply|i'm interested|i am interested|interested|i have a resume)\b/i.test(text) ||
               /^(apply(\s+now)?|apply for this job|i'm interested|i am interested)\b/i.test(ariaLabel);
             const hasApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
@@ -747,9 +752,11 @@ export class AggregatorHandler {
         reports.push(report);
 
         if (result.accepted) {
+          let directUrlMatched = false;
           if (result.resolvedHref && result.resolvedHref.startsWith('http')) {
             const validation = isLegitimateApplicationDestination(result.resolvedHref, sourceBoardUrl);
             if (validation.valid) {
+              directUrlMatched = true;
               const hasExplicitApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
               let priority = 1;
               if (result.classification === CandidateClassification.DIRECT_ATS_LINK && hasExplicitApplyText) priority = 4;
@@ -763,7 +770,10 @@ export class AggregatorHandler {
                 targetUrlPriority = priority;
               }
             }
-          } else if (tagName === 'button' || !result.resolvedHref) {
+          }
+
+          const hasExplicitApplyText = APPLY_TEXT_REGEX.test(text) || APPLY_TEXT_REGEX.test(ariaLabel);
+          if (!directUrlMatched && (tagName === 'button' || !result.resolvedHref || hasExplicitApplyText)) {
             if (!targetButton) targetButton = el;
           }
         }
