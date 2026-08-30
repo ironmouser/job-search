@@ -268,20 +268,52 @@ export abstract class ATSPlugin {
             await page.waitForTimeout(1000);
           }
 
-          if (emailInput && passwordInput) {
-            // Helper to fill input and commit React/SPA state events
-            const fillAndCommit = async (loc: import('playwright').Locator, val: string) => {
-              await loc.scrollIntoViewIfNeeded().catch(() => {});
-              await loc.click({ force: true }).catch(() => {});
-              try {
-                await replaceValue(loc, val);
-              } catch {
-                await loc.pressSequentially(val, { delay: 20 }).catch(() => {});
-              }
-              await loc.dispatchEvent('blur').catch(() => {});
-            };
+          // Helper to fill input and commit React/SPA state events
+          const fillAndCommit = async (loc: import('playwright').Locator, val: string) => {
+            await loc.scrollIntoViewIfNeeded().catch(() => {});
+            await loc.click({ force: true }).catch(() => {});
+            try {
+              await replaceValue(loc, val);
+            } catch {
+              await loc.pressSequentially(val, { delay: 20 }).catch(() => {});
+            }
+            await loc.dispatchEvent('change').catch(() => {});
+            await loc.dispatchEvent('blur').catch(() => {});
+          };
 
-            // Fill Email
+          // Handle split-step flow: if email input is visible but password input is not yet rendered
+          if (emailInput && !passwordInput) {
+            await fillAndCommit(emailInput, email);
+            const continueLocators = [
+              targetCtx.locator('button:has-text("Continue with email")').first(),
+              targetCtx.locator('button:has-text("Continue with Email")').first(),
+              targetCtx.locator('button:has-text("Continue")').first(),
+              targetCtx.locator('button:has-text("Next")').first(),
+              targetCtx.locator('button[type="submit"]').first(),
+            ];
+            for (const cBtn of continueLocators) {
+              if ((await cBtn.count().catch(() => 0)) > 0 && (await cBtn.isVisible().catch(() => false))) {
+                await cBtn.click({ force: true }).catch(() => {});
+                await page.waitForTimeout(1500);
+                break;
+              }
+            }
+
+            // Re-poll for password input after clicking continue
+            for (let wait = 0; wait < 6; wait++) {
+              for (const loc of passwordInputLocators) {
+                if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+                  passwordInput = loc;
+                  break;
+                }
+              }
+              if (passwordInput) break;
+              await page.waitForTimeout(1000);
+            }
+          }
+
+          if (emailInput && passwordInput) {
+            // Fill Email if not already committed
             await fillAndCommit(emailInput, email);
 
             // Fill Primary Password
