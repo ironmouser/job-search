@@ -1,3 +1,4 @@
+import type { Page, Locator } from 'playwright';
 import { ATSPlugin, InterventionError } from './base-plugin';
 import {
   ATSPlatform,
@@ -72,7 +73,7 @@ export class DiceApplyPlugin extends ATSPlugin {
    */
   private async handleDiceAuth(
     browser: BrowserSession,
-    page: any,
+    page: Page,
     context: WorkflowContext,
     logger: ExecutionLogger
   ): Promise<void> {
@@ -144,7 +145,7 @@ export class DiceApplyPlugin extends ATSPlugin {
     await logger.info('dice_auth_starting', `Automating Dice candidate authentication (${authMode}) for ${emailToUse}`);
 
     // Helper to fill input using humanized typing and trigger native events
-    const fillInput = async (loc: any, val: string) => {
+    const fillInput = async (loc: Locator, val: string) => {
       await loc.scrollIntoViewIfNeeded().catch(() => {});
       await loc.click({ force: true }).catch(() => {});
       try {
@@ -196,7 +197,7 @@ export class DiceApplyPlugin extends ATSPlugin {
     }
 
     // Step 1c: Check immediately for Unexpected Sign In Response or Bot Challenge on Email step
-    const earlyErrorText = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error, [role="alert"], [class*="error" i]', (els: any[]) =>
+    const earlyErrorText = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error, [role="alert"], [class*="error" i]', (els: Element[]) =>
       els.map((e) => e.textContent?.trim() || '').filter(Boolean).join('; ')
     ).catch(() => '');
 
@@ -322,7 +323,7 @@ export class DiceApplyPlugin extends ATSPlugin {
     }
 
     // Step 5: Check for authentication errors
-    const errorText = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error, [role="alert"], [class*="error" i]', (els: any[]) =>
+    const errorText = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error, [role="alert"], [class*="error" i]', (els: Element[]) =>
       els.map((e) => e.textContent?.trim() || '').filter(Boolean).join('; ')
     ).catch(() => '');
 
@@ -448,7 +449,7 @@ export class DiceApplyPlugin extends ATSPlugin {
     // 3. Fill standard work authorization questions if present
     const workAuthInputs = await page.$$('input[name*="auth"], input[id*="auth"], select[name*="auth"]').catch(() => []);
     for (const input of workAuthInputs) {
-      const tagName = await input.evaluate((el: any) => el.tagName.toLowerCase()).catch(() => '');
+      const tagName = await input.evaluate((el: Element) => el.tagName.toLowerCase()).catch(() => '');
       if (tagName === 'select') {
         await input.selectOption({ label: 'Yes' }).catch(() => {});
       } else {
@@ -494,8 +495,8 @@ export class DiceApplyPlugin extends ATSPlugin {
 
   async validate(
     browser: BrowserSession,
-    context: WorkflowContext,
-    logger: ExecutionLogger
+    _context: WorkflowContext,
+    _logger: ExecutionLogger
   ): Promise<{ valid: boolean; issues: string[] }> {
     const page = browser.page;
     const issues: string[] = [];
