@@ -9,7 +9,7 @@ import {
 } from '../types';
 import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
-import { safeClick, safeInteract } from '../obstruction';
+import { safeClick } from '../obstruction';
 import { pluginRegistry } from '../registry';
 
 /**
@@ -202,6 +202,11 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
     const page = browser.page;
     const issues: string[] = [];
 
+    // Verify essential candidate profile fields are present
+    if (!context.userProfile?.email) {
+      issues.push('Candidate email missing from profile context');
+    }
+
     // Check for error validation banners
     const errors = await page.$$eval('.error-message, [aria-invalid="true"], .invalid-feedback', (els) =>
       els.filter((e) => (e as HTMLElement).offsetParent !== null).map((e) => e.textContent?.trim() || '')
@@ -209,6 +214,9 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
 
     if (errors.length > 0) {
       issues.push(...errors);
+      await logger.warn('ziprecruiter_validation_issues', `Validation issues on ZipRecruiter form: ${errors.join(', ')}`);
+    } else {
+      await logger.info('ziprecruiter_validation_passed', 'ZipRecruiter application form validated — ready to submit');
     }
 
     return { valid: issues.length === 0, issues };
