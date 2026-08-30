@@ -413,13 +413,17 @@ export class AggregatorHandler {
           return { navigated: true, candidateReports: allCandidateReports };
         }
 
-        // Modal scan: wait for modal dialog to render
-        const modalAppeared = await Promise.race([
-          page.waitForSelector('[role="dialog"], [aria-modal="true"], .modal, .sign-up-modal, [class*="modal"]', { timeout: 5000 }).then(() => true),
-          page.waitForFunction((initial: string) => window.location.href !== initial, currentUrl, { timeout: 1000 }).then(() => false).catch(() => false),
-        ]).catch(() => false);
+        // Modal or URL change scan: wait for navigation or dialog rendering
+        const urlChangedOrModal = await Promise.race([
+          page.waitForSelector('[role="dialog"], [aria-modal="true"], .modal, .sign-up-modal, [class*="modal"]', { timeout: 6000 }).then(() => 'modal').catch(() => null),
+          page.waitForFunction((initial: string) => window.location.href !== initial, currentUrl, { timeout: 6000 }).then(() => 'url_changed').catch(() => null),
+        ]).catch(() => null);
 
-        if (modalAppeared) {
+        // Allow SPA routing / DOM updates to settle
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        await page.waitForTimeout(1200);
+
+        if (urlChangedOrModal === 'modal') {
           const modalResult = await AggregatorHandler._scanModalCandidates(
             browser, logger, currentUrl, allCandidateReports, false
           );
@@ -434,7 +438,7 @@ export class AggregatorHandler {
                modalObs.classification.type === ObstructionType.AUTHENTICATION_REQUIRED)
             ) {
               throw new InterventionError(
-                InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,
+                InterventionReason.JOB_BOARD_AUTH_REQUIRED,
                 `Application page requires candidate login (${modalObs.classification.reason}).`,
                 currentUrl
               );
@@ -465,7 +469,7 @@ export class AggregatorHandler {
 
             // If only auth gates were found, raise candidate login intervention
             throw new InterventionError(
-              InterventionReason.APPLICATION_BLOCKED_BY_LOGIN,
+              InterventionReason.JOB_BOARD_AUTH_REQUIRED,
               'Application page requires candidate login to continue.',
               currentUrl
             );
@@ -489,6 +493,8 @@ export class AggregatorHandler {
     // ─── 6. No navigation succeeded — capture diagnostic screenshot ───────────
     if (sessionId) {
       try {
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        await page.waitForTimeout(1000);
         const screenshotKey = `screenshots/diagnostics/${sessionId}_destination_failure.png`;
         const url = await uploadBrowserScreenshot(browser, screenshotKey);
         if (url) {

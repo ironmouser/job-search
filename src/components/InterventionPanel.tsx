@@ -335,11 +335,13 @@ export function InterventionPanel({
 
   const portalDisplayName = getPortalDisplayName(pageUrl, description);
   const providerInfo = getJobBoardProvider(pageUrl, description);
-  const isJobBoardAuthReason = reason === 'job_board_auth_required' && providerInfo !== null;
+  const isJobBoardAuthReason =
+    (reason === 'job_board_auth_required' || reason === 'application_blocked_by_login') &&
+    providerInfo !== null;
   const isAtsAuthReason =
     reason === 'login_required' ||
     (reason === 'job_board_auth_required' && providerInfo === null) ||
-    reason === 'application_blocked_by_login' ||
+    (reason === 'application_blocked_by_login' && providerInfo === null) ||
     reason === 'application_blocked_by_authentication';
   const isAuthReason = isAtsAuthReason || isJobBoardAuthReason;
   const isMfaReason =

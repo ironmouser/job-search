@@ -63,6 +63,10 @@ export class InterventionManager {
 
     // Start live screencast stream on active browser page
     if (browser.page) {
+      await browser.page.waitForLoadState('domcontentloaded').catch(() => {});
+      // Allow dynamic client-side auth widgets (Google Sign-In button iframes, OAuth buttons, modal forms) to settle
+      await browser.page.waitForTimeout(1500);
+
       await browserStreamServer.startStreaming(this.sessionId, browser.page).catch((err) => {
         console.warn(`[InterventionManager] Could not start stream: ${err.message}`);
       });
@@ -70,6 +74,27 @@ export class InterventionManager {
 
     // Persist every buffered entry BEFORE the long poll begins.
     await this.logger.flush();
+
+    // Check for specific login options on the page to enhance description
+    let enhancedDescription = description;
+    if (
+      (reason === InterventionReason.APPLICATION_BLOCKED_BY_LOGIN ||
+       reason === InterventionReason.JOB_BOARD_AUTH_REQUIRED) &&
+      browser.page
+    ) {
+      try {
+        const pageHtml = await browser.page.content().catch(() => '');
+        const options: string[] = [];
+        if (/continue with google|sign in with google|google/i.test(pageHtml)) options.push('Google');
+        if (/continue with apple|sign in with apple|apple/i.test(pageHtml)) options.push('Apple');
+        if (/continue with linkedin|sign in with linkedin/i.test(pageHtml)) options.push('LinkedIn');
+        if (/continue with email|sign in with your email|password/i.test(pageHtml)) options.push('Email & Password');
+
+        if (options.length > 0 && !enhancedDescription.includes('options:')) {
+          enhancedDescription = `${enhancedDescription} (Available options: ${options.join(', ')})`;
+        }
+      } catch {}
+    }
 
     // Take a screenshot and upload to S3
     let screenshotUrl: string | undefined;
@@ -86,7 +111,7 @@ export class InterventionManager {
 
     const payload: CreateInterventionPayload = {
       reason,
-      description,
+      description: enhancedDescription,
       pageUrl,
       screenshotUrl,
     };
