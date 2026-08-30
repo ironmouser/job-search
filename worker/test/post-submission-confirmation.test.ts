@@ -16,11 +16,11 @@ import { ExecutionLogger } from '../src/execution-logger';
 import { ATSPlatform, WorkflowContext, WorkflowResult, AutoApplyStatus, InterventionReason } from '../src/types';
 
 class TestConfirmationPlugin extends ATSPlugin {
-  readonly platform = ATSPlatform.GENERIC;
+  readonly platform = ATSPlatform.UNKNOWN;
   readonly displayName = 'Test ATS';
 
   detect() {
-    return { platform: ATSPlatform.GENERIC, confidence: 100, detectedFeatures: [], automationSupported: true };
+    return { platform: ATSPlatform.UNKNOWN, confidence: 100, detectedFeatures: [], automationSupported: true };
   }
   async prepare() {}
   async apply() {}
@@ -49,6 +49,12 @@ class TestConfirmationPlugin extends ATSPlugin {
     return this.verifyPostSubmission(browser, ctx, logger, options);
   }
 }
+
+const mockApiClient = {
+  postLogs: async () => {},
+  updateSessionStatus: async () => {},
+  createInterventionRequest: async () => {},
+} as any;
 
 function createMockPage(config: {
   url: string;
@@ -123,7 +129,7 @@ describe('Post-Submission Confirmation Verification Tests', () => {
       bodyText: 'Your application has been received. Thank you for your interest.',
     });
     const mockBrowser = { page: mockPage } as any;
-    const logger = new ExecutionLogger();
+    const logger = new ExecutionLogger('test-session', mockApiClient);
 
     await plugin.testVerify(mockBrowser, mockPage, logger, {
       platformDisplayName: 'Test ATS',
@@ -142,7 +148,7 @@ describe('Post-Submission Confirmation Verification Tests', () => {
       modalText: 'Congratulations! Your application has been submitted successfully.',
     });
     const mockBrowser = { page: mockPage } as any;
-    const logger = new ExecutionLogger();
+    const logger = new ExecutionLogger('test-session', mockApiClient);
 
     await plugin.testVerify(mockBrowser, mockPage, logger, {
       platformDisplayName: 'Test ATS',
@@ -160,7 +166,7 @@ describe('Post-Submission Confirmation Verification Tests', () => {
       confirmationSelectorVisible: true,
     });
     const mockBrowser = { page: mockPage } as any;
-    const logger = new ExecutionLogger();
+    const logger = new ExecutionLogger('test-session', mockApiClient);
 
     await plugin.testVerify(mockBrowser, mockPage, logger, {
       platformDisplayName: 'Test ATS',
@@ -179,7 +185,7 @@ describe('Post-Submission Confirmation Verification Tests', () => {
       validationErrorText: 'Phone number is required and must be valid',
     });
     const mockBrowser = { page: mockPage } as any;
-    const logger = new ExecutionLogger();
+    const logger = new ExecutionLogger('test-session', mockApiClient);
 
     await assert.rejects(
       async () => {
@@ -203,7 +209,7 @@ describe('Post-Submission Confirmation Verification Tests', () => {
       bodyText: 'Your application was flagged as possible spam. Please try these steps.',
     });
     const mockBrowser = { page: mockPage } as any;
-    const logger = new ExecutionLogger();
+    const logger = new ExecutionLogger('test-session', mockApiClient);
 
     await assert.rejects(
       async () => {
@@ -227,7 +233,7 @@ describe('Post-Submission Confirmation Verification Tests', () => {
       bodyText: 'Fill out this application to proceed',
     });
     const mockBrowser = { page: mockPage } as any;
-    const logger = new ExecutionLogger();
+    const logger = new ExecutionLogger('test-session', mockApiClient);
 
     await assert.rejects(
       async () => {
