@@ -38,10 +38,10 @@ export class DiceApplyPlugin extends ATSPlugin {
     }
 
     const hasEasyApply =
-      html.includes('Easy Apply') ||
-      html.includes('dice-easy-apply') ||
       html.includes('data-cy="easy-apply-button"') ||
-      html.includes('apply-button');
+      html.includes('dice-easy-apply') ||
+      html.includes('d-easy-apply') ||
+      /Easy\s*Apply/i.test(html);
 
     // If it doesn't have native easy apply, allow AggregatorHandler to discover external ATS links
     if (!hasEasyApply) {
@@ -349,24 +349,23 @@ export class DiceApplyPlugin extends ATSPlugin {
     // 1. Check & handle authentication requirements before clicking apply
     await this.handleDiceAuth(browser, page, context, logger);
 
-    // 2. Click Easy Apply / Apply button
+    // 2. Click Easy Apply button
     const applyButtonSelectors = [
-      'button:has-text("Easy Apply")',
       'button[data-cy="easy-apply-button"]',
-      'button[aria-label="Easy Apply"]',
-      'button:has-text("Apply Now")',
+      'button:has-text("Easy Apply")',
+      'a[data-cy="easy-apply-button"]',
       'a:has-text("Easy Apply")',
-      'a:has-text("Apply Now")',
-      '[data-cy="apply-button"]',
-      'button[data-cy="apply-button"]',
-      'a[data-cy="apply-button"]',
+      'button[aria-label="Easy Apply"]',
+      'dice-easy-apply button',
+      'd-easy-apply button',
+      '[data-cy="dice-easy-apply"]',
     ];
 
     let clicked = false;
     for (const selector of applyButtonSelectors) {
       const btn = await page.$(selector).catch(() => null);
       if (btn && (await btn.isVisible().catch(() => false))) {
-        await logger.info('dice_click_apply', `Clicking Dice apply button: ${selector}`);
+        await logger.info('dice_click_apply', `Clicking Dice Easy Apply button: ${selector}`);
         await safeClick(page, selector);
         clicked = true;
         break;
@@ -375,6 +374,11 @@ export class DiceApplyPlugin extends ATSPlugin {
 
     if (!clicked) {
       await logger.warn('dice_no_apply_btn', 'Could not locate standard Dice Easy Apply button');
+      throw new InterventionError(
+        InterventionReason.UNEXPECTED_PAGE,
+        'Could not locate the Dice Easy Apply button on this job posting. The position may require applying directly on the employer site.',
+        page.url()
+      );
     }
 
     // Wait for the slide-over drawer / modal to appear and dismiss any newly triggered cookie overlays
@@ -523,32 +527,63 @@ export class DiceApplyPlugin extends ATSPlugin {
       };
     }
 
-    // Live mode: Click final submit
-    const submitBtn = await page.$('button:has-text("Submit Application"), button[data-cy="submit-application"]').catch(() => null);
-    if (submitBtn && (await submitBtn.isVisible().catch(() => false))) {
-      await page.waitForTimeout(1500);
-      await submitBtn.hover().catch(() => {});
-      await page.waitForTimeout(300);
+    // Live mode: Locate submit button
+    const submitBtn = await this.findSubmitButton(
+      page,
+      logger,
+      [
+        'button:has-text("Submit Application")',
+        'button[data-cy="submit-application"]',
+        'button:has-text("Submit")',
+        'button:has-text("Send Application")',
+        'button[data-cy="apply-button"]',
+      ]
+    );
 
-      const initialUrl = page.url();
-      await safeClick(page, 'button:has-text("Submit Application"), button[data-cy="submit-application"]');
-
-      // Verify post-submission status
-      await this.verifyPostSubmission(browser, page, logger, {
-        platformDisplayName: 'Dice',
-        initialUrl,
-        confirmationKeywords: [
-          'application submitted',
-          'successfully applied',
-          'application sent',
-          'thank you for applying',
-        ],
-        errorSelectors: ['[role="alert"]', '.error-feedback', '.d-inline-error'],
-        maxWaitMs: 30000,
-      });
+    if (!submitBtn) {
+      await logger.warn('dice_no_submit_btn', 'Could not locate submit button on Dice application form');
+      throw new InterventionError(
+        InterventionReason.UNEXPECTED_PAGE,
+        'Could not locate the submit button on the Dice Easy Apply application form.',
+        page.url()
+      );
     }
 
-    await logger.info('dice_submitted', 'Dice Easy Apply application submitted');
+    // Natural human deliberation delay before submitting
+    await page.waitForTimeout(1500);
+    await submitBtn.hover().catch(() => {});
+    await page.waitForTimeout(300);
+
+    const initialUrl = page.url();
+    await submitBtn.click();
+
+    // Verify post-submission status (actively waits and validates confirmation keywords/modals)
+    await this.verifyPostSubmission(browser, page, logger, {
+      platformDisplayName: 'Dice',
+      initialUrl,
+      confirmationKeywords: [
+        'application submitted',
+        'successfully applied',
+        'application sent',
+        'thank you for applying',
+        'thanks for applying',
+        'application received',
+        'your application has been submitted',
+      ],
+      confirmationSelectors: [
+        '[data-cy="application-submitted"]',
+        '[data-cy="application-success"]',
+        '[class*="success" i]',
+        'h1:has-text("Application Submitted")',
+        'h2:has-text("Application Submitted")',
+        'h3:has-text("Application Submitted")',
+        'h4:has-text("Application Submitted")',
+      ],
+      errorSelectors: ['[role="alert"]', '.error-feedback', '.d-inline-error', '[aria-invalid="true"]'],
+      maxWaitMs: 30000,
+    });
+
+    await logger.info('dice_submitted', 'Dice Easy Apply application successfully submitted');
 
     return {
       status: AutoApplyStatus.APPLIED,

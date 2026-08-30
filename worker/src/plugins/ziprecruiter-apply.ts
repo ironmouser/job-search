@@ -97,14 +97,13 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
 
     // 2. Locate 1-Click Apply / Quick Apply button
     const applyButtonSelectors = [
+      'button[data-testid="one-click-apply-button"]',
       'button:has-text("1-Click Apply")',
       'button:has-text("1-click apply")',
       'button:has-text("Quick Apply")',
       'a:has-text("1-Click Apply")',
-      'button[data-testid="one-click-apply-button"]',
       'button[data-testid="apply-button"]',
       'button.job_apply_button',
-      'button:has-text("Apply Now")',
     ];
 
     let clicked = false;
@@ -120,6 +119,11 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
 
     if (!clicked) {
       await logger.warn('ziprecruiter_no_apply_btn', 'Could not locate standard 1-Click Apply button');
+      throw new InterventionError(
+        InterventionReason.UNEXPECTED_PAGE,
+        'Could not locate the ZipRecruiter 1-Click Apply button on this job posting. The position may require applying directly on the employer site.',
+        page.url()
+      );
     }
 
     await page.waitForTimeout(2000);
@@ -231,41 +235,48 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
       };
     }
 
-    // Live mode: Click final Submit / Confirm button
-    const submitSelectors = [
-      'button:has-text("Submit Application")',
-      'button:has-text("Send Application")',
-      'button:has-text("Apply Now")',
-      'button[type="submit"]',
-      'button:has-text("Confirm")',
-    ];
+    // Live mode: Locate final submit button
+    const submitBtn = await this.findSubmitButton(
+      page,
+      logger,
+      [
+        'button:has-text("Submit Application")',
+        'button:has-text("Send Application")',
+        'button:has-text("Apply Now")',
+        'button[type="submit"]',
+        'button:has-text("Confirm")',
+      ]
+    );
 
-    for (const selector of submitSelectors) {
-      const btn = await page.$(selector).catch(() => null);
-      if (btn && (await btn.isVisible().catch(() => false))) {
-        await page.waitForTimeout(1500);
-        await btn.hover().catch(() => {});
-        await page.waitForTimeout(300);
-
-        const initialUrl = page.url();
-        await safeClick(page, selector);
-
-        // Verify post-submission status
-        await this.verifyPostSubmission(browser, page, logger, {
-          platformDisplayName: 'ZipRecruiter',
-          initialUrl,
-          confirmationKeywords: [
-            'application submitted',
-            'application sent',
-            'thank you for applying',
-            'successfully applied',
-          ],
-          errorSelectors: ['[role="alert"]', '.error_message', '.error-text'],
-          maxWaitMs: 30000,
-        });
-        break;
-      }
+    if (!submitBtn) {
+      await logger.warn('ziprecruiter_no_submit_btn', 'Could not locate submit button on ZipRecruiter application form');
+      throw new InterventionError(
+        InterventionReason.UNEXPECTED_PAGE,
+        'Could not locate the submit button on the ZipRecruiter application form.',
+        page.url()
+      );
     }
+
+    await page.waitForTimeout(1500);
+    await submitBtn.hover().catch(() => {});
+    await page.waitForTimeout(300);
+
+    const initialUrl = page.url();
+    await submitBtn.click();
+
+    // Verify post-submission status
+    await this.verifyPostSubmission(browser, page, logger, {
+      platformDisplayName: 'ZipRecruiter',
+      initialUrl,
+      confirmationKeywords: [
+        'application submitted',
+        'application sent',
+        'thank you for applying',
+        'successfully applied',
+      ],
+      errorSelectors: ['[role="alert"]', '.error_message', '.error-text'],
+      maxWaitMs: 30000,
+    });
 
     await logger.info('ziprecruiter_submitted', 'ZipRecruiter application successfully submitted');
 
