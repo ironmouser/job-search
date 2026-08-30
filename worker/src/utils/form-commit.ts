@@ -55,6 +55,48 @@ export async function replaceValue(locator: Locator, value: string): Promise<voi
 }
 
 /**
+ * Humanized typing variant that types character-by-character with randomized delays
+ * (35ms - 75ms) to satisfy anti-bot telemetry scripts (PerimeterX, Cloudflare Turnstile, DataDome).
+ * Dispatches proper framework events upon completion.
+ */
+export async function replaceValueHumanized(locator: Locator, value: string): Promise<void> {
+  await locator.scrollIntoViewIfNeeded().catch(() => {});
+  await locator.focus().catch(() => {});
+  await locator.click({ force: true }).catch(() => {});
+
+  // Clear existing content safely
+  await locator.evaluate((el) => {
+    const target = el as HTMLInputElement | HTMLTextAreaElement;
+    if (target) {
+      target.value = '';
+    }
+  }).catch(() => {});
+
+  try {
+    // Type with natural randomized intervals
+    for (const char of value) {
+      await locator.page().keyboard.type(char, { delay: Math.floor(Math.random() * 40) + 35 });
+    }
+    await locator.dispatchEvent('input').catch(() => {});
+    await locator.dispatchEvent('change').catch(() => {});
+    await locator.dispatchEvent('blur').catch(() => {});
+  } catch {
+    // Fallback to prototype commit
+    await commitValue(locator, value);
+  }
+}
+
+/**
+ * Settling pause to allow anti-bot client scripts to compute telemetry tokens
+ * before submitting critical forms.
+ */
+export async function waitForSensorSettling(page: any, ms = 1200): Promise<void> {
+  if (page && typeof page.waitForTimeout === 'function') {
+    await page.waitForTimeout(ms).catch(() => {});
+  }
+}
+
+/**
  * Insert text into a contenteditable element with framework-safe events.
  * Replaces existing content.
  */

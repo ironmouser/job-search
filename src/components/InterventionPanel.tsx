@@ -24,8 +24,11 @@ import {
   LogIn,
   Eye,
   EyeOff,
+  Radio,
+  Monitor,
 } from 'lucide-react';
 import { ConnectJobBoardModal } from '@/components/ConnectJobBoardModal';
+import { InteractiveBrowserStream } from '@/components/InteractiveBrowserStream';
 
 interface InterventionPanelProps {
   interventionId: string;
@@ -34,6 +37,7 @@ interface InterventionPanelProps {
   screenshotUrl?: string | null;
   pageUrl?: string | null;
   jobId?: string | null;
+  sessionId?: string | null;
   onResolved: () => void;
 }
 
@@ -317,12 +321,14 @@ export function InterventionPanel({
   screenshotUrl,
   pageUrl,
   jobId,
+  sessionId,
   onResolved,
 }: InterventionPanelProps) {
   const [resolving, setResolving] = useState(false);
   const [resolution, setResolution] = useState<'completed' | 'skipped' | 'cancelled' | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
+  const [isStreamModalOpen, setIsStreamModalOpen] = useState(false);
 
   const [settings, setSettings] = useState<any>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -1700,6 +1706,30 @@ export function InterventionPanel({
             )}
             <button
               className="btn-outline"
+              onClick={() => setIsStreamModalOpen(true)}
+              disabled={resolving}
+              style={{
+                flex: 1,
+                minWidth: '170px',
+                padding: '0.7rem 1rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.45rem',
+                fontSize: '0.86rem',
+                fontWeight: 600,
+                borderRadius: '8px',
+                border: '1px solid #3b82f6',
+                color: '#60a5fa',
+                background: 'rgba(59, 130, 246, 0.12)',
+              }}
+              title="Open live cloud browser view to sign in (Google, 2FA, etc.) or solve challenge"
+              id={`intervention-stream-btn-${interventionId}`}
+            >
+              <Radio size={14} className="animate-pulse" color="#60a5fa" /> Live Cloud Browser
+            </button>
+            <button
+              className="btn-outline"
               onClick={() => resolve('cancelled')}
               disabled={resolving}
               style={{
@@ -1854,6 +1884,18 @@ export function InterventionPanel({
           }}
         />
       )}
+      {/* Interactive Cloud Browser Stream Modal */}
+      <InteractiveBrowserStream
+        isOpen={isStreamModalOpen}
+        onClose={() => setIsStreamModalOpen(false)}
+        sessionId={sessionId || interventionId}
+        interventionId={interventionId}
+        portalName={providerInfo?.name || portalDisplayName}
+        onResolved={() => {
+          setIsStreamModalOpen(false);
+          onResolved();
+        }}
+      />
     </div>
   );
 }

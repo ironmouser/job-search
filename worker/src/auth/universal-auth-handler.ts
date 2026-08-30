@@ -12,7 +12,7 @@ import { InterventionReason, WorkflowContext } from '../types';
 import { InterventionError } from '../plugins/base-plugin';
 import { RailwayAPIClient } from '../api-client';
 import { EmailInterceptor } from '../email/email-interceptor';
-import { replaceValue } from '../utils/form-commit';
+import { replaceValue, replaceValueHumanized, waitForSensorSettling } from '../utils/form-commit';
 
 export interface AuthHandlingResult {
   handled: boolean;
@@ -59,83 +59,65 @@ export class UniversalAuthHandler {
 
     // Search main page first
     for (const sel of emailSelectors) {
-      const el = page.locator(sel).first();
-      if ((await el.count().catch(() => 0)) > 0 && (await el.isVisible().catch(() => false))) {
-        emailInput = el;
+      const loc = page.locator(sel).first();
+      if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+        emailInput = loc;
         break;
       }
     }
 
-    if (emailInput) {
-      for (const sel of passwordSelectors) {
-        const els = page.locator(sel);
-        if ((await els.count().catch(() => 0)) > 0 && (await els.first().isVisible().catch(() => false))) {
-          passwordInputs = els;
-          break;
-        }
+    for (const sel of passwordSelectors) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+        passwordInputs = loc;
+        break;
       }
     }
 
-    // Search child frames if not found on main frame
-    if (!emailInput || !passwordInputs) {
+    // Search iframes if not found in main page
+    if (!emailInput && !passwordInputs) {
       for (const frame of page.frames()) {
         if (frame === page.mainFrame()) continue;
         for (const sel of emailSelectors) {
-          const el = frame.locator(sel).first();
-          if ((await el.count().catch(() => 0)) > 0 && (await el.isVisible().catch(() => false))) {
-            emailInput = el;
+          const loc = frame.locator(sel).first();
+          if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+            emailInput = loc;
             targetContext = frame;
             break;
           }
         }
         if (emailInput) {
           for (const sel of passwordSelectors) {
-            const els = frame.locator(sel);
-            if ((await els.count().catch(() => 0)) > 0 && (await els.first().isVisible().catch(() => false))) {
-              passwordInputs = els;
+            const loc = frame.locator(sel).first();
+            if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+              passwordInputs = loc;
               break;
             }
           }
-          if (passwordInputs) break;
+          break;
         }
       }
     }
 
-    // Check for "Apply as Guest" option if present
-    const guestBtn = targetContext.locator('button, a, [role="button"]').filter({
-      hasText: /apply as guest|continue as guest|apply without account|quick apply/i,
-    }).first();
-
-    if ((await guestBtn.count().catch(() => 0)) > 0 && (await guestBtn.isVisible().catch(() => false))) {
-      await logger.info('auth_guest_option', 'Found "Apply as Guest" option — selecting guest flow');
-      await guestBtn.click().catch(() => {});
-      await page.waitForTimeout(2000);
-      return { handled: true, action: 'guest_continued' };
-    }
-
-    // If no email/password inputs and not an explicit auth URL, not an auth gate
-    if (!emailInput && !passwordInputs) {
-      if (!isAuthUrl) return { handled: false, action: 'none' };
-
-      // Look for "Sign In" or "Create Account" launch buttons
-      const launchBtn = targetContext.locator('button, a, [role="button"]').filter({
-        hasText: /sign in to apply|create account to apply|apply manually|autofill with resume/i,
-      }).first();
-
-      if ((await launchBtn.count().catch(() => 0)) > 0 && (await launchBtn.isVisible().catch(() => false))) {
-        await launchBtn.click().catch(() => {});
-        await page.waitForTimeout(2000);
-        return this.handleAuthGateIfNeeded(browser, context, logger, apiClient);
-      }
-
+    const hasAuthElements = Boolean(emailInput || passwordInputs);
+    if (!isAuthUrl && !hasAuthElements) {
       return { handled: false, action: 'none' };
     }
 
-    // Determine target mode (sign_in vs create_account)
     const profile = context.userProfile;
-    const authMode = profile.accountAuthMode || 'create_account';
     const emailToUse = profile.accountEmail || profile.email;
-    const passwordToUse = profile.accountPassword || 'TempPass2026!@#';
+    const passwordToUse = profile.accountPassword;
+    const authMode = profile.accountAuthMode || 'sign_in';
+
+    // If credentials are NOT provided in profile, trigger structured intervention
+    if (!passwordToUse || !emailToUse) {
+      await logger.warn('auth_gate_credentials_missing', `Candidate account credentials needed (${authMode})`);
+      throw new InterventionError(
+        InterventionReason.JOB_BOARD_AUTH_REQUIRED,
+        'This application requires candidate account authentication. Please connect your credentials or sign in via the live browser stream.',
+        currentUrl
+      );
+    }
 
     await logger.info('auth_gate_detected', `Candidate auth gate detected. Mode: ${authMode}, Email: ${emailToUse}`);
 
@@ -198,14 +180,14 @@ export class UniversalAuthHandler {
       }
     }
 
-    // Helper to fill input and commit React/SPA state events
+    // Helper to fill input using humanized typing and commit React/SPA state events
     const fillAndCommit = async (loc: Locator, val: string) => {
       await loc.scrollIntoViewIfNeeded().catch(() => {});
       await loc.click({ force: true }).catch(() => {});
       try {
-        await replaceValue(loc, val);
+        await replaceValueHumanized(loc, val);
       } catch {
-        await loc.pressSequentially(val, { delay: 20 }).catch(() => {});
+        await replaceValue(loc, val).catch(() => {});
       }
       await loc.dispatchEvent('blur').catch(() => {});
     };
@@ -217,6 +199,7 @@ export class UniversalAuthHandler {
     if ((await freshEmail.count().catch(() => 0)) > 0 && emailToUse) {
       await fillAndCommit(freshEmail, emailToUse);
       await logger.info('auth_email_entered', `Filled candidate email`);
+      await waitForSensorSettling(page, 800);
 
       // If password field is not yet present, check for continue/next button in split-step form
       if ((await freshPass.count().catch(() => 0)) === 0) {

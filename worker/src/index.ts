@@ -32,7 +32,16 @@ const worker = new WorkerProcess(apiClient, WORKER_ID, POLL_INTERVAL_MS);
 
 import { scrapeWithPlaywrightStealth, fetchSingleJobDescriptionStealth } from './stealth-scraper';
 
-const healthServer = http.createServer((req, res) => {
+const healthServer = http.createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    });
+    return res.end();
+  }
+
   if (req.url === '/health' && req.method === 'GET') {
     const health = worker.healthCheck();
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -89,6 +98,59 @@ const healthServer = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: err.message }));
       }
     });
+  } else if (req.url?.startsWith('/stream/events') && req.method === 'GET') {
+    const urlObj = new URL(req.url, 'http://localhost:3001');
+    const sessionId = urlObj.searchParams.get('sessionId');
+    if (!sessionId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'sessionId required' }));
+    }
+    const { browserStreamServer } = require('./browser-stream-server');
+    browserStreamServer.subscribeClient(sessionId, res);
+  } else if (req.url?.startsWith('/stream/input') && req.method === 'POST') {
+    const urlObj = new URL(req.url, 'http://localhost:3001');
+    const sessionId = urlObj.searchParams.get('sessionId');
+    if (!sessionId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'sessionId required' }));
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const { browserStreamServer } = require('./browser-stream-server');
+        const result = await browserStreamServer.dispatchInput(sessionId, payload);
+        res.writeHead(result.success ? 200 : 400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(result));
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+  } else if (req.url?.startsWith('/stream/refresh') && req.method === 'POST') {
+    const urlObj = new URL(req.url, 'http://localhost:3001');
+    const sessionId = urlObj.searchParams.get('sessionId');
+    if (!sessionId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'sessionId required' }));
+    }
+    const { browserStreamServer } = require('./browser-stream-server');
+    const success = await browserStreamServer.refreshPage(sessionId);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ success }));
+  } else if (req.url?.startsWith('/stream/harvest') && req.method === 'POST') {
+    const urlObj = new URL(req.url, 'http://localhost:3001');
+    const sessionId = urlObj.searchParams.get('sessionId');
+    if (!sessionId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'sessionId required' }));
+    }
+    const { browserStreamServer } = require('./browser-stream-server');
+    const harvested = await browserStreamServer.harvestSession(sessionId);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ success: !!harvested, data: harvested }));
   } else {
     res.writeHead(404);
     res.end();

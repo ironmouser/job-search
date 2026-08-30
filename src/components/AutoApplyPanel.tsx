@@ -1172,6 +1172,7 @@ export function AutoApplyPanel({
         <div style={{ margin: '0.25rem 0' }}>
           <InterventionPanel
             interventionId={pendingIntervention.id}
+            sessionId={session?.id}
             jobId={jobId}
             reason={pendingIntervention.reason}
             description={pendingIntervention.description}

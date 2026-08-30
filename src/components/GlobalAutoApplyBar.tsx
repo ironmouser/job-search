@@ -806,6 +806,7 @@ export function GlobalAutoApplyBar() {
 
                     <InterventionPanel
                       interventionId={activeIntervention.id}
+                      sessionId={selectedSession?.id}
                       jobId={selectedSession?.jobId}
                       reason={activeIntervention.reason}
                       description={activeIntervention.description}

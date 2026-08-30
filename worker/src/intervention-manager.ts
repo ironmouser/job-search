@@ -3,6 +3,7 @@ import { RailwayAPIClient } from './api-client';
 import { BrowserSession } from './browser-session';
 import { ExecutionLogger } from './execution-logger';
 import { uploadBrowserScreenshot } from './s3';
+import { browserStreamServer } from './browser-stream-server';
 
 /** Thrown by the intervention manager when the user cancels instead of resolving */
 export class InterventionCancelledError extends Error {
@@ -35,12 +36,12 @@ const POLL_INTERVAL_MS = 3_000;                  // Check for resolution every 3
  * InterventionManager — pauses automation and waits for human help.
  *
  * When a plugin encounters a blocker (CAPTCHA, unknown question, login wall):
- *  1. Takes a screenshot of the current browser state
- *  2. Creates an InterventionRequest via Railway API
- *  3. Updates session status to needs_intervention
- *  4. Polls Railway for resolution every 3 seconds
- *  5. Resumes automation when user marks it resolved
- *  6. Throws on timeout (5 min) or cancellation
+ *  1. Mounts a live interactive CDP screencast stream for the session
+ *  2. Takes a screenshot of the current browser state
+ *  3. Creates an InterventionRequest via Railway API
+ *  4. Polls Railway for resolution every 3 seconds while streaming inputs
+ *  5. On resolution, harvests and persists target domain session cookies
+ *  6. Resumes automation cleanly
  */
 export class InterventionManager {
   constructor(
@@ -60,9 +61,14 @@ export class InterventionManager {
       pageUrl,
     });
 
-    // Persist every buffered entry BEFORE the long poll begins. If the worker
-    // dies or the API call stalls, the log trail up to this point must already
-    // be in the database.
+    // Start live screencast stream on active browser page
+    if (browser.page) {
+      await browserStreamServer.startStreaming(this.sessionId, browser.page).catch((err) => {
+        console.warn(`[InterventionManager] Could not start stream: ${err.message}`);
+      });
+    }
+
+    // Persist every buffered entry BEFORE the long poll begins.
     await this.logger.flush();
 
     // Take a screenshot and upload to S3
@@ -90,6 +96,7 @@ export class InterventionManager {
     const interventionId = typeof result === 'string' ? result : result.interventionId;
 
     if (typeof result === 'object' && result.autoResolved && result.resolution === 'skipped') {
+      await browserStreamServer.stopStreaming(this.sessionId).catch(() => {});
       await this.logger.info('intervention_auto_skipped', `Intervention auto-skipped: ${reason}`);
       throw new InterventionSkippedError();
     }
@@ -98,8 +105,20 @@ export class InterventionManager {
       interventionId,
     });
 
-    // Poll for resolution
-    await this.waitForResolution(interventionId);
+    try {
+      // Poll for resolution
+      await this.waitForResolution(interventionId);
+
+      // On successful completion, harvest active session cookies & storage state
+      const harvested = await browserStreamServer.harvestSession(this.sessionId);
+      if (harvested && harvested.cookies?.length > 0) {
+        await this.logger.info('session_harvested', `Harvested session cookies for ${harvested.provider} (${harvested.domain})`);
+        await this.apiClient.saveHarvestedSession(this.sessionId, harvested);
+      }
+    } finally {
+      // Clean up stream session
+      await browserStreamServer.stopStreaming(this.sessionId).catch(() => {});
+    }
   }
 
   private async waitForResolution(interventionId: string): Promise<void> {

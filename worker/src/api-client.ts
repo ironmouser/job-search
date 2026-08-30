@@ -181,6 +181,29 @@ export class RailwayAPIClient {
     return res.json();
   }
 
+  // ─── Session Harvesting ───────────────────────────────────────────────────
+
+  /**
+   * Save harvested cookies and storage state from an interactive session.
+   */
+  async saveHarvestedSession(
+    sessionId: string,
+    payload: { provider: string; domain: string; cookies: any[]; storageState: any }
+  ): Promise<void> {
+    try {
+      const res = await this.request(
+        'POST',
+        `/api/worker/sessions/${sessionId}/harvest-session`,
+        payload
+      );
+      if (!res.ok) {
+        console.warn(`[APIClient] Failed to save harvested session (${res.status}): ${await res.text()}`);
+      }
+    } catch (err: any) {
+      console.warn('[APIClient] saveHarvestedSession error:', err.message);
+    }
+  }
+
   // ─── Heartbeat ────────────────────────────────────────────────────────────
 
   /**

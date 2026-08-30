@@ -11,7 +11,7 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { safeClick } from '../obstruction';
 import { pluginRegistry } from '../registry';
-import { replaceValue } from '../utils/form-commit';
+import { replaceValue, replaceValueHumanized, waitForSensorSettling } from '../utils/form-commit';
 import { UniversalQuestionResolver } from './question-resolver';
 
 /**
@@ -138,14 +138,14 @@ export class DiceApplyPlugin extends ATSPlugin {
 
     await logger.info('dice_auth_starting', `Automating Dice candidate authentication (${authMode}) for ${emailToUse}`);
 
-    // Helper to fill input and trigger native events
+    // Helper to fill input using humanized typing and trigger native events
     const fillInput = async (loc: any, val: string) => {
       await loc.scrollIntoViewIfNeeded().catch(() => {});
       await loc.click({ force: true }).catch(() => {});
       try {
-        await replaceValue(loc, val);
+        await replaceValueHumanized(loc, val);
       } catch {
-        await loc.fill(val).catch(() => {});
+        await replaceValue(loc, val).catch(() => {});
       }
       await loc.dispatchEvent('change').catch(() => {});
       await loc.dispatchEvent('blur').catch(() => {});
@@ -169,6 +169,9 @@ export class DiceApplyPlugin extends ATSPlugin {
       }
     }
 
+    // Allow anti-bot / PerimeterX client sensors to register keystrokes and settle
+    await waitForSensorSettling(page, 1500);
+
     // Step 1b: If there is a "Continue with email" / "Continue" / "Next" button, click it to advance to password
     const continueBtnLocators = [
       page.locator('button:has-text("Continue with email")').first(),
@@ -182,9 +185,29 @@ export class DiceApplyPlugin extends ATSPlugin {
       if ((await btn.count().catch(() => 0)) > 0 && (await btn.isVisible().catch(() => false))) {
         await btn.click().catch(() => {});
         await logger.info('dice_continue_clicked', 'Clicked continue on Dice email step');
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(2000);
         break;
       }
+    }
+
+    // Step 1c: Check immediately for Unexpected Sign In Response or Bot Challenge on Email step
+    const earlyErrorText = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error, [role="alert"], [class*="error" i]', (els: any[]) =>
+      els.map((e) => e.textContent?.trim() || '').filter(Boolean).join('; ')
+    ).catch(() => '');
+
+    if (
+      earlyErrorText &&
+      (earlyErrorText.toLowerCase().includes('unexpected sign in response') ||
+       earlyErrorText.toLowerCase().includes('unexpected response') ||
+       earlyErrorText.toLowerCase().includes('something went wrong') ||
+       earlyErrorText.toLowerCase().includes('try again later'))
+    ) {
+      await logger.warn('dice_auth_unexpected_response', `Dice authentication blocked: ${earlyErrorText}`);
+      throw new InterventionError(
+        InterventionReason.JOB_BOARD_AUTH_REQUIRED,
+        `Dice authentication returned an unexpected response (${earlyErrorText}). Please complete sign-in using the live interactive browser stream.`,
+        page.url()
+      );
     }
 
     // Step 2: Locate and fill Password input (wait up to 5 seconds if rendering asynchronously)
@@ -239,6 +262,9 @@ export class DiceApplyPlugin extends ATSPlugin {
       }
     }
 
+    // Allow sensor settling before final submission
+    await waitForSensorSettling(page, 1000);
+
     // Step 3: Submit authentication form
     const submitAuthLocators = [
       page.locator('button:has-text("Sign In")').first(),
@@ -291,15 +317,15 @@ export class DiceApplyPlugin extends ATSPlugin {
     }
 
     // Step 5: Check for authentication errors
-    const errorText = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error, [role="alert"]', (els: any[]) =>
+    const errorText = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error, [role="alert"], [class*="error" i]', (els: any[]) =>
       els.map((e) => e.textContent?.trim() || '').filter(Boolean).join('; ')
     ).catch(() => '');
 
-    if (errorText && (errorText.toLowerCase().includes('password') || errorText.toLowerCase().includes('invalid') || errorText.toLowerCase().includes('incorrect'))) {
+    if (errorText && (errorText.toLowerCase().includes('password') || errorText.toLowerCase().includes('invalid') || errorText.toLowerCase().includes('incorrect') || errorText.toLowerCase().includes('unexpected sign in response'))) {
       await logger.warn('dice_auth_failed', `Dice authentication error: ${errorText}`);
       throw new InterventionError(
         InterventionReason.JOB_BOARD_AUTH_REQUIRED,
-        `Dice authentication error: ${errorText}. Please verify your email and password.`,
+        `Dice authentication error: ${errorText}. Please complete sign-in using the live interactive browser stream.`,
         page.url()
       );
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { InterventionPanel } from './InterventionPanel';
 import { X, ShieldAlert } from 'lucide-react';
@@ -11,6 +11,7 @@ interface GlobalInterventionDrawerProps {
   intervention: {
     id: string;
     jobId?: string | null;
+    sessionId?: string | null;
     reason: string;
     description: string;
     screenshotUrl?: string | null;
@@ -22,6 +23,8 @@ interface GlobalInterventionDrawerProps {
   onResolved: () => void;
 }
 
+const subscribe = () => () => {};
+
 export function GlobalInterventionDrawer({
   isOpen,
   onClose,
@@ -31,11 +34,11 @@ export function GlobalInterventionDrawer({
   companyName,
   onResolved,
 }: GlobalInterventionDrawerProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false
+  );
 
   if (!mounted || !isOpen || !intervention) return null;
 
@@ -44,44 +47,51 @@ export function GlobalInterventionDrawer({
       style={{
         position: 'fixed',
         inset: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 9999,
-        background: 'rgba(0, 0, 0, 0.65)',
-        padding: '1rem',
+        padding: '16px',
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         style={{
           width: '100%',
-          maxWidth: '560px',
+          maxWidth: '680px',
           maxHeight: '90vh',
-          overflowY: 'auto',
-          background: 'var(--card, var(--bg-surface, #111111))',
-          border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+          backgroundColor: 'var(--background, #09090b)',
+          border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
           borderRadius: '12px',
-          padding: '1.25rem',
-          boxShadow: 'var(--shadow-lg, 0 20px 25px -5px rgba(0, 0, 0, 0.5))',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1rem',
-          color: 'var(--text-primary)',
+          overflow: 'hidden',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))', paddingBottom: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ShieldAlert size={20} color="var(--warning, #f59e0b)" />
+        {/* Drawer Header */}
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--border-glass, rgba(255, 255, 255, 0.1))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'var(--secondary, #18181b)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldAlert size={18} color="#ef4444" />
             <div>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--warning, #f59e0b)' }}>
-                Action Required for Application
-              </h3>
-              {jobTitle && (
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                  {jobTitle} {companyName ? `at ${companyName}` : ''}
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                Action Required to Continue Auto-Apply
+              </span>
+              {(jobTitle || companyName) && (
+                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {[jobTitle, companyName].filter(Boolean).join(' • ')}
                 </span>
               )}
             </div>
@@ -98,6 +108,7 @@ export function GlobalInterventionDrawer({
         {/* Embedded Intervention Panel */}
         <InterventionPanel
           interventionId={intervention.id}
+          sessionId={intervention.sessionId}
           jobId={intervention.jobId || jobId}
           reason={intervention.reason}
           description={intervention.description}
