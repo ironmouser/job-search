@@ -82,11 +82,17 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
 
     // If no connected session was passed or session is logged out
     if (!context.connectedSession && isLoggedOut) {
-      throw new InterventionError(
-        InterventionReason.JOB_BOARD_AUTH_REQUIRED,
-        'ZipRecruiter requires you to connect your account before JAHQ can automate 1-Click applications.',
-        page.url()
-      );
+      const email = context.userProfile?.accountEmail || context.userProfile?.email;
+      const password = context.userProfile?.accountPassword;
+      if (email && password) {
+        await this.checkAccountGate(page, context.jobUrl, this.displayName, context);
+      } else {
+        throw new InterventionError(
+          InterventionReason.JOB_BOARD_AUTH_REQUIRED,
+          'ZipRecruiter requires you to connect your account before JAHQ can automate 1-Click applications.',
+          page.url()
+        );
+      }
     }
 
     // 2. Locate 1-Click Apply / Quick Apply button
@@ -171,6 +177,16 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
     // 5. EEOC Demographics
     await this.handleEEOCDemographics(page, context.userProfile, logger);
 
+    // 6. Universal Question Resolver
+    const { UniversalQuestionResolver } = await import('./question-resolver');
+    await UniversalQuestionResolver.resolveAndFillQuestions(
+      page,
+      browser,
+      context,
+      logger,
+      logger.getApiClient()
+    );
+
     await page.waitForTimeout(1000);
   }
 
@@ -231,11 +247,13 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
         await btn.hover().catch(() => {});
         await page.waitForTimeout(300);
 
+        const initialUrl = page.url();
         await safeClick(page, selector);
 
         // Verify post-submission status
         await this.verifyPostSubmission(browser, page, logger, {
           platformDisplayName: 'ZipRecruiter',
+          initialUrl,
           confirmationKeywords: [
             'application submitted',
             'application sent',
@@ -243,7 +261,7 @@ export class ZipRecruiterApplyPlugin extends ATSPlugin {
             'successfully applied',
           ],
           errorSelectors: ['[role="alert"]', '.error_message', '.error-text'],
-          maxWaitMs: 8000,
+          maxWaitMs: 30000,
         });
         break;
       }

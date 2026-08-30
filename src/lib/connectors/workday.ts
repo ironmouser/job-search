@@ -10,6 +10,8 @@ import { cleanCompanyName } from '../cleaners';
 import { parseWorkdayUrl } from '../atsDetector';
 import { requestScraping } from '../httpClient';
 import { cleanJobUrl } from '../urlUtils';
+import { isClosedJobText } from '../jobStatusDetector';
+
 
 export async function fetchWorkdayJobs(
   config: ATSConnectorConfig & { maxJobs?: number }
@@ -90,6 +92,7 @@ export async function fetchWorkdayJobs(
       for (const j of rawPostings) {
         const title = j.title?.trim();
         if (!title || !j.externalPath) continue;
+        if (isClosedJobText(title).isClosed) continue;
 
         let fullJobUrl = `${baseCareerUrl}${j.externalPath}`;
         if (!fullJobUrl.startsWith('http')) {

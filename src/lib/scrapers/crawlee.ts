@@ -12,6 +12,13 @@ import { reformatJobDescriptionWithGemini, convertHtmlToMarkdown } from '../form
 import { cleanCompanyName } from '../cleaners';
 import { isSafePublicUrl, isNonJobUrl } from '../urlUtils';
 import { scrapeSerpApiGoogleJobs } from '../serpapi';
+import { isClosedJobRecord, isClosedJobText } from '../jobStatusDetector';
+
+export function filterOpenJobs(jobs: any[]): any[] {
+    if (!jobs || !Array.isArray(jobs)) return [];
+    return jobs.filter(j => !isClosedJobRecord(j));
+}
+
 
 async function fetchPage(url: string, retries = 3): Promise<{ $: cheerio.CheerioAPI | null, usedFirecrawl: boolean }> {
     if (!isSafePublicUrl(url)) {

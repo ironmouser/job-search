@@ -1766,7 +1766,8 @@ export abstract class ATSPlugin {
   /**
    * Universal helper to verify application submission results across any ATS.
    * Actively scans for anti-bot spam flags, employer limits, validation errors,
-   * and requires positive confirmation before allowing APPLIED status.
+   * and waits for positive confirmation (new page, confirmation modal, or confirmation message)
+   * before allowing APPLIED status and taking the confirmation screenshot proof.
    */
   protected async verifyPostSubmission(
     browser: BrowserSession,
@@ -1774,6 +1775,7 @@ export abstract class ATSPlugin {
     logger: ExecutionLogger,
     options: {
       platformDisplayName: string;
+      initialUrl?: string;
       confirmationSelectors?: string[];
       confirmationKeywords?: string[];
       expectedUrlKeywords?: string[];
@@ -1785,19 +1787,47 @@ export abstract class ATSPlugin {
     const maxWait = options.maxWaitMs ?? 30000;
     const startTime = Date.now();
     const platform = options.platformDisplayName;
+    const initialUrl = options.initialUrl ? options.initialUrl.toLowerCase() : '';
 
     const defaultConfirmationKeywords = [
       'thank you for applying',
       'thanks for applying',
+      'thank you for your application',
+      'thanks for your application',
       'application submitted',
+      'application successfully submitted',
+      'submitted successfully',
       'application received',
-      'successfully submitted',
       'successfully applied',
       'we have received your application',
       'your application has been received',
+      'your application was received',
+      'your application has been submitted',
       'your application was submitted',
       'we received your application',
+      'we\'ve received your application',
       'thanks for your interest',
+      'congratulations! your application',
+      'congratulations, your application',
+      'congratulations! you have applied',
+      'congratulations! you',
+      'congratulations',
+      'your application is complete',
+      'application complete',
+      'we will review your application',
+      'you\'re all set',
+      'you are all set',
+      'application confirmation',
+      'submission received',
+      'you\'ve successfully applied',
+      'you have applied',
+      'confirmation number',
+      'confirmation #',
+      'application id:',
+      'reference #:',
+      'receipt number',
+      'your response has been recorded',
+      'submission confirmation',
     ];
 
     const allConfirmKeywords = [
@@ -1805,14 +1835,62 @@ export abstract class ATSPlugin {
       ...(options.confirmationKeywords || []).map((k) => k.toLowerCase()),
     ];
 
-    const defaultUrlKeywords = ['thanks', 'confirmation', 'submitted', 'applied', 'success'];
+    const defaultUrlKeywords = [
+      '/thanks',
+      '/thank-you',
+      '/thank_you',
+      '/thankyou',
+      '/confirmation',
+      '/confirm',
+      '/submitted',
+      '/applied',
+      '/application-submitted',
+      '/success',
+      '/congratulations',
+      '/complete',
+      '/done',
+      '/application-status',
+      '/job-applied',
+      '/apply/success',
+      '/careers/success',
+    ];
     const allUrlKeywords = [
       ...defaultUrlKeywords,
       ...(options.expectedUrlKeywords || []).map((k) => k.toLowerCase()),
     ];
 
+    const defaultConfirmationSelectors = [
+      '[data-automation-id="confirmationMessage"]',
+      '[data-automation-id="application-submitted"]',
+      '[data-automation-id*="success" i]',
+      '#thanks_container',
+      '.thanks-container',
+      '#application_confirmed',
+      '.application-confirmed',
+      '[data-testid="application-submitted-page"]',
+      '.ashby-application-form-confirmation',
+      '[class*="Confirmation" i]',
+      '[class*="Submitted" i]',
+      '[class*="application-success" i]',
+      '[class*="success-message" i]',
+      'div#flash_notice',
+      ...(options.confirmationSelectors || []),
+    ];
+
+    const modalSelectors = [
+      'dialog:visible',
+      '[role="dialog"]:visible',
+      '[aria-modal="true"]:visible',
+      '.modal:visible',
+      '[class*="modal" i]:visible',
+      '[class*="dialog" i]:visible',
+      '[class*="popup" i]:visible',
+      '[class*="drawer" i]:visible',
+      'div[id*="modal" i]:visible',
+    ];
+
     while (Date.now() - startTime < maxWait || (Date.now() - startTime < 60000)) {
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(800);
 
       const spinnerSelectors = 'button:disabled, button[aria-disabled="true"], button[aria-busy="true"], [class*="submitting" i], [class*="loading" i], [class*="spinner" i], .ashby-application-form-submit-button:disabled, button:has(svg), button svg, [data-testid*="submitting" i]';
       const pageActive = (await page.locator(spinnerSelectors).count().catch(() => 0)) > 0;
@@ -1978,7 +2056,7 @@ export abstract class ATSPlugin {
         );
       }
 
-      // ─── 3. Check Explicit Submission Rejection Errors ────────────────────
+      // ─── 3.2 Check Explicit Submission Rejection Errors ────────────────────
       if (
         combinedText.includes('you have exceeded the maximum number of applications') ||
         combinedText.includes('you have already submitted the maximum allowed applications') ||
@@ -1993,20 +2071,57 @@ export abstract class ATSPlugin {
       }
 
       // ─── 4. Check Positive Confirmation Indicators ─────────────────────────
-      const urlConfirmed = allUrlKeywords.some((kw) => currentUrl.includes(kw));
+      // Branch 1: Completely new page / URL Navigation
+      const urlNavigated = initialUrl && currentUrl !== initialUrl;
+      const urlMatchesKeyword = allUrlKeywords.some((kw) => currentUrl.includes(kw));
+      const urlConfirmed = urlMatchesKeyword || (urlNavigated && defaultUrlKeywords.some((kw) => currentUrl.includes(kw)));
 
-      let selectorConfirmed = false;
-      if (options.confirmationSelectors && options.confirmationSelectors.length > 0) {
-        for (const sel of options.confirmationSelectors) {
-          const count = await ctx.locator(sel).count().catch(() => 0);
-          if (count > 0) {
-            selectorConfirmed = true;
+      // Branch 2: Confirmation / Success Modal added to the page
+      let modalConfirmed = false;
+      let confirmedElement: import('playwright').Locator | null = null;
+
+      for (const modalSel of modalSelectors) {
+        const modalLoc = page.locator(modalSel).first();
+        if (await modalLoc.isVisible().catch(() => false)) {
+          const modalText = ((await modalLoc.textContent().catch(() => '')) || '').toLowerCase();
+          if (allConfirmKeywords.some((kw) => modalText.includes(kw))) {
+            modalConfirmed = true;
+            confirmedElement = modalLoc;
             break;
           }
-          if (ctx !== page) {
-            const pageCount = await page.locator(sel).count().catch(() => 0);
-            if (pageCount > 0) {
+        }
+        if (ctx !== page) {
+          const frameModal = ctx.locator(modalSel).first();
+          if (await frameModal.isVisible().catch(() => false)) {
+            const frameModalText = ((await frameModal.textContent().catch(() => '')) || '').toLowerCase();
+            if (allConfirmKeywords.some((kw) => frameModalText.includes(kw))) {
+              modalConfirmed = true;
+              confirmedElement = frameModal;
+              break;
+            }
+          }
+        }
+      }
+
+      // Branch 3: Confirmation / Thank You / Success Message added to existing page
+      let selectorConfirmed = false;
+      for (const sel of defaultConfirmationSelectors) {
+        const count = await ctx.locator(sel).count().catch(() => 0);
+        if (count > 0) {
+          const loc = ctx.locator(sel).first();
+          if (await loc.isVisible().catch(() => false)) {
+            selectorConfirmed = true;
+            if (!confirmedElement) confirmedElement = loc;
+            break;
+          }
+        }
+        if (ctx !== page) {
+          const pageCount = await page.locator(sel).count().catch(() => 0);
+          if (pageCount > 0) {
+            const pageLoc = page.locator(sel).first();
+            if (await pageLoc.isVisible().catch(() => false)) {
               selectorConfirmed = true;
+              if (!confirmedElement) confirmedElement = pageLoc;
               break;
             }
           }
@@ -2015,8 +2130,25 @@ export abstract class ATSPlugin {
 
       const textConfirmed = allConfirmKeywords.some((kw) => combinedText.includes(kw));
 
-      if (urlConfirmed || selectorConfirmed || textConfirmed) {
-        await logger.info('confirmation_received', `${platform} application confirmed successfully`);
+      if (urlConfirmed || modalConfirmed || selectorConfirmed || textConfirmed) {
+        const changeType = urlConfirmed ? 'new_page' : (modalConfirmed ? 'confirmation_modal' : 'confirmation_message');
+        await logger.info('confirmation_received', `${platform} application confirmed successfully via [${changeType}]`);
+
+        // Ensure active loading/submitting spinners have settled
+        if (isSubmittingActive) {
+          await page.waitForTimeout(1000);
+        }
+
+        // Wait for page rendering to settle before taking screenshot proof
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
+        await page.waitForTimeout(800);
+
+        // Scroll confirmation element / modal into view if identified
+        if (confirmedElement) {
+          await confirmedElement.scrollIntoViewIfNeeded().catch(() => {});
+          await page.waitForTimeout(300);
+        }
+
         return;
       }
 

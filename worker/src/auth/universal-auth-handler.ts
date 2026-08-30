@@ -114,7 +114,7 @@ export class UniversalAuthHandler {
     }
 
     // If no email/password inputs and not an explicit auth URL, not an auth gate
-    if (!emailInput || !passwordInputs) {
+    if (!emailInput && !passwordInputs) {
       if (!isAuthUrl) return { handled: false, action: 'none' };
 
       // Look for "Sign In" or "Create Account" launch buttons
@@ -212,12 +212,24 @@ export class UniversalAuthHandler {
 
     // Re-locate email & password inputs
     const freshEmail = targetContext.locator('input[data-automation-id="email"], input[data-automation-id="userName"], input[data-automation-id="username"], input[type="email"], input[name*="email" i], input[id*="email" i], input[name*="user" i]').first();
-    const freshPass = targetContext.locator('input[data-automation-id="password"], input[type="password"], input[name*="password" i]').first();
+    let freshPass = targetContext.locator('input[data-automation-id="password"], input[type="password"], input[name*="password" i]').first();
 
     if ((await freshEmail.count().catch(() => 0)) > 0 && emailToUse) {
       await fillAndCommit(freshEmail, emailToUse);
       await logger.info('auth_email_entered', `Filled candidate email`);
+
+      // If password field is not yet present, check for continue/next button in split-step form
+      if ((await freshPass.count().catch(() => 0)) === 0) {
+        const continueBtn = targetContext.locator('button:has-text("Continue with email"), button:has-text("Continue with Email"), button:has-text("Continue"), button:has-text("Next"), button[type="submit"]').first();
+        if ((await continueBtn.count().catch(() => 0)) > 0 && (await continueBtn.isVisible().catch(() => false))) {
+          await continueBtn.click({ force: true }).catch(() => {});
+          await page.waitForTimeout(1500);
+        }
+      }
     }
+
+    // Re-evaluate password input after possible step transition
+    freshPass = targetContext.locator('input[data-automation-id="password"], input[type="password"], input[name*="password" i]').first();
 
     if ((await freshPass.count().catch(() => 0)) > 0 && passwordToUse) {
       await fillAndCommit(freshPass, passwordToUse);

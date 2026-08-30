@@ -20,8 +20,8 @@ export const STRICT_CLOSED_PATTERNS: RegExp[] = [
   /we are no longer accepting/i,
   /applications are (?:now |currently )?closed/i,
   /applications for this (?:position|role|job|opening) are (?:now |currently )?closed/i,
-  /this (?:position|role|job|opening|posting|vacancy|listing|requisition) (?:is|has been) (?:no longer available|closed|filled|expired|archived|paused|removed|cancelled|inactive|ended)/i,
-  /this (?:position|role|job|opening|posting|vacancy|listing|requisition) is no longer (?:accepting applications|active|open|available|taking applications)/i,
+  /this (?:position|role|job|opening|posting|vacancy|listing|requisition|opportunity) (?:is|has been) (?:no longer available|closed|filled|expired|archived|paused|removed|cancelled|inactive|ended)/i,
+  /this (?:position|role|job|opening|posting|vacancy|listing|requisition|opportunity) is no longer (?:accepting applications|active|open|available|taking applications|hiring)/i,
   /the (?:job|position|role|posting) you are (?:looking for|trying to view) (?:has closed|is no longer available|has expired|is no longer active|is closed)/i,
   /the job posting you are looking for has closed or expired/i,
   /the job you selected is no longer open for applications/i,
@@ -39,6 +39,8 @@ export const STRICT_CLOSED_PATTERNS: RegExp[] = [
   /this job is closed/i,
   /this position is closed/i,
   /this role is closed/i,
+  /this job post is closed/i,
+  /this job offer is closed/i,
   /application deadline has passed/i,
   /deadline for applications has passed/i,
   /submissions are closed/i,
@@ -46,12 +48,19 @@ export const STRICT_CLOSED_PATTERNS: RegExp[] = [
   /job is inactive/i,
   /this posting is inactive/i,
   /this listing is inactive/i,
+  /no longer hiring/i,
+  /hiring has ended/i,
+  /application has closed/i,
+  /(?:job|position|posting|role)\s+status:\s*closed/i,
+  /\[closed\]/i,
+  /\(closed\)/i,
+  /\bclosed\s*-\s*no longer accepting\b/i,
 ];
 
 /**
  * Checks if HTML or plain text indicates the job is closed.
  */
-export function isClosedJobText(text: string): JobClosedDetectionResult {
+export function isClosedJobText(text?: string | null): JobClosedDetectionResult {
   if (!text || text.trim().length === 0) {
     return { isClosed: false };
   }
@@ -77,3 +86,19 @@ export function isClosedHttpStatus(statusCode?: number): boolean {
   if (!statusCode) return false;
   return statusCode === 404 || statusCode === 410;
 }
+
+/**
+ * Checks if an entire job object indicates it is closed (status field, title, or description).
+ */
+export function isClosedJobRecord(job: {
+  status?: string | null;
+  title?: string | null;
+  description?: string | null;
+}): boolean {
+  if (!job) return false;
+  if (job.status?.toLowerCase() === 'closed') return true;
+  if (job.title && isClosedJobText(job.title).isClosed) return true;
+  if (job.description && isClosedJobText(job.description).isClosed) return true;
+  return false;
+}
+

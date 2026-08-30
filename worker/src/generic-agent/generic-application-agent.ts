@@ -204,9 +204,7 @@ export class GenericApplicationAgent {
       // ─── Step 3: Check if we have arrived at active application form ───────
       if (
         analysis.classification === PageClassification.APPLICATION_FORM ||
-        analysis.classification === PageClassification.APPLICATION_CONTINUATION ||
-        analysis.formPresence.hasApplicationElements ||
-        analysis.formPresence.hasForm
+        analysis.classification === PageClassification.APPLICATION_CONTINUATION
       ) {
         stateMachine.forceTransition(AgentState.APPLICATION_FORM, currentUrl, 'Application form reached');
         await telemetry.record(telemetry.buildEntry({

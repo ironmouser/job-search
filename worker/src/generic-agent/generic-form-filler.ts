@@ -1155,20 +1155,112 @@ export class GenericFormFiller {
       await submitBtn.hover().catch(() => {});
       await page.waitForTimeout(300);
 
+      const initialUrl = (page.url() || '').toLowerCase();
       await safeClick(page, submitBtn, { actionName: 'final_submit' }, logger);
 
       // Verify post-submission state across custom portal
       const startTime = Date.now();
-      const maxWait = 8000;
+      const maxWait = 30000;
       let confirmed = false;
+      let confirmedElement: import('playwright').Locator | null = null;
+      let confirmedChangeType = '';
+
+      const defaultConfirmationKeywords = [
+        'thank you for applying',
+        'thanks for applying',
+        'thank you for your application',
+        'thanks for your application',
+        'application submitted',
+        'application successfully submitted',
+        'submitted successfully',
+        'application received',
+        'successfully applied',
+        'we have received your application',
+        'your application has been received',
+        'your application was received',
+        'your application has been submitted',
+        'your application was submitted',
+        'we received your application',
+        'we\'ve received your application',
+        'thanks for your interest',
+        'congratulations! your application',
+        'congratulations, your application',
+        'congratulations! you have applied',
+        'congratulations! you',
+        'congratulations',
+        'your application is complete',
+        'application complete',
+        'we will review your application',
+        'you\'re all set',
+        'you are all set',
+        'application confirmation',
+        'submission received',
+        'you\'ve successfully applied',
+        'you have applied',
+        'confirmation number',
+        'confirmation #',
+        'application id:',
+        'reference #:',
+        'receipt number',
+        'your response has been recorded',
+        'submission confirmation',
+      ];
+
+      const defaultUrlKeywords = [
+        '/thanks',
+        '/thank-you',
+        '/thank_you',
+        '/thankyou',
+        '/confirmation',
+        '/confirm',
+        '/submitted',
+        '/applied',
+        '/application-submitted',
+        '/success',
+        '/congratulations',
+        '/complete',
+        '/done',
+        '/application-status',
+        '/job-applied',
+        '/apply/success',
+        '/careers/success',
+      ];
+
+      const modalSelectors = [
+        'dialog:visible',
+        '[role="dialog"]:visible',
+        '[aria-modal="true"]:visible',
+        '.modal:visible',
+        '[class*="modal" i]:visible',
+        '[class*="dialog" i]:visible',
+        '[class*="popup" i]:visible',
+        '[class*="drawer" i]:visible',
+        'div[id*="modal" i]:visible',
+      ];
+
+      const confirmationSelectors = [
+        '[data-automation-id="confirmationMessage"]',
+        '[data-automation-id="application-submitted"]',
+        '[data-automation-id*="success" i]',
+        '#thanks_container',
+        '.thanks-container',
+        '#application_confirmed',
+        '.application-confirmed',
+        '[data-testid="application-submitted-page"]',
+        '[class*="Confirmation" i]',
+        '[class*="Submitted" i]',
+        '[class*="application-success" i]',
+        '[class*="success-message" i]',
+        'div#flash_notice',
+      ];
 
       while (Date.now() - startTime < maxWait) {
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(800);
         const currentUrl = (page.url() || '').toLowerCase();
         const bodyText = ((await page.textContent('body').catch(() => '')) || '').toLowerCase();
 
         // 1. Spam filter check
-        if (bodyText.includes('flagged as possible spam') || bodyText.includes('couldn\'t submit your application')) {
+        if (bodyText.includes('flagged as possible spam') || bodyText.includes('couldn\'t submit your application') || bodyText.includes('could not submit your application')) {
           throw new InterventionError(
             InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
             'Application submission was flagged by anti-bot/spam filter on portal.',
@@ -1177,7 +1269,7 @@ export class GenericFormFiller {
         }
 
         // 2. Security challenge check
-        if (bodyText.includes('verify you are human') || bodyText.includes('cloudflare challenge')) {
+        if (bodyText.includes('verify you are human') || bodyText.includes('cloudflare challenge') || bodyText.includes('please complete the security check')) {
           throw new InterventionError(
             InterventionReason.APPLICATION_BLOCKED_BY_BOT_CHALLENGE,
             'Security verification challenge detected on portal after submission.',
@@ -1185,22 +1277,52 @@ export class GenericFormFiller {
           );
         }
 
-        // 3. Positive confirmation check
-        const urlMatch = currentUrl.includes('/thanks') || currentUrl.includes('/confirmation') || currentUrl.includes('/submitted');
-        const textMatch =
-          bodyText.includes('thank you for applying') ||
-          bodyText.includes('application submitted') ||
-          bodyText.includes('application received') ||
-          bodyText.includes('successfully submitted') ||
-          bodyText.includes('we have received your application');
-
-        if (urlMatch || textMatch) {
+        // 3. Positive confirmation check:
+        // Branch 1: URL Navigation to new page
+        const urlNavigated = initialUrl && currentUrl !== initialUrl;
+        const urlMatch = defaultUrlKeywords.some((kw) => currentUrl.includes(kw));
+        if (urlMatch || (urlNavigated && defaultUrlKeywords.some((kw) => currentUrl.includes(kw)))) {
           confirmed = true;
+          confirmedChangeType = 'new_page';
+          break;
+        }
+
+        // Branch 2: Confirmation / Success Modal added to page
+        for (const modalSel of modalSelectors) {
+          const modalLoc = page.locator(modalSel).first();
+          if (await modalLoc.isVisible().catch(() => false)) {
+            const modalText = ((await modalLoc.textContent().catch(() => '')) || '').toLowerCase();
+            if (defaultConfirmationKeywords.some((kw) => modalText.includes(kw))) {
+              confirmed = true;
+              confirmedElement = modalLoc;
+              confirmedChangeType = 'confirmation_modal';
+              break;
+            }
+          }
+        }
+        if (confirmed) break;
+
+        // Branch 3: Confirmation / Success message added to existing page
+        for (const confSel of confirmationSelectors) {
+          const confLoc = page.locator(confSel).first();
+          if (await confLoc.isVisible().catch(() => false)) {
+            confirmed = true;
+            confirmedElement = confLoc;
+            confirmedChangeType = 'confirmation_message';
+            break;
+          }
+        }
+        if (confirmed) break;
+
+        const textMatch = defaultConfirmationKeywords.some((kw) => bodyText.includes(kw));
+        if (textMatch) {
+          confirmed = true;
+          confirmedChangeType = 'confirmation_message';
           break;
         }
 
         // 4. Form error check
-        const errorEl = page.locator('[role="alert"], .error-message, [aria-invalid="true"]').first();
+        const errorEl = page.locator('[role="alert"], .error-message, [aria-invalid="true"], .invalid-field, .form-error').first();
         if (await errorEl.isVisible().catch(() => false)) {
           const errText = (await errorEl.textContent().catch(() => ''))?.trim();
           if (errText && !/cookie|privacy/i.test(errText)) {
@@ -1219,6 +1341,16 @@ export class GenericFormFiller {
           'No confirmation received after submitting on employer portal. Please verify submission.',
           page.url()
         );
+      }
+
+      await logger.info('confirmation_received', `Employer portal application confirmed successfully via [${confirmedChangeType || 'page_update'}]`);
+
+      // Settle DOM and scroll confirmation element into view for screenshot proof
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+      await page.waitForTimeout(800);
+      if (confirmedElement) {
+        await confirmedElement.scrollIntoViewIfNeeded().catch(() => {});
+        await page.waitForTimeout(300);
       }
 
       return {

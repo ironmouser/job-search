@@ -11,6 +11,8 @@ import { getEffectiveTier } from '@/lib/tier';
 import { isUsLocation, isRemoteLocation, extractStateAbbr, isOutsideUsLocation } from '@/lib/locationUtils';
 import { expandSearchKeywords, expandSearchKeywordsWithAI, splitTargetRoles } from '@/lib/keywordExpansion';
 import { extractTopTitlesFromResults } from '@/lib/serpapi';
+import { isClosedJobRecord } from '@/lib/jobStatusDetector';
+import { computeRoleMatchScore } from '@/lib/roleMatcher';
 
 export async function POST(request: Request) {
     try {
@@ -44,6 +46,8 @@ export async function POST(request: Request) {
             : (settings.searchLocation || 'Remote');
         const remoteOnlyOverride = typeof body.remoteOnly === 'boolean' ? body.remoteOnly : undefined;
         const noInternationalOverride = typeof body.noInternational === 'boolean' ? body.noInternational : undefined;
+        const effectiveRemoteOnly = remoteOnlyOverride !== undefined ? remoteOnlyOverride : (settings.remoteOnly || false);
+        const effectiveNoInternational = noInternationalOverride !== undefined ? noInternationalOverride : (settings.noInternational || false);
         const sourceParam = body.source;
 
         // Ensure search keyword is auto-persisted to userPreferences if missing
@@ -75,7 +79,7 @@ export async function POST(request: Request) {
             }
         }
 
-        console.log(`Received omni-scrape request for "${keyword}" in "${location}" (remoteOnly: ${remoteOnlyOverride ?? settings.remoteOnly ?? false}) for user ${userId}`);
+        console.log(`Received omni-scrape request for "${keyword}" in "${location}" (remoteOnly: ${effectiveRemoteOnly}) for user ${userId}`);
 
         const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
         const userRecord = await prisma.user.findUnique({
@@ -136,6 +140,10 @@ export async function POST(request: Request) {
                         for (const job of rawList) {
                             const url = job.url || job.link;
                             if (!url || seenScrapedUrls.has(url)) continue;
+                            // Strictly reject closed jobs from ever entering raw pool
+                            if (isClosedJobRecord(job)) {
+                                continue;
+                            }
                             seenScrapedUrls.add(url);
                             allRawJobs.push(job);
                             added++;
@@ -156,21 +164,31 @@ export async function POST(request: Request) {
                     const aiExpansionPromise = expandSearchKeywordsWithAI(keyword, userId);
 
                     try {
-                        const orConditions = initialKeywords.flatMap(kw => [
-                            { title: { contains: kw, mode: 'insensitive' as const } },
-                            { description: { contains: kw, mode: 'insensitive' as const } }
-                        ]);
+                        const titleConditions = initialKeywords.map(kw => ({
+                            title: { contains: kw, mode: 'insensitive' as const }
+                        }));
 
                         const dbFirstJobs = await prisma.job.findMany({
                             where: {
+                                status: { not: 'closed' },
+                                isArchived: false,
                                 createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
-                                OR: orConditions
+                                OR: titleConditions
                             },
                             take: 200,
                             orderBy: { createdAt: 'desc' }
                         });
-                        if (dbFirstJobs.length > 0) {
-                            registerJobs('Database Pool', dbFirstJobs);
+
+                        const filteredDbFirst = dbFirstJobs.filter(j => {
+                            if (isClosedJobRecord(j)) return false;
+                            if (effectiveRemoteOnly && !isRemoteLocation(j.location || '')) return false;
+                            if (effectiveNoInternational && isOutsideUsLocation(j.location || '')) return false;
+                            const matchScore = computeRoleMatchScore(j.title, keyword, j.description);
+                            return matchScore > 0;
+                        });
+
+                        if (filteredDbFirst.length > 0) {
+                            registerJobs('Database Pool', filteredDbFirst);
                         }
 
                         // Step 1b: Second DB pass with AI-expanded synonyms (up to 1.5s timeout race)
@@ -180,20 +198,30 @@ export async function POST(request: Request) {
                         ]);
                         const novelAiTerms = aiTerms.filter(t => !initialKeywords.some(ik => ik.toLowerCase() === t.toLowerCase()));
                         if (novelAiTerms.length > 0) {
-                            const aiOrConditions = novelAiTerms.flatMap(kw => [
-                                { title: { contains: kw, mode: 'insensitive' as const } },
-                                { description: { contains: kw, mode: 'insensitive' as const } }
-                            ]);
+                            const aiTitleConditions = novelAiTerms.map(kw => ({
+                                title: { contains: kw, mode: 'insensitive' as const }
+                            }));
                             const dbAiJobs = await prisma.job.findMany({
                                 where: {
+                                    status: { not: 'closed' },
+                                    isArchived: false,
                                     createdAt: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
-                                    OR: aiOrConditions
+                                    OR: aiTitleConditions
                                 },
                                 take: 150,
                                 orderBy: { createdAt: 'desc' }
                             });
-                            if (dbAiJobs.length > 0) {
-                                registerJobs('Database Pool (Expanded)', dbAiJobs);
+
+                            const filteredDbAi = dbAiJobs.filter(j => {
+                                if (isClosedJobRecord(j)) return false;
+                                if (effectiveRemoteOnly && !isRemoteLocation(j.location || '')) return false;
+                                if (effectiveNoInternational && isOutsideUsLocation(j.location || '')) return false;
+                                const matchScore = computeRoleMatchScore(j.title, keyword, j.description);
+                                return matchScore > 0;
+                            });
+
+                            if (filteredDbAi.length > 0) {
+                                registerJobs('Database Pool (Expanded)', filteredDbAi);
                             }
                         }
                     } catch (dbErr: any) {
@@ -203,6 +231,7 @@ export async function POST(request: Request) {
                     // Step 2: Derive keyword variants for live scraper rotation immediately
                     const subRoles = splitTargetRoles(keyword);
                     const scraperKeywords = initialKeywords.slice(0, Math.min(6, Math.max(3, subRoles.length)));
+
 
                     const tasks: Promise<void>[] = [];
 

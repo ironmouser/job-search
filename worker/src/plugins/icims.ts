@@ -205,11 +205,13 @@ export class ICIMSPlugin extends ATSPlugin {
     await submitBtn.hover().catch(() => {});
     await browser.page.waitForTimeout(300);
 
+    const initialUrl = browser.page.url();
     await submitBtn.click();
 
     // Verify post-submission status
     await this.verifyPostSubmission(browser, targetContext, logger, {
       platformDisplayName: 'iCIMS',
+      initialUrl,
       confirmationKeywords: [
         'thank you for applying',
         'application submitted',
@@ -217,7 +219,7 @@ export class ICIMSPlugin extends ATSPlugin {
         'successfully submitted',
       ],
       errorSelectors: ['[role="alert"]', '.iCIMS_errorMessage', '.errorMessage'],
-      maxWaitMs: 8000,
+      maxWaitMs: 30000,
     });
 
     const screenshotPath = await browser.screenshot('icims-submitted.png');

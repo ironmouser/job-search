@@ -18,6 +18,7 @@ import { cleanJobUrl, isNonJobUrl, isSafePublicUrl } from '../urlUtils';
 import { fetchWithScraperAPI } from '../scraperapi';
 import { callAI } from '../ai';
 import { requestScraping } from '../httpClient';
+import { isClosedJobText } from '../jobStatusDetector';
 
 function extractJobsFromJsonLd(html: string, pageUrl: string, fallbackCompany: string): RawDiscoveredJob[] {
   const jobs: RawDiscoveredJob[] = [];
@@ -37,6 +38,8 @@ function extractJobsFromJsonLd(html: string, pageUrl: string, fallbackCompany: s
         if (item?.['@type'] === 'JobPosting') {
           const title = item.title?.trim();
           if (!title) continue;
+          if (isClosedJobText(title).isClosed || isClosedJobText(item.description).isClosed) continue;
+
 
           const company = item.hiringOrganization?.name || fallbackCompany;
           const directUrl = item.directApply || item.url;
@@ -126,6 +129,7 @@ function extractJobsFromDomLinks(html: string, pageUrl: string, fallbackCompany:
     const title = $(el).find('h2, h3, h4, span, p').first().text().trim() || $(el).text().trim();
     const href = $(el).attr('href') || '';
     if (!title || !href || title.length < 3 || title.length > 120) return;
+    if (isClosedJobText(title).isClosed) return;
 
     let fullUrl = href;
     try {
@@ -189,7 +193,7 @@ ${cleanText}`;
     const parsed = JSON.parse(res.replace(/```json/g, '').replace(/```/g, '').trim());
     if (Array.isArray(parsed?.jobs)) {
       return parsed.jobs
-        .filter((j: any) => j.title && j.title.length > 2)
+        .filter((j: any) => j.title && j.title.length > 2 && !isClosedJobText(j.title).isClosed)
         .map((j: any) => ({
           title: j.title.trim(),
           company: companyName,
@@ -207,6 +211,7 @@ ${cleanText}`;
 
   return [];
 }
+
 
 export async function fetchGenericCareerPageJobs(config: ATSConnectorConfig): Promise<ConnectorResult> {
   const { careerUrl, companyName: providedCompanyName, companySlug } = config;

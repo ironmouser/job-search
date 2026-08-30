@@ -268,11 +268,13 @@ export class LeverPlugin extends ATSPlugin {
       );
     }
 
+    const initialUrl = page.url();
     await submitBtn.click();
 
     // Verify post-submission status (checks for confirmation, anti-bot challenges, limits, and form error banners)
     await this.verifyPostSubmission(browser, page, logger, {
       platformDisplayName: 'Lever',
+      initialUrl,
       expectedUrlKeywords: ['/thanks', '/confirmation'],
       confirmationKeywords: [
         'application submitted',
@@ -281,7 +283,7 @@ export class LeverPlugin extends ATSPlugin {
         'your application has been submitted',
       ],
       errorSelectors: ['[role="alert"]', '.application-error', '.error-message'],
-      maxWaitMs: 8000,
+      maxWaitMs: 30000,
     });
 
     return {

@@ -357,13 +357,16 @@ export class WorkdayPlugin extends ATSPlugin {
       );
     }
 
+    const initialUrl = page.url();
     await submitBtn.click();
 
     // Verify post-submission status (checks for confirmation, anti-bot challenges, limits, and form error banners)
     await this.verifyPostSubmission(browser, page, logger, {
       platformDisplayName: 'Workday',
+      initialUrl,
       confirmationSelectors: [
         '[data-automation-id="confirmationMessage"]',
+        '[data-automation-id="application-submitted"]',
         ':has-text("successfully submitted")',
         ':has-text("Thank you for applying")',
       ],
@@ -374,7 +377,7 @@ export class WorkdayPlugin extends ATSPlugin {
         'application received',
       ],
       errorSelectors: ['[data-automation-id*="error" i]', '[role="alert"]', '.error-msg'],
-      maxWaitMs: 8000,
+      maxWaitMs: 30000,
     });
 
     return {

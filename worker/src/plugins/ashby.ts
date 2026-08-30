@@ -204,11 +204,13 @@ export class AshbyPlugin extends ATSPlugin {
     await submitBtn.hover().catch(() => {});
     await browser.page.waitForTimeout(400);
 
+    const initialUrl = browser.page.url();
     await submitBtn.click();
 
     // Verify post-submission status (checks for spam filter flags, limits, validation errors, and confirms success)
     await this.verifyPostSubmission(browser, targetContext, logger, {
       platformDisplayName: 'Ashby',
+      initialUrl,
       confirmationSelectors: [
         '[data-testid="application-submitted-page"]',
         '.ashby-application-form-confirmation',

@@ -299,4 +299,67 @@ describe('Workday Candidate Auth Gate Flow Tests', () => {
       await page.close();
     }
   });
+
+  it('Test 5 — Split-Step Auth Gate: Types email, clicks continue, then fills password and submits', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.setContent(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Candidate Experience - Portal</title></head>
+        <body>
+          <div role="dialog" aria-modal="true" data-automation-id="authModal" id="split-modal">
+            <div id="step-1">
+              <input data-automation-id="email" type="email" value="" id="user-email" />
+              <button type="button" onclick="
+                document.getElementById('step-1').style.display='none';
+                document.getElementById('step-2').style.display='block';
+              ">Continue with email</button>
+            </div>
+            <div id="step-2" style="display:none;">
+              <input data-automation-id="password" type="password" value="" id="user-pass" />
+              <button data-automation-id="signInSubmitButton" type="submit" onclick="
+                const email = document.getElementById('user-email').value;
+                const pass = document.getElementById('user-pass').value;
+                window.submittedSplitData = { email, pass };
+                document.getElementById('split-modal').remove();
+              ">Sign In</button>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+
+      const plugin = new WorkdayPlugin();
+      const mockContext: WorkflowContext = {
+        sessionId: 'test-session-5',
+        userId: 'user-5',
+        jobId: 'job-5',
+        jobUrl: 'https://company.myworkdayjobs.com/careers/job/555',
+        resumeMarkdown: '# User Split Step',
+        coverLetterMarkdown: 'Cover letter',
+        userProfile: {
+          name: 'Split User',
+          email: 'split@example.com',
+          accountEmail: 'split@example.com',
+          accountPassword: 'SplitPass2026!',
+          accountAuthMode: 'sign_in',
+        },
+        simulationMode: false,
+      };
+
+      await (plugin as any).checkAccountGate(page, mockContext.jobUrl, 'Workday', mockContext);
+
+      const modalCount = await page.locator('#split-modal').count();
+      assert.strictEqual(modalCount, 0, 'Auth modal should be closed after split-step submission');
+
+      const submitted = await page.evaluate(() => (window as any).submittedSplitData);
+      assert.deepStrictEqual(submitted, {
+        email: 'split@example.com',
+        pass: 'SplitPass2026!',
+      });
+    } finally {
+      await page.close();
+    }
+  });
 });

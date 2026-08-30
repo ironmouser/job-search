@@ -6,6 +6,7 @@ import { isDescriptionAdequate, fetchJobDescription, fetchJobDescriptionDetailed
 import { scoreJob } from '@/lib/scoring';
 import { getEffectiveTier } from '@/lib/tier';
 import { getUserSettings } from '@/lib/settings';
+import { isClosedJobRecord, isClosedJobText } from '@/lib/jobStatusDetector';
 
 export const maxDuration = 60;
 
@@ -28,78 +29,57 @@ export async function POST(request: Request) {
     }
 
     const userId = session.user.id;
-
-    // Verify Pro tier
-    const userRecord = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
-    });
-    const isPro = userRecord ? getEffectiveTier(userRecord) === 'PRO' : false;
-
-    if (!isPro) {
-      return NextResponse.json({
-        error: 'AI Match Scoring requires a Pro account.',
-        code: 'LIMIT_REACHED'
-      }, { status: 403 });
-    }
-
-    let body: any = {};
-    try {
-      body = await request.json();
-    } catch (e) {
-      body = {};
-    }
-
+    const body = await request.json().catch(() => ({}));
     const { jobIds } = body;
-    if (!jobIds || !Array.isArray(jobIds) || jobIds.length === 0) {
-      return NextResponse.json({ message: 'No job IDs provided.' }, { status: 200 });
+
+    if (!Array.isArray(jobIds) || jobIds.length === 0) {
+      return NextResponse.json({ error: 'jobIds array is required' }, { status: 400 });
     }
 
-    // Limit to 5 jobs per batch for economical background processing
-    const targetJobIds = jobIds.slice(0, 5);
-
-    const userJobs = await prisma.userJob.findMany({
-      where: {
-        userId,
-        jobId: { in: targetJobIds }
-      },
-      include: {
-        job: { select: { id: true, title: true, description: true, url: true } }
-      }
-    });
-
-    if (!userJobs || userJobs.length === 0) {
-      return NextResponse.json({ message: 'No matching user jobs found.' }, { status: 200 });
-    }
-
-    // Pre-fetch settings and feedback once for the batch
-    const [batchSettings, batchFeedback] = await Promise.all([
+    // Prefetch user settings, user tier, and feedback data for all jobs in batch
+    const [settings, user, feedbackData] = await Promise.all([
       getUserSettings(userId),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { planTier: true, trialEndsAt: true, subscriptionType: true, orgAccessExpiresAt: true }
+      }),
       prisma.jobFeedback.findMany({
         where: { userId },
-        select: { feedbackType: true, reasons: true, job: { select: { title: true, company: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 10
+        include: { job: { select: { title: true, company: true, description: true } } }
       })
     ]);
 
-    const prefetchedData = { settings: batchSettings, feedbackData: batchFeedback };
+    const isPro = user ? getEffectiveTier(user) === 'PRO' : false;
+    const targetJobIds = isPro ? jobIds.slice(0, 50) : jobIds.slice(0, 10);
+
+    const jobs = await prisma.job.findMany({
+      where: { id: { in: targetJobIds } }
+    });
+
+    const prefetchedData = {
+      settings,
+      feedbackData,
+    };
 
     const results = await Promise.all(
-      userJobs.map(async (uj) => {
-        const job = uj.job;
-
+      jobs.map(async (job) => {
         try {
-          // 1. Check if job is already scored
+          // 1. If already scored for this user, return existing score
           const existingScore = await prisma.opportunityScore.findUnique({
-            where: { userId_jobId: { userId, jobId: job.id } },
-            select: { id: true }
+            where: { userId_jobId: { userId, jobId: job.id } }
           });
           if (existingScore) {
-            return { jobId: job.id, status: 'already_scored' };
+            return { jobId: job.id, status: 'already_scored', score: existingScore.totalScore };
           }
 
           let description = job.description || '';
+
+          // 1b. Check if already marked closed or closed text present
+          if (isClosedJobRecord(job) || isClosedJobText(description).isClosed) {
+            await prisma.job.update({ where: { id: job.id }, data: { status: 'closed' } });
+            await prisma.userJob.deleteMany({ where: { jobId: job.id, userId } });
+            return { jobId: job.id, status: 'closed', reason: 'Position closed' };
+          }
 
           // 2. Fetch full description if missing or inadequate (stub)
           if (!isDescriptionAdequate(description)) {
@@ -111,7 +91,7 @@ export async function POST(request: Request) {
                 const detailRes = await withTimeout(fetchJobDescriptionDetailed(tryUrl), 15000, null);
                 if (detailRes?.isClosed) {
                   await prisma.job.update({ where: { id: job.id }, data: { status: 'closed' } });
-                  await prisma.userJob.updateMany({ where: { jobId: job.id }, data: { status: 'closed' } });
+                  await prisma.userJob.deleteMany({ where: { jobId: job.id, userId } });
                   return { jobId: job.id, status: 'closed', reason: detailRes.closedReason || 'Position closed' };
                 }
                 if (detailRes?.description && isDescriptionAdequate(detailRes.description)) {

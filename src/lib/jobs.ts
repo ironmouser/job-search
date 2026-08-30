@@ -3,10 +3,12 @@ import { getUserSettings } from './settings';
 import { reformatJobDescriptionWithGemini } from './formatter';
 import { cleanJobUrl, isNonJobUrl } from './urlUtils';
 import { callAI } from './ai';
-import { isInternationalLocation, isRemoteLocation } from './locationUtils';
+import { isInternationalLocation, isRemoteLocation, isUsLocation, extractStateAbbr } from './locationUtils';
 import { cleanCompanyName } from './cleaners';
 import { bulkSniffAndRegisterSources } from './sourceDiscovery';
 import { detectAtsFromUrl, ATSPlatform } from './atsDetector';
+import { isClosedJobRecord, isClosedJobText } from './jobStatusDetector';
+import { computeRoleMatchScore } from './roleMatcher';
 
 const cleanNullBytes = (str: string | null | undefined): string => {
     if (!str) return '';
@@ -27,6 +29,10 @@ export async function bulkIngestRawJobsToGlobalDb(rawJobs: any[]) {
             if (!rawUrl || !j.title) continue;
             const cleanedUrl = cleanJobUrl(rawUrl);
             if (!cleanedUrl || isNonJobUrl(cleanedUrl) || seenUrls.has(cleanedUrl)) continue;
+
+            // Reject closed jobs from entering global DB pool
+            if (isClosedJobRecord(j)) continue;
+
             seenUrls.add(cleanedUrl);
 
             const safeTitle = cleanNullBytes(j.title?.trim()) || 'Untitled Position';
@@ -79,6 +85,7 @@ export async function bulkIngestRawJobsToGlobalDb(rawJobs: any[]) {
     }
 }
 
+
 export async function normalizeAndSaveJobs(
     rawJobs: any[],
     userId: string,
@@ -116,6 +123,9 @@ export async function normalizeAndSaveJobs(
         const title = job.title?.trim();
         if (!rawUrl || !title) continue;
 
+        // Reject closed jobs early
+        if (isClosedJobRecord(job)) continue;
+
         const cleanedUrl = cleanJobUrl(rawUrl);
         if (!cleanedUrl || isNonJobUrl(cleanedUrl) || seenUrls.has(cleanedUrl)) continue;
 
@@ -152,12 +162,13 @@ export async function normalizeAndSaveJobs(
             applicationUrl: job.applicationUrl || null,
             source: job.source || 'Direct',
             isEasyApply: !!job.isEasyApply,
+            status: job.status || 'discovered'
         });
     }
 
     const droppedInvalidOrDupes = rawCount - deduplicatedJobs.length;
     if (droppedInvalidOrDupes > 0) {
-        onProgress?.(deduplicatedJobs.length, `Removed ${droppedInvalidOrDupes} duplicate or invalid listing${droppedInvalidOrDupes === 1 ? '' : 's'}`);
+        onProgress?.(deduplicatedJobs.length, `Removed ${droppedInvalidOrDupes} duplicate, closed, or invalid listing${droppedInvalidOrDupes === 1 ? '' : 's'}`);
     }
 
     // Stage 2: Fire non-blocking background task to bulk populate all valid scraped jobs into global DB pool
@@ -165,7 +176,7 @@ export async function normalizeAndSaveJobs(
         console.warn(`[Global Pool Ingestion Background Error]: ${err.message}`);
     });
 
-    // Stage 3: User Personal Deterministic Location & Keyword Filters
+    // Stage 3: User Personal Deterministic Location, Role & Keyword Filters
     // Note: Per requirements, Location Preference does NOT disqualify email synced jobs.
     let normalizedJobs = [...deduplicatedJobs];
 
@@ -181,6 +192,23 @@ export async function normalizeAndSaveJobs(
         normalizedJobs = normalizedJobs.filter(j => !isInternationalLocation(j.location || ''));
         const dropped = before - normalizedJobs.length;
         if (dropped > 0) onProgress?.(normalizedJobs.length, `Removed ${dropped} international listing${dropped === 1 ? '' : 's'} based on your location preferences`);
+    }
+
+    // Deterministic Role Match Pre-Filter: discard listings that have 0 semantic/keyword overlap with search target
+    if (!isEmailSync && searchKeyword && searchKeyword.trim().length > 0) {
+        const before = normalizedJobs.length;
+        normalizedJobs = normalizedJobs.filter(j => {
+            const score = computeRoleMatchScore(j.title, searchKeyword, j.description);
+            if (score <= 0) {
+                console.log(`[Role Pre-Filter] Discarding "${j.title}" at "${j.company}" (score: 0) for target keyword "${searchKeyword}"`);
+                return false;
+            }
+            return true;
+        });
+        const dropped = before - normalizedJobs.length;
+        if (dropped > 0) {
+            onProgress?.(normalizedJobs.length, `Filtered out ${dropped} listing${dropped === 1 ? '' : 's'} outside your target role preferences`);
+        }
     }
 
     const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -238,8 +266,9 @@ export async function normalizeAndSaveJobs(
     const urlsToProcess = normalizedJobs.map(j => j.url);
     const existingJobs = await prisma.job.findMany({
         where: { url: { in: urlsToProcess } },
-        select: { id: true, url: true }
+        select: { id: true, url: true, status: true }
     });
+    const closedJobUrls = new Set(existingJobs.filter(e => e.status === 'closed').map(e => e.url));
     
     let userExistingJobIds = new Set<string>();
     let userExistingTitleCompany = new Set<string>();
@@ -270,6 +299,12 @@ export async function normalizeAndSaveJobs(
     let dbDedupDropped = 0;
 
     for (const jobData of normalizedJobs) {
+        // Skip jobs already known to be closed in database
+        if (closedJobUrls.has(jobData.url)) {
+            console.log(`[DB Closed Check] Skipping "${jobData.title}" at "${jobData.company}" — position is marked closed in database.`);
+            continue;
+        }
+
         const match = existingJobs.find(e => e.url === jobData.url);
         if (match && userExistingJobIds.has(match.id)) {
             knownGoodJobs.push(jobData);
@@ -369,6 +404,7 @@ export async function normalizeAndSaveJobs(
         approvedCandidates.push(...brandNewCandidates);
     }
 
+
     // Tier 3: Persistence (Bulk Optimized)
     // Save existing roles and cap NEW UserJob feed allocations to top 100 brand-new candidate matches per sync
     const newAllocatedCandidates = approvedCandidates.slice(0, 100);
@@ -447,10 +483,10 @@ export async function normalizeAndSaveJobs(
         }
     }
 
-    // Bulk fetch all relevant Job records by URL
+    // Bulk fetch all relevant Job records by URL (strictly exclude closed jobs)
     const dbJobs = await prisma.job.findMany({
-        where: { url: { in: processedUrls } },
-        select: { id: true, url: true, title: true, description: true, applicationUrl: true, isEasyApply: true, source: true, discoverySource: true, discoveryUrl: true }
+        where: { url: { in: processedUrls }, status: { not: 'closed' } },
+        select: { id: true, url: true, title: true, description: true, applicationUrl: true, isEasyApply: true, source: true, discoverySource: true, discoveryUrl: true, status: true }
     });
     const dbJobByUrl = new Map(dbJobs.map(j => [j.url, j]));
 
@@ -495,8 +531,8 @@ export async function normalizeAndSaveJobs(
         await Promise.all(updatePromises);
     }
 
-    // Bulk link candidate jobs to UserJob
-    const candidateDbJobsToLink = dbJobs.filter(j => userAllocationUrls.has(j.url));
+    // Bulk link candidate jobs to UserJob (strictly active, non-closed jobs only)
+    const candidateDbJobsToLink = dbJobs.filter(j => userAllocationUrls.has(j.url) && j.status !== 'closed' && !isClosedJobRecord(j));
     const candidateJobIds = candidateDbJobsToLink.map(j => j.id);
 
     if (candidateJobIds.length > 0) {
@@ -524,6 +560,9 @@ export async function normalizeAndSaveJobs(
         const newUserJobsToCreate: { userId: string; jobId: string; status: string }[] = [];
 
         for (const job of candidateDbJobsToLink) {
+            if (job.status === 'closed' || isClosedJobRecord(job)) {
+                continue;
+            }
             if (lowScoreJobIds.has(job.id)) {
                 console.log(`[Job Ingestion] Skipping job ${job.id} ("${job.title}") due to existing low match score (<50).`);
                 continue;
@@ -550,6 +589,7 @@ export async function normalizeAndSaveJobs(
             }
         }
     }
+
 
     const data = await prisma.job.findMany({
         where: { url: { in: processedUrls } }

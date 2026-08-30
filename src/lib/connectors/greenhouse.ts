@@ -9,6 +9,8 @@ import * as cheerio from 'cheerio';
 import { ATSConnectorConfig, ConnectorResult, RawDiscoveredJob } from './types';
 import { cleanCompanyName } from '../cleaners';
 import { requestScraping } from '../httpClient';
+import { isClosedJobText } from '../jobStatusDetector';
+
 
 function convertHtmlToCleanText(html: string): string {
   if (!html) return '';
@@ -46,6 +48,7 @@ export async function fetchGreenhouseJobs(config: ATSConnectorConfig): Promise<C
 
       for (const j of rawJobs) {
         if (!j.title || !j.absolute_url) continue;
+        if (isClosedJobText(j.title).isClosed || isClosedJobText(j.content).isClosed) continue;
 
         const locName = j.location?.name?.trim() || 'Remote';
         const isRemote = /remote/i.test(locName) || /anywhere/i.test(locName) || /work from home/i.test(locName);

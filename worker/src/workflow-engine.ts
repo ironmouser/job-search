@@ -152,11 +152,12 @@ export class WorkflowEngine {
         if (!isAggregatorDomain(currentUrl)) {
           try {
             const { GenericPageAnalyzer } = await import('./generic-agent/page-analyzer');
-            const formPresence = await GenericPageAnalyzer.inspectFormPresence(browser.page);
-            if (formPresence.hasApplicationElements || formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2)) {
+            const { PageClassification } = await import('./generic-agent/types');
+            const analysis = await GenericPageAnalyzer.analyze(browser.page);
+            if (analysis.classification === PageClassification.APPLICATION_FORM || analysis.classification === PageClassification.APPLICATION_CONTINUATION) {
               await logger.info(
                 'destination_discovery',
-                `Active application form detected directly on page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination convergence reached.`
+                `Active application form detected directly on page (${analysis.formPresence.inputCount} input(s), resume upload: ${analysis.formPresence.hasResumeUpload}) — destination convergence reached.`
               );
               break;
             }
@@ -421,6 +422,11 @@ export class WorkflowEngine {
 
       if (isSuccessfulStatus) {
         try {
+          // If live applied, give page final settling buffer so confirmation proof renders perfectly
+          if (result.status === AutoApplyStatus.APPLIED || (result.status as any) === 'applied') {
+            await browser.page.waitForLoadState('domcontentloaded').catch(() => {});
+            await browser.page.waitForTimeout(600);
+          }
           const s3Key = `screenshots/confirmations/${session.sessionId}.png`;
           const uploadedUrl = await uploadBrowserScreenshot(browser, s3Key);
           if (uploadedUrl) {

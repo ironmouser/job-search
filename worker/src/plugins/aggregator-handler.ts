@@ -125,11 +125,12 @@ export class AggregatorHandler {
     if (!isAggregatorDomain(currentUrl)) {
       try {
         const { GenericPageAnalyzer } = await import('../generic-agent/page-analyzer');
-        const formPresence = await GenericPageAnalyzer.inspectFormPresence(page);
-        if (formPresence.hasApplicationElements || formPresence.hasForm || (formPresence.hasResumeUpload && formPresence.inputCount >= 2)) {
+        const { PageClassification } = await import('../generic-agent/types');
+        const analysis = await GenericPageAnalyzer.analyze(page);
+        if (analysis.classification === PageClassification.APPLICATION_FORM || analysis.classification === PageClassification.APPLICATION_CONTINUATION) {
           await logger.info(
             'destination_discovery',
-            `Application form is already present directly on this page (${formPresence.inputCount} input(s), resume upload: ${formPresence.hasResumeUpload}) — destination reached.`
+            `Application form is already present directly on this page (${analysis.formPresence.inputCount} input(s), resume upload: ${analysis.formPresence.hasResumeUpload}) — destination reached.`
           );
           return { navigated: false, candidateReports: [] };
         }

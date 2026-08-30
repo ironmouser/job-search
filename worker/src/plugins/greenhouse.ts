@@ -524,6 +524,7 @@ export class GreenhousePlugin extends ATSPlugin {
       );
     }
 
+    const initialUrl = page.url();
     try {
       await submitBtn.click({ timeout: 6000 });
     } catch (clickErr: any) {
@@ -535,6 +536,7 @@ export class GreenhousePlugin extends ATSPlugin {
     // Verify post-submission status (checks for confirmation, anti-bot challenges, limits, and form error banners)
     await this.verifyPostSubmission(browser, page, logger, {
       platformDisplayName: 'Greenhouse',
+      initialUrl,
       confirmationSelectors: [
         '#thanks_container',
         '.thanks-container',
@@ -554,7 +556,7 @@ export class GreenhousePlugin extends ATSPlugin {
         'submitted successfully',
       ],
       errorSelectors: ['#error_explanation', '.field_with_errors', '[role="alert"]'],
-      maxWaitMs: 8000,
+      maxWaitMs: 30000,
     });
 
     return {

@@ -97,11 +97,30 @@ export class GenericPageAnalyzer {
     let classification = PageClassification.UNKNOWN;
     let confidence = 50;
 
-    // Check if it's already an active application form or contains application elements (resume, login, name fields)
-    if (formPresence.hasApplicationElements || formPresence.hasForm) {
+    // Check if it's already an active application form or contains genuine application elements (resume upload, login gate, or full candidate form with submit/next)
+    const isExplicitApplicationForm =
+      formPresence.hasResumeUpload ||
+      formPresence.hasLoginInput ||
+      (formPresence.hasNameInput && formPresence.hasEmailInput && (formPresence.hasSubmitButton || formPresence.hasWizardNextButton)) ||
+      (formPresence.hasForm && formPresence.hasSubmitButton);
+
+    // If there is a high-confidence Apply trigger button and the page does NOT have an explicit application form with resume or submit button,
+    // prioritize classifying as JOB_DETAIL_PAGE / APPLICATION_START_PAGE so the agent triggers the Apply button.
+    if (bestControl && bestControl.confidence >= 70 && !formPresence.hasResumeUpload && !formPresence.hasSubmitButton) {
+      const hasHeading = await page.evaluate(() => !!document.querySelector('h1, .job-title, .job-description, [class*="job" i]')).catch(() => false);
+      if (pageMetadata.hasJobPostingSchema || currentUrl.toLowerCase().includes('/job') || currentUrl.toLowerCase().includes('/career') || hasHeading) {
+        classification = PageClassification.JOB_DETAIL_PAGE;
+        confidence = bestControl.confidence;
+        reasons.push(`Job detail page detected with candidate apply control: "${bestControl.text}" (${bestControl.confidence}%)`);
+      } else {
+        classification = PageClassification.APPLICATION_START_PAGE;
+        confidence = bestControl.confidence;
+        reasons.push(`Application start page detected with control: "${bestControl.text}" (${bestControl.confidence}%)`);
+      }
+    } else if (isExplicitApplicationForm) {
       classification = PageClassification.APPLICATION_FORM;
-      confidence = (formPresence.hasResumeUpload || formPresence.hasNameInput) ? 90 : 80;
-      reasons.push(`Application elements detected: resume=${formPresence.hasResumeUpload}, login=${formPresence.hasLoginInput}, name=${formPresence.hasNameInput}, inputCount=${formPresence.inputCount}`);
+      confidence = formPresence.hasResumeUpload ? 90 : 85;
+      reasons.push(`Application form detected: resume=${formPresence.hasResumeUpload}, login=${formPresence.hasLoginInput}, name=${formPresence.hasNameInput}, submit=${formPresence.hasSubmitButton}, inputCount=${formPresence.inputCount}`);
     } else if (formPresence.hasWizardNextButton && formPresence.inputCount >= 1) {
       classification = PageClassification.APPLICATION_CONTINUATION;
       confidence = 85;
@@ -275,7 +294,7 @@ export class GenericPageAnalyzer {
       const presence = await frame.evaluate(() => {
         const isObstructionOrNav = (el: Element) => {
           return !!el.closest(
-            '#onetrust-consent-sdk, #onetrust-banner-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [class*="consent" i], [id*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy-banner" i], [id*="privacy-banner" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i], [class*="subscribe" i]'
+            '#onetrust-consent-sdk, #onetrust-banner-sdk, [id*="cookie" i], [class*="cookie" i], [aria-label*="cookie" i], [data-ui*="cookie" i], [class*="consent" i], [id*="consent" i], .didomi-popup-container, [id*="didomi" i], [class*="cookiebot" i], [id*="CybotCookiebot" i], [id*="usercentrics" i], [class*="privacy-banner" i], [id*="privacy-banner" i], header, nav, footer, [role="banner"], [role="navigation"], [role="contentinfo"], .footer, #footer, .header, #header, [class*="newsletter" i], [id*="newsletter" i], [class*="subscribe" i], [class*="search" i], [id*="search" i], [role="search"], form[action*="search" i], [class*="job-search" i], [id*="job-search" i], [class*="filter" i], [id*="filter" i], [class*="facet" i], [class*="alert" i], [id*="alert" i], [class*="talent-community" i], [id*="talent-community" i], [class*="talent-network" i], [id*="talent-network" i], [class*="join-network" i], [class*="share" i], [id*="share" i], [class*="social" i]'
           );
         };
 
@@ -312,10 +331,10 @@ export class GenericPageAnalyzer {
           hasLogin = true;
         }
 
-        const emailInputs = Array.from(document.querySelectorAll('input[type="email"], input[name*="email" i], input[id*="email" i]')).filter(el => !isObstructionOrNav(el));
+        const emailInputs = Array.from(document.querySelectorAll('input[type="email"], input[name="email" i], input[id="email" i], input[autocomplete="email" i], input[placeholder*="email" i]')).filter(el => !isObstructionOrNav(el));
         if (emailInputs.length > 0) hasEmail = true;
 
-        const nameInputs = Array.from(document.querySelectorAll('input[name*="first" i], input[name*="last" i], input[name*="name" i], input[id*="first" i], input[id*="last" i], input[id*="name" i], input[autocomplete*="name" i], input[placeholder*="name" i], input[aria-label*="name" i], [data-automation-id*="firstName" i], [data-automation-id*="lastName" i], [data-automation-id*="legalName" i]')).filter(el => !isObstructionOrNav(el));
+        const nameInputs = Array.from(document.querySelectorAll('input[name="firstName" i], input[name="first_name" i], input[name="lastName" i], input[name="last_name" i], input[name="fullName" i], input[name="full_name" i], input[name="legalName" i], input[name="legal_name" i], input[name="candidate_name" i], input[id="firstName" i], input[id="first_name" i], input[id="lastName" i], input[id="last_name" i], input[id="fullName" i], input[id="full_name" i], input[autocomplete="given-name" i], input[autocomplete="family-name" i], input[autocomplete="name" i], input[placeholder*="First Name" i], input[placeholder*="Last Name" i], input[placeholder*="Full Name" i], input[placeholder*="Legal Name" i], input[aria-label*="First Name" i], input[aria-label*="Last Name" i], input[aria-label*="Full Name" i], input[aria-label*="Legal Name" i], [data-automation-id*="firstName" i], [data-automation-id*="lastName" i], [data-automation-id*="legalName" i]')).filter(el => !isObstructionOrNav(el));
         if (nameInputs.length > 0) hasName = true;
 
         // Check for application tabs (e.g. Ashby/Jobvite "Application" tabs)
@@ -361,9 +380,13 @@ export class GenericPageAnalyzer {
       }).catch(() => null);
 
       if (presence) {
-        // Genuine application elements = resume upload, logins, or name fields (first name / last name / full name)
-        const hasApplicationElements = presence.hasResume || presence.hasLogin || (presence.hasName && (presence.hasEmail || presence.totalInputs >= 2));
-        const hasForm = hasApplicationElements || (presence.hasNext && presence.totalInputs >= 1);
+        // Genuine application elements = resume upload, candidate login gate, or explicit candidate name/email with submit/next
+        const hasApplicationElements =
+          presence.hasResume ||
+          presence.hasLogin ||
+          (presence.hasName && presence.hasEmail && (presence.hasSubmit || presence.hasNext)) ||
+          (presence.hasName && presence.hasSubmit && presence.totalInputs >= 2);
+        const hasForm = hasApplicationElements || (presence.hasNext && presence.hasName);
 
         const info: FormPresenceInfo = {
           hasForm,

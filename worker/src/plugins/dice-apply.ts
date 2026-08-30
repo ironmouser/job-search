@@ -11,6 +11,8 @@ import { BrowserSession } from '../browser-session';
 import { ExecutionLogger } from '../execution-logger';
 import { safeClick } from '../obstruction';
 import { pluginRegistry } from '../registry';
+import { replaceValue } from '../utils/form-commit';
+import { UniversalQuestionResolver } from './question-resolver';
 
 /**
  * DiceApplyPlugin
@@ -59,7 +61,11 @@ export class DiceApplyPlugin extends ATSPlugin {
     };
   }
 
-  private async checkDiceAuthGating(
+  /**
+   * Detects and autonomously resolves Dice candidate account login / registration modal.
+   * Handles multi-step flow (email input -> continue -> password/name input -> submit -> OTP/MFA).
+   */
+  private async handleDiceAuth(
     browser: BrowserSession,
     page: any,
     context: WorkflowContext,
@@ -67,23 +73,34 @@ export class DiceApplyPlugin extends ATSPlugin {
   ): Promise<void> {
     const html = await browser.getHtml().catch(() => '');
     const lowerHtml = html.toLowerCase();
+    const currentUrl = page.url() || '';
 
+    // Check if on an auth URL or if modal/drawer is displaying auth text
+    const isAuthUrl = /login|signin|sign-in|register|auth/i.test(currentUrl);
     const isLoggedOutText =
       lowerHtml.includes('log in to apply') ||
       lowerHtml.includes('create an account or sign in') ||
       lowerHtml.includes("let's get you hired") ||
       lowerHtml.includes("let’s get you hired") ||
       lowerHtml.includes('please enter your email to sign in') ||
-      lowerHtml.includes('continue with email');
+      lowerHtml.includes('continue with email') ||
+      lowerHtml.includes('sign in with your email');
 
+    // Scoped selectors that indicate an active candidate auth modal / screen
     const authElementSelectors = [
       'button:has-text("Log In to Apply")',
       'a:has-text("Log In to Apply")',
       'input[placeholder*="yourdomain.com"]',
-      'input[type="email"]',
       'button:has-text("Continue with email")',
+      'button:has-text("Continue with Email")',
       'button:has-text("Continue with Google")',
       'button:has-text("Continue with Apple")',
+      'button:has-text("Sign in with Google")',
+      'button:has-text("Sign in with Apple")',
+      '[data-testid="sign-in-button"]',
+      '[data-testid="register-button"]',
+      '[role="dialog"] input[type="password"]',
+      '[aria-modal="true"] input[type="password"]',
     ];
 
     let hasAuthElement = false;
@@ -95,14 +112,201 @@ export class DiceApplyPlugin extends ATSPlugin {
       }
     }
 
-    if (!context.connectedSession && (isLoggedOutText || hasAuthElement)) {
-      await logger.warn('dice_auth_required', 'Dice candidate account login/registration modal detected.');
+    const hasPasswordField = (await page.locator('input[type="password"], input[name*="password" i]').count().catch(() => 0)) > 0;
+    const isAuthActive = isAuthUrl || isLoggedOutText || hasAuthElement || (hasPasswordField && !currentUrl.includes('/apply'));
+
+    if (!isAuthActive) {
+      return;
+    }
+
+    await logger.info('dice_auth_detected', 'Dice candidate authentication gate detected');
+
+    const profile = context.userProfile;
+    const emailToUse = profile.accountEmail || profile.email;
+    const passwordToUse = profile.accountPassword;
+    const authMode = profile.accountAuthMode || 'sign_in';
+
+    // If credentials are NOT provided in profile, trigger structured intervention
+    if (!passwordToUse || !emailToUse) {
+      await logger.warn('dice_auth_required', 'Dice candidate account credentials needed — requesting intervention');
       throw new InterventionError(
         InterventionReason.JOB_BOARD_AUTH_REQUIRED,
         'Dice requires you to connect your account or sign in before JAHQ can automate applications.',
+        currentUrl
+      );
+    }
+
+    await logger.info('dice_auth_starting', `Automating Dice candidate authentication (${authMode}) for ${emailToUse}`);
+
+    // Helper to fill input and trigger native events
+    const fillInput = async (loc: any, val: string) => {
+      await loc.scrollIntoViewIfNeeded().catch(() => {});
+      await loc.click({ force: true }).catch(() => {});
+      try {
+        await replaceValue(loc, val);
+      } catch {
+        await loc.fill(val).catch(() => {});
+      }
+      await loc.dispatchEvent('change').catch(() => {});
+      await loc.dispatchEvent('blur').catch(() => {});
+    };
+
+    // Step 1: Locate and fill Email input
+    const emailLocators = [
+      page.locator('input[placeholder*="yourdomain.com"]').first(),
+      page.locator('[role="dialog"] input[type="email"], [aria-modal="true"] input[type="email"]').first(),
+      page.locator('input[type="email"]').first(),
+      page.locator('input[name="email" i]').first(),
+      page.locator('input[id*="email" i]').first(),
+      page.locator('input[data-testid*="email" i]').first(),
+    ];
+
+    for (const loc of emailLocators) {
+      if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+        await fillInput(loc, emailToUse);
+        await logger.info('dice_email_filled', 'Entered candidate email into Dice authentication form');
+        break;
+      }
+    }
+
+    // Step 1b: If there is a "Continue with email" / "Continue" / "Next" button, click it to advance to password
+    const continueBtnLocators = [
+      page.locator('button:has-text("Continue with email")').first(),
+      page.locator('button:has-text("Continue with Email")').first(),
+      page.locator('[role="dialog"] button:has-text("Continue"), [aria-modal="true"] button:has-text("Continue")').first(),
+      page.locator('button:has-text("Continue")').first(),
+      page.locator('button:has-text("Next")').first(),
+    ];
+
+    for (const btn of continueBtnLocators) {
+      if ((await btn.count().catch(() => 0)) > 0 && (await btn.isVisible().catch(() => false))) {
+        await btn.click().catch(() => {});
+        await logger.info('dice_continue_clicked', 'Clicked continue on Dice email step');
+        await page.waitForTimeout(1500);
+        break;
+      }
+    }
+
+    // Step 2: Locate and fill Password input (wait up to 5 seconds if rendering asynchronously)
+    const passLocators = [
+      page.locator('input[type="password"]').first(),
+      page.locator('input[name="password" i]').first(),
+      page.locator('input[id*="password" i]').first(),
+      page.locator('input[data-testid*="password" i]').first(),
+    ];
+
+    let passFilled = false;
+    for (let wait = 0; wait < 5; wait++) {
+      for (const loc of passLocators) {
+        if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+          await fillInput(loc, passwordToUse);
+          passFilled = true;
+          await logger.info('dice_password_filled', 'Entered candidate password into Dice authentication form');
+          break;
+        }
+      }
+      if (passFilled) break;
+      await page.waitForTimeout(1000);
+    }
+
+    // Step 2b: If in Create Account mode or registration fields are present, fill them
+    if (authMode === 'create_account') {
+      const nameParts = (profile.name || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || 'Candidate';
+      const lastName = nameParts.slice(1).join(' ') || 'Applicant';
+
+      const fnLoc = page.locator('input[name*="firstName" i], input[id*="firstName" i], input[placeholder*="First Name" i]').first();
+      if ((await fnLoc.count().catch(() => 0)) > 0 && (await fnLoc.isVisible().catch(() => false))) {
+        await fillInput(fnLoc, firstName);
+      }
+
+      const lnLoc = page.locator('input[name*="lastName" i], input[id*="lastName" i], input[placeholder*="Last Name" i]').first();
+      if ((await lnLoc.count().catch(() => 0)) > 0 && (await lnLoc.isVisible().catch(() => false))) {
+        await fillInput(lnLoc, lastName);
+      }
+
+      const confirmPassLoc = page.locator('input[name*="confirm" i], input[name*="verify" i], input[id*="confirm" i]').first();
+      if ((await confirmPassLoc.count().catch(() => 0)) > 0 && (await confirmPassLoc.isVisible().catch(() => false))) {
+        await fillInput(confirmPassLoc, passwordToUse);
+      }
+
+      const termsCheck = page.locator('input[type="checkbox"]').first();
+      if ((await termsCheck.count().catch(() => 0)) > 0 && (await termsCheck.isVisible().catch(() => false))) {
+        const isChecked = await termsCheck.isChecked().catch(() => false);
+        if (!isChecked) {
+          await termsCheck.check({ force: true }).catch(() => termsCheck.click({ force: true }));
+        }
+      }
+    }
+
+    // Step 3: Submit authentication form
+    const submitAuthLocators = [
+      page.locator('button:has-text("Sign In")').first(),
+      page.locator('button:has-text("Log In")').first(),
+      page.locator('button:has-text("Create Account")').first(),
+      page.locator('button:has-text("Register")').first(),
+      page.locator('button:has-text("Sign Up")').first(),
+      page.locator('[role="dialog"] button[type="submit"], [aria-modal="true"] button[type="submit"]').first(),
+      page.locator('button[data-testid*="submit" i]').first(),
+      page.locator('button[type="submit"]').first(),
+    ];
+
+    for (const btn of submitAuthLocators) {
+      if ((await btn.count().catch(() => 0)) > 0 && (await btn.isVisible().catch(() => false))) {
+        await btn.click().catch(() => {});
+        await logger.info('dice_auth_submitted', `Submitted Dice credentials (${authMode})`);
+        await page.waitForTimeout(3000);
+        break;
+      }
+    }
+
+    // Step 4: Check for OTP / MFA Verification Security Code
+    const otpLocators = [
+      page.locator('input[name*="otp" i]').first(),
+      page.locator('input[name*="code" i]').first(),
+      page.locator('input[autocomplete="one-time-code"]').first(),
+      page.locator('input[data-testid*="otp" i]').first(),
+      page.locator('input[placeholder*="code" i]').first(),
+    ];
+
+    for (const loc of otpLocators) {
+      if ((await loc.count().catch(() => 0)) > 0 && (await loc.isVisible().catch(() => false))) {
+        const otpCode = profile.otpCode || profile.customAnswers?.['security_code'] || profile.customAnswers?.['verification_code'] || profile.customAnswers?.['otp'];
+        if (otpCode) {
+          await fillInput(loc, otpCode);
+          const verifyBtn = page.locator('button:has-text("Verify"), button:has-text("Submit"), button:has-text("Continue")').first();
+          if ((await verifyBtn.count().catch(() => 0)) > 0) {
+            await verifyBtn.click().catch(() => {});
+            await page.waitForTimeout(2500);
+          }
+        } else {
+          throw new InterventionError(
+            InterventionReason.MFA_REQUIRED,
+            'Dice sent a security verification code to your email. Please enter the code in the drawer to continue.',
+            page.url()
+          );
+        }
+        break;
+      }
+    }
+
+    // Step 5: Check for authentication errors
+    const errorText = await page.$$eval('[aria-invalid="true"], .error-feedback, .d-inline-error, [role="alert"]', (els: any[]) =>
+      els.map((e) => e.textContent?.trim() || '').filter(Boolean).join('; ')
+    ).catch(() => '');
+
+    if (errorText && (errorText.toLowerCase().includes('password') || errorText.toLowerCase().includes('invalid') || errorText.toLowerCase().includes('incorrect'))) {
+      await logger.warn('dice_auth_failed', `Dice authentication error: ${errorText}`);
+      throw new InterventionError(
+        InterventionReason.JOB_BOARD_AUTH_REQUIRED,
+        `Dice authentication error: ${errorText}. Please verify your email and password.`,
         page.url()
       );
     }
+
+    // Step 6: Wait for auth modal to close
+    await page.waitForTimeout(2000);
+    await logger.info('dice_auth_completed', 'Dice candidate authentication finished');
   }
 
   async prepare(
@@ -116,8 +320,8 @@ export class DiceApplyPlugin extends ATSPlugin {
     // Proactively dismiss any cookie or privacy consent modal
     await this.dismissCookieBannerIfPresent(page, logger);
 
-    // 1. Check authentication requirements before clicking apply
-    await this.checkDiceAuthGating(browser, page, context, logger);
+    // 1. Check & handle authentication requirements before clicking apply
+    await this.handleDiceAuth(browser, page, context, logger);
 
     // 2. Click Easy Apply / Apply button
     const applyButtonSelectors = [
@@ -127,6 +331,9 @@ export class DiceApplyPlugin extends ATSPlugin {
       'button:has-text("Apply Now")',
       'a:has-text("Easy Apply")',
       'a:has-text("Apply Now")',
+      '[data-cy="apply-button"]',
+      'button[data-cy="apply-button"]',
+      'a[data-cy="apply-button"]',
     ];
 
     let clicked = false;
@@ -149,7 +356,7 @@ export class DiceApplyPlugin extends ATSPlugin {
     await this.dismissCookieBannerIfPresent(page, logger);
 
     // 3. Re-check authentication requirements (clicking apply often launches the sign-in modal)
-    await this.checkDiceAuthGating(browser, page, context, logger);
+    await this.handleDiceAuth(browser, page, context, logger);
   }
 
   async apply(
@@ -164,25 +371,49 @@ export class DiceApplyPlugin extends ATSPlugin {
     await this.dismissCookieBannerIfPresent(page, logger);
 
     // Verify session isn't gated behind sign-in modal
-    await this.checkDiceAuthGating(browser, page, context, logger);
+    await this.handleDiceAuth(browser, page, context, logger);
 
-    // 1. Upload or select resume
+    const profile = context.userProfile;
+    const nameParts = (profile.name || '').trim().split(/\s+/);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // 1. Fill contact information if fields are present in drawer
+    const fnInput = await page.$('input[name*="firstName" i], input[id*="firstName" i], input[placeholder*="First Name" i]').catch(() => null);
+    if (fnInput && (await fnInput.isVisible().catch(() => false)) && firstName) {
+      const cur = await fnInput.inputValue().catch(() => '');
+      if (!cur) await this.typeHumanized(page, fnInput, firstName);
+    }
+
+    const lnInput = await page.$('input[name*="lastName" i], input[id*="lastName" i], input[placeholder*="Last Name" i]').catch(() => null);
+    if (lnInput && (await lnInput.isVisible().catch(() => false)) && lastName) {
+      const cur = await lnInput.inputValue().catch(() => '');
+      if (!cur) await this.typeHumanized(page, lnInput, lastName);
+    }
+
+    const phoneInput = await page.$('input[type="tel"], input[name*="phone" i], input[id*="phone" i]').catch(() => null);
+    if (phoneInput && (await phoneInput.isVisible().catch(() => false)) && profile.phone) {
+      const cur = await phoneInput.inputValue().catch(() => '');
+      if (!cur) await this.typeHumanized(page, phoneInput, profile.phone);
+    }
+
+    // 2. Upload or select resume
     try {
       await this.uploadResumeFile(browser, page, context, logger);
     } catch (uploadErr) {
-      await this.checkDiceAuthGating(browser, page, context, logger);
+      await this.handleDiceAuth(browser, page, context, logger);
       throw uploadErr;
     }
 
-    // 1b. Cover letter (optional)
+    // 2b. Cover letter (optional)
     if (context.coverLetterMarkdown) {
       await this.uploadCoverLetterFile(browser, page, context, logger);
     }
 
-    // 2. Fill standard work authorization questions if present
+    // 3. Fill standard work authorization questions if present
     const workAuthInputs = await page.$$('input[name*="auth"], input[id*="auth"], select[name*="auth"]').catch(() => []);
     for (const input of workAuthInputs) {
-      const tagName = await input.evaluate((el) => el.tagName.toLowerCase()).catch(() => '');
+      const tagName = await input.evaluate((el: any) => el.tagName.toLowerCase()).catch(() => '');
       if (tagName === 'select') {
         await input.selectOption({ label: 'Yes' }).catch(() => {});
       } else {
@@ -193,7 +424,7 @@ export class DiceApplyPlugin extends ATSPlugin {
       }
     }
 
-    // 3. Fill compensation if requested
+    // 4. Fill compensation if requested
     if (context.userProfile.expectedSalary) {
       const salaryInput = await page.$('input[name*="salary"], input[id*="compensation"]').catch(() => null);
       if (salaryInput && (await salaryInput.isVisible().catch(() => false))) {
@@ -203,13 +434,22 @@ export class DiceApplyPlugin extends ATSPlugin {
       }
     }
 
-    // 4. Consent & Talent Community Checkboxes
+    // 5. Consent & Talent Community Checkboxes
     await this.handleConsentCheckboxes(page, logger);
 
-    // 5. EEOC Demographics
+    // 6. EEOC Demographics
     await this.handleEEOCDemographics(page, context.userProfile, logger);
 
-    // 4. Advance through multi-step drawer (Next / Review)
+    // 7. Universal Screening Questions
+    await UniversalQuestionResolver.resolveAndFillQuestions(
+      page,
+      browser,
+      context,
+      logger,
+      logger.getApiClient()
+    );
+
+    // 8. Advance through multi-step drawer (Next / Review)
     const nextBtn = await page.$('button:has-text("Next"), button:has-text("Review")').catch(() => null);
     if (nextBtn && (await nextBtn.isVisible().catch(() => false))) {
       await safeClick(page, 'button:has-text("Next"), button:has-text("Review")');
@@ -264,11 +504,13 @@ export class DiceApplyPlugin extends ATSPlugin {
       await submitBtn.hover().catch(() => {});
       await page.waitForTimeout(300);
 
+      const initialUrl = page.url();
       await safeClick(page, 'button:has-text("Submit Application"), button[data-cy="submit-application"]');
 
       // Verify post-submission status
       await this.verifyPostSubmission(browser, page, logger, {
         platformDisplayName: 'Dice',
+        initialUrl,
         confirmationKeywords: [
           'application submitted',
           'successfully applied',
@@ -276,7 +518,7 @@ export class DiceApplyPlugin extends ATSPlugin {
           'thank you for applying',
         ],
         errorSelectors: ['[role="alert"]', '.error-feedback', '.d-inline-error'],
-        maxWaitMs: 8000,
+        maxWaitMs: 30000,
       });
     }
 
