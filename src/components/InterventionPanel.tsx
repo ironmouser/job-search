@@ -26,9 +26,13 @@ import {
   EyeOff,
   Radio,
   Monitor,
+  Copy,
+  Sparkles,
+  CheckCircle2,
+  Download,
 } from 'lucide-react';
 import { ConnectJobBoardModal } from '@/components/ConnectJobBoardModal';
-import { InteractiveBrowserStream } from '@/components/InteractiveBrowserStream';
+import DownloadPdfButton from '@/components/DownloadPdfButton';
 
 interface InterventionPanelProps {
   interventionId: string;
@@ -328,10 +332,37 @@ export function InterventionPanel({
   const [resolution, setResolution] = useState<'completed' | 'skipped' | 'cancelled' | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isScreenshotModalOpen, setIsScreenshotModalOpen] = useState(false);
-  const [isStreamModalOpen, setIsStreamModalOpen] = useState(false);
+
+  const [jobAssets, setJobAssets] = useState<{
+    tailoredResumeMarkdown?: string;
+    coverLetterMarkdown?: string;
+    companyName?: string;
+    jobTitle?: string;
+  } | null>(null);
+  const [copiedCoverLetter, setCopiedCoverLetter] = useState(false);
+  const [copiedResume, setCopiedResume] = useState(false);
+  const [copiedFieldKey, setCopiedFieldKey] = useState<string | null>(null);
 
   const [settings, setSettings] = useState<any>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    if (!jobId) return;
+    fetch(`/api/jobs/${jobId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.job) {
+          const assets = data.job.applicationAssets?.[0] || data.assets || null;
+          setJobAssets({
+            tailoredResumeMarkdown: assets?.tailoredResumeMarkdown || '',
+            coverLetterMarkdown: assets?.coverLetterMarkdown || '',
+            companyName: data.job.company || '',
+            jobTitle: data.job.title || '',
+          });
+        }
+      })
+      .catch((err) => console.warn('[InterventionPanel] Failed to fetch job assets:', err));
+  }, [jobId]);
 
   const portalDisplayName = getPortalDisplayName(pageUrl, description);
   const providerInfo = getJobBoardProvider(pageUrl, description);
@@ -667,6 +698,54 @@ export function InterventionPanel({
     resolve('skipped');
   }
 
+  async function handleMarkAsApplied() {
+    setResolving(true);
+    setResolution('completed');
+    try {
+      if (jobId) {
+        await fetch(`/api/jobs/${jobId}/archive`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'applied' }),
+        }).catch(() => {});
+      }
+      await fetch(`/api/auto-apply/interventions/${interventionId}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolution: 'completed' }),
+      });
+      onResolved();
+    } catch (err) {
+      console.error('[InterventionPanel] Failed to mark as applied:', err);
+    } finally {
+      setResolving(false);
+    }
+  }
+
+  function handleCopyCoverLetter() {
+    if (jobAssets?.coverLetterMarkdown) {
+      navigator.clipboard.writeText(jobAssets.coverLetterMarkdown);
+      setCopiedCoverLetter(true);
+      setTimeout(() => setCopiedCoverLetter(false), 2500);
+    }
+  }
+
+  function handleCopyResume() {
+    if (jobAssets?.tailoredResumeMarkdown) {
+      navigator.clipboard.writeText(jobAssets.tailoredResumeMarkdown);
+      setCopiedResume(true);
+      setTimeout(() => setCopiedResume(false), 2500);
+    }
+  }
+
+  function handleCopyText(key: string, text: string) {
+    if (text) {
+      navigator.clipboard.writeText(text);
+      setCopiedFieldKey(key);
+      setTimeout(() => setCopiedFieldKey(null), 2500);
+    }
+  }
+
   const badgeColor = isClosed ? '#f87171' : isUnsupportedOrFatal ? '#fbbf24' : 'var(--accent-primary, #3b82f6)';
   const borderColor = isClosed
     ? 'rgba(239, 68, 68, 0.35)'
@@ -977,139 +1056,196 @@ export function InterventionPanel({
         </>
       ) : (
         <>
-          {/* Candidate / Job Board Account Required: User Choice Flow */}
+          {/* Assisted 1-Click Handoff Card for Job Board / Portal Auth */}
           {isAuthReason && (
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '1rem',
+                gap: '1.15rem',
                 background: 'var(--secondary, var(--card-header-bg))',
                 border: '1px solid var(--border-glass)',
-                borderRadius: '10px',
-                padding: '1.1rem 1.25rem',
+                borderRadius: '12px',
+                padding: '1.25rem',
               }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <Key size={16} color="var(--accent-primary, #3b82f6)" /> {providerInfo ? `${providerInfo.name} Account Option` : 'Candidate Account Option'}
-                </label>
-                <div className="auto-apply-button-group" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => setAccountMode('sign_in')}
-                    className={accountMode === 'sign_in' ? 'btn-primary' : 'btn-outline'}
-                    style={{
-                      padding: '0.55rem 1rem',
-                      flex: 1,
-                      minWidth: '130px',
-                      textAlign: 'center',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.45rem',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                    }}
-                    id={`intervention-choice-signin-${interventionId}`}
-                  >
-                    <LogIn size={15} /> Yes, Sign In
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAccountMode('create_account')}
-                    className={accountMode === 'create_account' ? 'btn-primary' : 'btn-outline'}
-                    style={{
-                      padding: '0.55rem 1rem',
-                      flex: 1,
-                      minWidth: '130px',
-                      textAlign: 'center',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.45rem',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                    }}
-                    id={`intervention-choice-create-${interventionId}`}
-                  >
-                    <UserPlus size={15} /> No, Create Account
-                  </button>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <div
+                  style={{
+                    padding: '8px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    color: '#60a5fa',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <ExternalLink size={20} />
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Apply with your {providerInfo ? providerInfo.name : portalDisplayName} account
+                  </h4>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                    This position uses {providerInfo ? providerInfo.name : portalDisplayName}&apos;s direct application system. Open the posting in your browser where your saved session and login are already active.
+                  </p>
                 </div>
               </div>
 
-              {/* Instructions Box */}
-              <div style={{ padding: '1rem', background: 'var(--card, var(--background))', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
-                <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: '0 0 0.5rem 0', fontWeight: 600 }}>
-                  Instructions
-                </h4>
-                <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  {accountMode === 'sign_in' ? (
-                    <>
-                      <li>Enter the email and password for your account on {providerInfo ? providerInfo.name : portalDisplayName}.</li>
-                      <li>JAHQ will sign in securely on a residential proxy connection to complete and submit your application.</li>
-                    </>
-                  ) : (
-                    <>
-                      <li>{providerInfo ? providerInfo.name : portalDisplayName} requires a candidate account before continuing.</li>
-                      <li>Enter your email and desired password. JAHQ will register the account and resume automation.</li>
-                    </>
-                  )}
-                  <li>Credentials are stored securely in your profile for future 1-click applications.</li>
-                </ul>
+              {pageUrl && (
+                <a
+                  href={pageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    padding: '0.85rem 1.25rem',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    fontSize: '0.92rem',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                    transition: 'all 0.15s ease',
+                  }}
+                  id={`intervention-open-job-board-${interventionId}`}
+                >
+                  <ExternalLink size={17} />
+                  Open & Apply on {providerInfo ? providerInfo.name : portalDisplayName}
+                </a>
+              )}
+
+              {/* Prepared Tailored Materials Toolkit */}
+              <div
+                style={{
+                  background: 'var(--card, var(--background))',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Sparkles size={15} color="#60a5fa" /> Prepared Tailored Materials
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    Ready for quick paste or upload
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  {jobAssets?.tailoredResumeMarkdown ? (
+                    <DownloadPdfButton
+                      markdownText={jobAssets.tailoredResumeMarkdown}
+                      filename={`${(jobAssets.companyName || 'Company').replace(/[^a-z0-9]/gi, '_')}_Tailored_Resume.pdf`}
+                      label="Download Tailored Resume (PDF)"
+                      type="resume"
+                      jobId={jobId || undefined}
+                    />
+                  ) : null}
+
+                  {jobAssets?.coverLetterMarkdown ? (
+                    <button
+                      type="button"
+                      onClick={handleCopyCoverLetter}
+                      className="btn-outline"
+                      style={{
+                        padding: '0.55rem 0.9rem',
+                        fontSize: '0.82rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        borderRadius: '6px',
+                        background: copiedCoverLetter ? 'rgba(16, 185, 129, 0.15)' : undefined,
+                        borderColor: copiedCoverLetter ? '#10b981' : undefined,
+                        color: copiedCoverLetter ? '#10b981' : undefined,
+                      }}
+                      id={`intervention-copy-cover-letter-${interventionId}`}
+                    >
+                      {copiedCoverLetter ? <Check size={14} /> : <Copy size={14} />}
+                      {copiedCoverLetter ? 'Cover Letter Copied!' : 'Copy Tailored Cover Letter'}
+                    </button>
+                  ) : null}
+
+                  {jobAssets?.tailoredResumeMarkdown ? (
+                    <button
+                      type="button"
+                      onClick={handleCopyResume}
+                      className="btn-outline"
+                      style={{
+                        padding: '0.55rem 0.9rem',
+                        fontSize: '0.82rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        borderRadius: '6px',
+                        background: copiedResume ? 'rgba(16, 185, 129, 0.15)' : undefined,
+                        borderColor: copiedResume ? '#10b981' : undefined,
+                        color: copiedResume ? '#10b981' : undefined,
+                      }}
+                      id={`intervention-copy-resume-text-${interventionId}`}
+                    >
+                      {copiedResume ? <Check size={14} /> : <Copy size={14} />}
+                      {copiedResume ? 'Resume Text Copied!' : 'Copy Resume Text'}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Contextual Guidance Banner */}
-          <div
-            style={{
-              fontSize: '0.85rem',
-              color: 'var(--text-primary)',
-              background: 'var(--accent-glow, rgba(0, 112, 243, 0.08))',
-              border: '1px solid var(--border-glass)',
-              borderRadius: '8px',
-              padding: '0.9rem 1.1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.65rem',
-              lineHeight: 1.5,
-            }}
-          >
-            <div>
-              <strong style={{ color: 'var(--accent-primary, #3b82f6)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem', marginBottom: '0.15rem' }}>
-                <ArrowRight size={16} /> What to do next
-              </strong>
-              <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>
-                {isBotBlockReason
-                  ? 'This site is protected by bot verification (Cloudflare / CAPTCHA). Click "Finish Manually" to open the job application directly in your browser.'
-                  : isAuthReason
-                  ? (accountMode === 'sign_in'
-                      ? 'Enter the credentials for your existing account so JAHQ can sign in and continue your application.'
-                      : `${portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using the credentials you provide, then resume your application.`)
-                  : hasEffectiveQuestions
-                  ? 'Answer the application question(s) below or complete them directly on the employer site.'
-                  : 'Complete the verification or login directly on the job application page.'}
-              </span>
-            </div>
+          {/* Contextual Guidance Banner for non-auth reasons */}
+          {!isAuthReason && (
+            <div
+              style={{
+                fontSize: '0.85rem',
+                color: 'var(--text-primary)',
+                background: 'var(--accent-glow, rgba(0, 112, 243, 0.08))',
+                border: '1px solid var(--border-glass)',
+                borderRadius: '8px',
+                padding: '0.9rem 1.1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.65rem',
+                lineHeight: 1.5,
+              }}
+            >
+              <div>
+                <strong style={{ color: 'var(--accent-primary, #3b82f6)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem', marginBottom: '0.15rem' }}>
+                  <ArrowRight size={16} /> What to do next
+                </strong>
+                <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>
+                  {isBotBlockReason
+                    ? 'This site is protected by bot verification (Cloudflare / CAPTCHA). Click "Finish Manually" to open the job application directly in your browser.'
+                    : hasEffectiveQuestions
+                    ? 'Answer the application question(s) below or complete them directly on the employer site.'
+                    : 'Complete the verification or login directly on the job application page.'}
+                </span>
+              </div>
 
-            <div>
-              <strong style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem', marginBottom: '0.15rem' }}>
-                <Zap size={16} color="var(--accent-primary, #3b82f6)" /> What will happen next
-              </strong>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                {isBotBlockReason
-                  ? 'Cloudflare protection blocks automated server sessions. Completing your application manually in your browser ensures it gets submitted without wasting automated retries.'
-                  : isAuthReason
-                  ? (accountMode === 'sign_in'
-                      ? <>Click <strong>Sign In & Resume Application</strong> so JAHQ can authenticate and continue filling your application.</>
-                      : <>Click <strong>Create Account & Resume</strong> so JAHQ can register your profile and submit your application.</>)
-              : hasEffectiveQuestions
-                  ? <>Once answered, click <strong>Resume Automation</strong> so the AI agent can fill out and submit your application with your answers.</>
-                  : <>Once verified, click <strong>Resume Automation</strong> so the AI agent can automatically fill out and submit your application.</>}
-              </span>
+              <div>
+                <strong style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem', marginBottom: '0.15rem' }}>
+                  <Zap size={16} color="var(--accent-primary, #3b82f6)" /> What will happen next
+                </strong>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                  {isBotBlockReason
+                    ? 'Cloudflare protection blocks automated server sessions. Completing your application manually in your browser ensures it gets submitted without wasting automated retries.'
+                    : hasEffectiveQuestions
+                    ? <>Once answered, click <strong>Resume Automation</strong> so the AI agent can fill out and submit your application with your answers.</>
+                    : <>Once verified, click <strong>Resume Automation</strong> so the AI agent can automatically fill out and submit your application.</>}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Job Application Questions Form */}
           {hasEffectiveQuestions && (
@@ -1492,128 +1628,60 @@ export function InterventionPanel({
             </div>
           )}
 
-          {/* Account Auth Credentials Form */}
-          {isAuthReason && !loadingSettings && (
-            <div
-              style={{
-                background: 'var(--secondary, var(--card-header-bg))',
-                borderRadius: '10px',
-                padding: '1.25rem',
-                border: '1px solid var(--border-glass)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.25rem',
-              }}
-            >
-              <div>
-                <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
-                  <Key size={17} color="var(--accent-primary, #3b82f6)" />
-                  {accountMode === 'sign_in' ? `Sign in to ${providerInfo ? providerInfo.name : 'Candidate'} Account` : `Create ${providerInfo ? providerInfo.name : 'Candidate'} Account`}
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                  {accountMode === 'sign_in'
-                    ? `Enter the credentials for your ${providerInfo ? providerInfo.name : portalDisplayName} account so JAHQ can sign in and continue your application.`
-                    : `${providerInfo ? providerInfo.name : portalDisplayName} requires a candidate account before you can continue. JAHQ will create the account using these credentials, then resume your application.`}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="auto-apply-input-group" style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Email Address</label>
-                    <input
-                      type="email"
-                      value={settings?.emailAddress || ''}
-                      onChange={(e) => handleSettingsChange('emailAddress', e.target.value)}
-                      placeholder="user@example.com"
-                      style={{
-                        background: 'var(--input, var(--background))',
-                        border: '1px solid var(--border-glass)',
-                        color: 'var(--text-primary)',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {accountMode === 'sign_in' ? 'Account Password' : 'New Account Password'}
-                    </label>
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={settings?.defaultAccountPassword || ''}
-                        onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
-                        placeholder={accountMode === 'sign_in' ? 'Enter existing account password' : 'Enter desired password'}
-                        style={{
-                          width: '100%',
-                          background: 'var(--input, var(--background))',
-                          border: '1px solid var(--border-glass)',
-                          color: 'var(--text-primary)',
-                          padding: '0.75rem 2.5rem 0.75rem 0.75rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        style={{
-                          position: 'absolute',
-                          right: '0.75rem',
-                          background: 'none',
-                          border: 'none',
-                          padding: '0.25rem',
-                          cursor: 'pointer',
-                          color: 'var(--text-secondary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title={showPassword ? 'Hide password' : 'Show password'}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.25rem' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Email Verification Link or OTP Code (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={emailVerificationCode}
-                    onChange={(e) => setEmailVerificationCode(e.target.value)}
-                    placeholder="Paste activation URL or enter 6-digit code..."
-                    style={{
-                      background: 'var(--input, var(--background))',
-                      border: '1px solid var(--border-glass)',
-                      color: 'var(--text-primary)',
-                      padding: '0.75rem',
-                      borderRadius: '8px',
-                      fontSize: '0.85rem',
-                      width: '100%',
-                    }}
-                  />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    If {portalDisplayName} sent a verification link or code to your email, paste it here to automatically complete verification.
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  <Lock size={14} color="#10b981" />
-                  <span>Credentials are protected and used only to submit your application.</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="auto-apply-button-group" style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-            {isBotBlockReason ? (
+            {isAuthReason ? (
+              <>
+                <button
+                  className="btn-primary"
+                  onClick={handleMarkAsApplied}
+                  disabled={resolving}
+                  style={{
+                    flex: 2,
+                    minWidth: '200px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.45rem',
+                    padding: '0.7rem 1.35rem',
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    backgroundColor: '#10b981',
+                    color: '#ffffff',
+                    border: 'none',
+                  }}
+                  id={`intervention-mark-applied-${interventionId}`}
+                >
+                  {resolving && resolution === 'completed' ? (
+                    'Marking Applied…'
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} color="#ffffff" />
+                      I Applied, Mark as Applied
+                    </>
+                  )}
+                </button>
+                <button
+                  className="btn-outline"
+                  onClick={() => resolve('cancelled')}
+                  disabled={resolving}
+                  style={{
+                    flex: 1,
+                    minWidth: '100px',
+                    padding: '0.7rem 1rem',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    color: '#f87171',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    fontSize: '0.86rem',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                  }}
+                  id={`intervention-cancel-${interventionId}`}
+                >
+                  {resolving && resolution === 'cancelled' ? '…' : 'Skip / Cancel'}
+                </button>
+              </>
+            ) : isBotBlockReason ? (
               <>
                 {pageUrl && (
                   <button
@@ -1643,6 +1711,25 @@ export function InterventionPanel({
                       )}
                   </button>
                 )}
+                <button
+                  className="btn-outline"
+                  onClick={() => resolve('cancelled')}
+                  disabled={resolving}
+                  style={{
+                    flex: 1,
+                    minWidth: '100px',
+                    padding: '0.7rem 1rem',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    color: '#f87171',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    fontSize: '0.86rem',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                  }}
+                  id={`intervention-cancel-${interventionId}`}
+                >
+                  {resolving && resolution === 'cancelled' ? '…' : 'Cancel'}
+                </button>
               </>
             ) : (
               <>
@@ -1651,8 +1738,7 @@ export function InterventionPanel({
                   onClick={() => resolve('completed')}
                   disabled={
                     resolving ||
-                    (isAuthReason && (!settings?.defaultAccountPassword || !settings?.emailAddress)) ||
-                    (isMfaReason && !isAuthReason && !emailVerificationCode.trim())
+                    (isMfaReason && !emailVerificationCode.trim())
                   }
                   style={{
                     flex: 2,
@@ -1673,11 +1759,9 @@ export function InterventionPanel({
                     : (
                       <>
                         <Check size={16} color="#ffffff" />
-                        {isAuthReason
-                          ? (accountMode === 'sign_in' ? 'Sign In & Resume Application' : 'Create Account & Resume')
-                          : isMfaReason
-                            ? 'Submit Code & Continue'
-                            : 'Resume Automation'}
+                        {isMfaReason
+                          ? 'Submit Code & Continue'
+                          : 'Resume Automation'}
                       </>
                     )}
                 </button>
@@ -1704,51 +1788,27 @@ export function InterventionPanel({
                     {resolving && resolution === 'skipped' ? 'Opening Job…' : <><ExternalLink size={14} /> Finish Manually</>}
                   </button>
                 )}
+                <button
+                  className="btn-outline"
+                  onClick={() => resolve('cancelled')}
+                  disabled={resolving}
+                  style={{
+                    flex: 1,
+                    minWidth: '100px',
+                    padding: '0.7rem 1rem',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    color: '#f87171',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    fontSize: '0.86rem',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                  }}
+                  id={`intervention-cancel-${interventionId}`}
+                >
+                  {resolving && resolution === 'cancelled' ? '…' : 'Cancel'}
+                </button>
               </>
             )}
-            <button
-              className="btn-outline"
-              onClick={() => setIsStreamModalOpen(true)}
-              disabled={resolving}
-              style={{
-                flex: 1,
-                minWidth: '170px',
-                padding: '0.7rem 1rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.45rem',
-                fontSize: '0.86rem',
-                fontWeight: 600,
-                borderRadius: '8px',
-                border: '1px solid #3b82f6',
-                color: '#60a5fa',
-                background: 'rgba(59, 130, 246, 0.12)',
-              }}
-              title="Open live cloud browser view to sign in (Google, 2FA, etc.) or solve challenge"
-              id={`intervention-stream-btn-${interventionId}`}
-            >
-              <Radio size={14} className="animate-pulse" color="#60a5fa" /> Live Cloud Browser
-            </button>
-            <button
-              className="btn-outline"
-              onClick={() => resolve('cancelled')}
-              disabled={resolving}
-              style={{
-                flex: 1,
-                minWidth: '100px',
-                padding: '0.7rem 1rem',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
-                color: '#f87171',
-                background: 'rgba(239, 68, 68, 0.08)',
-                fontSize: '0.86rem',
-                fontWeight: 600,
-                borderRadius: '8px',
-              }}
-              id={`intervention-cancel-${interventionId}`}
-            >
-              {resolving && resolution === 'cancelled' ? '…' : 'Cancel'}
-            </button>
           </div>
 
         </>
@@ -1886,18 +1946,6 @@ export function InterventionPanel({
           }}
         />
       )}
-      {/* Interactive Cloud Browser Stream Modal */}
-      <InteractiveBrowserStream
-        isOpen={isStreamModalOpen}
-        onClose={() => setIsStreamModalOpen(false)}
-        sessionId={sessionId || interventionId}
-        interventionId={interventionId}
-        portalName={providerInfo?.name || portalDisplayName}
-        onResolved={() => {
-          setIsStreamModalOpen(false);
-          onResolved();
-        }}
-      />
     </div>
   );
 }
