@@ -2,7 +2,7 @@ import { Page, CDPSession } from 'playwright';
 import { ServerResponse } from 'http';
 
 export interface StreamInputEvent {
-  type: 'click' | 'mousedown' | 'mouseup' | 'mousemove' | 'wheel' | 'keydown' | 'keyup' | 'type' | 'touch' | 'navigate';
+  type: 'click' | 'mousedown' | 'mouseup' | 'mousemove' | 'wheel' | 'keydown' | 'keyup' | 'type' | 'paste' | 'shortcut' | 'touch' | 'navigate';
   x?: number;
   y?: number;
   button?: 'left' | 'right' | 'middle';
@@ -12,6 +12,10 @@ export interface StreamInputEvent {
   key?: string;
   code?: string;
   text?: string;
+  ctrl?: boolean;
+  meta?: boolean;
+  shift?: boolean;
+  alt?: boolean;
   touchPoints?: Array<{ x: number; y: number; id: number }>;
   url?: string;
 }
@@ -152,6 +156,12 @@ class BrowserStreamServer {
       switch (event.type) {
         case 'click': {
           const button = event.button || 'left';
+          // Move mouse cursor first to activate element focus & hover states
+          await cdpSession.send('Input.dispatchMouseEvent', {
+            type: 'mouseMoved',
+            x,
+            y,
+          }).catch(() => {});
           await cdpSession.send('Input.dispatchMouseEvent', {
             type: 'mousePressed',
             x,
@@ -229,23 +239,56 @@ class BrowserStreamServer {
           break;
         }
 
+        case 'paste':
         case 'type': {
           if (event.text) {
-            await page.keyboard.type(event.text, { delay: 30 });
+            try {
+              await page.keyboard.insertText(event.text);
+            } catch {
+              await page.keyboard.type(event.text, { delay: 10 });
+            }
+          }
+          break;
+        }
+
+        case 'shortcut': {
+          if (event.key) {
+            const modifiers: string[] = [];
+            if (event.ctrl || event.meta) modifiers.push('Control');
+            if (event.alt) modifiers.push('Alt');
+            if (event.shift) modifiers.push('Shift');
+            const combo = [...modifiers, event.key].join('+');
+            await page.keyboard.press(combo).catch(() => {});
           }
           break;
         }
 
         case 'keydown': {
           if (event.key) {
-            await page.keyboard.down(event.key);
+            const isSinglePrintable =
+              event.text &&
+              event.text.length === 1 &&
+              !event.key.startsWith('Arrow') &&
+              !['Backspace', 'Enter', 'Tab', 'Delete', 'Escape'].includes(event.key);
+
+            if (isSinglePrintable) {
+              try {
+                await page.keyboard.insertText(event.text!);
+              } catch {
+                await page.keyboard.press(event.key);
+              }
+            } else {
+              await page.keyboard.press(event.key).catch(async () => {
+                await page.keyboard.down(event.key!);
+              });
+            }
           }
           break;
         }
 
         case 'keyup': {
           if (event.key) {
-            await page.keyboard.up(event.key);
+            await page.keyboard.up(event.key).catch(() => {});
           }
           break;
         }
