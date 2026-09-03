@@ -9,6 +9,7 @@ import {
   Check
 } from 'lucide-react';
 import { trackWelcomePathChoice } from '@/lib/analytics';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 interface WelcomeChoiceFlowProps {
   userName?: string | null;
@@ -24,8 +25,11 @@ export default function WelcomeChoiceFlow({ userName }: WelcomeChoiceFlowProps) 
   const handleSelectPath = (choice: 'find_jobs' | 'prepare_application') => {
     trackWelcomePathChoice(choice, isNewUser);
     if (choice === 'find_jobs') {
+      try {
+        localStorage.setItem('job_agent_auto_sync_on_mount', 'true');
+      } catch (e) {}
       if (isNewUser) {
-        router.push('/dashboard?autoSync=true');
+        router.push('/dashboard?autoSync=true&welcome_prompt=true');
       } else {
         router.push('/dashboard');
       }
@@ -36,6 +40,8 @@ export default function WelcomeChoiceFlow({ userName }: WelcomeChoiceFlowProps) 
       router.push('/prepare');
     }
   };
+
+  const autoApplyEnabled = isAutoApplyEnabled();
 
   const choiceCards = [
     {
@@ -49,7 +55,7 @@ export default function WelcomeChoiceFlow({ userName }: WelcomeChoiceFlowProps) 
       features: [
         'AI Opportunity Match Scoring (>80 filter)',
         'Scan inbox for job alert notifications',
-        'One-click auto apply and pipeline tracking'
+        autoApplyEnabled ? 'One-click auto apply and pipeline tracking' : '1-Click autofill and pipeline tracking'
       ]
     },
     {

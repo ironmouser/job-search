@@ -23,6 +23,7 @@ import JobDetailsFilterModal from './JobDetailsFilterModal';
 import { trackDockAction } from '@/lib/analytics';
 import JitResumeUploadModal from './common/JitResumeUploadModal';
 import { useCommandBar } from '@/contexts/AutoApplyBarContext';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 interface JobDetailsActionBarProps {
   currentJobId: string;
@@ -299,10 +300,16 @@ export default function JobDetailsActionBar({
     }
   }, []);
 
+  const autoApplyEnabled = isAutoApplyEnabled();
+
   const toggleApplyPopover = useCallback(() => {
     if (status === 'applied') {
       const element = document.getElementById('step-3-apply');
       if (element) element.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+    if (!autoApplyEnabled) {
+      handleStep3ApplyDirectly();
       return;
     }
     if (!showApplyPopover) {
@@ -311,7 +318,7 @@ export default function JobDetailsActionBar({
     } else {
       setShowApplyPopover(false);
     }
-  }, [status, showApplyPopover, updatePopoverCoords]);
+  }, [status, showApplyPopover, updatePopoverCoords, autoApplyEnabled]);
 
   useEffect(() => {
     if (!showApplyPopover) return;
@@ -427,7 +434,7 @@ export default function JobDetailsActionBar({
               </span>
             ) : (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Send size={14} /> Apply <ChevronUp size={12} style={{ transform: showApplyPopover ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+                <Send size={14} /> Apply {autoApplyEnabled && <ChevronUp size={12} style={{ transform: showApplyPopover ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />}
               </span>
             )}
           </button>
@@ -551,36 +558,38 @@ export default function JobDetailsActionBar({
               zIndex: 9999,
             }}
           >
-            <button
-              type="button"
-              onClick={handleStep3AutoApply}
-              disabled={isAutoApplying}
-              className="command-bar-btn"
-              style={{
-                width: '100%',
-                justifyContent: 'space-between',
-                padding: '0.45rem 0.65rem',
-                borderRadius: '8px',
-                background: 'rgba(99, 102, 241, 0.14)',
-                border: '1px solid rgba(99, 102, 241, 0.35)',
-                color: '#ffffff',
-                cursor: isAutoApplying ? 'not-allowed' : 'pointer',
-              }}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
-                <Zap size={14} style={{ color: '#fbbf24' }} /> Auto Apply
-              </span>
-              <span style={{
-                fontSize: '0.68rem',
-                background: 'rgba(251, 191, 36, 0.2)',
-                color: '#fbbf24',
-                padding: '0.1rem 0.45rem',
-                borderRadius: '9999px',
-                fontWeight: 700,
-              }}>
-                1-Click
-              </span>
-            </button>
+            {autoApplyEnabled && (
+              <button
+                type="button"
+                onClick={handleStep3AutoApply}
+                disabled={isAutoApplying}
+                className="command-bar-btn"
+                style={{
+                  width: '100%',
+                  justifyContent: 'space-between',
+                  padding: '0.45rem 0.65rem',
+                  borderRadius: '8px',
+                  background: 'rgba(99, 102, 241, 0.14)',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  color: '#ffffff',
+                  cursor: isAutoApplying ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <Zap size={14} style={{ color: '#fbbf24' }} /> Auto Apply
+                </span>
+                <span style={{
+                  fontSize: '0.68rem',
+                  background: 'rgba(251, 191, 36, 0.2)',
+                  color: '#fbbf24',
+                  padding: '0.1rem 0.45rem',
+                  borderRadius: '9999px',
+                  fontWeight: 700,
+                }}>
+                  1-Click
+                </span>
+              </button>
+            )}
 
             <button
               type="button"

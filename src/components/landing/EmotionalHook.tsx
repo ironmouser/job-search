@@ -1,15 +1,17 @@
 import { Check } from 'lucide-react';
 import { getAssetUrl } from '@/lib/assets';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 export default function EmotionalHook() {
   const guyBgUrl = getAssetUrl('/guy.png');
+  const autoApplyEnabled = isAutoApplyEnabled();
 
   const tasks = [
     "Searches thousands of jobs",
     "Scores every opportunity",
     "Tailors your resume",
     "Prepares applications",
-    "Auto applies where supported"
+    autoApplyEnabled ? "Auto applies where supported" : "1-Click browser autofill"
   ];
 
   return (

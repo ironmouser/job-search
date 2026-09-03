@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { getAutoApplyQuota } from '@/lib/auto-apply/quota';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,9 @@ const ACTIVE_STATUSES = [
  * Used by GlobalAutoApplyDock to show progress and intervention alerts globally.
  */
 export async function GET(request: NextRequest) {
+  if (!isAutoApplyEnabled()) {
+    return NextResponse.json({ activeSession: null, activeSessions: [], quota: null });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {

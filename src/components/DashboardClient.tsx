@@ -32,6 +32,7 @@ import { AntiAbuseBanner } from '@/components/AntiAbuseBanner';
 import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 import RoleSuggestionBanner from '@/components/RoleSuggestionBanner';
 import { useCommandBar } from '@/contexts/AutoApplyBarContext';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 
 const safeFormatDate = (dateVal: any) => {
@@ -47,6 +48,7 @@ const getConfidenceBadge = (
   hasBotFailure: boolean = false, 
   hasRunAutoApply: boolean = false
 ) => {
+    if (!isAutoApplyEnabled()) return null;
     if (hasRunAutoApply && hasBotFailure) {
       return (
         <span 
@@ -326,11 +328,12 @@ export default function DashboardClient({
 
   // Sync selection state with Global Command & Bottom Bar
   useEffect(() => {
+    const autoApplyEnabled = isAutoApplyEnabled();
     if (checkedJobs.size > 0) {
       setSelectionState({
         count: checkedJobs.size,
         isApplying: isStartingBatch,
-        onStartApply: handleStartBatchApply,
+        onStartApply: autoApplyEnabled ? handleStartBatchApply : undefined,
         onDeselectAll: handleDeselectAll,
         onArchiveDelete: handleOpenCleanup,
       });
@@ -1600,7 +1603,7 @@ export default function DashboardClient({
               </div>
               <div>
                 <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '0.96rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Unlock AI Opportunity Fit Scoring & Auto-Apply
+                  {isAutoApplyEnabled() ? 'Unlock AI Opportunity Fit Scoring & Auto-Apply' : 'Unlock AI Opportunity Fit Scoring & Tailored Packets'}
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                   Upload your resume to evaluate match breakdown across all opportunities and enable 1-click tailored application generation.

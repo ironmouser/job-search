@@ -1,6 +1,9 @@
 import { Check } from 'lucide-react';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 export default function StoryFeatures() {
+  const autoApplyEnabled = isAutoApplyEnabled();
+
   const features = [
     "Discovers jobs",
     "Scores every opportunity",
@@ -8,8 +11,9 @@ export default function StoryFeatures() {
     "Writes tailored cover letters",
     "Tracks every application",
     "Learns which application systems it supports",
-    "Auto applies where possible",
-    "Alerts you only when your input is needed"
+    ...(autoApplyEnabled
+      ? ["Auto applies where possible", "Alerts you only when your input is needed"]
+      : ["Autofills application forms in 1-click", "Organizes everything in one Kanban board"])
   ];
 
   return (

@@ -1,6 +1,9 @@
 import { getAssetUrl } from '@/lib/assets';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 export default function HowItWorks() {
+  const autoApplyEnabled = isAutoApplyEnabled();
+
   const steps = [
     {
       title: "Resume",
@@ -15,8 +18,10 @@ export default function HowItWorks() {
       desc: "Every application receives a customized resume and cover letter to match the job description."
     },
     {
-      title: "Auto Apply",
-      desc: "For supported job sites, the agent completes the application form automatically."
+      title: autoApplyEnabled ? "Auto Apply" : "1-Click Apply",
+      desc: autoApplyEnabled
+        ? "For supported job sites, the agent completes the application form automatically."
+        : "Autofill applications in seconds using tailored resumes, cover letters, and our smart browser extension."
     },
     {
       title: "Track Everything",

@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Loader2, ArrowRight, ShieldCheck, Zap, Check } from "lucide-react";
 import { getAssetUrl } from "@/lib/assets";
+import { isAutoApplyEnabled } from "@/lib/features";
 
 function CheckoutAuthContent() {
   const { data: session, status } = useSession();
@@ -141,7 +142,7 @@ function CheckoutAuthContent() {
               "Unlimited AI scoring",
               "Tailored resumes",
               "Cover letter generator",
-              "Hands-free auto apply",
+              isAutoApplyEnabled() ? "Hands-free auto apply" : "1-Click browser autofill",
             ].map((feature) => (
               <li key={feature} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: "#1e293b", fontWeight: 600 }}>
                 <Check size={14} color="#10b981" style={{ flexShrink: 0 }} />

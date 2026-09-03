@@ -22,6 +22,7 @@ import { AutoApplyHowItWorksModal } from './AutoApplyHowItWorksModal';
 import AutofillButton from './AutofillButton';
 import { safeCopyToClipboard } from '@/lib/clipboard';
 import { scrollToTop } from './BackToTopButton';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 interface ApplyStepAccordionProps {
   jobId: string;
@@ -61,6 +62,7 @@ export function ApplyStepAccordion({
   const [isSavingUrl, setIsSavingUrl] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
+  const autoApplyEnabled = isAutoApplyEnabled();
   // Default to manual apply tab per user specification
   const [mode, setMode] = useState<'manual' | 'auto'>('manual');
 
@@ -85,6 +87,7 @@ export function ApplyStepAccordion({
 
   // Check URL parameters and active sessions to auto-select auto tab if triggered or running
   useEffect(() => {
+    if (!autoApplyEnabled) return;
     if (typeof window === 'undefined') return;
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('autoApplyExpand') === 'true') {
@@ -114,13 +117,13 @@ export function ApplyStepAccordion({
         }
       })
       .catch(() => {});
-  }, [jobId]);
+  }, [jobId, autoApplyEnabled]);
 
   const effectiveUrl = customUrl.trim() && customUrl.trim().startsWith('http') ? customUrl.trim() : activeUrl;
 
   // Check automation confidence whenever effectiveUrl changes
   useEffect(() => {
-    if (!effectiveUrl) return;
+    if (!autoApplyEnabled || !effectiveUrl) return;
     let isMounted = true;
     setIsCheckingConfidence(true);
 
@@ -261,53 +264,57 @@ export function ApplyStepAccordion({
           Apply to Job
         </h3>
         <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
-          Choose how you&apos;d like to apply for this position.
+          {autoApplyEnabled
+            ? "Choose how you'd like to apply for this position."
+            : "Review your tailored assets from Step 2, then complete your application directly."}
         </p>
       </div>
 
-      {/* 2. Segmented Mode Selector Tabs (Similar to Prepare Application Flow) */}
-      <div
-        className="app-segmented-tabs"
-        role="tablist"
-        aria-label="Application Mode"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '6px',
-        }}
-      >
-        {/* Tab 1: Apply Now - Default */}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'manual'}
-          onClick={() => setMode('manual')}
-          className={`app-tab-btn ${mode === 'manual' ? 'active' : ''}`}
+      {/* 2. Segmented Mode Selector Tabs (Only shown if Auto Apply is enabled) */}
+      {autoApplyEnabled && (
+        <div
+          className="app-segmented-tabs"
+          role="tablist"
+          aria-label="Application Mode"
           style={{
-            padding: '0.7rem 1rem',
-            fontSize: '0.92rem',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '6px',
           }}
         >
-          <ExternalLink size={16} />
-          <span>Apply Now</span>
-        </button>
+          {/* Tab 1: Apply Now - Default */}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'manual'}
+            onClick={() => setMode('manual')}
+            className={`app-tab-btn ${mode === 'manual' ? 'active' : ''}`}
+            style={{
+              padding: '0.7rem 1rem',
+              fontSize: '0.92rem',
+            }}
+          >
+            <ExternalLink size={16} />
+            <span>Apply Now</span>
+          </button>
 
-        {/* Tab 2: Auto Apply With AI */}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'auto'}
-          onClick={() => setMode('auto')}
-          className={`app-tab-btn ${mode === 'auto' ? 'active' : ''}`}
-          style={{
-            padding: '0.7rem 1rem',
-            fontSize: '0.92rem',
-          }}
-        >
-          <Sparkles size={16} />
-          <span>Auto Apply With AI</span>
-        </button>
-      </div>
+          {/* Tab 2: Auto Apply With AI */}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'auto'}
+            onClick={() => setMode('auto')}
+            className={`app-tab-btn ${mode === 'auto' ? 'active' : ''}`}
+            style={{
+              padding: '0.7rem 1rem',
+              fontSize: '0.92rem',
+            }}
+          >
+            <Sparkles size={16} />
+            <span>Auto Apply With AI</span>
+          </button>
+        </div>
+      )}
 
       {/* Easy Apply Banner if role requires personal sign in */}
       {isEasyApply && (
@@ -401,7 +408,7 @@ export function ApplyStepAccordion({
       )}
 
       {/* Tab 2 Content: Auto Apply With AI */}
-      {mode === 'auto' && (
+      {autoApplyEnabled && mode === 'auto' && (
         <div
           className="apply-auto-card"
           style={{
@@ -438,20 +445,23 @@ export function ApplyStepAccordion({
               {/* Confidence Badge with Info Trigger */}
               {effectiveConfidenceData && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <AutoApplyConfidenceBadge confidence={effectiveConfidenceData.confidence} showLabel />
+                  <AutoApplyConfidenceBadge
+                    confidence={effectiveConfidenceData.confidence}
+                    showLabel
+                  />
                   <button
                     type="button"
                     onClick={() => setIsHowItWorksOpen(true)}
+                    title="How confidence is calculated & how Auto Apply works"
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: 'var(--text-secondary)',
+                      padding: 0,
+                      color: 'var(--text-muted)',
                       cursor: 'pointer',
-                      padding: '2px',
                       display: 'flex',
                       alignItems: 'center',
                     }}
-                    title="Learn how automation confidence works"
                   >
                     <HelpCircle size={14} />
                   </button>
@@ -459,34 +469,25 @@ export function ApplyStepAccordion({
               )}
             </div>
 
+            {/* How it works trigger link */}
             <button
               type="button"
               onClick={() => setIsHowItWorksOpen(true)}
               style={{
+                fontSize: '0.8rem',
+                color: 'var(--accent-primary, #0070f3)',
                 background: 'none',
                 border: 'none',
-                color: 'var(--accent-primary, #0070f3)',
-                fontSize: '0.85rem',
-                fontWeight: 600,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.35rem',
-                padding: '2px 6px',
+                gap: '0.25rem',
+                fontWeight: 500,
+                padding: '2px 4px',
               }}
             >
-              <HelpCircle size={15} /> How it works
+              <HelpCircle size={13} /> How AI Auto Apply Works
             </button>
-          </div>
-
-          {/* Section Headline */}
-          <div>
-            <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Let AI handle your application
-            </h4>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-              We will locate the application form, tailor your assets, and submit on your behalf.
-            </p>
           </div>
 
           {/* Application URL Card */}
@@ -626,10 +627,12 @@ export function ApplyStepAccordion({
       )}
 
       {/* How It Works Modal */}
-      <AutoApplyHowItWorksModal
-        isOpen={isHowItWorksOpen}
-        onClose={() => setIsHowItWorksOpen(false)}
-      />
+      {autoApplyEnabled && (
+        <AutoApplyHowItWorksModal
+          isOpen={isHowItWorksOpen}
+          onClose={() => setIsHowItWorksOpen(false)}
+        />
+      )}
     </div>
   );
 }

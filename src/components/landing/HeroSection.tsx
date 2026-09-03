@@ -3,8 +3,11 @@
 import Link from 'next/link';
 import { getAssetUrl } from '@/lib/assets';
 import { trackPublicCtaClick } from '@/lib/analytics';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 export default function HeroSection() {
+  const autoApplyEnabled = isAutoApplyEnabled();
+
   return (
     <section style={{ 
       padding: '6rem var(--section-px) 4rem', 
@@ -35,7 +38,9 @@ export default function HeroSection() {
           lineHeight: 1.6,
           maxWidth: '500px'
         }}>
-          Your personal AI job search agent discovers jobs, tailors your resume, writes cover letters, and can automatically complete online application forms using the information and documents you've approved.
+          {autoApplyEnabled
+            ? "Your personal AI job search agent discovers jobs, tailors your resume, writes cover letters, and can automatically complete online application forms using the information and documents you've approved."
+            : "Your personal AI job search agent discovers hidden jobs, generates tailored resumes and cover letters, and lets you apply in 1-click with smart browser autofill."}
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>

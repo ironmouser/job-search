@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Bot, AlertTriangle, Loader2, ChevronDown, ChevronUp, ExternalLink, Building2, CheckCircle2, Zap } from 'lucide-react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { GlobalInterventionDrawer } from './GlobalInterventionDrawer';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 interface ActiveSessionData {
   id: string;
@@ -53,8 +54,10 @@ export function GlobalAutoApplyDock() {
     setMounted(true);
   }, []);
 
+  const autoApplyEnabled = isAutoApplyEnabled();
+
   const fetchActive = useCallback(async () => {
-    if (isOnboarding) return;
+    if (!autoApplyEnabled || isOnboarding) return;
     try {
       const res = await fetch('/api/auto-apply/active', { cache: 'no-store' });
       if (res.ok) {
@@ -79,16 +82,16 @@ export function GlobalAutoApplyDock() {
     } catch {
       // Ignore poll errors
     }
-  }, [dismissedSessionId, isOnboarding]);
+  }, [dismissedSessionId, isOnboarding, autoApplyEnabled]);
 
   useEffect(() => {
-    if (isOnboarding) return;
+    if (!autoApplyEnabled || isOnboarding) return;
     fetchActive();
     const interval = setInterval(fetchActive, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchActive, isOnboarding]);
+  }, [fetchActive, isOnboarding, autoApplyEnabled]);
 
-  if (isOnboarding || !activeSession) return null;
+  if (!autoApplyEnabled || isOnboarding || !activeSession) return null;
 
   const isCurrentJobPage = pathname === `/job/${activeSession.jobId}` || pathname === `/job/${activeSession.jobId}/`;
   if (isCurrentJobPage) return null;

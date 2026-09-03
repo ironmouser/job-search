@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Check, Zap, Building2 } from 'lucide-react';
 import { trackPublicCtaClick } from '@/lib/analytics';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 export default function PricingSection() {
   const { data: session } = useSession();
@@ -110,7 +111,9 @@ export default function PricingSection() {
               Pro Unlimited <Zap size={20} color="#f59e0b" fill="currentColor" />
             </h3>
             <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: '1.5rem', minHeight: '2.8rem' }}>
-              Unlimited AI asset generation & automated applications.
+              {isAutoApplyEnabled()
+                ? "Unlimited AI asset generation & automated applications."
+                : "Unlimited AI asset generation & 1-click browser autofill."}
             </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '2rem' }}>
               <span style={{ fontSize: '3rem', fontWeight: 800, color: '#ffffff' }}>$20</span>
@@ -163,7 +166,9 @@ export default function PricingSection() {
               {[
                 'Everything in Free Starter',
                 'Unlimited AI Tailored Resumes & Cover Letters',
-                'Auto Apply Worker automation (hands-free)',
+                isAutoApplyEnabled()
+                  ? 'Auto Apply Worker automation (hands-free)'
+                  : '1-Click Chrome Extension Autofill',
                 'AI Application Q&A Assistant',
                 'Automatic Email Sync (Gmail / IMAP)',
                 'Custom Career Page URL Scraper',

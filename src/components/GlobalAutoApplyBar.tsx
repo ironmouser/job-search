@@ -22,6 +22,7 @@ import {
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { InterventionPanel } from './InterventionPanel';
 import { useCommandBar } from '@/contexts/AutoApplyBarContext';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 export interface AutoApplyQueueItem {
   id: string;
@@ -138,9 +139,11 @@ export function GlobalAutoApplyBar() {
     };
   }, []);
 
+  const autoApplyEnabled = isAutoApplyEnabled();
+
   // Poll for active auto-apply sessions
   const fetchSessions = useCallback(async () => {
-    if (isOnboarding) return;
+    if (!autoApplyEnabled || isOnboarding) return;
     try {
       const res = await fetch('/api/auto-apply/active', { cache: 'no-store' });
       if (res.ok) {
@@ -165,24 +168,25 @@ export function GlobalAutoApplyBar() {
     } catch {
       // Ignore polling errors
     }
-  }, [isOnboarding]);
+  }, [isOnboarding, autoApplyEnabled]);
 
   useEffect(() => {
-    if (isOnboarding) return;
+    if (!autoApplyEnabled || isOnboarding) return;
     fetchSessions();
     const interval = setInterval(fetchSessions, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchSessions, isOnboarding, refreshTrigger]);
+  }, [fetchSessions, isOnboarding, refreshTrigger, autoApplyEnabled]);
 
   // Listen to manual triggers from batch apply or start apply
   useEffect(() => {
+    if (!autoApplyEnabled) return;
     const handleStartEvent = () => {
       setIsDismissed(false);
       fetchSessions();
     };
     window.addEventListener('auto-apply-queue-start', handleStartEvent);
     return () => window.removeEventListener('auto-apply-queue-start', handleStartEvent);
-  }, [fetchSessions]);
+  }, [fetchSessions, autoApplyEnabled]);
 
   // Close FAB sheet on route change
   useEffect(() => {
@@ -191,7 +195,7 @@ export function GlobalAutoApplyBar() {
 
   if (isOnboarding) return null;
 
-  const hasActiveQueue = activeSessions.length > 0 && !isDismissed;
+  const hasActiveQueue = autoApplyEnabled && activeSessions.length > 0 && !isDismissed;
   const hasSelection = Boolean(selectionState && selectionState.count > 0);
 
   const ongoingCount = activeSessions.filter(
@@ -378,7 +382,7 @@ export function GlobalAutoApplyBar() {
                   </button>
                 )}
 
-                {selectionState?.onStartApply && (() => {
+                {autoApplyEnabled && selectionState?.onStartApply && (() => {
                   const isBatchApplying = Boolean(
                     selectionState?.isApplying ||
                     (ongoingCount > 0 && activeSessions.some((s) => s.status !== 'applied' && s.status !== 'failed' && s.status !== 'cancelled' && s.status !== AutoApplyStatus.NEEDS_INTERVENTION && s.status !== AutoApplyStatus.NEEDS_REVIEW))
@@ -1183,7 +1187,7 @@ export function GlobalAutoApplyBar() {
                   </button>
                 )}
 
-                {selectionState?.onStartApply && (() => {
+                {autoApplyEnabled && selectionState?.onStartApply && (() => {
                   const isBatchApplying = Boolean(
                     selectionState?.isApplying ||
                     (ongoingCount > 0 && activeSessions.some((s) => s.status !== 'applied' && s.status !== 'failed' && s.status !== 'cancelled' && s.status !== AutoApplyStatus.NEEDS_INTERVENTION && s.status !== AutoApplyStatus.NEEDS_REVIEW))

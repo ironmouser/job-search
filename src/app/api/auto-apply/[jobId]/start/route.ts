@@ -6,6 +6,7 @@ import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { isAggregatorUrl, isKnownATSUrl, fetchWithScraperAPI, extractATSUrlFromHtml } from '@/lib/scraperapi';
 import { getAutoApplyQuota } from '@/lib/auto-apply/quota';
 import { resolveEmbeddedAtsUrl } from '@/lib/auto-apply/ats-url-resolver';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 /**
  * POST /api/auto-apply/[jobId]/start
@@ -32,6 +33,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
+  if (!isAutoApplyEnabled()) {
+    return NextResponse.json(
+      { error: 'Auto Apply is temporarily disabled for maintenance.' },
+      { status: 503 }
+    );
+  }
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

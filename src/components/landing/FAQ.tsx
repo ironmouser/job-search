@@ -2,14 +2,24 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 export default function FAQ() {
+  const autoApplyEnabled = isAutoApplyEnabled();
+
   const faqs = [
     { q: "Does AI write my resume?", a: "Yes, our AI tailors a custom version of your resume for every single job application to ensure maximum ATS compatibility." },
     { q: "Will employers know?", a: "No. The resumes and cover letters are generated in your own voice and formatted professionally using standard industry templates." },
-    { q: "How does Auto Apply work?", a: "For supported job boards, our agent can navigate the application form and automatically fill in your details, resume, and answers to common screening questions." },
-    { q: "Can I review applications first?", a: "Absolutely. You can set the agent to draft applications and wait for your manual approval before submitting." },
-    { q: "Can I disable Auto Apply?", a: "Yes, you have full control over the automation settings and can pause or disable auto-apply at any time." }
+    ...(autoApplyEnabled
+      ? [
+          { q: "How does Auto Apply work?", a: "For supported job boards, our agent can navigate the application form and automatically fill in your details, resume, and answers to common screening questions." },
+          { q: "Can I review applications first?", a: "Absolutely. You can set the agent to draft applications and wait for your manual approval before submitting." },
+          { q: "Can I disable Auto Apply?", a: "Yes, you have full control over the automation settings and can pause or disable auto-apply at any time." }
+        ]
+      : [
+          { q: "How does the Autofill extension work?", a: "With one click on any supported job site, our browser extension fills out application fields, attaches your tailored resume and cover letter, and answers screening questions." },
+          { q: "Can I edit the generated resumes and cover letters?", a: "Yes. You have full control to review, edit, or customize any AI-generated asset before applying." }
+        ])
   ];
 
   const [openIdx, setOpenIdx] = useState<number | null>(null);

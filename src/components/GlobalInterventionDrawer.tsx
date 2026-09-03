@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { InterventionPanel } from './InterventionPanel';
 import { X, ShieldAlert } from 'lucide-react';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 interface GlobalInterventionDrawerProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export function GlobalInterventionDrawer({
     () => false
   );
 
-  if (!mounted || !isOpen || !intervention) return null;
+  if (!isAutoApplyEnabled() || !mounted || !isOpen || !intervention) return null;
 
   const modalContent = (
     <div

@@ -41,6 +41,7 @@ import { UserAvatar } from "@/components/common/UserAvatar";
 import { trackProfileView, trackProfileResumeUpdate, trackProfileSave } from "@/lib/analytics";
 import RubricBuilder from "@/components/profile/RubricBuilder";
 import { useCommandBar } from "@/contexts/AutoApplyBarContext";
+import { isAutoApplyEnabled } from "@/lib/features";
 
 interface ProfileFormProps {
   initialName: string;
@@ -104,6 +105,7 @@ export default function ProfileForm({
   email,
 }: ProfileFormProps) {
   const router = useRouter();
+  const autoApplyEnabled = isAutoApplyEnabled();
   const { setPageActions } = useCommandBar();
   const { data: session, update } = useSession();
   const [name, setName] = useState(initialName);
@@ -567,7 +569,11 @@ export default function ProfileForm({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">My Profile</h1>
-          <p className="page-subtitle">Manage your personal information, auto-apply settings, target profile, and base resume.</p>
+          <p className="page-subtitle">
+            {autoApplyEnabled
+              ? "Manage your personal information, auto-apply settings, target profile, and base resume."
+              : "Manage your personal information, application autofill settings, target profile, and base resume."}
+          </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button
@@ -604,7 +610,9 @@ export default function ProfileForm({
 
         {!openSections['personal-info'] && (
           <div className="accordion-summary-box" onClick={() => toggleSection('personal-info')}>
-            Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for automatic job applications. Click to view or edit.
+            {autoApplyEnabled
+              ? "Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for automatic job applications. Click to view or edit."
+              : "Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for 1-click browser autofill and document tailoring. Click to view or edit."}
           </div>
         )}
 
@@ -613,7 +621,9 @@ export default function ProfileForm({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
               <div style={{ flex: '1 1 240px' }}>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
-                  Your contact details used to automatically complete job applications.
+                  {autoApplyEnabled
+                    ? "Your contact details used to automatically complete job applications."
+                    : "Your contact details used for 1-click browser autofill and tailored application generation."}
                 </p>
               </div>
 
@@ -653,7 +663,7 @@ export default function ProfileForm({
         >
           <Info size={18} style={{ color: "#3b82f6", flexShrink: 0, marginTop: "2px" }} />
           <p style={{ margin: 0, fontSize: "0.83rem", color: "var(--text-primary)", lineHeight: 1.45 }}>
-            <strong>Auto Apply Notice:</strong> The contact details in this section are saved securely and injected directly into application forms (Workday, Greenhouse, Lever, Ashby, Workable, etc.) when running Auto Apply on your behalf. We do not sell or share your information with any 3rd party companies.
+            <strong>{autoApplyEnabled ? "Auto Apply Notice:" : "Autofill Notice:"}</strong> The contact details in this section are saved securely and {autoApplyEnabled ? "injected directly into application forms (Workday, Greenhouse, Lever, Ashby, Workable, etc.) when running Auto Apply on your behalf" : "used by your 1-click browser autofill extension to populate application forms on company career portals"}. We do not sell or share your information with any 3rd party companies.
           </p>
         </div>
 
@@ -920,7 +930,9 @@ export default function ProfileForm({
 
         {!openSections['work-auth'] && (
           <div className="accordion-summary-box" onClick={() => toggleSection('work-auth')}>
-            Required for Auto Applying. Work authorization, visa sponsorship, and voluntary EEOC self-identification injected into application questionnaires. Click to configure.
+            {autoApplyEnabled
+              ? "Required for Auto Applying. Work authorization, visa sponsorship, and voluntary EEOC self-identification injected into application questionnaires. Click to configure."
+              : "Work authorization, visa sponsorship, and voluntary EEOC self-identification used for 1-click browser autofill and application questionnaires. Click to configure."}
           </div>
         )}
 
@@ -1089,41 +1101,43 @@ export default function ProfileForm({
             </div>
 
             {/* Default Candidate Account Password for Auto Apply */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem" }}>
-              <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Default Job Portal Password</label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <input
-                  type={showDefaultPassword ? "text" : "password"}
-                  value={settings.defaultAccountPassword || ''}
-                  onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
-                  placeholder="Optional password for automated candidate account creation"
-                  style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem 2.5rem 0.75rem 0.75rem", borderRadius: "8px" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowDefaultPassword(!showDefaultPassword)}
-                  style={{
-                    position: "absolute",
-                    right: "0.75rem",
-                    background: "none",
-                    border: "none",
-                    padding: "0.25rem",
-                    cursor: "pointer",
-                    color: "var(--text-secondary)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  title={showDefaultPassword ? "Hide password" : "Show password"}
-                  aria-label={showDefaultPassword ? "Hide password" : "Show password"}
-                >
-                  {showDefaultPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+            {autoApplyEnabled && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem" }}>
+                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Default Job Portal Password</label>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input
+                    type={showDefaultPassword ? "text" : "password"}
+                    value={settings.defaultAccountPassword || ''}
+                    onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
+                    placeholder="Optional password for automated candidate account creation"
+                    style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem 2.5rem 0.75rem 0.75rem", borderRadius: "8px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDefaultPassword(!showDefaultPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "0.75rem",
+                      background: "none",
+                      border: "none",
+                      padding: "0.25rem",
+                      cursor: "pointer",
+                      color: "var(--text-secondary)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                    title={showDefaultPassword ? "Hide password" : "Show password"}
+                    aria-label={showDefaultPassword ? "Hide password" : "Show password"}
+                  >
+                    {showDefaultPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                  Used by the AI agent to automatically create candidate accounts on portals (e.g. Workday, Taleo) that require login.
+                </span>
               </div>
-              <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                Used by the AI agent to automatically create candidate accounts on portals (e.g. Workday, Taleo) that require login.
-              </span>
-            </div>
+            )}
 
             <div style={{ height: "1px", background: "var(--border-glass)", margin: "0.5rem 0" }} />
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
