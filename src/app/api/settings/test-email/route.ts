@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
 
+import { resolveEmailAccounts } from '@/lib/emailAccounts';
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
-    const { emailAddress, emailAppPassword, imapHost, imapPort } = data;
+    const { provider, emailAddress, emailAppPassword, imapHost, imapPort } = data;
 
     if (!emailAddress || !emailAppPassword || !imapHost || !imapPort) {
       return NextResponse.json({ success: false, error: 'All connection fields are required.' }, { status: 400 });
@@ -26,10 +28,14 @@ export async function POST(request: Request) {
       const prefs = await prisma.userPreferences.findUnique({
         where: { userId: session.user.id }
       });
-      if (!prefs?.emailAppPassword) {
+      const resolvedAccounts = resolveEmailAccounts(prefs, false);
+      const targetAccount = (provider && resolvedAccounts[provider]) ? resolvedAccounts[provider] : null;
+      const encryptedPass = targetAccount?.emailAppPassword || prefs?.emailAppPassword;
+
+      if (!encryptedPass) {
         return NextResponse.json({ success: false, error: 'No saved password found to test with.' }, { status: 400 });
       }
-      passwordToUse = decrypt(prefs.emailAppPassword);
+      passwordToUse = decrypt(encryptedPass);
     }
 
     const client = new ImapFlow({

@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { trackSettingsView, trackSettingsSave } from '@/lib/analytics';
 import { getEffectiveTier } from '@/lib/tier';
 import { FREE_ALLOWED_SOURCES, INTERNATIONAL_SOURCES, DEFAULT_PRO_SOURCES, DEFAULT_FREE_SOURCES } from '@/lib/settings';
+import { DEFAULT_PROVIDER_CONFIGS, DEFAULT_EMAIL_PROVIDERS } from '@/lib/emailAccounts';
 
 const SOURCE_LABELS: Record<string, string> = {
     indeed: 'Indeed',
@@ -287,21 +288,55 @@ export default function SettingsPage() {
         }
     }, []);
 
+    const handleEmailAccountChange = (field: string, value: any) => {
+        setSettings((prev: any) => {
+            const currentAccounts = { ...(prev?.emailAccounts || {}) };
+            const defaultConfig = DEFAULT_PROVIDER_CONFIGS[emailProvider] || DEFAULT_PROVIDER_CONFIGS.other;
+            const existingConfig = currentAccounts[emailProvider] || {
+                emailAddress: '',
+                emailAppPassword: '',
+                imapHost: defaultConfig.imapHost,
+                imapPort: defaultConfig.imapPort,
+            };
+            currentAccounts[emailProvider] = {
+                ...existingConfig,
+                [field]: value,
+            };
+            const next = {
+                ...prev,
+                emailAccounts: currentAccounts,
+            };
+            settingsRef.current = next;
+            return next;
+        });
+        setIsDirty(true);
+        setEmailTestResult(null);
+    };
+
+    const handleClearEmailAccount = () => {
+        setSettings((prev: any) => {
+            const currentAccounts = { ...(prev?.emailAccounts || {}) };
+            const defaultConfig = DEFAULT_PROVIDER_CONFIGS[emailProvider] || DEFAULT_PROVIDER_CONFIGS.other;
+            currentAccounts[emailProvider] = {
+                emailAddress: '',
+                emailAppPassword: '',
+                imapHost: defaultConfig.imapHost,
+                imapPort: defaultConfig.imapPort,
+            };
+            const next = {
+                ...prev,
+                emailAccounts: currentAccounts,
+            };
+            settingsRef.current = next;
+            return next;
+        });
+        setIsDirty(true);
+        setEmailTestResult(null);
+    };
+
     const handleProviderChange = (provider: string) => {
         setEmailProvider(provider);
-        if (provider === 'gmail') {
-            handleChange('imapHost', 'imap.gmail.com');
-            handleChange('imapPort', 993);
-        } else if (provider === 'yahoo') {
-            handleChange('imapHost', 'imap.mail.yahoo.com');
-            handleChange('imapPort', 993);
-        } else if (provider === 'outlook') {
-            handleChange('imapHost', 'outlook.office365.com');
-            handleChange('imapPort', 993);
-        } else if (provider === 'icloud') {
-            handleChange('imapHost', 'imap.mail.me.com');
-            handleChange('imapPort', 993);
-        }
+        setEmailTestResult(null);
     };
 
     const { data: session, update } = useSession();
@@ -346,6 +381,13 @@ export default function SettingsPage() {
             const savedState = JSON.parse(JSON.stringify(settingsToSave));
             if (savedState.emailAppPassword && savedState.emailAppPassword !== '********') {
                 savedState.emailAppPassword = '********';
+            }
+            if (savedState.emailAccounts && typeof savedState.emailAccounts === 'object') {
+                for (const p of Object.keys(savedState.emailAccounts)) {
+                    if (savedState.emailAccounts[p]?.emailAppPassword && savedState.emailAccounts[p].emailAppPassword !== '********') {
+                        savedState.emailAccounts[p].emailAppPassword = '********';
+                    }
+                }
             }
             settingsRef.current = savedState;
             setSettings(savedState);
@@ -420,15 +462,20 @@ export default function SettingsPage() {
     const handleTestEmail = async () => {
         setTestingEmail(true);
         setEmailTestResult(null);
+        const currentAccount = settings.emailAccounts?.[emailProvider] || {};
+        const imapHost = currentAccount.imapHost || DEFAULT_PROVIDER_CONFIGS[emailProvider]?.imapHost || '';
+        const imapPort = currentAccount.imapPort || DEFAULT_PROVIDER_CONFIGS[emailProvider]?.imapPort || 993;
+
         try {
             const res = await fetch('/api/settings/test-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    emailAddress: settings.emailAddress,
-                    emailAppPassword: settings.emailAppPassword,
-                    imapHost: settings.imapHost,
-                    imapPort: settings.imapPort
+                    provider: emailProvider,
+                    emailAddress: currentAccount.emailAddress,
+                    emailAppPassword: currentAccount.emailAppPassword,
+                    imapHost,
+                    imapPort,
                 })
             });
             const data = await res.json();
@@ -925,29 +972,72 @@ export default function SettingsPage() {
                 </div>
             )}
 
-            {openSections['email-sync'] && (
+            {openSections['email-sync'] && (() => {
+                const currentAccount = settings.emailAccounts?.[emailProvider] || {
+                    emailAddress: '',
+                    emailAppPassword: '',
+                    imapHost: DEFAULT_PROVIDER_CONFIGS[emailProvider]?.imapHost || '',
+                    imapPort: DEFAULT_PROVIDER_CONFIGS[emailProvider]?.imapPort || 993,
+                };
+                const hasCurrentCredentials = Boolean(currentAccount.emailAddress && currentAccount.emailAppPassword);
+
+                return (
                 <div className="accordion-body">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Select Provider</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>Select Email Platform</label>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Credentials are isolated and saved independently for each platform</span>
+                            </div>
                             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {['gmail', 'outlook', 'yahoo', 'icloud', 'other'].map(provider => (
-                                    <button 
-                                        key={provider}
-                                        onClick={() => handleProviderChange(provider)}
-                                        className={emailProvider === provider ? 'btn-primary' : 'btn-outline'}
-                                        style={{ padding: '0.5rem 1rem', textTransform: 'capitalize', flex: 1, minWidth: '80px', textAlign: 'center' }}
-                                    >
-                                        {provider}
-                                    </button>
-                                ))}
+                                {DEFAULT_EMAIL_PROVIDERS.map(provider => {
+                                    const acc = settings.emailAccounts?.[provider];
+                                    const isConfigured = Boolean(acc?.emailAddress && acc?.emailAppPassword);
+                                    const isSelected = emailProvider === provider;
+                                    const pConfig = DEFAULT_PROVIDER_CONFIGS[provider] || DEFAULT_PROVIDER_CONFIGS.other;
+
+                                    return (
+                                        <button 
+                                            key={provider}
+                                            type="button"
+                                            onClick={() => handleProviderChange(provider)}
+                                            className={isSelected ? 'btn-primary' : 'btn-outline'}
+                                            style={{ 
+                                                padding: '0.5rem 0.85rem', 
+                                                textTransform: 'capitalize', 
+                                                flex: 1, 
+                                                minWidth: '100px', 
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem',
+                                                position: 'relative' 
+                                            }}
+                                        >
+                                            <span>{pConfig.displayName}</span>
+                                            {isConfigured && (
+                                                <span 
+                                                    title={`${pConfig.displayName} Connected`}
+                                                    style={{ 
+                                                        width: '7px', 
+                                                        height: '7px', 
+                                                        borderRadius: '50%', 
+                                                        background: '#10b981', 
+                                                        display: 'inline-block',
+                                                        boxShadow: '0 0 4px #10b981'
+                                                    }} 
+                                                />
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
                         <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
-                                    Connection Instructions
+                                    {providerDisplay} Connection Instructions
                                 </h4>
                                 {EMAIL_VIDEO_LINKS[emailProvider] && (
                                     <a 
@@ -1020,8 +1110,8 @@ export default function SettingsPage() {
                                 <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{providerDisplay === 'Email' ? 'Email Address' : `${providerDisplay} Address`}</label>
                                 <input 
                                     type="email"
-                                    value={settings.emailAddress || ''}
-                                    onChange={(e) => handleChange('emailAddress', e.target.value)}
+                                    value={currentAccount.emailAddress || ''}
+                                    onChange={(e) => handleEmailAccountChange('emailAddress', e.target.value)}
                                     placeholder={`john@${providerDomain}`}
                                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                                 />
@@ -1033,8 +1123,8 @@ export default function SettingsPage() {
                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                     <input 
                                         type={showAppPassword ? "text" : "password"}
-                                        value={settings.emailAppPassword || ''}
-                                        onChange={(e) => handleChange('emailAppPassword', e.target.value)}
+                                        value={currentAccount.emailAppPassword || ''}
+                                        onChange={(e) => handleEmailAccountChange('emailAppPassword', e.target.value)}
                                         placeholder={`Enter ${providerDisplay} App Password`}
                                         style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem 2.5rem 0.75rem 0.75rem', borderRadius: '8px' }}
                                     />
@@ -1066,9 +1156,9 @@ export default function SettingsPage() {
                                 <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>IMAP Host</label>
                                 <input 
                                     type="text"
-                                    value={settings.imapHost || ''}
-                                    onChange={(e) => handleChange('imapHost', e.target.value)}
-                                    placeholder={emailProvider === 'other' ? "imap.example.com" : settings.imapHost}
+                                    value={emailProvider === 'other' ? (currentAccount.imapHost || '') : (DEFAULT_PROVIDER_CONFIGS[emailProvider]?.imapHost || currentAccount.imapHost || '')}
+                                    onChange={(e) => handleEmailAccountChange('imapHost', e.target.value)}
+                                    placeholder={emailProvider === 'other' ? "imap.example.com" : (DEFAULT_PROVIDER_CONFIGS[emailProvider]?.imapHost || "")}
                                     disabled={emailProvider !== 'other'}
                                     style={{ background: emailProvider !== 'other' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
                                 />
@@ -1077,28 +1167,42 @@ export default function SettingsPage() {
                                 <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>IMAP Port</label>
                                 <input 
                                     type="number"
-                                    value={settings.imapPort || ''}
-                                    onChange={(e) => handleChange('imapPort', Number(e.target.value))}
-                                    placeholder={emailProvider === 'other' ? "993" : (settings.imapPort ? String(settings.imapPort) : "")}
+                                    value={currentAccount.imapPort || 993}
+                                    onChange={(e) => handleEmailAccountChange('imapPort', Number(e.target.value))}
+                                    placeholder="993"
                                     disabled={emailProvider !== 'other'}
                                     style={{ background: emailProvider !== 'other' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
                                 />
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                            <button 
-                                onClick={handleTestEmail}
-                                disabled={testingEmail || !settings.emailAddress || !settings.emailAppPassword}
-                                className="btn-outline"
-                                style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                            >
-                                {testingEmail ? (
-                                    <>Testing...</>
-                                ) : (
-                                    <>Test Connection</>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <button 
+                                    type="button"
+                                    onClick={handleTestEmail}
+                                    disabled={testingEmail || !currentAccount.emailAddress || !currentAccount.emailAppPassword}
+                                    className="btn-outline"
+                                    style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                >
+                                    {testingEmail ? (
+                                        <>Testing...</>
+                                    ) : (
+                                        <>Test Connection</>
+                                    )}
+                                </button>
+                                {(currentAccount.emailAddress || currentAccount.emailAppPassword) && (
+                                    <button
+                                        type="button"
+                                        onClick={handleClearEmailAccount}
+                                        className="btn-outline"
+                                        style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                                        title={`Clear ${providerDisplay} credentials`}
+                                    >
+                                        Clear {providerDisplay} Credentials
+                                    </button>
                                 )}
-                            </button>
+                            </div>
                             {emailTestResult && (
                                 <div style={{ 
                                     fontSize: '0.9rem', 
@@ -1108,15 +1212,15 @@ export default function SettingsPage() {
                                     gap: '0.5rem'
                                 }}>
                                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: emailTestResult.success ? '#10b981' : '#ef4444' }} />
-                                    {emailTestResult.success ? 'Connection successful!' : `Connection failed: ${emailTestResult.error}`}
+                                    {emailTestResult.success ? `${providerDisplay} connection successful!` : `Connection failed: ${emailTestResult.error}`}
                                 </div>
                             )}
                         </div>
 
-
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </div>
 
                 {/* API Connections - Admin only */}

@@ -7,6 +7,7 @@ import { cleanCompanyName } from './cleaners';
 import { isNonJobUrl, cleanJobUrl } from './urlUtils';
 import { extractJobsFromEmailText } from './scoring';
 import { decrypt } from './encryption';
+import { getActiveEmailAccounts } from './emailAccounts';
 
 const JOB_BOARDS = [
   'indeed.com',
@@ -123,62 +124,52 @@ const PERSONAL_DOMAINS = [
 
 const MAX_CANDIDATE_EMAILS = 50;
 
-export async function fetchEmailsAndExtractJobs(
-  userId: string,
+async function scanAccountInbox(
+  account: {
+    provider: string;
+    emailAddress: string;
+    emailAppPasswordDecrypted: string;
+    imapHost: string;
+    imapPort: number;
+  },
+  prefs: any,
+  sinceDate: Date,
   onProgress?: (foundCount: number, message: string) => void
-) {
-  onProgress?.(0, 'Connecting to IMAP mail server...');
-  const prefs = await getUserSettings(userId);
+): Promise<any[]> {
+  const providerLabel = account.provider.toUpperCase();
+  const userEmail = (account.emailAddress || '').toLowerCase().trim();
 
-  if (!prefs?.emailAddress || !prefs?.emailAppPassword) {
-    throw new Error('Email credentials are not configured in your settings.');
-  }
-
-  const imapHost = prefs.imapHost || 'imap.gmail.com';
-  const imapPort = prefs.imapPort || 993;
-  const imapUser = prefs.emailAddress;
-  const imapPass = decrypt(prefs.emailAppPassword);
-  const userEmail = (prefs.emailAddress || '').toLowerCase().trim();
+  onProgress?.(0, `Connecting to ${providerLabel} (${account.emailAddress})...`);
 
   const client = new ImapFlow({
-    host: imapHost,
-    port: imapPort,
-    secure: imapPort === 993,
+    host: account.imapHost,
+    port: account.imapPort,
+    secure: account.imapPort === 993,
     auth: {
-      user: imapUser,
-      pass: imapPass,
+      user: account.emailAddress,
+      pass: account.emailAppPasswordDecrypted,
     },
     logger: false,
   });
 
   try {
     await client.connect();
-    onProgress?.(0, 'Connected to mail server. Checking inbox...');
-
-    // 1. Calculate sync window (look back 14 days so recent alerts and forwarded jobs are never missed)
-    const syncLog = await prisma.syncLog.findFirst({
-      where: { userId, syncType: 'email' },
-      select: { id: true, lastSyncedAt: true },
-    });
-
-    const sinceDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // 14 days ago
-
-    console.log(`[Email Sync] Fetching candidate emails since ${sinceDate.toISOString()}...`);
+    onProgress?.(0, `Connected to ${providerLabel}. Checking inbox...`);
 
     const lock = await client.getMailboxLock('INBOX');
     try {
       // Stage 1: Fast Envelope Scan & Pre-filter without downloading full bodies
-      onProgress?.(0, 'Scanning email headers for job alerts...');
+      onProgress?.(0, `Scanning ${providerLabel} email headers for job alerts...`);
       const candidateHeaders: Array<{ uid: number; subject: string; from: string }> = [];
       const totalInBox = client.mailbox ? (client.mailbox as any).exists || 0 : 0;
-      console.log(`[Email Sync] Mailbox INBOX opened. Total messages in INBOX: ${totalInBox}`);
+      console.log(`[Email Sync - ${providerLabel}] Mailbox INBOX opened. Total messages: ${totalInBox}`);
 
-      // Extract candidate keywords from Job Discovery Settings (target titles and included keywords)
+      // Extract candidate keywords from Job Discovery Settings
       const userKeywords = [prefs.searchKeyword, prefs.includeKeywords]
         .filter(Boolean)
-        .flatMap(s => String(s).toLowerCase().split(/[\s,]+/))
-        .map(t => t.trim())
-        .filter(t => t.length > 2);
+        .flatMap((s: any) => String(s).toLowerCase().split(/[\s,]+/))
+        .map((t: string) => t.trim())
+        .filter((t: string) => t.length > 2);
 
       for await (const message of client.fetch({ since: sinceDate }, { envelope: true, uid: true })) {
         const subject = message.envelope?.subject || '';
@@ -190,7 +181,7 @@ export async function fetchEmailsAndExtractJobs(
         const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
         const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
         const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
-        const matchesUserKeyword = userKeywords.some(kw => combinedHeader.includes(kw));
+        const matchesUserKeyword = userKeywords.some((kw: string) => combinedHeader.includes(kw));
 
         // Only skip personal domains if the email has no job or user keyword signals
         if (!isFromSelf && isPersonalSender && !hasJobKeyword && !matchesUserKeyword) {
@@ -209,7 +200,7 @@ export async function fetchEmailsAndExtractJobs(
       // Fallback: If date-based search returned 0 headers but inbox has messages, scan recent message sequence
       if (candidateHeaders.length === 0 && totalInBox > 0) {
         const fallbackCount = Math.min(totalInBox, 150);
-        console.log(`[Email Sync] Date search returned 0 headers. Scanning most recent ${fallbackCount} emails as fallback...`);
+        console.log(`[Email Sync - ${providerLabel}] Date search returned 0 headers. Scanning most recent ${fallbackCount} emails as fallback...`);
         const fetchRange = `${Math.max(1, totalInBox - fallbackCount + 1)}:*`;
 
         for await (const message of client.fetch(fetchRange, { envelope: true, uid: true })) {
@@ -222,7 +213,7 @@ export async function fetchEmailsAndExtractJobs(
           const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
           const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
           const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
-          const matchesUserKeyword = userKeywords.some(kw => combinedHeader.includes(kw));
+          const matchesUserKeyword = userKeywords.some((kw: string) => combinedHeader.includes(kw));
 
           if (!isFromSelf && isPersonalSender && !hasJobKeyword && !matchesUserKeyword) {
             continue;
@@ -238,30 +229,15 @@ export async function fetchEmailsAndExtractJobs(
         }
       }
 
-      console.log(`[Email Sync] Discovered ${candidateHeaders.length} matching job email headers.`);
-      if (candidateHeaders.length > 0) {
-        console.log(`[Email Sync] Matched subjects sample:`, candidateHeaders.slice(-5).map(h => `[${h.from}] ${h.subject}`));
-      }
+      console.log(`[Email Sync - ${providerLabel}] Discovered ${candidateHeaders.length} matching job email headers.`);
 
       if (candidateHeaders.length === 0) {
-        onProgress?.(0, 'No new job alert emails found since last sync.');
-        // Update sync log even if no new emails to move the window forward
-        if (syncLog) {
-          await prisma.syncLog.update({
-            where: { id: syncLog.id },
-            data: { lastSyncedAt: new Date() },
-          });
-        } else {
-          await prisma.syncLog.create({
-            data: { userId, syncType: 'email', lastSyncedAt: new Date() },
-          });
-        }
-        return 0;
+        return [];
       }
 
       // Stage 2: Cap candidate emails at 50 (most recent first)
       const selectedCandidates = candidateHeaders.slice(-MAX_CANDIDATE_EMAILS).reverse();
-      onProgress?.(0, `Found ${selectedCandidates.length} candidate job alert email${selectedCandidates.length === 1 ? '' : 's'}. Downloading content...`);
+      onProgress?.(0, `Found ${selectedCandidates.length} candidate job alert email${selectedCandidates.length === 1 ? '' : 's'} in ${providerLabel}. Downloading content...`);
 
       const candidatePayloads: Array<{ emailContentForAI: string; subject: string }> = [];
 
@@ -277,7 +253,6 @@ export async function fetchEmailsAndExtractJobs(
           const html = parsed.html || '';
           const subject = parsed.subject || item.subject || '';
 
-          // Clean HTML to text if plain text is minimal or html has more structure
           const htmlText = html
             .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -285,10 +260,8 @@ export async function fetchEmailsAndExtractJobs(
             .replace(/\s+/g, ' ')
             .trim();
 
-          // Prefer the richer representation (HTML text usually contains all job cards in email digests)
           const effectiveText = (htmlText.length > text.length ? htmlText : text) || text || htmlText;
 
-          // Extract job links from HTML and text
           const urlRegex = /(https?:\/\/[^\s<"']+)/g;
           const htmlUrls = html.match(urlRegex) || [];
           const textUrls = effectiveText.match(urlRegex) || [];
@@ -300,10 +273,8 @@ export async function fetchEmailsAndExtractJobs(
             return true;
           });
 
-          // Pre-AI filter: An email must have at least one valid external link to be a usable job listing
           if (allUrls.length === 0) continue;
 
-          // Provide up to 35,000 characters to ensure full multi-job digest emails are processed without premature truncation
           const textSnippet = effectiveText.slice(0, 35000);
           if (!textSnippet && allUrls.length === 0) continue;
 
@@ -321,11 +292,11 @@ ${allUrls.slice(0, 120).join('\n')}
             `.trim(),
           });
         } catch (msgErr) {
-          console.warn(`[Email Sync] Warning: failed to parse message UID ${item.uid}:`, msgErr);
+          console.warn(`[Email Sync - ${providerLabel}] Warning: failed to parse message UID ${item.uid}:`, msgErr);
         }
       }
 
-      onProgress?.(0, `Processing ${candidatePayloads.length} email message${candidatePayloads.length === 1 ? '' : 's'} for job postings...`);
+      onProgress?.(0, `Processing ${candidatePayloads.length} ${providerLabel} message${candidatePayloads.length === 1 ? '' : 's'} for job postings...`);
 
       // Stage 3: AI Job Extraction in concurrent batches of 10
       let runningFoundCount = 0;
@@ -336,7 +307,7 @@ ${allUrls.slice(0, 120).join('\n')}
         const chunk = candidatePayloads.slice(i, i + batchSize);
         const batchNum = Math.floor(i / batchSize) + 1;
         const totalBatches = Math.ceil(candidatePayloads.length / batchSize);
-        console.log(`[Email Sync AI] Processing batch ${batchNum}/${totalBatches} (${chunk.length} emails in parallel)...`);
+        console.log(`[Email Sync AI - ${providerLabel}] Processing batch ${batchNum}/${totalBatches} (${chunk.length} emails in parallel)...`);
 
         const batchResults = await Promise.all(
           chunk.map(async ({ emailContentForAI, subject }) => {
@@ -349,16 +320,16 @@ ${allUrls.slice(0, 120).join('\n')}
                 excludeKeywords: prefs.excludeKeywords || undefined,
               });
               if (Array.isArray(extracted) && extracted.length > 0) {
-                console.log(`[Email Sync AI] Extracted ${extracted.length} job(s) from "${subject}":`, extracted.map(j => `"${j.title}" at "${j.company}"`));
+                console.log(`[Email Sync AI - ${providerLabel}] Extracted ${extracted.length} job(s) from "${subject}":`, extracted.map(j => `"${j.title}" at "${j.company}"`));
                 runningFoundCount += extracted.length;
                 onProgress?.(
                   runningFoundCount,
-                  `Extracted ${runningFoundCount} job listing${runningFoundCount === 1 ? '' : 's'} from email alerts...`
+                  `Extracted ${runningFoundCount} job listing${runningFoundCount === 1 ? '' : 's'} from ${providerLabel}...`
                 );
               }
               return extracted;
             } catch (e) {
-              console.error('Error extracting jobs from email text:', e);
+              console.error(`Error extracting jobs from ${providerLabel} email text:`, e);
               return [];
             }
           })
@@ -366,13 +337,11 @@ ${allUrls.slice(0, 120).join('\n')}
         extractedJobBatches.push(...batchResults);
       }
 
-      // Stage 4: Format and Deduplicate Extracted Jobs
+      // Stage 4: Format Extracted Jobs
       const rawJobs: any[] = [];
       for (const extractedJobs of extractedJobBatches) {
         for (const job of extractedJobs) {
           if (!job.url || isNonJobUrl(job.url)) continue;
-
-          // Ensure tracking pixels or images aren't included
           if (job.url.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf|webp)$/i)) continue;
 
           const jobTitle = job.title?.trim();
@@ -386,7 +355,7 @@ ${allUrls.slice(0, 120).join('\n')}
           }
 
           const boardMatch = JOB_BOARDS.find(b => job.url.toLowerCase().includes(b)) || job.source;
-          const sourceCategory = boardMatch ? `Email Sync (${boardMatch})` : 'Email Sync';
+          const sourceCategory = boardMatch ? `Email Sync (${boardMatch})` : `Email Sync (${providerLabel})`;
 
           const shortDescParts = [job.description, job.requirements]
             .filter(Boolean)
@@ -412,57 +381,112 @@ ${allUrls.slice(0, 120).join('\n')}
         }
       }
 
-      console.log(`[Email Sync] Formatted ${rawJobs.length} raw jobs for saving.`);
-
-      // Stage 5: Save & Normalize (skip redundant AI triage pass since email extraction already triaged)
-      let newJobsSaved = 0;
-      if (rawJobs.length > 0) {
-        const result: any = await normalizeAndSaveJobs(rawJobs, userId, {
-          isEmailSync: true,
-          skipAiTriage: true,
-          onProgress,
-        });
-        newJobsSaved = typeof result?.newSavedCount === 'number' ? result.newSavedCount : (result?.length || rawJobs.length);
-        console.log(`[Email Sync] normalizeAndSaveJobs completed. New jobs saved: ${newJobsSaved}`);
-      }
-
-      // Update SyncLog timestamp
-      if (syncLog) {
-        await prisma.syncLog.update({
-          where: { id: syncLog.id },
-          data: { lastSyncedAt: new Date() },
-        });
-      } else {
-        await prisma.syncLog.create({
-          data: { userId, syncType: 'email', lastSyncedAt: new Date() },
-        });
-      }
-
-      // Log email sync execution run instance
-      try {
-        await prisma.syncLog.create({
-          data: {
-            userId,
-            syncType: `email_run_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            lastSyncedAt: new Date(),
-          },
-        });
-      } catch (e) {
-        console.warn('Failed to log email sync run:', e);
-      }
-
-      return newJobsSaved;
+      return rawJobs;
     } finally {
       lock.release();
     }
   } catch (err) {
-    console.error('IMAP sync failed:', err);
+    console.error(`IMAP sync failed for account ${account.emailAddress} (${providerLabel}):`, err);
     throw err;
   } finally {
     try {
       await client.logout();
-    } catch (e) {
-      // Ignore logout error if connection was not established
+    } catch (e) {}
+  }
+}
+
+export async function fetchEmailsAndExtractJobs(
+  userId: string,
+  onProgress?: (foundCount: number, message: string) => void
+) {
+  onProgress?.(0, 'Retrieving email configuration...');
+  const prefs = await getUserSettings(userId);
+  const activeAccounts = getActiveEmailAccounts(prefs);
+
+  if (activeAccounts.length === 0) {
+    throw new Error('Email credentials are not configured in your settings.');
+  }
+
+  // Calculate sync window (look back 14 days so recent alerts and forwarded jobs are never missed)
+  const syncLog = await prisma.syncLog.findFirst({
+    where: { userId, syncType: 'email' },
+    select: { id: true, lastSyncedAt: true },
+  });
+  const sinceDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+  console.log(`[Email Sync] Fetching candidate emails across ${activeAccounts.length} account(s) since ${sinceDate.toISOString()}...`);
+
+  const allRawJobs: any[] = [];
+  const errors: Error[] = [];
+
+  for (const account of activeAccounts) {
+    try {
+      const accountJobs = await scanAccountInbox(account, prefs, sinceDate, onProgress);
+      allRawJobs.push(...accountJobs);
+    } catch (accErr: any) {
+      errors.push(accErr);
+      if (activeAccounts.length === 1) {
+        throw accErr;
+      }
     }
   }
+
+  // If all accounts failed and we have no jobs, throw the first error
+  if (allRawJobs.length === 0 && errors.length === activeAccounts.length && errors.length > 0) {
+    throw errors[0];
+  }
+
+  if (allRawJobs.length === 0) {
+    onProgress?.(0, 'No new job alert emails found across configured email accounts.');
+    if (syncLog) {
+      await prisma.syncLog.update({
+        where: { id: syncLog.id },
+        data: { lastSyncedAt: new Date() },
+      });
+    } else {
+      await prisma.syncLog.create({
+        data: { userId, syncType: 'email', lastSyncedAt: new Date() },
+      });
+    }
+    return 0;
+  }
+
+  // Stage 5: Save & Normalize (skip redundant AI triage pass since email extraction already triaged)
+  let newJobsSaved = 0;
+  if (allRawJobs.length > 0) {
+    const result: any = await normalizeAndSaveJobs(allRawJobs, userId, {
+      isEmailSync: true,
+      skipAiTriage: true,
+      onProgress,
+    });
+    newJobsSaved = typeof result?.newSavedCount === 'number' ? result.newSavedCount : (result?.length || allRawJobs.length);
+    console.log(`[Email Sync] normalizeAndSaveJobs completed. New jobs saved: ${newJobsSaved}`);
+  }
+
+  // Update SyncLog timestamp
+  if (syncLog) {
+    await prisma.syncLog.update({
+      where: { id: syncLog.id },
+      data: { lastSyncedAt: new Date() },
+    });
+  } else {
+    await prisma.syncLog.create({
+      data: { userId, syncType: 'email', lastSyncedAt: new Date() },
+    });
+  }
+
+  // Log email sync execution run instance
+  try {
+    await prisma.syncLog.create({
+      data: {
+        userId,
+        syncType: `email_run_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        lastSyncedAt: new Date(),
+      },
+    });
+  } catch (e) {
+    console.warn('Failed to log email sync run:', e);
+  }
+
+  return newJobsSaved;
 }

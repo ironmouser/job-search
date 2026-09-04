@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { encrypt, decrypt } from '@/lib/encryption';
 import { ensureKeywordColumnsExist, ALL_PRO_SOURCES, DEFAULT_PRO_SOURCES, DEFAULT_FREE_SOURCES, FREE_ALLOWED_SOURCES } from '@/lib/settings';
+import { resolveEmailAccounts, encryptAndMergeEmailAccounts } from '@/lib/emailAccounts';
 import { getEffectiveTier } from '@/lib/tier';
 import { logSuspiciousActivity } from '@/lib/security';
 import { extractJobTitleFromProfileOrResume } from '@/lib/recovery';
@@ -61,6 +62,8 @@ export async function GET() {
             }
         }
 
+        const resolvedEmailAccounts = resolveEmailAccounts(prefs, true);
+
         if (!prefs) {
             return NextResponse.json({
                 searchKeyword: '',
@@ -78,6 +81,7 @@ export async function GET() {
                 sources: resolvedSources,
                 profile: '',
                 resumeMarkdown: '',
+                emailAccounts: resolvedEmailAccounts,
                 emailAddress: '',
                 emailAppPassword: '',
                 imapHost: 'imap.gmail.com',
@@ -143,6 +147,7 @@ export async function GET() {
             sources: resolvedSources,
             profile: prefs.profile || '',
             resumeMarkdown: prefs.resumeMarkdown || '',
+            emailAccounts: resolvedEmailAccounts,
             emailAddress: prefs.emailAddress || '',
             emailAppPassword: prefs.emailAppPassword ? '********' : '',
             imapHost: prefs.imapHost || 'imap.gmail.com',
@@ -329,6 +334,30 @@ export async function POST(request: Request) {
         const resolvedSearchLocation = data.searchLocation ? healLocation(data.searchLocation) : (data.searchLocation !== undefined ? data.searchLocation : undefined);
         const resolvedWorkingRemotelyFrom = data.workingRemotelyFrom ? healLocation(data.workingRemotelyFrom) : (data.workingRemotelyFrom !== undefined ? data.workingRemotelyFrom : undefined);
 
+        // Process per-platform email accounts if provided
+        let primaryEmailAddress = data.emailAddress;
+        let primaryEmailAppPassword = data.emailAppPassword;
+        let primaryImapHost = data.imapHost;
+        let primaryImapPort = data.imapPort;
+
+        if (data.emailAccounts && typeof data.emailAccounts === 'object') {
+            const existingEmailAccounts = resolveEmailAccounts(existingPrefs, false);
+            const { accountsToSave, primaryAccount } = encryptAndMergeEmailAccounts(existingEmailAccounts, data.emailAccounts);
+            sourcesToSave.emailAccounts = accountsToSave;
+
+            if (primaryAccount) {
+                primaryEmailAddress = primaryAccount.emailAddress;
+                primaryEmailAppPassword = primaryAccount.emailAppPassword; // already encrypted
+                primaryImapHost = primaryAccount.imapHost;
+                primaryImapPort = primaryAccount.imapPort;
+            } else {
+                primaryEmailAddress = '';
+                primaryEmailAppPassword = '';
+                primaryImapHost = 'imap.gmail.com';
+                primaryImapPort = 993;
+            }
+        }
+
         let updateData: any = {
             jobLevel: data.jobLevel || 'Mid-level',
             searchLocation: resolvedSearchLocation,
@@ -368,9 +397,9 @@ export async function POST(request: Request) {
             sources: sourcesToSave,
             profile: data.profile,
             resumeMarkdown: data.resumeMarkdown,
-            emailAddress: data.emailAddress,
-            imapHost: data.imapHost,
-            imapPort: data.imapPort,
+            emailAddress: primaryEmailAddress,
+            imapHost: primaryImapHost,
+            imapPort: primaryImapPort,
             resumePdfTemplate: data.resumePdfTemplate,
             resumePdfFontFamily: data.resumePdfFontFamily,
             resumePdfFontSize: data.resumePdfFontSize,
@@ -395,7 +424,9 @@ export async function POST(request: Request) {
             updateData.searchKeyword = data.searchKeyword.trim();
         }
 
-        if (data.emailAppPassword && data.emailAppPassword !== '********') {
+        if (data.emailAccounts && typeof data.emailAccounts === 'object') {
+            updateData.emailAppPassword = primaryEmailAppPassword || '';
+        } else if (data.emailAppPassword && data.emailAppPassword !== '********') {
             updateData.emailAppPassword = encrypt(data.emailAppPassword);
         }
 
@@ -441,10 +472,12 @@ export async function POST(request: Request) {
                 sources: sourcesToSave,
                 profile: data.profile || '',
                 resumeMarkdown: data.resumeMarkdown || '',
-                emailAddress: data.emailAddress || '',
-                ...(data.emailAppPassword && data.emailAppPassword !== '********' ? { emailAppPassword: encrypt(data.emailAppPassword) } : {}),
-                imapHost: data.imapHost || 'imap.gmail.com',
-                imapPort: data.imapPort || 993,
+                emailAddress: primaryEmailAddress || '',
+                ...(primaryEmailAppPassword
+                    ? { emailAppPassword: (data.emailAccounts ? primaryEmailAppPassword : (data.emailAppPassword !== '********' ? encrypt(data.emailAppPassword) : '')) }
+                    : {}),
+                imapHost: primaryImapHost || 'imap.gmail.com',
+                imapPort: primaryImapPort || 993,
                 resumePdfTemplate: data.resumePdfTemplate || 'classic',
                 resumePdfFontFamily: data.resumePdfFontFamily || 'Helvetica, Arial, sans-serif',
                 resumePdfFontSize: data.resumePdfFontSize || '11pt',

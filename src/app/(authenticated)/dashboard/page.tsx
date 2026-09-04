@@ -98,7 +98,10 @@ export default async function Dashboard() {
     return new Date(j.created_at) >= thirtyDaysAgo;
   });
 
-  const hasEmailCredentials = !!(userPrefs?.emailAddress && userPrefs?.emailAppPassword);
+  const hasEmailCredentials = !!(
+    (userPrefs?.emailAddress && userPrefs?.emailAppPassword) ||
+    (userPrefs?.sources?.emailAccounts && typeof userPrefs.sources.emailAccounts === 'object' && Object.values(userPrefs.sources.emailAccounts).some((acc: any) => acc?.emailAddress && acc?.emailAppPassword))
+  );
   const hasSeenNonUsPrompt = userPrefs?.hasSeenNonUsPrompt || false;
   const noInternational = userPrefs?.noInternational || false;
 
