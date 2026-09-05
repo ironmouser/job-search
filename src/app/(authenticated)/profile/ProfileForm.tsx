@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   User,
@@ -21,16 +21,10 @@ import {
   Target,
   Upload,
   Clipboard,
-  Bookmark,
   ChevronLeft,
-  ChevronRight,
-  Zap,
-  HelpCircle,
   ChevronDown,
-  ChevronUp,
   Maximize2,
   Minimize2,
-  AlertCircle,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -49,6 +43,47 @@ interface ProfileFormProps {
   planTier: string;
   stripeCustomerId: string | null;
   email: string | null;
+}
+
+export interface UserSettings {
+  phone?: string;
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+  portfolioUrl?: string;
+  websiteUrl?: string;
+  workAuthorization?: string;
+  usWorkAuthorization?: string;
+  visaSponsorship?: string;
+  workingRemotelyFrom?: string;
+  requireSponsorship?: string;
+  citizenshipStatus?: string;
+  clearanceLevel?: string;
+  yearsOfExperience?: string;
+  currentSalary?: string;
+  expectedSalary?: string;
+  noticePeriod?: string;
+  startDate?: string;
+  willingToTravel?: string;
+  isOver18?: string;
+  willingToRelocate?: string;
+  defaultAccountPassword?: string;
+  gender?: string;
+  race?: string;
+  veteranStatus?: string;
+  disabilityStatus?: string;
+  eeocGender?: string;
+  eeocRace?: string;
+  eeocVeteran?: string;
+  eeocDisability?: string;
+  skipSelfId?: boolean;
+  profile?: string;
+  resumeMarkdown?: string;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 const createImage = (url: string) =>
@@ -131,14 +166,14 @@ export default function ProfileForm({
     subscription: false,
   });
 
-  const toggleSection = (id: string, forceState?: boolean) => {
+  const toggleSection = useCallback((id: string, forceState?: boolean) => {
     setOpenSections((prev) => {
       const nextState = forceState !== undefined ? forceState : !prev[id];
       return { ...prev, [id]: nextState };
     });
-  };
+  }, []);
 
-  const scrollToAndHighlightSection = (id: string) => {
+  const scrollToAndHighlightSection = useCallback((id: string) => {
     toggleSection(id, true);
     setTimeout(() => {
       const el = document.getElementById(id);
@@ -153,7 +188,7 @@ export default function ProfileForm({
         }, 2500);
       }
     }, 120);
-  };
+  }, [toggleSection]);
 
   const handleDockNav = (id: string) => {
     scrollToAndHighlightSection(id);
@@ -173,7 +208,7 @@ export default function ProfileForm({
     });
   };
 
-  const [settings, setSettings] = useState<any>({});
+  const [settings, setSettings] = useState<UserSettings>({});
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [showDefaultPassword, setShowDefaultPassword] = useState(false);
 
@@ -182,24 +217,28 @@ export default function ProfileForm({
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => {
+      .then((data: UserSettings) => {
         if (data) setSettings(data);
       })
       .finally(() => setLoadingSettings(false));
   }, []);
 
-  const handleSettingsChange = (key: string, val: any) => {
-    setSettings((prev: any) => ({ ...prev, [key]: val }));
+  const handleSettingsChange = (key: string, val: string | number | boolean | null | undefined) => {
+    setSettings((prev) => ({ ...prev, [key]: val }));
   };
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Listen for custom open-profile-section events and window hash changes
   useEffect(() => {
-    const handleOpenSectionEvent = (e: any) => {
-      const sectionId = e.detail?.sectionId;
+    const handleOpenSectionEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ sectionId?: string }>;
+      const sectionId = customEvent.detail?.sectionId;
       if (sectionId) {
         scrollToAndHighlightSection(sectionId);
       }
@@ -219,33 +258,48 @@ export default function ProfileForm({
       window.removeEventListener('open-profile-section', handleOpenSectionEvent);
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, []);
+  }, [scrollToAndHighlightSection]);
 
   // Smooth scroll and auto-expand on initial load if hash is present
   useEffect(() => {
     if (!loadingSettings && typeof window !== 'undefined' && window.location.hash) {
       const targetId = window.location.hash.replace('#', '');
-      scrollToAndHighlightSection(targetId);
+      const timer = setTimeout(() => {
+        scrollToAndHighlightSection(targetId);
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [loadingSettings]);
+  }, [loadingSettings, scrollToAndHighlightSection]);
 
   // Cropper state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const hasSyncedPlanRef = useRef(false);
   useEffect(() => {
-    if (session && (session.user as any)?.planTier !== planTier && !hasSyncedPlanRef.current) {
+    if (
+      session &&
+      (session.user as { planTier?: string } | undefined)?.planTier !== planTier &&
+      !hasSyncedPlanRef.current
+    ) {
       hasSyncedPlanRef.current = true;
       update({ planTier });
     }
   }, [session, planTier, update]);
 
-  const onCropComplete = (_croppedArea: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
+  const handleCropComplete = (
+    _croppedArea: { x: number; y: number; width: number; height: number },
+    pixels: { x: number; y: number; width: number; height: number }
+  ) => {
+    setCroppedAreaPixels(pixels);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,7 +340,7 @@ export default function ProfileForm({
 
       setCropImageSrc(null);
       setSelectedFile(null);
-    } catch (err) {
+    } catch {
       alert("Failed to upload avatar");
     } finally {
       setSaving(false);
@@ -315,8 +369,8 @@ export default function ProfileForm({
 
       setExtractSuccess(true);
       setTimeout(() => setExtractSuccess(false), 5000);
-    } catch (e: any) {
-      alert(e.message || 'Could not extract info from resume.');
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Could not extract info from resume.');
     } finally {
       setExtracting(false);
     }
@@ -343,8 +397,8 @@ export default function ProfileForm({
       } else {
         throw new Error(data.error || 'Failed to parse resume');
       }
-    } catch (err: any) {
-      alert(err.message || 'Error parsing file.');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error parsing file.');
     } finally {
       setParsingResume(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -358,7 +412,7 @@ export default function ProfileForm({
         trackProfileResumeUpdate("paste");
         handleSettingsChange('resumeMarkdown', text);
       }
-    } catch (err) {
+    } catch {
       alert('Could not read from clipboard. Please ensure you have granted permission, or manually paste into the text area.');
     }
   };
@@ -387,8 +441,8 @@ export default function ProfileForm({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content: settings.resumeMarkdown || '',
-            profile: settings.profile || '',
+            content: (settings.resumeMarkdown as string) || '',
+            profile: (settings.profile as string) || '',
           }),
         });
       }
@@ -402,7 +456,7 @@ export default function ProfileForm({
       }
 
       router.refresh();
-    } catch (e) {
+    } catch {
       alert("Failed to update profile");
     } finally {
       setSaving(false);
@@ -473,7 +527,7 @@ export default function ProfileForm({
       } else {
         throw new Error("No URL returned");
       }
-    } catch (e) {
+    } catch {
       alert("Failed to open billing portal. Please try again.");
       setRedirecting(false);
     }
@@ -508,7 +562,7 @@ export default function ProfileForm({
                 cropShape="round"
                 showGrid={false}
                 onCropChange={setCrop}
-                onCropComplete={(croppedArea, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}
+                onCropComplete={handleCropComplete}
                 onZoomChange={setZoom}
               />
             </div>
@@ -1101,7 +1155,7 @@ export default function ProfileForm({
             </div>
 
             {/* Default Candidate Account Password for Auto Apply */}
-            {autoApplyEnabled && (
+            {autoApplyEnabled ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem" }}>
                 <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Default Job Portal Password</label>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -1137,7 +1191,7 @@ export default function ProfileForm({
                   Used by the AI agent to automatically create candidate accounts on portals (e.g. Workday, Taleo) that require login.
                 </span>
               </div>
-            )}
+            ) : null}
 
             <div style={{ height: "1px", background: "var(--border-glass)", margin: "0.5rem 0" }} />
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
@@ -1233,7 +1287,7 @@ export default function ProfileForm({
                 >
                   <option value="">Select...</option>
                   <option value="Yes">Yes, I have a disability (or previously had one)</option>
-                  <option value="No">No, I don't have a disability</option>
+                  <option value="No">No, I don&apos;t have a disability</option>
                   <option value="Decline">Decline to Self-Identify</option>
                 </select>
               </div>

@@ -22,14 +22,42 @@ export default async function Dashboard() {
   }
 
   const userId = session.user.id;
-  const planTier = (session.user as any).planTier || 'FREE';
-  const trialEndsAt: Date | null = (session.user as any).trialEndsAt ?? null;
+  const userSessionData = session.user as { planTier?: string; trialEndsAt?: Date | null };
+  const planTier = userSessionData.planTier || 'FREE';
+  const trialEndsAt: Date | null = userSessionData.trialEndsAt ?? null;
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
 
-  let userJobs: any[] = [];
-  let userPrefs: any = null;
+  let userJobs: Array<{
+    status: string;
+    isArchived: boolean;
+    createdAt: Date;
+    appliedAt: Date | null;
+    job: {
+      id: string;
+      title: string;
+      company: string;
+      location: string | null;
+      salaryRange: string | null;
+      url: string;
+      applicationUrl: string | null;
+      description: string | null;
+      source: string | null;
+      isEasyApply: boolean;
+      isViewed: boolean;
+      consecutiveAutoFailures: number | null;
+      opportunityScores: Array<{ totalScore: number }>;
+      jobFeedbacks: Array<{ feedbackType: string }>;
+      autoApplySessions: Array<{
+        id: string;
+        status: string;
+        failureReason: string | null;
+        failureDetails: string | null;
+      }>;
+    };
+  }> = [];
+  let userPrefs: Awaited<ReturnType<typeof getUserSettings>> = null;
   try {
     userJobs = await prisma.userJob.findMany({
       where: { 
@@ -55,16 +83,16 @@ export default async function Dashboard() {
     });
 
     userPrefs = await getUserSettings(userId);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching jobs:', error);
   }
 
   const jobs = userJobs.map(uj => {
     const j = uj.job;
     const sessions = j.autoApplySessions || [];
-    const isAutoApplied = sessions.some((s: any) => s.status === 'applied');
+    const isAutoApplied = sessions.some((s) => s.status === 'applied');
     const hasRunAutoApply = sessions.length > 0;
-    const hasBotFailure = sessions.some((s: any) => 
+    const hasBotFailure = sessions.some((s) => 
       s.status !== 'applied' && isBotRelatedFailure(s.failureReason, s.failureDetails)
     );
 
@@ -88,8 +116,8 @@ export default async function Dashboard() {
       created_at: uj.createdAt,
       applied_at: uj.appliedAt,
 
-      opportunity_scores: j.opportunityScores.map((s: any) => ({ total_score: s.totalScore })),
-      job_feedback: j.jobFeedbacks.map((f: any) => ({ feedback_type: f.feedbackType })),
+      opportunity_scores: j.opportunityScores.map((s) => ({ total_score: s.totalScore })),
+      job_feedback: j.jobFeedbacks.map((f) => ({ feedback_type: f.feedbackType })),
       consecutive_auto_failures: j.consecutiveAutoFailures || 0,
       automation_confidence: isAutoApplied ? 100 : detectATSFromUrl(j.applicationUrl || j.url).confidence
     };
@@ -98,9 +126,10 @@ export default async function Dashboard() {
     return new Date(j.created_at) >= thirtyDaysAgo;
   });
 
+  const emailAccounts = userPrefs?.sources?.emailAccounts;
   const hasEmailCredentials = !!(
     (userPrefs?.emailAddress && userPrefs?.emailAppPassword) ||
-    (userPrefs?.sources?.emailAccounts && typeof userPrefs.sources.emailAccounts === 'object' && Object.values(userPrefs.sources.emailAccounts).some((acc: any) => acc?.emailAddress && acc?.emailAppPassword))
+    (emailAccounts && typeof emailAccounts === 'object' && Object.values(emailAccounts as Record<string, { emailAddress?: string; emailAppPassword?: string }>).some((acc) => acc?.emailAddress && acc?.emailAppPassword))
   );
   const hasSeenNonUsPrompt = userPrefs?.hasSeenNonUsPrompt || false;
   const noInternational = userPrefs?.noInternational || false;

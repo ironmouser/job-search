@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -27,7 +27,7 @@ const ACTIVE_STATUSES = [
  * Returns any active auto-apply session for the authenticated user across all jobs.
  * Used by GlobalAutoApplyDock to show progress and intervention alerts globally.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   if (!isAutoApplyEnabled()) {
     return NextResponse.json({ activeSession: null, activeSessions: [], quota: null });
   }
@@ -101,8 +101,9 @@ export async function GET(request: NextRequest) {
       activeSessions: activeSessions,
       quota,
     });
-  } catch (error: any) {
-    console.warn('[api/auto-apply/active] Query failed (returning empty sessions):', error?.message || error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.warn('[api/auto-apply/active] Query failed (returning empty sessions):', errorMsg);
     return NextResponse.json({ activeSession: null, activeSessions: [], quota: null });
   }
 }

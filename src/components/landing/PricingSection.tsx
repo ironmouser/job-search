@@ -8,7 +8,6 @@ import { isAutoApplyEnabled } from '@/lib/features';
 
 export default function PricingSection() {
   const { data: session } = useSession();
-  const proHref = session ? '/api/stripe/checkout' : '/checkout';
 
   return (
     <section id="pricing" style={{ padding: '6rem var(--section-px)', background: '#a4dbc6' }}>

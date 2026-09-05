@@ -107,7 +107,8 @@ export function GlobalAutoApplyBar() {
   const [clearingJobId, setClearingJobId] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Track sidebar width dynamically (expanded 220px vs collapsed 52px)
@@ -172,9 +173,14 @@ export function GlobalAutoApplyBar() {
 
   useEffect(() => {
     if (!autoApplyEnabled || isOnboarding) return;
-    fetchSessions();
+    const initialTimer = setTimeout(() => {
+      fetchSessions();
+    }, 0);
     const interval = setInterval(fetchSessions, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [fetchSessions, isOnboarding, refreshTrigger, autoApplyEnabled]);
 
   // Listen to manual triggers from batch apply or start apply
@@ -190,7 +196,8 @@ export function GlobalAutoApplyBar() {
 
   // Close FAB sheet on route change
   useEffect(() => {
-    setIsFabOpen(false);
+    const timer = setTimeout(() => setIsFabOpen(false), 0);
+    return () => clearTimeout(timer);
   }, [pathname]);
 
   if (isOnboarding) return null;

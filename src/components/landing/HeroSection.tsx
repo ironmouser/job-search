@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { getAssetUrl } from '@/lib/assets';
 import { trackPublicCtaClick } from '@/lib/analytics';
@@ -47,10 +48,13 @@ export default function HeroSection() {
           <Link href="/login" className="btn-primary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', fontWeight: 600, borderRadius: '8px', flexShrink: 0 }} onClick={() => trackPublicCtaClick('Get Started Free', 'hero_section')}>
             Get Started Free
           </Link>
-          <img 
+          <Image 
             src={getAssetUrl('/lil-bot.png')} 
             alt="Job Agent Bot" 
+            width={195}
+            height={195}
             style={{ height: '195px', width: 'auto', objectFit: 'contain', margin: '-1.5rem 0', maxWidth: '100%' }} 
+            priority
           />
         </div>
       </div>

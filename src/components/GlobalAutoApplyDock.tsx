@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
-import { Bot, AlertTriangle, Loader2, ChevronDown, ChevronUp, ExternalLink, Building2, CheckCircle2, Zap } from 'lucide-react';
+import { AlertTriangle, Loader2, ChevronDown, ChevronUp, ExternalLink, Building2, Zap, X } from 'lucide-react';
 import { AutoApplyStatus } from '@/lib/auto-apply/types';
 import { GlobalInterventionDrawer } from './GlobalInterventionDrawer';
 import { isAutoApplyEnabled } from '@/lib/features';
@@ -28,6 +28,8 @@ interface ActiveSessionData {
     id: string;
     reason: string;
     description: string;
+    screenshotUrl?: string | null;
+    pageUrl?: string | null;
   }>;
 }
 
@@ -51,7 +53,8 @@ export function GlobalAutoApplyDock() {
   const [showDrawer, setShowDrawer] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const autoApplyEnabled = isAutoApplyEnabled();
@@ -86,9 +89,14 @@ export function GlobalAutoApplyDock() {
 
   useEffect(() => {
     if (!autoApplyEnabled || isOnboarding) return;
-    fetchActive();
+    const initialTimer = setTimeout(() => {
+      fetchActive();
+    }, 0);
     const interval = setInterval(fetchActive, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [fetchActive, isOnboarding, autoApplyEnabled]);
 
   if (!autoApplyEnabled || isOnboarding || !activeSession) return null;
@@ -179,8 +187,8 @@ export function GlobalAutoApplyDock() {
             id: pendingIntervention.id,
             reason: pendingIntervention.reason,
             description: pendingIntervention.description,
-            screenshotUrl: (pendingIntervention as any).screenshotUrl,
-            pageUrl: (pendingIntervention as any).pageUrl,
+            screenshotUrl: pendingIntervention.screenshotUrl ?? undefined,
+            pageUrl: pendingIntervention.pageUrl ?? undefined,
           } : null}
           jobTitle={jobTitle}
           companyName={companyName}
@@ -246,6 +254,13 @@ export function GlobalAutoApplyDock() {
               title="Minimize Dock"
             >
               <ChevronDown size={17} />
+            </button>
+            <button
+              onClick={handleDismiss}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.2rem' }}
+              title="Dismiss Dock"
+            >
+              <X size={15} />
             </button>
           </div>
         </div>
@@ -327,8 +342,8 @@ export function GlobalAutoApplyDock() {
           id: pendingIntervention.id,
           reason: pendingIntervention.reason,
           description: pendingIntervention.description,
-          screenshotUrl: (pendingIntervention as any).screenshotUrl,
-          pageUrl: (pendingIntervention as any).pageUrl,
+          screenshotUrl: pendingIntervention.screenshotUrl ?? undefined,
+          pageUrl: pendingIntervention.pageUrl ?? undefined,
         } : null}
         jobTitle={jobTitle}
         companyName={companyName}

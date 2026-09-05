@@ -42,11 +42,21 @@ export function inferEmailProvider(imapHost?: string | null, emailAddress?: stri
   return 'other';
 }
 
+export interface RawUserPreferences {
+  sources?: unknown;
+  emailAccounts?: EmailAccountsMap;
+  emailAddress?: string | null;
+  emailAppPassword?: string | null;
+  imapHost?: string | null;
+  imapPort?: number | string | null;
+  [key: string]: unknown;
+}
+
 /**
  * Resolves a complete map of email accounts from user preferences,
  * populating defaults and safely migrating legacy single-account fields.
  */
-export function resolveEmailAccounts(prefs: any, maskPasswords = false): EmailAccountsMap {
+export function resolveEmailAccounts(prefs: RawUserPreferences | null | undefined, maskPasswords = false): EmailAccountsMap {
   const accounts: EmailAccountsMap = {};
 
   // 1. Initialize all default providers with standard fallback templates
@@ -60,7 +70,9 @@ export function resolveEmailAccounts(prefs: any, maskPasswords = false): EmailAc
   }
 
   // 2. Load stored accounts from sources.emailAccounts or prefs.emailAccounts
-  const storedAccounts = (prefs?.sources?.emailAccounts || prefs?.emailAccounts) as EmailAccountsMap | undefined;
+  const rawSources = prefs?.sources;
+  const sourcesObj = (rawSources && typeof rawSources === 'object' && !Array.isArray(rawSources)) ? (rawSources as Record<string, unknown>) : undefined;
+  const storedAccounts = (sourcesObj?.emailAccounts || prefs?.emailAccounts) as EmailAccountsMap | undefined;
   if (storedAccounts && typeof storedAccounts === 'object') {
     for (const [provider, config] of Object.entries(storedAccounts)) {
       if (config && typeof config === 'object') {
@@ -167,7 +179,7 @@ export function encryptAndMergeEmailAccounts(
 /**
  * Extracts and decrypts all active email accounts configured for a user.
  */
-export function getActiveEmailAccounts(prefs: any): Array<{
+export function getActiveEmailAccounts(prefs: RawUserPreferences | null | undefined): Array<{
   provider: string;
   emailAddress: string;
   emailAppPasswordDecrypted: string;

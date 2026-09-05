@@ -109,8 +109,9 @@ export async function GET(
         acceptedAt: intro.acceptedAt,
       })),
     });
-  } catch (err: any) {
-    const status = err.message?.startsWith('UNAUTHORIZED') ? 401 : err.message?.startsWith('FORBIDDEN') ? 403 : 500;
-    return NextResponse.json({ error: err.message || 'Failed to get candidate profile' }, { status });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to get candidate profile';
+    const status = message.startsWith('UNAUTHORIZED') ? 401 : message.startsWith('FORBIDDEN') ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

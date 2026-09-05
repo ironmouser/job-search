@@ -2,14 +2,13 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Filter, Archive, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, Calendar, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Zap, ArrowRight, Search, X, ChevronDown, Loader2, SlidersHorizontal, ArrowUpDown, Bot, FileText, MoreVertical, AlertOctagon } from 'lucide-react';
+import { ExternalLink, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, ArrowRight, Search, X, Loader2, SlidersHorizontal, ArrowUpDown, FileText, MoreVertical, AlertOctagon } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
 import DashboardCleanup from '@/components/DashboardCleanup';
 import { useRouter, useSearchParams } from 'next/navigation';
-import AddJobUrlBar from '@/components/AddJobUrlBar';
-import DashboardDock, { SortOptionType } from '@/components/DashboardDock';
+import type { SortOptionType } from '@/components/DashboardDock';
 import DashboardFilterModal from '@/components/DashboardFilterModal';
 import DashboardSearchModal from '@/components/DashboardSearchModal';
 import AddJobModal from '@/components/AddJobModal';
@@ -22,7 +21,6 @@ import { isDescriptionAdequate } from '@/lib/descriptionUtils';
 import InternationalLocationModal from '@/components/InternationalLocationModal';
 import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 import SyncOverlay from './SyncOverlay';
 import NonUsJobsFocusModal from '@/components/NonUsJobsFocusModal';
@@ -34,8 +32,33 @@ import RoleSuggestionBanner from '@/components/RoleSuggestionBanner';
 import { useCommandBar } from '@/contexts/AutoApplyBarContext';
 import { isAutoApplyEnabled } from '@/lib/features';
 
+export interface DashboardJob {
+  id: string;
+  title: string;
+  company: string;
+  location: string | null;
+  salary_range?: string | null;
+  url: string;
+  applicationUrl?: string | null;
+  description?: string | null;
+  source?: string | null;
+  isEasyApply?: boolean;
+  status: string;
+  is_archived: boolean;
+  is_viewed?: boolean;
+  isViewed?: boolean;
+  is_auto_applied?: boolean;
+  has_run_auto_apply?: boolean;
+  has_bot_failure?: boolean;
+  created_at: string | Date;
+  applied_at?: string | Date | null;
+  opportunity_scores?: Array<{ total_score: number }>;
+  job_feedback?: Array<{ feedback_type: string }>;
+  consecutive_auto_failures?: number | null;
+  automation_confidence?: number;
+}
 
-const safeFormatDate = (dateVal: any) => {
+const safeFormatDate = (dateVal: string | number | Date | null | undefined) => {
   if (!dateVal) return '';
   const d = new Date(dateVal);
   if (isNaN(d.getTime())) return '';
@@ -43,10 +66,10 @@ const safeFormatDate = (dateVal: any) => {
 };
 
 const getConfidenceBadge = (
-  score?: number, 
-  failCount: number = 0, 
-  hasBotFailure: boolean = false, 
-  hasRunAutoApply: boolean = false
+  score?: number | null, 
+  _failCount?: number | null, 
+  hasBotFailure?: boolean | null, 
+  hasRunAutoApply?: boolean | null
 ) => {
     if (!isAutoApplyEnabled()) return null;
     if (hasRunAutoApply && hasBotFailure) {
@@ -76,7 +99,7 @@ export default function DashboardClient({
   searchKeyword = '',
   hasBaseResume = false
 }: { 
-  jobs: any[], 
+  jobs: DashboardJob[], 
   userPlanTier?: string, 
   trialEndsAt?: Date | string | null, 
   hasEmailCredentials?: boolean, 
@@ -89,7 +112,7 @@ export default function DashboardClient({
 }) {
 
   const router = useRouter();
-  const [jobList, setJobList] = useState<any[]>(jobs || []);
+  const [jobList, setJobList] = useState<DashboardJob[]>(jobs || []);
   const [scoresExhausted, setScoresExhausted] = useState(initialScoresExhausted);
   const [isScoringBackground, setIsScoringBackground] = useState(false);
   const [hasResumeState, setHasResumeState] = useState(hasBaseResume);
@@ -101,7 +124,10 @@ export default function DashboardClient({
   const hasDismissedNonUsModal = useRef(false);
 
   useEffect(() => {
-    setHasResumeState(hasBaseResume);
+    const timer = setTimeout(() => {
+      setHasResumeState(hasBaseResume);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [hasBaseResume]);
 
   const [searchRole, setSearchRole] = useState(searchKeyword || '');
@@ -119,7 +145,9 @@ export default function DashboardClient({
     setSearchRole(newRole);
     try {
       localStorage.setItem('dashboard_search_role', newRole);
-    } catch (e) {}
+    } catch {
+      // Ignore
+    }
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -137,16 +165,24 @@ export default function DashboardClient({
       try {
         savedRole = localStorage.getItem('dashboard_search_role') || '';
         savedLocation = localStorage.getItem('dashboard_search_location') || '';
-      } catch (e) {}
+      } catch {
+        // Ignore
+      }
 
-      setSearchRole(savedRole || searchKeyword || '');
-      setSearchLocationInput(savedLocation || searchLocation || '');
-      setIsLoaded(true);
+      const timer = setTimeout(() => {
+        setSearchRole(savedRole || searchKeyword || '');
+        setSearchLocationInput(savedLocation || searchLocation || '');
+        setIsLoaded(true);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [searchKeyword, searchLocation, isLoaded]);
 
   useEffect(() => {
-    setJobList(jobs || []);
+    const timer = setTimeout(() => {
+      setJobList(jobs || []);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [jobs]);
 
   // Check if job sync just completed and location preference is outside US
@@ -158,11 +194,14 @@ export default function DashboardClient({
         if (isOutsideUsLocation(searchLocation)) {
           const dismissedForLoc = localStorage.getItem('intl_sources_notice_dismissed_loc');
           if (dismissedForLoc !== searchLocation) {
-            setShowIntlLocationModal(true);
+            const timer = setTimeout(() => setShowIntlLocationModal(true), 0);
+            return () => clearTimeout(timer);
           }
         }
       }
-    } catch (e) {}
+    } catch {
+      // Ignore
+    }
   }, [searchLocation]);
 
   const handleKeepAllNonUs = () => {
@@ -170,7 +209,9 @@ export default function DashboardClient({
     setShowNonUsModal(false);
     try {
       localStorage.setItem('has_seen_non_us_prompt', 'true');
-    } catch (e) {}
+    } catch {
+      // Ignore
+    }
     fetch('/api/jobs/dismiss-non-us', { method: 'POST' }).catch((err) =>
       console.error('Failed to persist non-US dismiss setting:', err)
     );
@@ -180,9 +221,11 @@ export default function DashboardClient({
     hasDismissedNonUsModal.current = true;
     try {
       localStorage.setItem('has_seen_non_us_prompt', 'true');
-    } catch (e) {}
+    } catch {
+      // Ignore
+    }
     if (deletedIds && deletedIds.length > 0) {
-      setJobList((prev: any[]) => prev.filter((j: any) => !deletedIds.includes(j.id)));
+      setJobList((prev) => prev.filter((j) => !deletedIds.includes(j.id)));
     }
     setShowNonUsModal(false);
   };
@@ -192,19 +235,20 @@ export default function DashboardClient({
     let localDismissed = false;
     try {
       localDismissed = localStorage.getItem('has_seen_non_us_prompt') === 'true';
-    } catch (e) {}
+    } catch {
+      // Ignore
+    }
 
     if (hasSeenNonUsPrompt || noInternational || hasDismissedNonUsModal.current || localDismissed) return;
-    const intlJobs = (jobs || []).filter((j: any) => isInternationalLocation(j.location || ''));
+    const intlJobs = (jobs || []).filter((j) => isInternationalLocation(j.location || ''));
     if (intlJobs.length > 0) {
-      setIntlJobCount(intlJobs.length);
-      setShowNonUsModal(true);
+      const timer = setTimeout(() => {
+        setIntlJobCount(intlJobs.length);
+        setShowNonUsModal(true);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  // Run only on first render / when jobs list changes after a sync
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs, hasSeenNonUsPrompt, noInternational]);
-
-
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
   const [minScoreFilter, setMinScoreFilter] = useState<number>(50);
@@ -215,8 +259,6 @@ export default function DashboardClient({
 
   const [sortOption, setSortOption] = useState<SortOptionType>('role_match');
   const [locationFilter, setLocationFilter] = useState<string[]>([]);
-  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
-  const locationDropdownRef = useRef<HTMLDivElement>(null);
   const [sourceFilter, setSourceFilter] = useState<'both' | 'email' | 'scraped'>('both');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -229,10 +271,18 @@ export default function DashboardClient({
   const [syncMessage, setSyncMessage] = useState('');
   const [jobsFoundCount, setJobsFoundCount] = useState<number | null>(null);
   const [isRefiningJobs, setIsRefiningJobs] = useState(false);
-  const [shouldAutoSync, setShouldAutoSync] = useState(false);
+  const [shouldAutoSync] = useState(false);
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
   const [isStartingBatch, setIsStartingBatch] = useState(false);
   const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
+
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [confettiJobId] = useState<string | null>(null);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
+  const [isCleanupModalOpen, setIsCleanupModalOpen] = useState(false);
 
   const toggleCardExpand = (id: string) => {
     setExpandedJobIds(prev => {
@@ -250,9 +300,12 @@ export default function DashboardClient({
   const checkedJobsRef = useRef(checkedJobs);
   const jobListRef = useRef(jobList);
   const isStartingBatchRef = useRef(isStartingBatch);
-  checkedJobsRef.current = checkedJobs;
-  jobListRef.current = jobList;
-  isStartingBatchRef.current = isStartingBatch;
+
+  useEffect(() => {
+    checkedJobsRef.current = checkedJobs;
+    jobListRef.current = jobList;
+    isStartingBatchRef.current = isStartingBatch;
+  }, [checkedJobs, jobList, isStartingBatch]);
 
   // Stable handler — always reads from refs so no stale closure issues
   const handleStartBatchApply = useCallback(async () => {
@@ -314,7 +367,7 @@ export default function DashboardClient({
     } finally {
       setIsStartingBatch(false);
     }
-  }, []); // stable — no deps needed since we use refs
+  }, []);
 
   const { setSelectionState, setPageActions } = useCommandBar();
 
@@ -342,15 +395,6 @@ export default function DashboardClient({
     }
   }, [checkedJobs.size, isStartingBatch, handleStartBatchApply, handleDeselectAll, handleOpenCleanup, setSelectionState]);
 
-  const [activeAnimIndex, setActiveAnimIndex] = useState(0);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [confettiJobId, setConfettiJobId] = useState<string | null>(null);
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-  const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
-  const [isCleanupModalOpen, setIsCleanupModalOpen] = useState(false);
-
   const handleExecuteSearchModal = useCallback((newKeyword: string, newLocation: string) => {
     setSearchRole(newKeyword);
     setSearchLocationInput(newLocation);
@@ -373,404 +417,10 @@ export default function DashboardClient({
   const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
-  const scoringInProgress = useRef(new Set<string>());
-  const attemptedScoringJobs = useRef(new Set<string>());
   const isPageInitialized = useRef(false);
   const lastFilterRef = useRef<string | null>(null);
 
-  // Trigger confetti on the card of the job the user just applied to
-  useEffect(() => {
-    const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem('just_applied_job_id') : null;
-    const urlId = searchParams?.get('justApplied');
-    const targetId = urlId || sessionId;
-    if (!targetId) return;
-
-    setConfettiJobId(targetId);
-
-    // Clean up storage and URL param so confetti only fires once
-    if (sessionId) sessionStorage.removeItem('just_applied_job_id');
-    if (urlId && typeof window !== 'undefined') {
-      const next = new URL(window.location.href);
-      next.searchParams.delete('justApplied');
-      window.history.replaceState({}, '', next.toString());
-    }
-
-    // Remove the class after 9 seconds
-    const timer = setTimeout(() => setConfettiJobId(null), 9000);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-
-  // Close location dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (locationDropdownRef.current && !locationDropdownRef.current.contains(e.target as Node)) {
-        setIsLocationDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Handle action query params triggered from Settings / Profile page dock
-  useEffect(() => {
-    if (!searchParams) return;
-    if (searchParams.get('openFilter') === 'true') {
-      setIsFilterModalOpen(true);
-    }
-    if (searchParams.get('openAddJob') === 'true') {
-      setIsAddJobModalOpen(true);
-    }
-    if (searchParams.get('openCleanup') === 'true') {
-      setIsCleanupModalOpen(true);
-    }
-    if (searchParams.get('scanEmail') === 'true') {
-      handleEmailSync();
-    }
-    const isAutoSyncParam = searchParams.get('autoSync') === 'true';
-    if (isAutoSyncParam) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('job_agent_auto_sync_on_mount');
-      }
-      if (!jobs || jobs.length === 0) {
-        setShouldAutoSync(true);
-      }
-    } else {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('job_agent_auto_sync_on_mount');
-      }
-    }
-    if (
-      searchParams.get('openFilter') ||
-      searchParams.get('openAddJob') ||
-      searchParams.get('openCleanup') ||
-      searchParams.get('scanEmail') ||
-      searchParams.get('autoSync')
-    ) {
-      const next = new URL(window.location.href);
-      next.searchParams.delete('openFilter');
-      next.searchParams.delete('openAddJob');
-      next.searchParams.delete('openCleanup');
-      next.searchParams.delete('scanEmail');
-      next.searchParams.delete('autoSync');
-      window.history.replaceState({}, '', next.toString());
-    }
-  }, [searchParams]);
-
-  // Restore page number and items per page from URL, localStorage, or sessionStorage on mount
-  useEffect(() => {
-    const urlPage = searchParams?.get('page');
-    const urlLimit = searchParams?.get('limit') || searchParams?.get('perPage');
-
-    const isMobileClient = typeof window !== 'undefined' && (
-      window.innerWidth <= 1024 ||
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    );
-    setIsMobile(isMobileClient);
-    const explicitViewMode = typeof window !== 'undefined' ? localStorage.getItem('dashboard_view_mode_explicit') : null;
-    if (isMobileClient) {
-      if (explicitViewMode === 'table') {
-        setViewMode('table');
-      } else {
-        setViewMode('grid');
-      }
-    } else if (explicitViewMode === 'grid' || explicitViewMode === 'table' || explicitViewMode === 'columns') {
-      setViewMode(explicitViewMode as 'grid' | 'table' | 'columns');
-    } else {
-      // Default all desktop users to split panel 'columns'
-      setViewMode('columns');
-    }
-
-    const saved = localStorage.getItem('jobAgentDashboardState');
-    let stateFromStorage: any = {};
-    if (saved) {
-      try {
-        stateFromStorage = JSON.parse(saved);
-        if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter);
-        if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption);
-        if (stateFromStorage.locationFilter !== undefined) {
-          if (Array.isArray(stateFromStorage.locationFilter)) {
-            setLocationFilter(stateFromStorage.locationFilter);
-          } else if (typeof stateFromStorage.locationFilter === 'string') {
-            if (stateFromStorage.locationFilter === 'all' || !stateFromStorage.locationFilter) {
-              setLocationFilter([]);
-            } else {
-              setLocationFilter([stateFromStorage.locationFilter]);
-            }
-          }
-        }
-        if (stateFromStorage.sourceFilter) setSourceFilter(stateFromStorage.sourceFilter);
-        if (stateFromStorage.startDate !== undefined) setStartDate(stateFromStorage.startDate);
-        if (stateFromStorage.endDate !== undefined) setEndDate(stateFromStorage.endDate);
-        if (stateFromStorage.keywordFilter !== undefined) setKeywordFilter(stateFromStorage.keywordFilter);
-        if (stateFromStorage.searchRole !== undefined) setSearchRole(stateFromStorage.searchRole);
-        if (stateFromStorage.minScoreFilter !== undefined) {
-          // Migrate legacy default of 25 to 50
-          const restoredScore = stateFromStorage.minScoreFilter === 25 ? 50 : stateFromStorage.minScoreFilter;
-          setMinScoreFilter(restoredScore);
-        }
-      } catch (e) {
-        console.error('Failed to parse dashboard state from local storage', e);
-      }
-    }
-
-    const savedSearchRole = typeof window !== 'undefined' ? localStorage.getItem('dashboard_search_role') : null;
-    if (savedSearchRole !== null && stateFromStorage.searchRole === undefined) {
-      setSearchRole(savedSearchRole);
-    }
-
-    // Determine initial page number
-    const savedPageStr = urlPage || stateFromStorage.currentPage || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_page') || sessionStorage.getItem('dashboard_page')) : null);
-    if (savedPageStr) {
-      const pageNum = parseInt(savedPageStr.toString(), 10);
-      if (!isNaN(pageNum) && pageNum > 0) {
-        setCurrentPage(pageNum);
-      }
-    }
-
-    // Determine initial items per page limit
-    const savedLimitStr = urlLimit || stateFromStorage.itemsPerPage || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_items_per_page') || sessionStorage.getItem('dashboard_items_per_page')) : null);
-    if (savedLimitStr) {
-      const limitNum = parseInt(savedLimitStr.toString(), 10);
-      if (!isNaN(limitNum) && limitNum > 0) {
-        setItemsPerPage(limitNum);
-      }
-    }
-
-    const restoredFilterKey = JSON.stringify({
-      activeFilter: stateFromStorage.activeFilter || activeFilter,
-      minScoreFilter: stateFromStorage.minScoreFilter ?? minScoreFilter,
-      sortOption: stateFromStorage.sortOption || sortOption,
-      locationFilter: stateFromStorage.locationFilter !== undefined
-        ? (Array.isArray(stateFromStorage.locationFilter) ? stateFromStorage.locationFilter : [stateFromStorage.locationFilter])
-        : locationFilter,
-      sourceFilter: stateFromStorage.sourceFilter || sourceFilter,
-      startDate: stateFromStorage.startDate !== undefined ? stateFromStorage.startDate : startDate,
-      endDate: stateFromStorage.endDate !== undefined ? stateFromStorage.endDate : endDate,
-      keywordFilter: stateFromStorage.keywordFilter !== undefined ? stateFromStorage.keywordFilter : keywordFilter,
-      searchRole: stateFromStorage.searchRole !== undefined ? stateFromStorage.searchRole : (savedSearchRole || searchRole)
-    });
-    lastFilterRef.current = restoredFilterKey;
-
-    setIsLoaded(true);
-    isPageInitialized.current = true;
-  }, []);
-
-  // Listen for screen resize to dynamically switch from columns view to grid view on mobile/tablet
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleResize = () => {
-      const mobile = window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      setIsMobile(mobile);
-      if (mobile) {
-        setViewMode(prev => (prev === 'columns' ? 'grid' : prev));
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const changePage = (newPage: number) => {
-    setCurrentPage(newPage);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('dashboard_page', newPage.toString());
-      localStorage.setItem('dashboard_page', newPage.toString());
-      try {
-        const saved = localStorage.getItem('jobAgentDashboardState');
-        const stateObj = saved ? JSON.parse(saved) : {};
-        stateObj.currentPage = newPage;
-        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
-      } catch (e) {}
-
-      const params = new URLSearchParams(window.location.search);
-      params.set('page', newPage.toString());
-      params.set('limit', itemsPerPage.toString());
-      window.history.replaceState(null, '', `?${params.toString()}`);
-    }
-  };
-
-  const changeItemsPerPage = (newLimit: number) => {
-    setItemsPerPage(newLimit);
-    setCurrentPage(1);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('dashboard_page', '1');
-      localStorage.setItem('dashboard_page', '1');
-      sessionStorage.setItem('dashboard_items_per_page', newLimit.toString());
-      localStorage.setItem('dashboard_items_per_page', newLimit.toString());
-
-      try {
-        const saved = localStorage.getItem('jobAgentDashboardState');
-        const stateObj = saved ? JSON.parse(saved) : {};
-        stateObj.itemsPerPage = newLimit;
-        stateObj.currentPage = 1;
-        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
-      } catch (e) {}
-
-      const params = new URLSearchParams(window.location.search);
-      params.set('page', '1');
-      params.set('limit', newLimit.toString());
-      window.history.replaceState(null, '', `?${params.toString()}`);
-    }
-  };
-
-  const handleViewModeChange = (mode: 'grid' | 'table' | 'columns') => {
-    setViewMode(mode);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('dashboard_view_mode_explicit', mode);
-      try {
-        const saved = localStorage.getItem('jobAgentDashboardState');
-        const stateObj = saved ? JSON.parse(saved) : {};
-        stateObj.viewMode = mode;
-        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
-      } catch (e) {}
-    }
-  };
-
-  const handleMarkViewed = (jobId: string) => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('last_clicked_job_id', jobId);
-      localStorage.setItem('last_clicked_job_id', jobId);
-    }
-    fetch(`/api/jobs/${jobId}/viewed`, { method: 'POST' }).catch(() => {});
-    setJobList(prev => prev.map(j => j.id === jobId ? { ...j, is_viewed: true, isViewed: true } : j));
-  };
-
-  const toggleJobCheck = (id: string) => {
-    setCheckedJobs(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAllChecks = () => {
-    if (checkedJobs.size === filteredAndSortedJobs.length && filteredAndSortedJobs.length > 0) {
-      setCheckedJobs(new Set());
-    } else {
-      setCheckedJobs(new Set(filteredAndSortedJobs.map(j => j.id)));
-    }
-  };
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('jobAgentDashboardState', JSON.stringify({
-      activeFilter,
-      minScoreFilter,
-      viewMode,
-      sortOption,
-      locationFilter,
-      sourceFilter,
-      startDate,
-      endDate,
-      keywordFilter,
-      searchRole,
-      itemsPerPage,
-      currentPage
-    }));
-    localStorage.setItem('dashboard_search_role', searchRole);
-    localStorage.setItem('dashboard_page', currentPage.toString());
-    localStorage.setItem('dashboard_items_per_page', itemsPerPage.toString());
-    sessionStorage.setItem('dashboard_page', currentPage.toString());
-    sessionStorage.setItem('dashboard_items_per_page', itemsPerPage.toString());
-
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      params.set('page', currentPage.toString());
-      params.set('limit', itemsPerPage.toString());
-      window.history.replaceState(null, '', `?${params.toString()}`);
-    }
-  }, [activeFilter, minScoreFilter, viewMode, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, itemsPerPage, currentPage, isLoaded]);
-
-
-  const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
-    if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
-    setFetchStatuses(prev => ({ ...prev, [job.id]: 'queued' }));
-    setFetchQueue(prev => [...prev, job]);
-    setShowQueueOverlay(true);
-  };
-
-  const processFetchDetails = async (jobItem: {id: string, title: string, company: string}) => {
-    setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'fetching' }));
-    try {
-      const res = await fetch(`/api/jobs/${jobItem.id}/fetch-details`, { method: 'POST' });
-      if (res.ok) {
-        if (userPlanTier === 'PRO') {
-          // Fire-and-forget: don't block the UI waiting for AI scoring (3–12s)
-          fetch('/api/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId: jobItem.id }) }).catch(() => {});
-        }
-        setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'success' }));
-        router.refresh();
-      } else {
-        setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'error' }));
-      }
-    } catch (e) {
-      setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'error' }));
-    } finally {
-      setActiveFetches(prev => prev.filter(f => f.id !== jobItem.id));
-    }
-  };
-
-  useEffect(() => {
-    if (activeFetches.length < 3 && fetchQueue.length > 0) {
-      const slotsAvailable = 3 - activeFetches.length;
-      const nextItems = fetchQueue.slice(0, slotsAvailable);
-      
-      setFetchQueue(prev => prev.slice(slotsAvailable));
-      setActiveFetches(prev => [...prev, ...nextItems]);
-      
-      nextItems.forEach(item => {
-        processFetchDetails(item);
-      });
-    }
-  }, [fetchQueue, activeFetches]);
-
-  useEffect(() => {
-    if (activeFetches.length === 0 && fetchQueue.length === 0 && showQueueOverlay) {
-      const timeout = setTimeout(() => setShowQueueOverlay(false), 3000);
-      return () => clearTimeout(timeout);
-    }
-  }, [activeFetches, fetchQueue, showQueueOverlay]);
-
-  const removeQueuedItem = (id: string) => {
-    setFetchQueue(prev => prev.filter(item => item.id !== id));
-    setFetchStatuses(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  };
-
-  const hasJobScore = (j: any) => {
-    const scoreVal = j.opportunity_scores?.[0]?.total_score;
-    return j.status === 'scored' || (scoreVal !== undefined && scoreVal !== null);
-  };
-
-  const getEffectiveStatus = (job: any) => {
-    if (job.status === 'closed' || job.job_status === 'closed') return 'closed';
-    if (job.status === 'applied' || job.applied_at) return 'applied';
-    if (job.status === 'interviewing') return 'interviewing';
-    if (job.is_archived) return 'saved';
-    if (hasJobScore(job)) return 'scored';
-    return job.status || 'discovered';
-  };
-
-  const isJobLowScore = (j: any): boolean => {
-    const s = j.opportunity_scores?.[0]?.total_score;
-    return typeof s === 'number' && !isNaN(s) && s < 50;
-  };
-
-  const unarchivedJobs = jobList?.filter(j => !j.is_archived) || [];
-  const totalDiscovered = unarchivedJobs.length;
-  const totalScored = unarchivedJobs.filter(j => hasJobScore(j)).length;
-  const highlyScored = unarchivedJobs.filter(j => (j.opportunity_scores?.[0]?.total_score ?? 0) >= 80).length;
-  const totalArchived = jobList?.filter(j => j.is_archived && !isJobLowScore(j)).length || 0;
-
-  const handleEmailSync = async () => {
+  const handleEmailSync = useCallback(async () => {
     if (userPlanTier !== 'PRO' && !trialEndsAt) {
       setShowUpgradeModal(true);
       return;
@@ -787,7 +437,7 @@ export default function DashboardClient({
     setSyncMessage('Scanning email inbox for job postings...');
     try {
       const res = await fetch('/api/sync/email', { method: 'POST' });
-      let data: any = {};
+      let data: Record<string, unknown> = {};
       let runningCount = 0;
 
       if (res.body) {
@@ -816,7 +466,9 @@ export default function DashboardClient({
               if (payload.type === 'complete' || payload.success !== undefined) {
                 data = payload;
               }
-            } catch (e) {}
+            } catch {
+              // Ignore parse errors
+            }
           }
         }
 
@@ -832,33 +484,33 @@ export default function DashboardClient({
             if (payload.type === 'complete' || payload.success !== undefined) {
               data = payload;
             }
-          } catch (e) {}
+          } catch {
+            // Ignore
+          }
         }
       } else {
-        data = await res.json().catch(() => ({ error: 'Failed to parse response' }));
+        data = (await res.json().catch(() => ({ error: 'Failed to parse response' }))) as Record<string, unknown>;
       }
 
       if (res.ok && data.success !== false) {
-        const finalCount = data.count ?? runningCount;
+        const finalCount = typeof data.count === 'number' ? data.count : runningCount;
         setIsEmailSyncing(false);
         setIsSyncing(false);
         setJobsFoundCount(null);
         setSyncMessage('');
 
-        // ALWAYS refresh dashboard so newly saved jobs display immediately on first sync run
         router.refresh();
 
         if (finalCount === 0) {
           alert('Email sync complete! We scanned your inbox and found 0 new job opportunities since your last sync.');
         } else {
-          // Fire background scoring call (non-blocking)
           fetch('/api/score', { method: 'POST', body: JSON.stringify({}) })
             .then(() => router.refresh())
             .catch(err => console.error('Background scoring error:', err));
         }
         return;
       } else {
-        const errorMsg = data.error || 'Failed to sync emails';
+        const errorMsg = (data.error as string) || 'Failed to sync emails';
         console.error('Failed to sync emails:', errorMsg);
         alert(errorMsg);
         if (errorMsg.toLowerCase().includes('credential') || 
@@ -877,7 +529,275 @@ export default function DashboardClient({
       setJobsFoundCount(null);
       setSyncMessage('');
     }
+  }, [userPlanTier, trialEndsAt, hasEmailCredentials, router]);
+
+  // Restore page number and items per page from URL, localStorage, or sessionStorage on mount
+  useEffect(() => {
+    const urlPage = searchParams?.get('page');
+    const urlLimit = searchParams?.get('limit') || searchParams?.get('perPage');
+
+    const isMobileClient = typeof window !== 'undefined' && (
+      window.innerWidth <= 1024 ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    );
+    const explicitViewMode = typeof window !== 'undefined' ? localStorage.getItem('dashboard_view_mode_explicit') : null;
+
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('jobAgentDashboardState') : null;
+    let stateFromStorage: Record<string, unknown> = {};
+    if (saved) {
+      try {
+        stateFromStorage = JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse dashboard state from local storage', e);
+      }
+    }
+
+    const timer = setTimeout(() => {
+      setIsMobile(isMobileClient);
+      if (isMobileClient) {
+        if (explicitViewMode === 'table') {
+          setViewMode('table');
+        } else {
+          setViewMode('grid');
+        }
+      } else if (explicitViewMode === 'grid' || explicitViewMode === 'table' || explicitViewMode === 'columns') {
+        setViewMode(explicitViewMode as 'grid' | 'table' | 'columns');
+      } else {
+        setViewMode('columns');
+      }
+
+      if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter as 'all' | 'scored' | 'high_fit' | 'archived');
+      if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption as SortOptionType);
+      if (stateFromStorage.locationFilter !== undefined) {
+        if (Array.isArray(stateFromStorage.locationFilter)) {
+          setLocationFilter(stateFromStorage.locationFilter as string[]);
+        } else if (typeof stateFromStorage.locationFilter === 'string') {
+          if (stateFromStorage.locationFilter === 'all' || !stateFromStorage.locationFilter) {
+            setLocationFilter([]);
+          } else {
+            setLocationFilter([stateFromStorage.locationFilter]);
+          }
+        }
+      }
+      if (stateFromStorage.sourceFilter) setSourceFilter(stateFromStorage.sourceFilter as 'both' | 'email' | 'scraped');
+      if (stateFromStorage.startDate !== undefined) setStartDate(stateFromStorage.startDate as string);
+      if (stateFromStorage.endDate !== undefined) setEndDate(stateFromStorage.endDate as string);
+      if (stateFromStorage.keywordFilter !== undefined) setKeywordFilter(stateFromStorage.keywordFilter as string);
+      if (stateFromStorage.searchRole !== undefined) setSearchRole(stateFromStorage.searchRole as string);
+      if (stateFromStorage.minScoreFilter !== undefined) {
+        const restoredScore = stateFromStorage.minScoreFilter === 25 ? 50 : (stateFromStorage.minScoreFilter as number);
+        setMinScoreFilter(restoredScore);
+      }
+
+      const savedSearchRole = typeof window !== 'undefined' ? localStorage.getItem('dashboard_search_role') : null;
+      if (savedSearchRole !== null && stateFromStorage.searchRole === undefined) {
+        setSearchRole(savedSearchRole);
+      }
+
+      const savedPageStr = urlPage || (stateFromStorage.currentPage as string | number) || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_page') || sessionStorage.getItem('dashboard_page')) : null);
+      if (savedPageStr) {
+        const pageNum = parseInt(savedPageStr.toString(), 10);
+        if (!isNaN(pageNum) && pageNum > 0) {
+          setCurrentPage(pageNum);
+        }
+      }
+
+      const savedLimitStr = urlLimit || (stateFromStorage.itemsPerPage as string | number) || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_items_per_page') || sessionStorage.getItem('dashboard_items_per_page')) : null);
+      if (savedLimitStr) {
+        const limitNum = parseInt(savedLimitStr.toString(), 10);
+        if (!isNaN(limitNum) && limitNum > 0) {
+          setItemsPerPage(limitNum);
+        }
+      }
+
+      setIsLoaded(true);
+      isPageInitialized.current = true;
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [searchParams]);
+
+  // Listen for screen resize to dynamically switch from columns view to grid view on mobile/tablet
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(mobile);
+      if (mobile) {
+        setViewMode(prev => (prev === 'columns' ? 'grid' : prev));
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const changePage = useCallback((newPage: number) => {
+    setCurrentPage(newPage);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('dashboard_page', newPage.toString());
+      localStorage.setItem('dashboard_page', newPage.toString());
+      try {
+        const saved = localStorage.getItem('jobAgentDashboardState');
+        const stateObj = saved ? JSON.parse(saved) : {};
+        stateObj.currentPage = newPage;
+        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
+      } catch {
+        // Ignore
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', newPage.toString());
+      params.set('limit', itemsPerPage.toString());
+      window.history.replaceState(null, '', `?${params.toString()}`);
+    }
+  }, [itemsPerPage]);
+
+  const changeItemsPerPage = useCallback((newLimit: number) => {
+    setItemsPerPage(newLimit);
+    setCurrentPage(1);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('dashboard_page', '1');
+      localStorage.setItem('dashboard_page', '1');
+      sessionStorage.setItem('dashboard_items_per_page', newLimit.toString());
+      localStorage.setItem('dashboard_items_per_page', newLimit.toString());
+
+      try {
+        const saved = localStorage.getItem('jobAgentDashboardState');
+        const stateObj = saved ? JSON.parse(saved) : {};
+        stateObj.itemsPerPage = newLimit;
+        stateObj.currentPage = 1;
+        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
+      } catch {
+        // Ignore
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', '1');
+      params.set('limit', newLimit.toString());
+      window.history.replaceState(null, '', `?${params.toString()}`);
+    }
+  }, []);
+
+  const handleViewModeChange = useCallback((mode: 'grid' | 'table' | 'columns') => {
+    setViewMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboard_view_mode_explicit', mode);
+      try {
+        const saved = localStorage.getItem('jobAgentDashboardState');
+        const stateObj = saved ? JSON.parse(saved) : {};
+        stateObj.viewMode = mode;
+        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
+      } catch {
+        // Ignore
+      }
+    }
+  }, []);
+
+  const handleMarkViewed = useCallback((jobId: string) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('last_clicked_job_id', jobId);
+      localStorage.setItem('last_clicked_job_id', jobId);
+    }
+    fetch(`/api/jobs/${jobId}/viewed`, { method: 'POST' }).catch(() => {});
+    setJobList(prev => prev.map(j => j.id === jobId ? { ...j, is_viewed: true, isViewed: true } : j));
+  }, []);
+
+  const toggleJobCheck = useCallback((id: string) => {
+    setCheckedJobs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleQueueFetch = (job: { id: string, title: string, company: string }) => {
+    if (fetchStatuses[job.id] === 'fetching' || fetchStatuses[job.id] === 'queued' || fetchStatuses[job.id] === 'success') return;
+    setFetchStatuses(prev => ({ ...prev, [job.id]: 'queued' }));
+    setFetchQueue(prev => [...prev, job]);
+    setShowQueueOverlay(true);
   };
+
+  const processFetchDetails = useCallback(async (jobItem: {id: string, title: string, company: string}) => {
+    setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'fetching' }));
+    try {
+      const res = await fetch(`/api/jobs/${jobItem.id}/fetch-details`, { method: 'POST' });
+      if (res.ok) {
+        if (userPlanTier === 'PRO') {
+          fetch('/api/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId: jobItem.id }) }).catch(() => {});
+        }
+        setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'success' }));
+        router.refresh();
+      } else {
+        setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'error' }));
+      }
+    } catch {
+      setFetchStatuses(prev => ({ ...prev, [jobItem.id]: 'error' }));
+    } finally {
+      setActiveFetches(prev => prev.filter(f => f.id !== jobItem.id));
+    }
+  }, [userPlanTier, router]);
+
+  useEffect(() => {
+    if (activeFetches.length < 3 && fetchQueue.length > 0) {
+      const slotsAvailable = 3 - activeFetches.length;
+      const nextItems = fetchQueue.slice(0, slotsAvailable);
+      
+      const timer = setTimeout(() => {
+        setFetchQueue(prev => prev.slice(slotsAvailable));
+        setActiveFetches(prev => [...prev, ...nextItems]);
+        
+        nextItems.forEach(item => {
+          processFetchDetails(item);
+        });
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [fetchQueue, activeFetches, processFetchDetails]);
+
+  useEffect(() => {
+    if (activeFetches.length === 0 && fetchQueue.length === 0 && showQueueOverlay) {
+      const timeout = setTimeout(() => setShowQueueOverlay(false), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [activeFetches, fetchQueue, showQueueOverlay]);
+
+  const removeQueuedItem = (id: string) => {
+    setFetchQueue(prev => prev.filter(item => item.id !== id));
+    setFetchStatuses(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const hasJobScore = useCallback((j: DashboardJob) => {
+    const scoreVal = j.opportunity_scores?.[0]?.total_score;
+    return j.status === 'scored' || (scoreVal !== undefined && scoreVal !== null);
+  }, []);
+
+  const getEffectiveStatus = useCallback((job: DashboardJob) => {
+    if (job.status === 'closed') return 'closed';
+    if (job.status === 'applied' || job.applied_at) return 'applied';
+    if (job.status === 'interviewing') return 'interviewing';
+    if (job.is_archived) return 'saved';
+    if (hasJobScore(job)) return 'scored';
+    return job.status || 'discovered';
+  }, [hasJobScore]);
+
+  const isJobLowScore = useCallback((j: DashboardJob): boolean => {
+    const s = j.opportunity_scores?.[0]?.total_score;
+    return typeof s === 'number' && !isNaN(s) && s < 50;
+  }, []);
+
+  const unarchivedJobs = jobList?.filter(j => !j.is_archived) || [];
+  const totalDiscovered = unarchivedJobs.length;
+  const totalScored = unarchivedJobs.filter(j => hasJobScore(j)).length;
+  const highlyScored = unarchivedJobs.filter(j => (j.opportunity_scores?.[0]?.total_score ?? 0) >= 80).length;
+  const totalArchived = jobList?.filter(j => j.is_archived && !isJobLowScore(j)).length || 0;
 
   // Register Dashboard quick actions into the Global Command Bar
   useEffect(() => {
@@ -973,6 +893,8 @@ export default function DashboardClient({
     isEmailSyncing,
     isSyncing,
     hasActiveFilters,
+    handleEmailSync,
+    router,
     setPageActions,
   ]);
 
@@ -1024,7 +946,7 @@ export default function DashboardClient({
   }, [jobList]);
 
   // Helper to extract max salary for sorting
-  const extractMaxSalary = (salaryStr: string | null) => {
+  const extractMaxSalary = (salaryStr?: string | null) => {
     if (!salaryStr) return 0;
     const matches = salaryStr.match(/\$(\d{1,3}(?:,\d{3})*)/g);
     if (!matches) return 0;
@@ -1062,13 +984,13 @@ export default function DashboardClient({
     }
 
     // 1. Apply Status Filter
-    const getAiScore = (j: any): number | null => {
+    const getAiScore = (j: DashboardJob): number | null => {
       const s = j.opportunity_scores?.[0]?.total_score;
       if (typeof s === 'number' && !isNaN(s)) return s;
       return null;
     };
 
-    const isLowScore = (j: any): boolean => {
+    const isLowScore = (j: DashboardJob): boolean => {
       const s = getAiScore(j);
       return s !== null && s < 50;
     };
@@ -1097,13 +1019,13 @@ export default function DashboardClient({
     if (locationFilter.length > 0) {
       result = result.filter(j => {
         if (!j.location) return false;
-        const locLower = j.location.toLowerCase();
+        const jobLoc = j.location;
         return locationFilter.some(locOpt => {
-          if (locOpt === 'Remote') return isRemoteLocation(j.location);
-          if (locOpt === 'United States') return isUsLocation(j.location) && !isRemoteLocation(j.location);
-          if (locOpt === 'International') return !isUsLocation(j.location) && !isRemoteLocation(j.location);
+          if (locOpt === 'Remote') return isRemoteLocation(jobLoc);
+          if (locOpt === 'United States') return isUsLocation(jobLoc) && !isRemoteLocation(jobLoc);
+          if (locOpt === 'International') return !isUsLocation(jobLoc) && !isRemoteLocation(jobLoc);
           if (US_STATE_ABBRS.has(locOpt)) {
-            return extractStateAbbr(j.location) === locOpt;
+            return extractStateAbbr(jobLoc) === locOpt;
           }
           return false;
         });
@@ -1204,7 +1126,7 @@ export default function DashboardClient({
     }
 
     return result;
-  }, [jobList, activeFilter, minScoreFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter, searchRole, searchKeyword]);
+  }, [jobList, activeFilter, minScoreFilter, locationFilter, sortOption, sourceFilter, startDate, endDate, keywordFilter, searchRole, searchKeyword, hasJobScore]);
 
   useEffect(() => {
     if (!isLoaded || !isPageInitialized.current) return;
@@ -1230,13 +1152,16 @@ export default function DashboardClient({
       lastFilterRef.current = currentFilterKey;
       changePage(1);
     }
-  }, [activeFilter, minScoreFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, isLoaded]);
+  }, [activeFilter, minScoreFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, isLoaded, changePage]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / itemsPerPage));
   
   useEffect(() => {
     if (isLoaded && currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages);
+      const timer = setTimeout(() => {
+        setCurrentPage(totalPages);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [currentPage, totalPages, isLoaded]);
 
@@ -1244,17 +1169,30 @@ export default function DashboardClient({
   const endIndex = Math.min(startIndex + itemsPerPage, filteredAndSortedJobs.length);
   const currentJobs = filteredAndSortedJobs.slice(startIndex, endIndex);
 
+  const toggleAllChecks = useCallback(() => {
+    setCheckedJobs(prev => {
+      if (prev.size === currentJobs.length && currentJobs.length > 0) {
+        return new Set();
+      } else {
+        return new Set(currentJobs.map(j => j.id));
+      }
+    });
+  }, [currentJobs]);
+
   const { nudgeJobId, handleDismiss: handleNudgeDismiss, handleFeedbackGiven: handleNudgeFeedbackGiven } = useDashboardFeedbackNudge(currentJobs);
 
   // Auto-select first job in list if none is selected or selected job is no longer in currentJobs
   useEffect(() => {
-    if (currentJobs.length > 0) {
-      if (!selectedJobId || !currentJobs.some(j => j.id === selectedJobId)) {
-        setSelectedJobId(currentJobs[0].id);
+    const timer = setTimeout(() => {
+      if (currentJobs.length > 0) {
+        if (!selectedJobId || !currentJobs.some(j => j.id === selectedJobId)) {
+          setSelectedJobId(currentJobs[0].id);
+        }
+      } else {
+        setSelectedJobId(null);
       }
-    } else {
-      setSelectedJobId(null);
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [currentJobs, selectedJobId]);
 
   const handleJobUpdated = useCallback((id: string, updates: Partial<{ status: string; is_archived: boolean; feedback_type: string | null }>) => {
@@ -1309,13 +1247,15 @@ export default function DashboardClient({
 
   useEffect(() => {
     if (!hasResumeState) {
-      setIsScoringBackground(false);
-      return;
+      const timer = setTimeout(() => {
+        setIsScoringBackground(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
     if (userPlanTier !== 'PRO' && scoresExhausted) return;
 
-    const isUnscored = (j: any) => (!j.opportunity_scores || j.opportunity_scores.length === 0);
-    const canBeScored = (j: any) => {
+    const isUnscored = (j: DashboardJob) => (!j.opportunity_scores || j.opportunity_scores.length === 0);
+    const canBeScored = (j: DashboardJob) => {
       if (j.url && (j.url.startsWith('http://') || j.url.startsWith('https://'))) return true;
       if (j.description && j.description.trim().length > 30) return true;
       return false;
@@ -1327,7 +1267,7 @@ export default function DashboardClient({
       try {
         const raw = sessionStorage.getItem('job_agent_fetch_score_retries');
         return raw ? JSON.parse(raw) : {};
-      } catch (e) {
+      } catch {
         return {};
       }
     };
@@ -1336,7 +1276,7 @@ export default function DashboardClient({
       if (typeof window === 'undefined') return;
       try {
         sessionStorage.setItem('job_agent_fetch_score_retries', JSON.stringify(state));
-      } catch (e) {}
+      } catch {}
     };
 
     const now = Date.now();
@@ -1344,7 +1284,7 @@ export default function DashboardClient({
     const retryState = getRetryState();
 
     // Filter unscored current jobs that are eligible (not exhausted, and past the 2-minute backoff window)
-    const unscoredCurrentJobs = currentJobs.filter((j: any) => {
+    const unscoredCurrentJobs = currentJobs.filter((j: DashboardJob) => {
       if (!isUnscored(j) || !canBeScored(j)) return false;
       const record = retryState[j.id];
       if (!record) return true;
@@ -1355,21 +1295,22 @@ export default function DashboardClient({
     });
 
     if (unscoredCurrentJobs.length === 0) {
-      setIsScoringBackground(false);
-      return;
+      const timer = setTimeout(() => {
+        setIsScoringBackground(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-
-    setIsScoringBackground(true);
 
     // Debounce 500ms to avoid duplicate calls on rapid re-renders
     const timer = setTimeout(() => {
+      setIsScoringBackground(true);
       if (unscoredCurrentJobs.length > 0) {
         // Cap batch size at 5 jobs per request
         const chunk = unscoredCurrentJobs.slice(0, 5);
 
         // Record retry attempt in sessionStorage
         const nextState = { ...retryState };
-        chunk.forEach((j: any) => {
+        chunk.forEach((j: DashboardJob) => {
           const prev = nextState[j.id] || { attempts: 0, lastAttempt: 0 };
           const newAttempts = prev.attempts + 1;
           nextState[j.id] = {
@@ -1385,7 +1326,7 @@ export default function DashboardClient({
             const res = await fetch('/api/jobs/fetch-and-score', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ jobIds: chunk.map((j: any) => j.id) })
+              body: JSON.stringify({ jobIds: chunk.map((j: DashboardJob) => j.id) })
             });
 
             if (!res.ok) {
@@ -1399,12 +1340,12 @@ export default function DashboardClient({
             }
 
             const data = await res.json().catch(() => ({}));
-            const hasScoredNewJobs = data.results?.some((r: any) => r.status === 'scored' || r.status === 'already_scored');
+            const hasScoredNewJobs = (data.results as Array<{ status: string }> | undefined)?.some((r) => r.status === 'scored' || r.status === 'already_scored');
             if (hasScoredNewJobs) {
               router.refresh();
             }
-          } catch (e) {
-            console.error('Failed background fetch and score batch:', e);
+          } catch (err) {
+            console.error('Failed background fetch and score batch:', err);
           } finally {
             if (unscoredCurrentJobs.length <= chunk.length) {
               setIsScoringBackground(false);
@@ -1443,8 +1384,8 @@ export default function DashboardClient({
               variant="modal"
               feature="email-sync"
               stats={{
-                resumesTailored: jobList?.filter((j: any) => j.opportunity_scores?.[0]?.total_score).length,
-                jobsApplied: jobList?.filter((j: any) => j.applied_at || j.status === 'applied').length,
+                resumesTailored: jobList?.filter((j: DashboardJob) => j.opportunity_scores?.[0]?.total_score).length,
+                jobsApplied: jobList?.filter((j: DashboardJob) => j.applied_at || j.status === 'applied').length,
                 jobsSynced: jobList?.length,
               }}
               onDismiss={() => setShowUpgradeModal(false)}
@@ -1467,7 +1408,7 @@ export default function DashboardClient({
                 if (searchLocation) {
                   localStorage.setItem('intl_sources_notice_dismissed_loc', searchLocation);
                 }
-              } catch (e) {}
+              } catch {}
               setShowIntlLocationModal(false);
             }}
           />
@@ -1874,7 +1815,7 @@ export default function DashboardClient({
                 <ArrowUpDown size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
                 <select
                   value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value as any)}
+                  onChange={(e) => setSortOption(e.target.value as SortOptionType)}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -2010,7 +1951,7 @@ export default function DashboardClient({
                   const isDisliked = feedbackObj?.feedback_type === 'dislike';
                   const isViewed = !!(job.is_viewed || job.isViewed);
                   
-                  const rowStyle: any = {
+                  const rowStyle: React.CSSProperties & Record<string, string | number | undefined> = {
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                     opacity: isDisliked ? 0.5 : 1,
                     ...(isEmailJob ? {
@@ -2377,7 +2318,7 @@ export default function DashboardClient({
             const isViewed = !!(job.is_viewed || job.isViewed);
             const isExpanded = expandedJobIds.has(job.id);
             
-            const cardStyle: any = {
+            const cardStyle: React.CSSProperties & Record<string, string | number | undefined> = {
               opacity: isDisliked ? 0.5 : 1,
               boxShadow: isDisliked ? 'none' : undefined,
               ...(isEmailJob ? {
@@ -2988,7 +2929,7 @@ export default function DashboardClient({
       </div>
 
       {showUpgradeModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass-card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '2rem' }}>
             <h2 style={{ marginBottom: '1rem' }}>Pro Feature</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
@@ -3003,11 +2944,11 @@ export default function DashboardClient({
       )}
 
       {showConfigModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass-card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '2rem' }}>
             <h2 style={{ marginBottom: '1rem' }}>Configuration Required</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              You'll need to configure account to be able to pull job post from your email.
+              You&apos;ll need to configure account to be able to pull job post from your email.
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <button onClick={() => setShowConfigModal(false)} className="btn-outline">Cancel</button>

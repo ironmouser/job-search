@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { getAssetUrl } from '@/lib/assets';
 import { isAutoApplyEnabled } from '@/lib/features';
 
@@ -68,9 +69,11 @@ export default function HowItWorks() {
 
           {/* Right Column: Layers Illustration */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-            <img 
+            <Image 
               src={getAssetUrl('/layers.png')} 
               alt="How it works workflow diagram" 
+              width={600}
+              height={400}
               style={{ width: '100%', height: 'auto', objectFit: 'contain' }} 
             />
           </div>
