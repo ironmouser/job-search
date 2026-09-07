@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { jobId } = body;
+        const { jobId, additionalContext } = body;
 
         // If no jobId is provided, find jobs that have been scored >= 80 but have no assets yet
         if (!jobId) {
@@ -107,7 +107,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
         }
 
-        const assets = await generateAssetsForJob(session.user.id, job.id, job.title, job.description || '', job.company);
+        if (typeof additionalContext === 'string') {
+            await prisma.userJob.upsert({
+                where: { userId_jobId: { userId: session.user.id, jobId } },
+                update: { additionalContext: additionalContext.trim() },
+                create: { userId: session.user.id, jobId, status: 'discovered', additionalContext: additionalContext.trim() }
+            }).catch(err => console.warn('Failed to save additionalContext before generation:', err));
+        }
+
+        const assets = await generateAssetsForJob(session.user.id, job.id, job.title, job.description || '', job.company, additionalContext);
 
         return NextResponse.json({ 
             message: 'Asset generation complete.', 

@@ -66,7 +66,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             return NextResponse.json({ error: 'Regeneration limit reached (5/5).' }, { status: 403 });
         }
 
-        const { systemPrompt, userPrompt } = await getResumePrompts(session.user.id, jobId, userJob.job.title, userJob.job.description || '', userJob.job.company, instruction, customizationAmount);
+        const { systemPrompt, userPrompt } = await getResumePrompts(
+            session.user.id, 
+            jobId, 
+            userJob.job.title, 
+            userJob.job.description || '', 
+            userJob.job.company, 
+            instruction, 
+            customizationAmount,
+            (userJob as any).additionalContext
+        );
 
         // Call AI using Primary: deepseek-v4-flash -> 1st Fallback: gemini-3.1-flash-lite
         const rawResume = await callAI({

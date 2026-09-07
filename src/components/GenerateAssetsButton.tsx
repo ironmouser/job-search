@@ -19,6 +19,7 @@ interface GenerateAssetsButtonProps {
   totalResumesGenerated?: number;
   totalApplied?: number;
   buttonLabel?: string;
+  additionalContext?: string;
   onSuccess?: () => void;
 }
 
@@ -32,6 +33,7 @@ export default function GenerateAssetsButton({
   totalResumesGenerated,
   totalApplied,
   buttonLabel,
+  additionalContext,
   onSuccess,
 }: GenerateAssetsButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -54,10 +56,15 @@ export default function GenerateAssetsButton({
 
     setIsGenerating(true);
     try {
+      const payload: any = { jobId };
+      if (additionalContext !== undefined) {
+        payload.additionalContext = additionalContext;
+      }
+
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId })
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {

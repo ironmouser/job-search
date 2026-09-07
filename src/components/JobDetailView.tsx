@@ -28,6 +28,7 @@ import GenerateAssetsButton from '@/components/GenerateAssetsButton';
 import { ApplyStepAccordion } from '@/components/ApplyStepAccordion';
 import ApplicationQA from '@/components/ApplicationQA';
 import OpportunityScoreRefresh from '@/components/OpportunityScoreRefresh';
+import TailoringContextCard from '@/components/TailoringContextCard';
 
 export interface JobDetailData {
   job: {
@@ -49,6 +50,7 @@ export interface JobDetailData {
     status: string;
     appliedAt?: string | null;
     isArchived?: boolean;
+    additionalContext?: string | null;
   };
   scores: any | null;
   assets: any | null;
@@ -100,6 +102,7 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
   const [loading, setLoading] = useState<boolean>(!jobDetailCache.has(jobId));
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [contextByJob, setContextByJob] = useState<Record<string, string>>({});
 
   const fetchJobData = useCallback(async (id: string, forceRefresh = false) => {
     if (!forceRefresh && jobDetailCache.has(id)) {
@@ -468,6 +471,16 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
               <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent-secondary, #2db5a5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>2</div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Tailor Application</h2>
             </div>
+
+            <TailoringContextCard
+              key={job.id}
+              jobId={job.id}
+              initialContext={userJob.additionalContext || ''}
+              hasAssets={!!assets}
+              onContextChange={(ctx) => {
+                setContextByJob((prev) => ({ ...prev, [job.id]: ctx }));
+              }}
+            />
             
             {assets ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -538,6 +551,7 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
                     userPlanTier={planTier} 
                     generationsLeftThisWeek={assetGenerationsLeft} 
                     hasResume={hasBaseResume} 
+                    additionalContext={contextByJob[job.id] ?? userJob.additionalContext ?? undefined}
                     onSuccess={() => {
                       jobDetailCache.delete(job.id);
                       fetchJobData(job.id, true);

@@ -104,7 +104,8 @@ export async function POST(
       userJob.job.company,
       question,
       tone,
-      instruction
+      instruction,
+      (userJob as any).additionalContext
     );
 
     // Security Guard 3: Output Validation Check for severe hallucination
@@ -120,7 +121,8 @@ export async function POST(
         userJob.job.company,
         question,
         tone,
-        instruction
+        instruction,
+        (userJob as any).additionalContext
       );
       outputValidation = validateGeneratedAsset(answer, baseResumeText, userJob.job.description || '', 'qa');
     }

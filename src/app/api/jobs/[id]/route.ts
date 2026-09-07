@@ -184,7 +184,8 @@ export async function GET(
           userJob: {
             status,
             appliedAt,
-            isArchived: userJob.isArchived
+            isArchived: userJob.isArchived,
+            additionalContext: (userJob as any).additionalContext || ''
           },
           scores,
           assets,
@@ -248,7 +249,7 @@ export async function PATCH(
         }
 
         const body = await request.json().catch(() => ({}));
-        const { status, applied_at, applicationUrl, description } = body;
+        const { status, applied_at, applicationUrl, description, additionalContext } = body;
 
         const job = await prisma.job.findUnique({
             where: { id }
@@ -327,8 +328,11 @@ export async function PATCH(
             });
         }
 
-        if (status) {
-            const updateData: any = { status: String(status).toLowerCase() };
+        if (status || additionalContext !== undefined) {
+            const updateData: any = {};
+            if (status) {
+                updateData.status = String(status).toLowerCase();
+            }
             if (applied_at) {
                 const headerStore = await headers();
                 const forwardedFor = headerStore.get('x-forwarded-for');
@@ -337,6 +341,9 @@ export async function PATCH(
                 updateData.appliedAt = new Date(applied_at);
                 updateData.ipAddress = ipAddress;
             }
+            if (additionalContext !== undefined) {
+                updateData.additionalContext = typeof additionalContext === 'string' ? additionalContext.slice(0, 2000).trim() : null;
+            }
 
             const data = await prisma.userJob.upsert({
                 where: { userId_jobId: { userId, jobId: id } },
@@ -344,6 +351,7 @@ export async function PATCH(
                 create: {
                     userId,
                     jobId: id,
+                    status: 'discovered',
                     ...updateData
                 }
             });

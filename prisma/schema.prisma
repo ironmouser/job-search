@@ -467,6 +467,7 @@ model UserJob {
   isArchived Boolean   @default(false) @map("is_archived")
   isPrivate Boolean   @default(false) @map("is_private")
   unlockedBySubmission Boolean @default(false) @map("unlocked_by_submission")
+  additionalContext String? @map("additional_context") @db.Text
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)

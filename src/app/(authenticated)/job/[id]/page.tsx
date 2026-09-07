@@ -21,6 +21,7 @@ import OpportunityScoreRefresh from '@/components/OpportunityScoreRefresh';
 import { isDescriptionAdequate } from '@/lib/jobFetcher';
 import { AutoApplyPanel } from '@/components/AutoApplyPanel';
 import { ApplyStepAccordion } from '@/components/ApplyStepAccordion';
+import TailoringContextCard from '@/components/TailoringContextCard';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { headers } from 'next/headers';
@@ -281,6 +282,12 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                 <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Tailor Application</h2>
               </div>
               
+              <TailoringContextCard
+                jobId={job.id}
+                initialContext={userJob.additionalContext || ''}
+                hasAssets={!!assets}
+              />
+
               {assets ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                   <NetworkingAssetCard 
