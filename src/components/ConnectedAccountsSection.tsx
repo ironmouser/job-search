@@ -147,7 +147,7 @@ export default function ConnectedAccountsSection() {
         <ShieldCheck size={24} style={{ color: 'var(--primary, #6366f1)', flexShrink: 0, marginTop: '2px' }} />
         <div>
           <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: '4px' }}>
-            Connected Job Boards for 1-Click & Easy Apply
+            Connected Job Boards for Automated Applications
           </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             Connect your job board profiles so JAHQ can automate applications on ZipRecruiter 1-Click, Dice Easy Apply, and LinkedIn. Sessions are encrypted using AES-256-GCM and checked for validity.

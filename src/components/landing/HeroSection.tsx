@@ -41,7 +41,7 @@ export default function HeroSection() {
         }}>
           {autoApplyEnabled
             ? "Your personal AI job search agent discovers jobs, tailors your resume, writes cover letters, and can automatically complete online application forms using the information and documents you've approved."
-            : "Your personal AI job search agent discovers hidden jobs, generates tailored resumes and cover letters, and lets you apply in 1-click with smart browser autofill."}
+            : "Your personal AI job search agent discovers jobs, generates tailored resumes and cover letters, and lets you apply directly to opportunities in seconds."}
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>

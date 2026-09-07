@@ -112,7 +112,7 @@ export default function PricingSection() {
             <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: '1.5rem', minHeight: '2.8rem' }}>
               {isAutoApplyEnabled()
                 ? "Unlimited AI asset generation & automated applications."
-                : "Unlimited AI asset generation & 1-click browser autofill."}
+                : "Unlimited AI asset generation & tailored application materials."}
             </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '2rem' }}>
               <span style={{ fontSize: '3rem', fontWeight: 800, color: '#ffffff' }}>$20</span>
@@ -167,7 +167,7 @@ export default function PricingSection() {
                 'Unlimited AI Tailored Resumes & Cover Letters',
                 isAutoApplyEnabled()
                   ? 'Auto Apply Worker automation (hands-free)'
-                  : '1-Click Chrome Extension Autofill',
+                  : 'Direct Career Site Application Links',
                 'AI Application Q&A Assistant',
                 'Automatic Email Sync (Gmail / IMAP)',
                 'Custom Career Page URL Scraper',

@@ -10,10 +10,9 @@ export default function StoryFeatures() {
     "Generates ATS-friendly resumes",
     "Writes tailored cover letters",
     "Tracks every application",
-    "Learns which application systems it supports",
     ...(autoApplyEnabled
-      ? ["Auto applies where possible", "Alerts you only when your input is needed"]
-      : ["Autofills application forms in 1-click", "Organizes everything in one Kanban board"])
+      ? ["Learns which application systems it supports", "Auto applies where possible", "Alerts you only when your input is needed"]
+      : ["Organizes everything in one Kanban board", "Direct links to employer job applications"])
   ];
 
   return (

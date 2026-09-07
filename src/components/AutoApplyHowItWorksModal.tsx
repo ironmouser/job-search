@@ -43,7 +43,7 @@ export function AutoApplyHowItWorksModal({ isOpen, onClose }: AutoApplyHowItWork
     },
     {
       num: 3,
-      title: 'Form Mapping & Profile Autofill',
+      title: 'Form Mapping & Candidate Details',
       description: 'Form fields (contact info, work authorization, education, past experience, and LinkedIn links) are accurately matched and filled in the employer\'s ATS form.',
       icon: <SlidersHorizontal size={20} color="var(--accent-primary, #0070f3)" />,
     },

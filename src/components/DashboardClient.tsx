@@ -436,7 +436,14 @@ export default function DashboardClient({
     setJobsFoundCount(0);
     setSyncMessage('Scanning email inbox for job postings...');
     try {
-      const res = await fetch('/api/sync/email', { method: 'POST' });
+      const res = await fetch('/api/sync/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword: (searchRole || searchKeyword || '').trim() || undefined,
+          location: (searchLocationInput || searchLocation || '').trim() || undefined,
+        }),
+      });
       let data: Record<string, unknown> = {};
       let runningCount = 0;
 
@@ -502,7 +509,7 @@ export default function DashboardClient({
         router.refresh();
 
         if (finalCount === 0) {
-          alert('Email sync complete! We scanned your inbox and found 0 new job opportunities since your last sync.');
+          alert('Email sync complete! We scanned your inbox and found 0 new job opportunities matching your criteria since your last sync.');
         } else {
           fetch('/api/score', { method: 'POST', body: JSON.stringify({}) })
             .then(() => router.refresh())
@@ -529,7 +536,7 @@ export default function DashboardClient({
       setJobsFoundCount(null);
       setSyncMessage('');
     }
-  }, [userPlanTier, trialEndsAt, hasEmailCredentials, router]);
+  }, [userPlanTier, trialEndsAt, hasEmailCredentials, router, searchRole, searchKeyword, searchLocationInput, searchLocation]);
 
   // Restore page number and items per page from URL, localStorage, or sessionStorage on mount
   useEffect(() => {
@@ -1547,7 +1554,7 @@ export default function DashboardClient({
                   {isAutoApplyEnabled() ? 'Unlock AI Opportunity Fit Scoring & Auto-Apply' : 'Unlock AI Opportunity Fit Scoring & Tailored Packets'}
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                  Upload your resume to evaluate match breakdown across all opportunities and enable 1-click tailored application generation.
+                  Upload your resume to evaluate match breakdown across all opportunities and enable tailored application generation.
                 </p>
               </div>
             </div>
@@ -3095,7 +3102,7 @@ export default function DashboardClient({
           router.refresh();
         }}
         title="Upload Base Resume"
-        description="Add your base master resume to activate personalized AI opportunity scoring, candidate match breakdown, and 1-click tailored application assets."
+        description="Add your base master resume to activate personalized AI opportunity scoring, candidate match breakdown, and tailored application assets."
       />
     </>
   );

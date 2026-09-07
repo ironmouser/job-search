@@ -19,10 +19,10 @@ export default function HowItWorks() {
       desc: "Every application receives a customized resume and cover letter to match the job description."
     },
     {
-      title: autoApplyEnabled ? "Auto Apply" : "1-Click Apply",
+      title: autoApplyEnabled ? "Auto Apply" : "Apply Directly",
       desc: autoApplyEnabled
         ? "For supported job sites, the agent completes the application form automatically."
-        : "Autofill applications in seconds using tailored resumes, cover letters, and our smart browser extension."
+        : "Download your tailored resume and cover letter, click apply, and submit directly on the employer's career site."
     },
     {
       title: "Track Everything",

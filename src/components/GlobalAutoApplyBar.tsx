@@ -54,7 +54,7 @@ const STEP_DEFINITIONS = [
   { num: 2, label: 'Preparing', desc: 'Loading candidate profile & application data' },
   { num: 3, label: 'Tailoring Assets', desc: 'Generating tailored resume and cover letter' },
   { num: 4, label: 'Navigating', desc: 'Navigating to official ATS application form' },
-  { num: 5, label: 'Form Filling', desc: 'Autofilling fields, screening questions & attachments' },
+  { num: 5, label: 'Form Filling', desc: 'Filling fields, screening questions & attachments' },
   { num: 6, label: 'Submission', desc: 'Reviewing, validating and submitting application' },
 ];
 
@@ -413,7 +413,7 @@ export function GlobalAutoApplyBar() {
                       ) : (
                         <>
                           <Bot size={15} color="#ffffff" />
-                          <span style={{ color: '#ffffff' }}>1-Click Auto Apply ({selectionState?.count})</span>
+                          <span style={{ color: '#ffffff' }}>Auto Apply ({selectionState?.count})</span>
                         </>
                       )}
                     </button>
@@ -1210,7 +1210,7 @@ export function GlobalAutoApplyBar() {
                       {isBatchApplying ? (
                         <><Loader2 size={15} color="#ffffff" className="animate-spin" /><span style={{ color: '#ffffff' }}>Auto Applying ({completedCount}/{totalCount || selectionState?.count})...</span></>
                       ) : (
-                        <><Bot size={15} color="#ffffff" /><span style={{ color: '#ffffff' }}>1-Click Auto Apply ({selectionState?.count})</span></>
+                        <><Bot size={15} color="#ffffff" /><span style={{ color: '#ffffff' }}>Auto Apply ({selectionState?.count})</span></>
                       )}
                     </button>
                   );

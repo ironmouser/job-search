@@ -779,7 +779,7 @@ export default function PrepareApplicationFlow({
                     Streamline Application & Q&A
                   </h4>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                    Answer screening questions and leverage 1-click apply assistance for ATS forms.
+                    Answer screening questions and leverage AI assistance for your application materials.
                   </p>
                 </div>
               </div>

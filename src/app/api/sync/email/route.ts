@@ -8,11 +8,24 @@ import { getEffectiveTier } from '@/lib/tier';
 
 export const maxDuration = 60;
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let searchOverrides: { keyword?: string; location?: string } | undefined;
+    try {
+      const body = await req.json();
+      if (body && typeof body === 'object') {
+        searchOverrides = {
+          keyword: typeof body.keyword === 'string' ? body.keyword.trim() : undefined,
+          location: typeof body.location === 'string' ? body.location.trim() : undefined,
+        };
+      }
+    } catch {
+      // Body is optional
     }
 
     const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 'system' } });
@@ -40,9 +53,13 @@ export async function POST() {
         try {
           sendEvent({ type: 'progress', foundCount: 0, message: 'Scanning email inbox for job postings...' });
 
-          const newJobsCount = await fetchEmailsAndExtractJobs(session.user.id, (foundCount, message) => {
-            sendEvent({ type: 'progress', foundCount, message });
-          });
+          const newJobsCount = await fetchEmailsAndExtractJobs(
+            session.user.id,
+            (foundCount, message) => {
+              sendEvent({ type: 'progress', foundCount, message });
+            },
+            searchOverrides
+          );
 
           sendEvent({
             type: 'complete',

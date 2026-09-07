@@ -142,7 +142,7 @@ function CheckoutAuthContent() {
               "Unlimited AI scoring",
               "Tailored resumes",
               "Cover letter generator",
-              isAutoApplyEnabled() ? "Hands-free auto apply" : "1-Click browser autofill",
+              isAutoApplyEnabled() ? "Hands-free auto apply" : "Direct application links",
             ].map((feature) => (
               <li key={feature} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: "#1e293b", fontWeight: 600 }}>
                 <Check size={14} color="#10b981" style={{ flexShrink: 0 }} />

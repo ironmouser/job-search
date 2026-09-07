@@ -359,7 +359,7 @@ export function getFailureNextSteps(
   ) {
     return [
       'Ensure you have tailored your resume and cover letter in Steps 1 and 2.',
-      'Click 1-Click Auto Apply to let JAHQ generate the assets and submit.',
+      'Click Auto Apply to let JAHQ generate the assets and submit.',
     ];
   }
 

@@ -4,29 +4,47 @@ import { prisma } from './prisma';
 import { getUserSettings } from './settings';
 import { normalizeAndSaveJobs } from './jobs';
 import { cleanCompanyName } from './cleaners';
-import { isNonJobUrl, cleanJobUrl } from './urlUtils';
+import { isNonJobUrl, cleanJobUrl, isValidJobSource } from './urlUtils';
 import { extractJobsFromEmailText } from './scoring';
 import { decrypt } from './encryption';
 import { getActiveEmailAccounts } from './emailAccounts';
 
 const JOB_BOARDS = [
   'indeed.com',
-  'linkedin.com/jobs',
+  'linkedin.com',
   'glassdoor.com',
   'ziprecruiter.com',
   'monster.com',
   'wellfound.com',
+  'angel.co',
   'greenhouse.io',
   'lever.co',
   'ashbyhq.com',
   'smartrecruiters.com',
   'workday.com',
+  'myworkdayjobs.com',
+  'workable.com',
+  'bamboohr.com',
+  'icims.com',
+  'taleo.net',
   'jobvite.com',
+  'breezy.hr',
+  'applytojob.com',
+  'recruitee.com',
+  'rippling.com',
   'dice.com',
   'builtin.com',
   'levels.fyi',
   'otta.com',
   'hiring.cafe',
+  'weworkremotely.com',
+  'remoteok.com',
+  'remote.co',
+  'himalayas.app',
+  'jobicy.com',
+  'remotive.com',
+  'simplyhired.com',
+  'careerbuilder.com',
 ];
 
 const KNOWN_JOB_SENDERS = [
@@ -39,18 +57,38 @@ const KNOWN_JOB_SENDERS = [
   'ashbyhq.com',
   'smartrecruiters.com',
   'workday.com',
+  'myworkdayjobs.com',
+  'workable.com',
+  'bamboohr.com',
+  'icims.com',
+  'taleo.net',
   'jobvite.com',
+  'breezy.hr',
+  'applytojob.com',
+  'recruitee.com',
+  'rippling.com',
   'monster.com',
   'wellfound.com',
+  'angel.co',
   'dice.com',
   'builtin.com',
   'levels.fyi',
   'otta.com',
   'hiring.cafe',
+  'weworkremotely.com',
+  'remoteok.com',
+  'remote.co',
+  'himalayas.app',
+  'jobicy.com',
+  'remotive.com',
+  'simplyhired.com',
+  'careerbuilder.com',
   'talent',
   'careers',
   'recruiting',
   'jobs',
+  'jobalert',
+  'jobalerts',
 ];
 
 const JOB_KEYWORDS = [
@@ -108,6 +146,9 @@ const JOB_KEYWORDS = [
   'intern',
   'associate',
   'remote',
+  'wfh',
+  'product',
+  'telecommute',
 ];
 
 const PERSONAL_DOMAINS = [
@@ -123,6 +164,39 @@ const PERSONAL_DOMAINS = [
 ];
 
 const MAX_CANDIDATE_EMAILS = 50;
+
+function detectJobSourceCategory(url: string, providerLabel: string): string {
+  const lower = (url || '').toLowerCase();
+  if (lower.includes('linkedin.com')) return 'LinkedIn';
+  if (lower.includes('indeed.com')) return 'Indeed';
+  if (lower.includes('glassdoor.com')) return 'Glassdoor';
+  if (lower.includes('ziprecruiter.com')) return 'ZipRecruiter';
+  if (lower.includes('greenhouse.io')) return 'Greenhouse';
+  if (lower.includes('lever.co')) return 'Lever';
+  if (lower.includes('ashbyhq.com')) return 'Ashby';
+  if (lower.includes('workday.com') || lower.includes('myworkdayjobs.com')) return 'Workday';
+  if (lower.includes('smartrecruiters.com')) return 'SmartRecruiters';
+  if (lower.includes('workable.com')) return 'Workable';
+  if (lower.includes('bamboohr.com')) return 'BambooHR';
+  if (lower.includes('weworkremotely.com')) return 'WeWorkRemotely';
+  if (lower.includes('remoteok.com')) return 'RemoteOK';
+  if (lower.includes('remote.co')) return 'Remote.co';
+  if (lower.includes('himalayas.app')) return 'Himalayas';
+  if (lower.includes('jobicy.com')) return 'Jobicy';
+  if (lower.includes('remotive.com')) return 'Remotive';
+  if (lower.includes('monster.com')) return 'Monster';
+  if (lower.includes('wellfound.com') || lower.includes('angel.co')) return 'Wellfound';
+  if (lower.includes('dice.com')) return 'Dice';
+  if (lower.includes('builtin')) return 'Built In';
+  if (lower.includes('levels.fyi')) return 'Levels.fyi';
+  if (lower.includes('otta.com')) return 'Otta';
+  if (lower.includes('hiring.cafe')) return 'HiringCafe';
+  if (lower.includes('icims.com')) return 'iCIMS';
+  if (lower.includes('taleo.net')) return 'Taleo';
+  if (lower.includes('jobvite.com')) return 'Jobvite';
+  if (lower.includes('rippling.com') || lower.includes('rippling-ats.com')) return 'Rippling';
+  return providerLabel || 'Email Alert';
+}
 
 async function scanAccountInbox(
   account: {
@@ -158,23 +232,23 @@ async function scanAccountInbox(
 
     const lock = await client.getMailboxLock('INBOX');
     try {
-      // Stage 1: Fast Envelope Scan & Pre-filter without downloading full bodies
+      // Stage 1: Fast Envelope Scan & Pre-filter
       onProgress?.(0, `Scanning ${providerLabel} email headers for job alerts...`);
-      const candidateHeaders: Array<{ uid: number; subject: string; from: string }> = [];
+      const candidateHeadersMap = new Map<number, { uid: number; subject: string; from: string }>();
       const totalInBox = client.mailbox ? (client.mailbox as any).exists || 0 : 0;
       console.log(`[Email Sync - ${providerLabel}] Mailbox INBOX opened. Total messages: ${totalInBox}`);
 
-      // Extract candidate keywords from Job Discovery Settings
-      const userKeywords = [prefs.searchKeyword, prefs.includeKeywords]
+      // Extract candidate keywords from Job Discovery Settings and Location
+      const userKeywords = [prefs.searchKeyword, prefs.includeKeywords, prefs.searchLocation]
         .filter(Boolean)
         .flatMap((s: any) => String(s).toLowerCase().split(/[\s,]+/))
         .map((t: string) => t.trim())
         .filter((t: string) => t.length > 2);
 
-      for await (const message of client.fetch({ since: sinceDate }, { envelope: true, uid: true })) {
-        const subject = message.envelope?.subject || '';
-        const fromAddress = message.envelope?.from?.[0]?.address?.toLowerCase() || '';
-        const fromName = message.envelope?.from?.[0]?.name?.toLowerCase() || '';
+      const evaluateHeader = (envelope: any, uid: number) => {
+        const subject = envelope?.subject || '';
+        const fromAddress = envelope?.from?.[0]?.address?.toLowerCase() || '';
+        const fromName = envelope?.from?.[0]?.name?.toLowerCase() || '';
 
         const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
         const isFromSelf = Boolean(userEmail && fromAddress === userEmail);
@@ -183,52 +257,46 @@ async function scanAccountInbox(
         const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
         const matchesUserKeyword = userKeywords.some((kw: string) => combinedHeader.includes(kw));
 
-        // Only skip personal domains if the email has no job or user keyword signals
         if (!isFromSelf && isPersonalSender && !hasJobKeyword && !matchesUserKeyword) {
-          continue;
+          return false;
         }
 
         if (isFromSelf || isKnownJobSender || hasJobKeyword || matchesUserKeyword) {
-          candidateHeaders.push({
-            uid: message.uid,
-            subject,
-            from: fromAddress,
-          });
+          candidateHeadersMap.set(uid, { uid, subject, from: fromAddress });
+          return true;
+        }
+        return false;
+      };
+
+      // 1A. Scan recent message sequence (up to 200 messages) to guarantee newest emails are never missed
+      if (totalInBox > 0) {
+        const recentCount = Math.min(totalInBox, 200);
+        const fetchRange = `${Math.max(1, totalInBox - recentCount + 1)}:*`;
+        try {
+          for await (const message of client.fetch(fetchRange, { envelope: true, uid: true })) {
+            if (message.uid && message.envelope) {
+              evaluateHeader(message.envelope, message.uid);
+            }
+          }
+        } catch (seqErr: any) {
+          console.warn(`[Email Sync - ${providerLabel}] Recent sequence fetch warning:`, seqErr.message);
         }
       }
 
-      // Fallback: If date-based search returned 0 headers but inbox has messages, scan recent message sequence
-      if (candidateHeaders.length === 0 && totalInBox > 0) {
-        const fallbackCount = Math.min(totalInBox, 150);
-        console.log(`[Email Sync - ${providerLabel}] Date search returned 0 headers. Scanning most recent ${fallbackCount} emails as fallback...`);
-        const fetchRange = `${Math.max(1, totalInBox - fallbackCount + 1)}:*`;
-
-        for await (const message of client.fetch(fetchRange, { envelope: true, uid: true })) {
-          const subject = message.envelope?.subject || '';
-          const fromAddress = message.envelope?.from?.[0]?.address?.toLowerCase() || '';
-          const fromName = message.envelope?.from?.[0]?.name?.toLowerCase() || '';
-
-          const combinedHeader = `${subject} ${fromAddress} ${fromName}`.toLowerCase();
-          const isFromSelf = Boolean(userEmail && fromAddress === userEmail);
-          const isPersonalSender = PERSONAL_DOMAINS.some(domain => fromAddress.endsWith(domain));
-          const isKnownJobSender = KNOWN_JOB_SENDERS.some(domain => fromAddress.includes(domain) || fromName.includes(domain));
-          const hasJobKeyword = JOB_KEYWORDS.some(kw => combinedHeader.includes(kw));
-          const matchesUserKeyword = userKeywords.some((kw: string) => combinedHeader.includes(kw));
-
-          if (!isFromSelf && isPersonalSender && !hasJobKeyword && !matchesUserKeyword) {
-            continue;
+      // 1B. If candidate count is under limit, run date-based search to supplement
+      if (candidateHeadersMap.size < MAX_CANDIDATE_EMAILS) {
+        try {
+          for await (const message of client.fetch({ since: sinceDate }, { envelope: true, uid: true })) {
+            if (message.uid && message.envelope && !candidateHeadersMap.has(message.uid)) {
+              evaluateHeader(message.envelope, message.uid);
+            }
           }
-
-          if (isFromSelf || isKnownJobSender || hasJobKeyword || matchesUserKeyword) {
-            candidateHeaders.push({
-              uid: message.uid,
-              subject,
-              from: fromAddress,
-            });
-          }
+        } catch (dateErr: any) {
+          console.warn(`[Email Sync - ${providerLabel}] Date-based fetch warning:`, dateErr.message);
         }
       }
 
+      const candidateHeaders = Array.from(candidateHeadersMap.values());
       console.log(`[Email Sync - ${providerLabel}] Discovered ${candidateHeaders.length} matching job email headers.`);
 
       if (candidateHeaders.length === 0) {
@@ -262,21 +330,61 @@ async function scanAccountInbox(
 
           const effectiveText = (htmlText.length > text.length ? htmlText : text) || text || htmlText;
 
-          const urlRegex = /(https?:\/\/[^\s<"']+)/g;
-          const htmlUrls = html.match(urlRegex) || [];
-          const textUrls = effectiveText.match(urlRegex) || [];
-          const allUrls = Array.from(new Set([...htmlUrls, ...textUrls])).filter(u => {
-            const lower = u.toLowerCase();
-            if (lower.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf|webp)$/i)) return false;
-            if (lower.includes('unsubscribe') || lower.includes('preferences') || lower.includes('notifications') || lower.includes('privacy') || lower.includes('mailto:')) return false;
-            if (isNonJobUrl(u)) return false;
-            return true;
-          });
+          // Extract URLs from HTML href attributes and text
+          const hrefUrls: string[] = [];
+          const hrefRegex = /href=["'](https?:\/\/[^"'\s>]+)["']/gi;
+          let hrefMatch;
+          while ((hrefMatch = hrefRegex.exec(html)) !== null) {
+            if (hrefMatch[1]) hrefUrls.push(hrefMatch[1]);
+          }
 
-          if (allUrls.length === 0) continue;
+          const rawUrlRegex = /(https?:\/\/[^\s<"']+)/g;
+          const htmlUrls = html.match(rawUrlRegex) || [];
+          const textUrls = effectiveText.match(rawUrlRegex) || [];
+
+          const allRawUrls = Array.from(new Set([...hrefUrls, ...htmlUrls, ...textUrls]));
+
+          const validUrls = allRawUrls
+            .map(u => cleanJobUrl(u))
+            .filter(u => {
+              try {
+                const parsedUrl = new URL(u);
+                if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') return false;
+
+                const path = parsedUrl.pathname.toLowerCase();
+
+                // Skip static assets
+                if (path.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf|webp)$/i)) return false;
+
+                // Only skip settings/preferences/unsubscribe pages based on PATHNAME, not query parameters
+                // (job alert emails frequently include query params like ?trk=job_alert_notifications or source=notifications)
+                if (
+                  path.includes('unsubscribe') ||
+                  path.includes('email-preferences') ||
+                  path.includes('email_preferences') ||
+                  path.includes('/notification-settings') ||
+                  path.includes('/notifications/settings') ||
+                  path.includes('/privacy-policy') ||
+                  path.includes('/privacy') ||
+                  path.includes('/legal') ||
+                  path.includes('/help') ||
+                  path.includes('/support')
+                ) {
+                  return false;
+                }
+
+                // Check non-job URLs (e.g. company profiles, member profiles)
+                if (isNonJobUrl(u)) return false;
+
+                return true;
+              } catch {
+                return false;
+              }
+            });
+
+          if (validUrls.length === 0 && effectiveText.length < 50) continue;
 
           const textSnippet = effectiveText.slice(0, 35000);
-          if (!textSnippet && allUrls.length === 0) continue;
 
           candidatePayloads.push({
             subject,
@@ -288,7 +396,7 @@ EMAIL TEXT:
 ${textSnippet}
 
 LINKS FOUND IN EMAIL:
-${allUrls.slice(0, 120).join('\n')}
+${validUrls.slice(0, 120).join('\n')}
             `.trim(),
           });
         } catch (msgErr) {
@@ -344,6 +452,13 @@ ${allUrls.slice(0, 120).join('\n')}
           if (!job.url || isNonJobUrl(job.url)) continue;
           if (job.url.match(/\.(png|jpg|jpeg|gif|css|js|ico|svg|woff2?|ttf|webp)$/i)) continue;
 
+          const cleanedUrl = cleanJobUrl(job.url);
+          // Verify URL belongs to a valid job source (ATS, aggregator, verified career site)
+          if (!isValidJobSource(cleanedUrl)) {
+            console.log(`[Email Sync - ${providerLabel}] Skipping URL not recognized as valid job source: ${cleanedUrl}`);
+            continue;
+          }
+
           const jobTitle = job.title?.trim();
           if (!jobTitle || jobTitle.toLowerCase().includes('unknown') || jobTitle.toLowerCase() === 'overview') {
             continue;
@@ -354,24 +469,28 @@ ${allUrls.slice(0, 120).join('\n')}
             continue;
           }
 
-          const boardMatch = JOB_BOARDS.find(b => job.url.toLowerCase().includes(b)) || job.source;
-          const sourceCategory = boardMatch ? `Email Sync (${boardMatch})` : `Email Sync (${providerLabel})`;
+          const boardMatch = detectJobSourceCategory(cleanedUrl, providerLabel);
+          const sourceCategory = `Email Sync (${boardMatch})`;
 
           const shortDescParts = [job.description, job.requirements]
             .filter(Boolean)
             .map(s => String(s).trim())
             .filter(s => s.length > 0);
           const extractedDesc = shortDescParts.join('\n\n');
-          const cleanedUrl = cleanJobUrl(job.url);
           const finalDesc =
             extractedDesc.length > 15
               ? `${extractedDesc}\n\nFound via email link: ${cleanedUrl}`
               : `Found via email link: ${cleanedUrl}`;
 
+          let jobLocation = (job.location || '').trim();
+          if (!jobLocation || jobLocation.toLowerCase() === 'unknown') {
+            jobLocation = 'Remote';
+          }
+
           rawJobs.push({
             title: jobTitle,
             company: companyName,
-            location: job.location || 'Remote/Unknown',
+            location: jobLocation,
             salary_range: job.salary_range || null,
             description: finalDesc,
             requirements: job.requirements || null,
@@ -397,10 +516,18 @@ ${allUrls.slice(0, 120).join('\n')}
 
 export async function fetchEmailsAndExtractJobs(
   userId: string,
-  onProgress?: (foundCount: number, message: string) => void
+  onProgress?: (foundCount: number, message: string) => void,
+  searchOverrides?: { keyword?: string; location?: string }
 ) {
   onProgress?.(0, 'Retrieving email configuration...');
   const prefs = await getUserSettings(userId);
+  if (searchOverrides?.keyword && searchOverrides.keyword.trim()) {
+    prefs.searchKeyword = searchOverrides.keyword.trim();
+  }
+  if (searchOverrides?.location && searchOverrides.location.trim()) {
+    prefs.searchLocation = searchOverrides.location.trim();
+  }
+
   const activeAccounts = getActiveEmailAccounts(prefs);
 
   if (activeAccounts.length === 0) {
@@ -414,7 +541,7 @@ export async function fetchEmailsAndExtractJobs(
   });
   const sinceDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
-  console.log(`[Email Sync] Fetching candidate emails across ${activeAccounts.length} account(s) since ${sinceDate.toISOString()}...`);
+  console.log(`[Email Sync] Fetching candidate emails across ${activeAccounts.length} account(s) since ${sinceDate.toISOString()}... Target: "${prefs.searchKeyword || 'Any'}" in "${prefs.searchLocation || 'Any'}"`);
 
   const allRawJobs: any[] = [];
   const errors: Error[] = [];
@@ -490,3 +617,4 @@ export async function fetchEmailsAndExtractJobs(
 
   return newJobsSaved;
 }
+

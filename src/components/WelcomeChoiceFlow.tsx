@@ -55,7 +55,7 @@ export default function WelcomeChoiceFlow({ userName }: WelcomeChoiceFlowProps) 
       features: [
         'AI Opportunity Match Scoring (>80 filter)',
         'Scan inbox for job alert notifications',
-        autoApplyEnabled ? 'One-click auto apply and pipeline tracking' : '1-Click autofill and pipeline tracking'
+        autoApplyEnabled ? 'Automated application submission and pipeline tracking' : 'Tailored application assets and pipeline tracking'
       ]
     },
     {

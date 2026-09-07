@@ -109,6 +109,7 @@ export async function normalizeAndSaveJobs(
     const includeKeywordsStr: string = (options.includeKeywords !== undefined ? options.includeKeywords : (settings.includeKeywords || '')).trim();
     const excludeKeywordsStr: string = (options.excludeKeywords !== undefined ? options.excludeKeywords : (settings.excludeKeywords || '')).trim();
     const searchKeyword: string = (options.searchKeyword !== undefined ? options.searchKeyword : (settings.searchKeyword || '')).trim();
+    const searchLocation: string = (options.searchLocation !== undefined ? options.searchLocation : (settings.searchLocation || '')).trim();
     const profileText: string = (settings.profile || settings.resumeMarkdown || '').slice(0, 800);
 
     const rawCount = rawJobs.length;
@@ -177,10 +178,11 @@ export async function normalizeAndSaveJobs(
     });
 
     // Stage 3: User Personal Deterministic Location, Role & Keyword Filters
-    // Note: Per requirements, Location Preference does NOT disqualify email synced jobs.
     let normalizedJobs = [...deduplicatedJobs];
 
-    if (!isEmailSync && remoteOnly) {
+    const isUserRemoteTarget = remoteOnly || (searchLocation && isRemoteLocation(searchLocation));
+
+    if (isUserRemoteTarget) {
         const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => isRemoteLocation(j.location || ''));
         const dropped = before - normalizedJobs.length;
@@ -195,7 +197,7 @@ export async function normalizeAndSaveJobs(
     }
 
     // Deterministic Role Match Pre-Filter: discard listings that have 0 semantic/keyword overlap with search target
-    if (!isEmailSync && searchKeyword && searchKeyword.trim().length > 0) {
+    if (searchKeyword && searchKeyword.trim().length > 0) {
         const before = normalizedJobs.length;
         normalizedJobs = normalizedJobs.filter(j => {
             const score = computeRoleMatchScore(j.title, searchKeyword, j.description);

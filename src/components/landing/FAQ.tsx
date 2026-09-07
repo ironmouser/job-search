@@ -17,7 +17,7 @@ export default function FAQ() {
           { q: "Can I disable Auto Apply?", a: "Yes, you have full control over the automation settings and can pause or disable auto-apply at any time." }
         ]
       : [
-          { q: "How does the Autofill extension work?", a: "With one click on any supported job site, our browser extension fills out application fields, attaches your tailored resume and cover letter, and answers screening questions." },
+          { q: "How do I apply to jobs?", a: "Download your tailored resume and cover letter with one click, then click Apply to open the direct application link on the employer's website." },
           { q: "Can I edit the generated resumes and cover letters?", a: "Yes. You have full control to review, edit, or customize any AI-generated asset before applying." }
         ])
   ];

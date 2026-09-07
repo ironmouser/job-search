@@ -512,27 +512,28 @@ export async function extractJobsFromEmailText(
         excludeKeywords?: string;
     }
 ) {
-    if (!process.env.OPENAI_API_KEY && !process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY) return [];
+    if (!process.env.OPENAI_API_KEY && !process.env.DEEPSEEK_API_KEY && !process.env.GEMINI_API_KEY && !process.env.GLM_API_KEY && !process.env.ZHIPU_API_KEY) return [];
 
     let criteriaPrompt = '';
-    if (options?.searchKeyword || options?.includeKeywords || options?.excludeKeywords) {
+    if (options?.searchKeyword || options?.includeKeywords || options?.excludeKeywords || options?.searchLocation) {
         criteriaPrompt += `\nCANDIDATE JOB DISCOVERY SETTINGS & PREFERENCES:\n`;
         if (options.searchKeyword) criteriaPrompt += `Target Job Title(s) / Role(s): ${options.searchKeyword}\n`;
         if (options.jobLevel) criteriaPrompt += `Target Seniority Level: ${options.jobLevel}\n`;
         if (options.includeKeywords) criteriaPrompt += `Target Required/Included Keywords: ${options.includeKeywords}\n`;
         if (options.excludeKeywords) criteriaPrompt += `Excluded Keywords: ${options.excludeKeywords}\n`;
-        if (options.searchLocation) criteriaPrompt += `Location Preference: ${options.searchLocation} (Note: Location Preference is a soft preference and does NOT disqualify a job)\n`;
+        if (options.searchLocation) criteriaPrompt += `Location Preference: ${options.searchLocation}\n`;
 
         criteriaPrompt += `\nEXTRACTION & MATCHING GUIDELINES:
-- Extract all open job postings that match, are relevant to, or are in the same general career field / discipline as the user's target job title (e.g. if the target is "Software Engineer", extract Full Stack, Frontend, Backend, Systems, Cloud, Mobile, or Staff/Lead Software roles; if target is "Product Manager", extract Associate, Technical, Senior, or Group PM roles).
+- ROLE ALIGNMENT: Focus strictly on legitimate open job postings that match, are relevant to, or are in the same career track as the candidate's target job title(s) (e.g. if the target is "Product Manager", extract Associate, Technical, Senior, Lead, or Group Product Manager roles; if "Software Engineer", extract Full Stack, Frontend, Backend, or Lead software roles).
 - If the candidate's target job title specifies multiple comma-separated roles, extract jobs that match ANY of those roles.
-- DISCOVERY SETTINGS COMPLIANCE: Use the candidate's job discovery settings (job title, seniority level, included/excluded keywords) as the guiding criteria for which roles to extract.
-- LOCATION PREFERENCE RULE: Location Preference does NOT disqualify a job from being a valid job result. Extract all legitimate matching roles regardless of whether they are Remote, Hybrid, On-site, or in a different city, state, or country.
-- Exclude jobs that match excluded keywords or are in completely unrelated professions/industries (e.g. cashier, truck driver, nurse when user is in software).\n`;
+- LOCATION ALIGNMENT: If the candidate specifies "Remote" (or a specific location), prioritize and extract positions that match this location preference (e.g. Remote, US Remote, Worldwide Remote, Work From Home, or roles available in the candidate's target location).
+- ACCURATE LOCATION VALUE: In the "location" field, accurately specify "Remote" (or "Remote - US", etc.) if the position is remote, work from home, or virtual.
+- VALID JOB SOURCES: Only extract jobs that link to legitimate job postings from valid job sources (job boards, ATS platforms like Greenhouse, Lever, Workday, Ashby, etc., or verified company career pages).
+- Exclude jobs that match excluded keywords or are in completely unrelated professions/industries.\n`;
     }
 
     const prompt = `You are an expert data extraction assistant.
-Extract all legitimate individual job postings mentioned in the following email text that could be relevant to the candidate.
+Extract all legitimate individual job postings mentioned in the following email text that match the candidate's target role and location preferences.
 ${criteriaPrompt}
 For each job listing found, associate it with its corresponding job link from the text or the LINKS FOUND IN EMAIL section.
 
@@ -541,6 +542,7 @@ CRITICAL EXTRACTION RULES:
 - NEVER extract company profile/overview pages, agency directory links (e.g. dice.com/company-profile/..., linkedin.com/company/..., indeed.com/cmp/...), or email sponsor/branding headers as job postings.
 - The job title must be an actual position title (e.g. "Senior Product Manager", "Data Analyst"), NOT a company name or "Overview".
 - Always associate each job with its specific direct link from the email or links list whenever available.
+- If the candidate's target role or location (e.g. Remote) is provided, only extract jobs that align with those criteria.
 
 
 Return a JSON object strictly matching this schema:

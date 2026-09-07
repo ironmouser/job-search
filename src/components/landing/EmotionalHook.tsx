@@ -11,7 +11,7 @@ export default function EmotionalHook() {
     "Scores every opportunity",
     "Tailors your resume",
     "Prepares applications",
-    autoApplyEnabled ? "Auto applies where supported" : "1-Click browser autofill"
+    autoApplyEnabled ? "Auto applies where supported" : "Direct application links"
   ];
 
   return (

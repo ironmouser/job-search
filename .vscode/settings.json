@@ -1,0 +1,21 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "markdown.validate.enabled": false,
+  "markdown.validate.fragmentLinks.enabled": "ignore",
+  "markdown.validate.fileLinks.enabled": "ignore",
+  "markdown.validate.referenceLinks.enabled": "ignore",
+
+  "markdownlint.ignore": [
+    "**/.gemini/**",
+    "**/brain/**",
+    "**/.agents/**"
+  ]
+}

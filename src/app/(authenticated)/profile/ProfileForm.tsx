@@ -626,7 +626,7 @@ export default function ProfileForm({
           <p className="page-subtitle">
             {autoApplyEnabled
               ? "Manage your personal information, auto-apply settings, target profile, and base resume."
-              : "Manage your personal information, application autofill settings, target profile, and base resume."}
+              : "Manage your personal information, target profile, and base resume."}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -656,7 +656,7 @@ export default function ProfileForm({
         <div className="accordion-card-header" onClick={() => toggleSection('personal-info')}>
           <div>
             <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
-              <User size={20} className="text-accent" /> My Info & Auto-Fill Settings
+              <User size={20} className="text-accent" /> {autoApplyEnabled ? "My Info & Auto-Apply Settings" : "My Contact Info"}
             </h3>
           </div>
           <ChevronDown size={20} className="accordion-chevron" />
@@ -666,7 +666,7 @@ export default function ProfileForm({
           <div className="accordion-summary-box" onClick={() => toggleSection('personal-info')}>
             {autoApplyEnabled
               ? "Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for automatic job applications. Click to view or edit."
-              : "Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for 1-click browser autofill and document tailoring. Click to view or edit."}
+              : "Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for document tailoring and application generation. Click to view or edit."}
           </div>
         )}
 
@@ -677,7 +677,7 @@ export default function ProfileForm({
                 <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
                   {autoApplyEnabled
                     ? "Your contact details used to automatically complete job applications."
-                    : "Your contact details used for 1-click browser autofill and tailored application generation."}
+                    : "Your contact details used for tailored document and application generation."}
                 </p>
               </div>
 
@@ -717,7 +717,7 @@ export default function ProfileForm({
         >
           <Info size={18} style={{ color: "#3b82f6", flexShrink: 0, marginTop: "2px" }} />
           <p style={{ margin: 0, fontSize: "0.83rem", color: "var(--text-primary)", lineHeight: 1.45 }}>
-            <strong>{autoApplyEnabled ? "Auto Apply Notice:" : "Autofill Notice:"}</strong> The contact details in this section are saved securely and {autoApplyEnabled ? "injected directly into application forms (Workday, Greenhouse, Lever, Ashby, Workable, etc.) when running Auto Apply on your behalf" : "used by your 1-click browser autofill extension to populate application forms on company career portals"}. We do not sell or share your information with any 3rd party companies.
+            <strong>{autoApplyEnabled ? "Auto Apply Notice:" : "Privacy Notice:"}</strong> The contact details in this section are saved securely and {autoApplyEnabled ? "injected directly into application forms (Workday, Greenhouse, Lever, Ashby, Workable, etc.) when running Auto Apply on your behalf" : "used to personalize your tailored resumes, cover letters, and application materials"}. We do not sell or share your information with any 3rd party companies.
           </p>
         </div>
 
@@ -986,7 +986,7 @@ export default function ProfileForm({
           <div className="accordion-summary-box" onClick={() => toggleSection('work-auth')}>
             {autoApplyEnabled
               ? "Required for Auto Applying. Work authorization, visa sponsorship, and voluntary EEOC self-identification injected into application questionnaires. Click to configure."
-              : "Work authorization, visa sponsorship, and voluntary EEOC self-identification used for 1-click browser autofill and application questionnaires. Click to configure."}
+              : "Work authorization, visa sponsorship, and voluntary EEOC self-identification saved for your application records. Click to configure."}
           </div>
         )}
 

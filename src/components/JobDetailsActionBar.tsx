@@ -586,7 +586,7 @@ export default function JobDetailsActionBar({
                   borderRadius: '9999px',
                   fontWeight: 700,
                 }}>
-                  1-Click
+                  Automated
                 </span>
               </button>
             )}

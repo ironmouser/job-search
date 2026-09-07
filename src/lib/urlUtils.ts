@@ -1,6 +1,17 @@
 export function cleanJobUrl(rawUrl: string): string {
   try {
     let urlToParse = rawUrl.trim();
+    // Unescape HTML entities commonly found in email anchor tags
+    urlToParse = urlToParse
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>');
+
+    // Strip trailing punctuation often attached from email prose or closing brackets
+    urlToParse = urlToParse.replace(/[),.:;>"]+$/, '');
+
     if (urlToParse.endsWith('/')) {
         urlToParse = urlToParse.slice(0, -1);
     }
@@ -41,6 +52,12 @@ export function cleanJobUrl(rawUrl: string): string {
       if (jk) {
         return `https://indeed.com/viewjob?jk=${jk}`;
       }
+      if (parsed.pathname.includes('/rc/clk') && parsed.searchParams.has('dest')) {
+        const dest = parsed.searchParams.get('dest');
+        if (dest && dest.startsWith('http')) {
+          return cleanJobUrl(decodeURIComponent(dest));
+        }
+      }
     }
 
     // 5. Unwrap ZipRecruiter email tracking links to canonical job URLs
@@ -52,14 +69,14 @@ export function cleanJobUrl(rawUrl: string): string {
     }
 
     // 6. General redirect unwrapper (e.g. email tracking links with dest/target/redirect_url)
-    if (parsed.searchParams.has('redirect_url') || parsed.searchParams.has('target_url') || parsed.searchParams.has('continue')) {
-      const target = parsed.searchParams.get('redirect_url') || parsed.searchParams.get('target_url') || parsed.searchParams.get('continue');
+    if (parsed.searchParams.has('redirect_url') || parsed.searchParams.has('target_url') || parsed.searchParams.has('continue') || parsed.searchParams.has('dest')) {
+      const target = parsed.searchParams.get('redirect_url') || parsed.searchParams.get('target_url') || parsed.searchParams.get('continue') || parsed.searchParams.get('dest');
       if (target && target.startsWith('http')) {
         return cleanJobUrl(decodeURIComponent(target));
       }
     }
     
-    // 4. Strip tracking query params
+    // 7. Strip tracking query params
     const trackingParams = [
         'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 
         'ref', 'trackingid', 'trackingId', 'gh_src', 'src', 'trk', 'refId',
@@ -67,10 +84,10 @@ export function cleanJobUrl(rawUrl: string): string {
     ];
     trackingParams.forEach(param => parsed.searchParams.delete(param));
 
-    // 5. Strip hash fragments (e.g. Chrome text fragments #:~:text=...)
+    // 8. Strip hash fragments (e.g. Chrome text fragments #:~:text=...)
     parsed.hash = '';
 
-    // 6. Normalize www vs non-www to always use non-www for deduplication
+    // 9. Normalize www vs non-www to always use non-www for deduplication
     if (parsed.hostname.startsWith('www.')) {
         parsed.hostname = parsed.hostname.slice(4);
     }
@@ -85,7 +102,7 @@ export function cleanJobUrl(rawUrl: string): string {
   }
 }
 
-import { evaluateUrlReputation } from './companyReputation';
+import { evaluateUrlReputation, isCareerPath } from './companyReputation';
 export { evaluateUrlReputation } from './companyReputation';
 
 /**
@@ -95,6 +112,25 @@ export function isTrustedJobUrl(rawUrl: string): boolean {
   try {
     const rep = evaluateUrlReputation(rawUrl);
     return rep.isLegitimate && (rep.isKnownATS || rep.confidence === 'high');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns true if the URL points to a valid job source:
+ * a recognized ATS, verified aggregator/board, legitimate company career page, or has career path.
+ */
+export function isValidJobSource(rawUrl: string): boolean {
+  if (!rawUrl || isNonJobUrl(rawUrl)) return false;
+  try {
+    const parsed = new URL(rawUrl.trim());
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    if (isKnownATSUrl(rawUrl)) return true;
+    if (isAggregatorUrl(rawUrl)) return true;
+    if (isCareerPath(parsed.pathname)) return true;
+    const rep = evaluateUrlReputation(rawUrl);
+    return rep.isLegitimate && rep.confidence !== 'suspicious';
   } catch {
     return false;
   }

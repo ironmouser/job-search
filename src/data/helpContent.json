@@ -45,7 +45,7 @@
                 {
                     "target": "[data-tour='job-detail-apply']",
                     "title": "Apply to Job",
-                    "content": "Submit your application using 1-click Auto Apply, Chrome extension autofill, or the direct career site link.",
+                    "content": "Download your tailored resume and cover letter, then proceed directly to the employer's application page to submit.",
                     "placement": "top",
                     "route": "/dashboard"
                 },
@@ -232,7 +232,7 @@
                 {
                     "target": "[data-tour='job-detail-apply']",
                     "title": "Apply to Job",
-                    "content": "Submit your application using 1-click Auto Apply, Chrome extension autofill, or the direct career site link.",
+                    "content": "Download your tailored resume and cover letter, then proceed directly to the employer's application page to submit.",
                     "placement": "top",
                     "route": "/dashboard"
                 }

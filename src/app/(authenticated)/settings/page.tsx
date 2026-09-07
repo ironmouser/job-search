@@ -21,6 +21,7 @@ import { trackSettingsView, trackSettingsSave } from '@/lib/analytics';
 import { getEffectiveTier } from '@/lib/tier';
 import { FREE_ALLOWED_SOURCES, INTERNATIONAL_SOURCES, DEFAULT_PRO_SOURCES, DEFAULT_FREE_SOURCES } from '@/lib/settings';
 import { DEFAULT_PROVIDER_CONFIGS, DEFAULT_EMAIL_PROVIDERS } from '@/lib/emailAccounts';
+import { isAutoApplyEnabled } from '@/lib/features';
 
 const SOURCE_LABELS: Record<string, string> = {
     indeed: 'Indeed',
@@ -119,6 +120,7 @@ const isDeepEqual = (a: any, b: any): boolean => {
 
 export default function SettingsPage() {
     const router = useRouter();
+    const autoApplyEnabled = isAutoApplyEnabled();
     const { setPageActions } = useCommandBar();
     const [settings, setSettings] = useState<any>({});
     const settingsRef = useRef<any>({});
@@ -424,7 +426,7 @@ export default function SettingsPage() {
                 {[
                     { id: 'general', label: 'General' },
                     { id: 'job-discovery', label: 'Discovery' },
-                    { id: 'connected-accounts', label: 'Job Boards' },
+                    ...(autoApplyEnabled ? [{ id: 'connected-accounts', label: 'Job Boards' }] : []),
                     { id: 'scoring', label: 'AI Rules' },
                     { id: 'email-sync', label: 'Email Sync' },
                     { id: 'pdf-customizer', label: 'PDF Format' },
@@ -913,27 +915,29 @@ export default function SettingsPage() {
             )}
         </div>
 
-        {/* Connected Job Boards (1-Click & Easy Apply) */}
-        <div className={`glass-card accordion-card responsive-card-padding ${openSections['connected-accounts'] ? 'open' : ''}`} id="connected-accounts">
-            <div className="accordion-card-header" onClick={() => toggleSection('connected-accounts')}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-                    <Key size={22} className="text-accent" /> Connected Job Boards
-                </h3>
-                <ChevronDown size={20} className="accordion-chevron" />
+        {/* Connected Job Boards (Auto Apply Accounts) */}
+        {autoApplyEnabled && (
+            <div className={`glass-card accordion-card responsive-card-padding ${openSections['connected-accounts'] ? 'open' : ''}`} id="connected-accounts">
+                <div className="accordion-card-header" onClick={() => toggleSection('connected-accounts')}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                        <Key size={22} className="text-accent" /> Connected Job Boards
+                    </h3>
+                    <ChevronDown size={20} className="accordion-chevron" />
+                </div>
+
+                {!openSections['connected-accounts'] && (
+                    <div className="accordion-summary-box" onClick={() => toggleSection('connected-accounts')}>
+                        Connect your LinkedIn, Indeed, ZipRecruiter, and Dice accounts for automated job applications.
+                    </div>
+                )}
+
+                {openSections['connected-accounts'] && (
+                    <div className="accordion-body">
+                        <ConnectedAccountsSection />
+                    </div>
+                )}
             </div>
-
-            {!openSections['connected-accounts'] && (
-                <div className="accordion-summary-box" onClick={() => toggleSection('connected-accounts')}>
-                    Connect your LinkedIn, Indeed, ZipRecruiter, and Dice accounts for automated 1-Click and Easy Apply submissions.
-                </div>
-            )}
-
-            {openSections['connected-accounts'] && (
-                <div className="accordion-body">
-                    <ConnectedAccountsSection />
-                </div>
-            )}
-        </div>
+        )}
 
         {/* Recruiter Discovery Network */}
         <div className={`glass-card accordion-card responsive-card-padding ${openSections['recruiter-discovery'] ? 'open' : ''}`} id="recruiter-discovery">

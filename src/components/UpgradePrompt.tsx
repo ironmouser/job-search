@@ -62,7 +62,7 @@ function buildMessage(
   const subMap: Record<string, string> = {
     scoring: 'Upgrade to Pro for unlimited AI Match Scoring.',
     generation: 'Upgrade to Pro for unlimited resume and cover letter generation.',
-    autofill: 'Upgrade to Pro for unlimited Smart Applies.',
+    autofill: 'Upgrade to Pro for unlimited applications.',
     qa: 'Upgrade to Pro to unlock Application Q&A answers.',
     'email-sync': 'Upgrade to Pro to sync job leads from your inbox.',
   };
