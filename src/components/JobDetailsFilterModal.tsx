@@ -126,6 +126,23 @@ export default function JobDetailsFilterModal({
     setKeywordFilter('');
     setStartDate('');
     setEndDate('');
+    try {
+      const saved = localStorage.getItem('jobAgentDashboardState');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        delete parsed.activeFilter;
+        delete parsed.keywordFilter;
+        delete parsed.sourceFilter;
+        delete parsed.startDate;
+        delete parsed.endDate;
+        delete parsed.locationFilter;
+        delete parsed.minScoreFilter;
+        parsed.currentPage = 1;
+        localStorage.setItem('jobAgentDashboardState', JSON.stringify(parsed));
+      }
+    } catch {
+      // Ignore
+    }
   };
 
   const setPresetDateRange = (preset: 'all' | 'today' | 7 | 30) => {
@@ -428,7 +445,7 @@ export default function JobDetailsFilterModal({
               borderRadius: '6px'
             }}
           >
-            <RotateCcw size={14} /> Reset
+            <RotateCcw size={14} /> Clear All Filters
           </button>
 
           <div style={{ display: 'flex', gap: '0.5rem' }}>

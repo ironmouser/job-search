@@ -26,6 +26,7 @@ interface DashboardFilterModalProps {
   setActiveFilter?: (val: 'all' | 'scored' | 'high_fit' | 'archived') => void;
   minScore?: number;
   setMinScore?: (val: number) => void;
+  onReset?: () => void;
 }
 
 export default function DashboardFilterModal({
@@ -48,7 +49,8 @@ export default function DashboardFilterModal({
   activeFilter = 'all',
   setActiveFilter,
   minScore = 50,
-  setMinScore
+  setMinScore,
+  onReset
 }: DashboardFilterModalProps) {
   const setPresetDateRange = (preset: 'all' | 'today' | 7 | 30) => {
     if (preset === 'all') {
@@ -67,14 +69,18 @@ export default function DashboardFilterModal({
   };
 
   const handleReset = () => {
-    setKeywordFilter('');
-    setSourceFilter('both');
-    setStartDate('');
-    setEndDate('');
-    setLocationFilter([]);
-    if (setSortOption) setSortOption('role_match');
-    if (setActiveFilter) setActiveFilter('all');
-    if (setMinScore) setMinScore(50);
+    if (onReset) {
+      onReset();
+    } else {
+      setKeywordFilter('');
+      setSourceFilter('both');
+      setStartDate('');
+      setEndDate('');
+      setLocationFilter([]);
+      if (setSortOption) setSortOption('role_match');
+      if (setActiveFilter) setActiveFilter('all');
+      if (setMinScore) setMinScore(50);
+    }
   };
 
   return (
@@ -475,7 +481,7 @@ export default function DashboardFilterModal({
               borderRadius: '6px'
             }}
           >
-            <RotateCcw size={14} /> Reset
+            <RotateCcw size={14} /> Clear All Filters
           </button>
 
           <button

@@ -2,7 +2,7 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, ArrowRight, Search, X, Loader2, SlidersHorizontal, ArrowUpDown, FileText, MoreVertical, AlertOctagon } from 'lucide-react';
+import { ExternalLink, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, ArrowRight, Search, X, Loader2, SlidersHorizontal, ArrowUpDown, FileText, MoreVertical, AlertOctagon, RotateCcw } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
@@ -405,6 +405,7 @@ export default function DashboardClient({
   }, []);
 
   const hasActiveFilters = Boolean(
+    activeFilter !== 'all' ||
     keywordFilter ||
     sourceFilter !== 'both' ||
     startDate ||
@@ -413,6 +414,36 @@ export default function DashboardClient({
     sortOption !== 'role_match' ||
     minScoreFilter !== 50
   );
+
+  const handleClearAllFilters = useCallback(() => {
+    setActiveFilter('all');
+    setKeywordFilter('');
+    setSourceFilter('both');
+    setStartDate('');
+    setEndDate('');
+    setLocationFilter([]);
+    setSortOption('role_match');
+    setMinScoreFilter(50);
+    setCurrentPage(1);
+
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('jobAgentDashboardState');
+        const stateObj = saved ? JSON.parse(saved) : {};
+        delete stateObj.activeFilter;
+        delete stateObj.keywordFilter;
+        delete stateObj.sourceFilter;
+        delete stateObj.startDate;
+        delete stateObj.endDate;
+        delete stateObj.locationFilter;
+        delete stateObj.minScoreFilter;
+        stateObj.currentPage = 1;
+        localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
+      } catch {
+        // Ignore
+      }
+    }
+  }, []);
 
   const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
@@ -573,27 +604,33 @@ export default function DashboardClient({
         setViewMode('columns');
       }
 
-      if (stateFromStorage.activeFilter) setActiveFilter(stateFromStorage.activeFilter as 'all' | 'scored' | 'high_fit' | 'archived');
-      if (stateFromStorage.sortOption) setSortOption(stateFromStorage.sortOption as SortOptionType);
-      if (stateFromStorage.locationFilter !== undefined) {
-        if (Array.isArray(stateFromStorage.locationFilter)) {
-          setLocationFilter(stateFromStorage.locationFilter as string[]);
-        } else if (typeof stateFromStorage.locationFilter === 'string') {
-          if (stateFromStorage.locationFilter === 'all' || !stateFromStorage.locationFilter) {
-            setLocationFilter([]);
-          } else {
-            setLocationFilter([stateFromStorage.locationFilter]);
-          }
+      // Each time the user logs in or refreshes the page, default the dashboard to shown all found jobs
+      setActiveFilter('all');
+      setKeywordFilter('');
+      setSourceFilter('both');
+      setStartDate('');
+      setEndDate('');
+      setLocationFilter([]);
+      setSortOption('role_match');
+      setMinScoreFilter(50);
+
+      // Clean persistent filter keys from storage so stale filters do not linger
+      try {
+        const savedState = localStorage.getItem('jobAgentDashboardState');
+        if (savedState) {
+          const stateObj = JSON.parse(savedState);
+          delete stateObj.activeFilter;
+          delete stateObj.keywordFilter;
+          delete stateObj.sourceFilter;
+          delete stateObj.startDate;
+          delete stateObj.endDate;
+          delete stateObj.locationFilter;
+          delete stateObj.minScoreFilter;
+          stateObj.currentPage = 1;
+          localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
         }
-      }
-      if (stateFromStorage.sourceFilter) setSourceFilter(stateFromStorage.sourceFilter as 'both' | 'email' | 'scraped');
-      if (stateFromStorage.startDate !== undefined) setStartDate(stateFromStorage.startDate as string);
-      if (stateFromStorage.endDate !== undefined) setEndDate(stateFromStorage.endDate as string);
-      if (stateFromStorage.keywordFilter !== undefined) setKeywordFilter(stateFromStorage.keywordFilter as string);
-      if (stateFromStorage.searchRole !== undefined) setSearchRole(stateFromStorage.searchRole as string);
-      if (stateFromStorage.minScoreFilter !== undefined) {
-        const restoredScore = stateFromStorage.minScoreFilter === 25 ? 50 : (stateFromStorage.minScoreFilter as number);
-        setMinScoreFilter(restoredScore);
+      } catch {
+        // Ignore
       }
 
       const savedSearchRole = typeof window !== 'undefined' ? localStorage.getItem('dashboard_search_role') : null;
@@ -601,12 +638,15 @@ export default function DashboardClient({
         setSearchRole(savedSearchRole);
       }
 
-      const savedPageStr = urlPage || (stateFromStorage.currentPage as string | number) || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_page') || sessionStorage.getItem('dashboard_page')) : null);
-      if (savedPageStr) {
-        const pageNum = parseInt(savedPageStr.toString(), 10);
+      if (urlPage) {
+        const pageNum = parseInt(urlPage, 10);
         if (!isNaN(pageNum) && pageNum > 0) {
           setCurrentPage(pageNum);
+        } else {
+          setCurrentPage(1);
         }
+      } else {
+        setCurrentPage(1);
       }
 
       const savedLimitStr = urlLimit || (stateFromStorage.itemsPerPage as string | number) || (typeof window !== 'undefined' ? (localStorage.getItem('dashboard_items_per_page') || sessionStorage.getItem('dashboard_items_per_page')) : null);
@@ -690,12 +730,31 @@ export default function DashboardClient({
 
   const handleViewModeChange = useCallback((mode: 'grid' | 'table' | 'columns') => {
     setViewMode(mode);
+    // When changing view mode, default the dashboard to shown all found jobs
+    setActiveFilter('all');
+    setKeywordFilter('');
+    setSourceFilter('both');
+    setStartDate('');
+    setEndDate('');
+    setLocationFilter([]);
+    setSortOption('role_match');
+    setMinScoreFilter(50);
+    setCurrentPage(1);
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('dashboard_view_mode_explicit', mode);
       try {
         const saved = localStorage.getItem('jobAgentDashboardState');
         const stateObj = saved ? JSON.parse(saved) : {};
         stateObj.viewMode = mode;
+        delete stateObj.activeFilter;
+        delete stateObj.keywordFilter;
+        delete stateObj.sourceFilter;
+        delete stateObj.startDate;
+        delete stateObj.endDate;
+        delete stateObj.locationFilter;
+        delete stateObj.minScoreFilter;
+        stateObj.currentPage = 1;
         localStorage.setItem('jobAgentDashboardState', JSON.stringify(stateObj));
       } catch {
         // Ignore
@@ -1813,6 +1872,32 @@ export default function DashboardClient({
                 </button>
               </div>
 
+              {/* Clear Filters Button (shown when any filters or status filters are active) */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearAllFilters}
+                  className="action-control-btn btn-clear-filters"
+                  title="Clear all filters and show all found jobs"
+                  style={{
+                    height: '38px',
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0 0.75rem',
+                    fontSize: '0.85rem',
+                    color: '#0070f3',
+                    borderColor: 'rgba(0, 112, 243, 0.3)',
+                    background: 'rgba(0, 112, 243, 0.06)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <RotateCcw size={13} />
+                  <span>Clear Filters</span>
+                </button>
+              )}
+
               {/* Sort Selector Dropdown */}
               <div
                 className="action-control-btn btn-sort"
@@ -2081,7 +2166,25 @@ export default function DashboardClient({
               {currentJobs.length === 0 && (
                 <tr>
                   <td colSpan={9} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No jobs match your current filters.
+                    <div>No jobs match your current filters.</div>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllFilters}
+                        style={{
+                          marginTop: '0.6rem',
+                          background: 'none',
+                          border: 'none',
+                          color: '#0070f3',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        Clear all filters & show all found jobs
+                      </button>
+                    )}
                   </td>
                 </tr>
               )}
@@ -2292,7 +2395,25 @@ export default function DashboardClient({
 
             {currentJobs.length === 0 && (
               <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                No jobs found
+                <div>No jobs match the current filters</div>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllFilters}
+                    style={{
+                      marginTop: '0.6rem',
+                      background: 'none',
+                      border: 'none',
+                      color: '#0070f3',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Clear all filters & show all found jobs
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -2811,6 +2932,28 @@ export default function DashboardClient({
                 </p>
               </div>
 
+              {jobs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAllFilters}
+                  className="btn-primary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '10px',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginTop: '0.5rem'
+                  }}
+                >
+                  <RotateCcw size={15} />
+                  <span>Clear All Filters & Show All Found Jobs</span>
+                </button>
+              )}
+
               {jobs.length === 0 && (
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
                   <Button 
@@ -3057,6 +3200,7 @@ export default function DashboardClient({
         setActiveFilter={setActiveFilter}
         minScore={minScoreFilter}
         setMinScore={setMinScoreFilter}
+        onReset={handleClearAllFilters}
       />
 
       {/* Dashboard Search Jobs Modal (from Bottom Command Bar) */}
