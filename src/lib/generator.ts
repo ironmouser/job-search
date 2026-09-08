@@ -113,7 +113,7 @@ async function repairJsonWithAi(rawText: string, userId?: string, model?: string
         userId: userId,
         temperature: 0.1
     });
-    return parseOrRepairJson(repairedText, 99);
+    return repairedText;
 }
 
 async function callAiService(params: {
