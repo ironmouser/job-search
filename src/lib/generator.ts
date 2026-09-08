@@ -621,7 +621,7 @@ export async function regenerateCoverLetter(userId: string, jobId: string, jobTi
     let responseText = await callAiService({
         system: systemPrompt,
         userPrompt: userPrompt,
-        maxTokens: 1024,
+        maxTokens: 4096,
         userId: userId,
         temperature: 1.0
     });
@@ -694,7 +694,7 @@ export async function regenerateNetworkingMessage(userId: string, jobId: string,
     let responseText = await callAiService({
         system: systemPrompt,
         userPrompt: userPrompt,
-        maxTokens: 512,
+        maxTokens: 4096,
         userId: userId,
         temperature: 1.0
     });

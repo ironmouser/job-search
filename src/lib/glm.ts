@@ -94,6 +94,10 @@ export async function callGLM(options: CallGLMOptions): Promise<string> {
                     console.warn(`[GLM ${modelName}] Response was truncated because it reached max_tokens limit (${bodyPayload.max_tokens}).`);
                 }
 
+                if (!content || !content.trim()) {
+                    throw new Error(`[GLM ${modelName}] Empty or truncated response (finish_reason: ${choice?.finish_reason || 'unknown'}, max_tokens: ${bodyPayload.max_tokens})`);
+                }
+
                 const usage = data.usage;
                 if (usage) {
                     await logAiCost(modelName, usage.prompt_tokens, usage.completion_tokens, options.userId);

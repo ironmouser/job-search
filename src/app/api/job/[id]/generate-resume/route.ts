@@ -77,10 +77,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             (userJob as any).additionalContext
         );
 
-        // Call AI using Primary: deepseek-v4-flash -> 1st Fallback: gemini-3.1-flash-lite
+        // Call AI using Primary: deepseek-v4-flash -> 1st Fallback: glm-5.3-flash -> 2nd Fallback: gemini-3.1-flash-lite
         const rawResume = await callAI({
             task: 'generate',
             model: 'deepseek-v4-flash',
+            fallbackModels: ['glm-5.3-flash', 'gemini-3.1-flash-lite'],
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }

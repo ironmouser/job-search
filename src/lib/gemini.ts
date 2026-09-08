@@ -101,6 +101,10 @@ export async function callGemini(options: CallGeminiOptions): Promise<string> {
                 const data = await res.json();
                 const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
+                if (!textContent || !textContent.trim()) {
+                    throw new Error(`[Gemini ${modelName}] Empty response received from API`);
+                }
+
                 const usageMetadata = data.usageMetadata;
                 if (usageMetadata) {
                     await logAiCost(

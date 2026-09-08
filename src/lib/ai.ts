@@ -28,133 +28,95 @@ export async function callAI(options: CallAIOptions): Promise<string> {
     const hasGemini = !!process.env.GEMINI_API_KEY;
     const hasOpenAI = !!process.env.OPENAI_API_KEY;
 
-    // Direct model override if specified — wrapped in try/catch to fall back to task routing if the requested model fails
-    if (model) {
-        const lowerModel = model.toLowerCase();
-        if (lowerModel.startsWith('glm')) {
-            if (hasGLM) {
-                try {
-                    return await callGLM({
-                        model,
-                        fallbackModels,
-                        messages: messages as GLMMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI] Direct GLM model (${model}) failed, falling back to task cascade:`, err.message);
-                }
-            }
-        } else if (lowerModel.startsWith('gemini')) {
-            if (hasGemini) {
-                try {
-                    return await callGemini({
-                        model,
-                        fallbackModels,
-                        messages: messages as GeminiMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI] Direct Gemini model (${model}) failed, falling back to task cascade:`, err.message);
-                }
-            }
-        } else if (lowerModel.startsWith('gpt') || lowerModel.startsWith('o1') || lowerModel.startsWith('o3') || lowerModel.startsWith('o4')) {
-            if (hasOpenAI) {
-                try {
-                    return await callOpenAI({
-                        model,
-                        fallbackModels,
-                        messages: messages as OpenAIMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI] Direct OpenAI model (${model}) failed, falling back to task cascade:`, err.message);
-                }
-            }
-        } else if (lowerModel.startsWith('deepseek')) {
-            if (hasDeepSeek) {
-                try {
-                    return await callDeepSeek({
-                        model,
-                        messages: messages as DeepSeekMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI] Direct DeepSeek model (${model}) failed, falling back to task cascade:`, err.message);
-                }
-            }
-        }
-    }
+    const failedModels = new Set<string>();
 
-    // Task-based routing defaults
-    switch (task) {
-        case 'triage': {
-            // Job page interpretation: GLM-5.3-Flash -> GPT-5 nano -> DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite
-            if (hasGLM) {
-                try {
-                    return await callGLM({
-                        model: 'glm-5.3-flash',
-                        fallbackModels: ['gpt-5-nano', 'deepseek-v4-flash', 'gemini-3.1-flash-lite', ...fallbackModels],
-                        messages: messages as GLMMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:triage] GLM failed, attempting OpenAI/DeepSeek fallback:`, err.message);
-                }
-            }
-            if (hasOpenAI) {
-                try {
-                    return await callOpenAI({
-                        model: 'gpt-5-nano',
-                        fallbackModels: ['deepseek-v4-flash', 'gemini-3.1-flash-lite', ...fallbackModels],
-                        messages: messages as OpenAIMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:triage] OpenAI failed, attempting DeepSeek fallback:`, err.message);
-                }
-            }
-            if (hasDeepSeek) {
-                try {
-                    return await callDeepSeek({
-                        model: 'deepseek-v4-flash',
-                        messages: messages as DeepSeekMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:triage] DeepSeek failed, attempting Gemini fallback:`, err.message);
-                }
-            }
-            if (hasGemini) {
-                return await callGemini({
-                    model: 'gemini-3.1-flash-lite',
-                    fallbackModels,
+    // Helper to invoke a model by identifier
+    const tryInvokeModel = async (targetModel: string): Promise<string | null> => {
+        const lower = targetModel.toLowerCase();
+        try {
+            if (lower.startsWith('glm') && hasGLM) {
+                const res = await callGLM({
+                    model: targetModel,
+                    messages: messages as GLMMessage[],
+                    jsonMode,
+                    temperature,
+                    maxTokens,
+                    userId
+                });
+                if (res && res.trim().length > 0) return res;
+            } else if (lower.startsWith('gemini') && hasGemini) {
+                const res = await callGemini({
+                    model: targetModel,
                     messages: messages as GeminiMessage[],
                     jsonMode,
                     temperature,
                     maxTokens,
                     userId
                 });
+                if (res && res.trim().length > 0) return res;
+            } else if (lower.startsWith('deepseek') && hasDeepSeek) {
+                const res = await callDeepSeek({
+                    model: targetModel,
+                    messages: messages as DeepSeekMessage[],
+                    jsonMode,
+                    temperature,
+                    maxTokens,
+                    userId
+                });
+                if (res && res.trim().length > 0) return res;
+            } else if ((lower.startsWith('gpt') || lower.startsWith('o1') || lower.startsWith('o3') || lower.startsWith('o4')) && hasOpenAI) {
+                const res = await callOpenAI({
+                    model: targetModel,
+                    messages: messages as OpenAIMessage[],
+                    jsonMode,
+                    temperature,
+                    maxTokens,
+                    userId
+                });
+                if (res && res.trim().length > 0) return res;
+            }
+        } catch (err: any) {
+            console.warn(`[callAI] Target model (${targetModel}) invocation failed:`, err.message);
+        }
+        failedModels.add(lower);
+        return null;
+    };
+
+    // 1. Direct model override if specified
+    if (model) {
+        const directResult = await tryInvokeModel(model);
+        if (directResult) return directResult;
+        console.warn(`[callAI] Direct model (${model}) failed, falling back to fallbacks/task cascade...`);
+    }
+
+    // 2. Explicit caller-provided fallback models
+    if (fallbackModels.length > 0) {
+        for (const fbModel of fallbackModels) {
+            if (failedModels.has(fbModel.toLowerCase())) continue;
+            const fbResult = await tryInvokeModel(fbModel);
+            if (fbResult) return fbResult;
+        }
+    }
+
+    // 3. Task-based routing defaults
+    switch (task) {
+        case 'triage': {
+            // Job page interpretation: GLM-5.3-Flash -> GPT-5 nano -> DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite
+            if (hasGLM && !failedModels.has('glm-5.3-flash')) {
+                const res = await tryInvokeModel('glm-5.3-flash');
+                if (res) return res;
+            }
+            if (hasOpenAI && !failedModels.has('gpt-5-nano')) {
+                const res = await tryInvokeModel('gpt-5-nano');
+                if (res) return res;
+            }
+            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
+                const res = await tryInvokeModel('deepseek-v4-flash');
+                if (res) return res;
+            }
+            if (hasGemini && !failedModels.has('gemini-3.1-flash-lite')) {
+                const res = await tryInvokeModel('gemini-3.1-flash-lite');
+                if (res) return res;
             }
             break;
         }
@@ -163,180 +125,63 @@ export async function callAI(options: CallAIOptions): Promise<string> {
         case 'extract':
         case 'repair': {
             // JD extraction / Simple classification / Text format: GPT-5 nano -> GLM-5.3-Flash -> DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite
-            if (hasOpenAI) {
-                try {
-                    return await callOpenAI({
-                        model: 'gpt-5-nano',
-                        fallbackModels: ['glm-5.3-flash', 'deepseek-v4-flash', 'gemini-3.1-flash-lite', ...fallbackModels],
-                        messages: messages as OpenAIMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:${task}] OpenAI failed, attempting GLM/DeepSeek fallback:`, err.message);
-                }
+            if (hasOpenAI && !failedModels.has('gpt-5-nano')) {
+                const res = await tryInvokeModel('gpt-5-nano');
+                if (res) return res;
             }
-            if (hasGLM) {
-                try {
-                    return await callGLM({
-                        model: 'glm-5.3-flash',
-                        fallbackModels: ['deepseek-v4-flash', 'gemini-3.1-flash-lite', ...fallbackModels],
-                        messages: messages as GLMMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:${task}] GLM failed, attempting DeepSeek/Gemini fallback:`, err.message);
-                }
+            if (hasGLM && !failedModels.has('glm-5.3-flash')) {
+                const res = await tryInvokeModel('glm-5.3-flash');
+                if (res) return res;
             }
-            if (hasDeepSeek) {
-                try {
-                    return await callDeepSeek({
-                        model: 'deepseek-v4-flash',
-                        messages: messages as DeepSeekMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:${task}] DeepSeek failed, attempting Gemini fallback:`, err.message);
-                }
+            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
+                const res = await tryInvokeModel('deepseek-v4-flash');
+                if (res) return res;
             }
-            if (hasGemini) {
-                return await callGemini({
-                    model: 'gemini-3.1-flash-lite',
-                    fallbackModels,
-                    messages: messages as GeminiMessage[],
-                    jsonMode,
-                    temperature,
-                    maxTokens,
-                    userId
-                });
+            if (hasGemini && !failedModels.has('gemini-3.1-flash-lite')) {
+                const res = await tryInvokeModel('gemini-3.1-flash-lite');
+                if (res) return res;
             }
             break;
         }
 
         case 'score': {
             // Resume ↔ Job matching & Fit Scoring: GLM-5.3-Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano -> DeepSeek V4 Flash
-            if (hasGLM) {
-                try {
-                    return await callGLM({
-                        model: 'glm-5.3-flash',
-                        fallbackModels: ['gemini-3.1-flash-lite', 'gpt-5-nano', 'deepseek-v4-flash', ...fallbackModels],
-                        messages: messages as GLMMessage[],
-                        jsonMode,
-                        temperature: temperature ?? 0.2,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:score] GLM failed, attempting Gemini fallback:`, err.message);
-                }
+            if (hasGLM && !failedModels.has('glm-5.3-flash')) {
+                const res = await tryInvokeModel('glm-5.3-flash');
+                if (res) return res;
             }
-            if (hasGemini) {
-                try {
-                    return await callGemini({
-                        model: 'gemini-3.1-flash-lite',
-                        fallbackModels,
-                        messages: messages as GeminiMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:score] Gemini failed, attempting OpenAI fallback:`, err.message);
-                }
+            if (hasGemini && !failedModels.has('gemini-3.1-flash-lite')) {
+                const res = await tryInvokeModel('gemini-3.1-flash-lite');
+                if (res) return res;
             }
-            if (hasOpenAI) {
-                try {
-                    return await callOpenAI({
-                        model: 'gpt-5-nano',
-                        fallbackModels,
-                        messages: messages as OpenAIMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:score] OpenAI failed, attempting DeepSeek fallback:`, err.message);
-                }
+            if (hasOpenAI && !failedModels.has('gpt-5-nano')) {
+                const res = await tryInvokeModel('gpt-5-nano');
+                if (res) return res;
             }
-            if (hasDeepSeek) {
-                return await callDeepSeek({
-                    model: 'deepseek-v4-flash',
-                    messages: messages as DeepSeekMessage[],
-                    jsonMode,
-                    temperature,
-                    maxTokens,
-                    userId
-                });
+            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
+                const res = await tryInvokeModel('deepseek-v4-flash');
+                if (res) return res;
             }
             break;
         }
 
         case 'qa': {
             // Application form field mapping / Screening Q&A: GLM-5.3-Flash -> DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano
-            if (hasGLM) {
-                try {
-                    return await callGLM({
-                        model: 'glm-5.3-flash',
-                        fallbackModels: ['deepseek-v4-flash', 'gemini-3.1-flash-lite', 'gpt-5-nano', ...fallbackModels],
-                        messages: messages as GLMMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:qa] GLM failed, attempting DeepSeek fallback:`, err.message);
-                }
+            if (hasGLM && !failedModels.has('glm-5.3-flash')) {
+                const res = await tryInvokeModel('glm-5.3-flash');
+                if (res) return res;
             }
-            if (hasDeepSeek) {
-                try {
-                    return await callDeepSeek({
-                        model: 'deepseek-v4-flash',
-                        messages: messages as DeepSeekMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:qa] DeepSeek failed, attempting Gemini fallback:`, err.message);
-                }
+            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
+                const res = await tryInvokeModel('deepseek-v4-flash');
+                if (res) return res;
             }
-            if (hasGemini) {
-                try {
-                    return await callGemini({
-                        model: 'gemini-3.1-flash-lite',
-                        fallbackModels,
-                        messages: messages as GeminiMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:qa] Gemini failed, attempting OpenAI fallback:`, err.message);
-                }
+            if (hasGemini && !failedModels.has('gemini-3.1-flash-lite')) {
+                const res = await tryInvokeModel('gemini-3.1-flash-lite');
+                if (res) return res;
             }
-            if (hasOpenAI) {
-                return await callOpenAI({
-                    model: 'gpt-5-nano',
-                    fallbackModels,
-                    messages: messages as OpenAIMessage[],
-                    jsonMode,
-                    temperature,
-                    maxTokens,
-                    userId
-                });
+            if (hasOpenAI && !failedModels.has('gpt-5-nano')) {
+                const res = await tryInvokeModel('gpt-5-nano');
+                if (res) return res;
             }
             break;
         }
@@ -344,60 +189,21 @@ export async function callAI(options: CallAIOptions): Promise<string> {
         case 'generate':
         default: {
             // Asset Generation (Resume/Cover Letter): DeepSeek V4 Flash -> GLM-5.3-Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano
-            if (hasDeepSeek) {
-                try {
-                    return await callDeepSeek({
-                        model: 'deepseek-v4-flash',
-                        messages: messages as DeepSeekMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:generate] DeepSeek failed, attempting GLM/Gemini fallback:`, err.message);
-                }
+            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
+                const res = await tryInvokeModel('deepseek-v4-flash');
+                if (res) return res;
             }
-            if (hasGLM) {
-                try {
-                    return await callGLM({
-                        model: 'glm-5.3-flash',
-                        fallbackModels: ['gemini-3.1-flash-lite', 'gpt-5-nano', ...fallbackModels],
-                        messages: messages as GLMMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:generate] GLM failed, attempting Gemini fallback:`, err.message);
-                }
+            if (hasGLM && !failedModels.has('glm-5.3-flash')) {
+                const res = await tryInvokeModel('glm-5.3-flash');
+                if (res) return res;
             }
-            if (hasGemini) {
-                try {
-                    return await callGemini({
-                        model: 'gemini-3.1-flash-lite',
-                        fallbackModels,
-                        messages: messages as GeminiMessage[],
-                        jsonMode,
-                        temperature,
-                        maxTokens,
-                        userId
-                    });
-                } catch (err: any) {
-                    console.warn(`[callAI:generate] Gemini failed, attempting OpenAI fallback:`, err.message);
-                }
+            if (hasGemini && !failedModels.has('gemini-3.1-flash-lite')) {
+                const res = await tryInvokeModel('gemini-3.1-flash-lite');
+                if (res) return res;
             }
-            if (hasOpenAI) {
-                return await callOpenAI({
-                    model: 'gpt-5-nano',
-                    fallbackModels,
-                    messages: messages as OpenAIMessage[],
-                    jsonMode,
-                    temperature,
-                    maxTokens,
-                    userId
-                });
+            if (hasOpenAI && !failedModels.has('gpt-5-nano')) {
+                const res = await tryInvokeModel('gpt-5-nano');
+                if (res) return res;
             }
             break;
         }

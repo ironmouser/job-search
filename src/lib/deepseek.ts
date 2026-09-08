@@ -7,6 +7,7 @@ export interface DeepSeekMessage {
 
 export interface CallDeepSeekOptions {
     model?: string;
+    fallbackModels?: string[];
     messages: DeepSeekMessage[];
     jsonMode?: boolean;
     temperature?: number;
@@ -24,7 +25,9 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
     }
 
     const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4-flash';
-    const modelsToTry = [preferredModel];
+    const modelsToTry = [preferredModel, ...(options.fallbackModels || [])].filter(
+        (m, idx, arr) => arr.indexOf(m) === idx
+    );
 
     const promptText = options.messages.map(m => m.content).join('\n');
     const inputTokens = estimateTokens(promptText);
@@ -89,6 +92,10 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
 
                 if (choice?.finish_reason === 'length') {
                     console.warn(`[DeepSeek ${modelName}] Response was truncated because it reached max_tokens limit (${bodyPayload.max_tokens}).`);
+                }
+
+                if (!content || !content.trim()) {
+                    throw new Error(`[DeepSeek ${modelName}] Empty or truncated response (finish_reason: ${choice?.finish_reason || 'unknown'}, max_tokens: ${bodyPayload.max_tokens})`);
                 }
 
                 const usage = data.usage;

@@ -124,6 +124,10 @@ export async function callOpenAI(options: CallOpenAIOptions): Promise<string> {
                     console.warn(`[OpenAI ${modelName}] Response was truncated because it reached max_tokens limit.`);
                 }
 
+                if (!content || !content.trim()) {
+                    throw new Error(`[OpenAI ${modelName}] Empty or truncated response (finish_reason: ${choice?.finish_reason || 'unknown'})`);
+                }
+
                 const usage = data.usage;
                 if (usage) {
                     await logAiCost(modelName, usage.prompt_tokens, usage.completion_tokens, options.userId);
