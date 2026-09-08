@@ -51,7 +51,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
         if (!userJob) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
 
-        let asset = userJob.job.applicationAssets[0];
+        const asset = userJob.job.applicationAssets[0];
         if (!asset) return NextResponse.json({ error: 'Assets not generated yet' }, { status: 400 });
 
         if (asset.networkingMessageRegensUsed >= 5) {

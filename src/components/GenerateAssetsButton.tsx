@@ -39,12 +39,13 @@ export default function GenerateAssetsButton({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [isJitResumeOpen, setIsJitResumeOpen] = useState(false);
+  const [prevHasResume, setPrevHasResume] = useState(hasResume);
   const [localHasResume, setLocalHasResume] = useState<boolean | undefined>(hasResume);
-  const router = useRouter();
-
-  useEffect(() => {
+  if (prevHasResume !== hasResume) {
+    setPrevHasResume(hasResume);
     setLocalHasResume(hasResume);
-  }, [hasResume]);
+  }
+  const router = useRouter();
 
   const executeGenerate = async () => {
     if (isGenerating) return;

@@ -211,7 +211,7 @@ CRITICAL GUARDRAILS:
 6. CANDIDATE ADDITIONAL CONTEXT & RELEVANCE RULES:
    - The candidate may have supplied additional accomplishments, projects, or background details specific to this job application.
    - VERIFICATION & ALIGNMENT FILTER: Only incorporate details from this additional context if they directly connect to the target job description/requirements AND align with or plausibly expand upon the candidate's verified background in their base resume (for example, elaborating on work done at a company listed on the resume, or highlighting a relevant technical/domain capability).
-   - DO NOT FORCE UNALIGNED INFORMATION: If the additional information is unrelated to the job description/requirements or completely out of place for the candidate's professional trajectory (e.g., auto brake repair on an insurance customer service application), DO NOT force or shoehorn it into any generated assets. Omit it gracefully.
+   - DO NOT FORCE UNALIGNED INFORMATION: If the additional information is unrelated to the job description/requirements or completely out of place for the candidate's professional trajectory (e.g., insurance sales experience on a software engineering application at a media company), DO NOT force or shoehorn it into any generated assets. Omit it gracefully.
    - WHERE TO INTEGRATE (WHEN RELEVANT):
      * Resume: Add or enhance an impact-driven bullet point (Google XYZ formula: Accomplished [X] as measured by [Y], by doing [Z]) under the corresponding employer or relevant section.
      * Cover Letter: Naturally weave the accomplishment or problem-solving outcome into Paragraph 2 (CAR framework) or Paragraph 1 connection.
