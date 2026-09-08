@@ -252,7 +252,7 @@ export default function TailoringContextCard({
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
               <Info size={13} style={{ flexShrink: 0 }} />
               <span>
-                Irrelevant skills (e.g. Insurance sales experience for a software engineering role at a media company) will not be forced into your materials.
+                Irrelevant skills (e.g., insurance sales experience for a software engineering role at a media company) will not be forced into your materials.
               </span>
             </div>
 
