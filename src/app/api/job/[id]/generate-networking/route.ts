@@ -65,7 +65,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             userJob.job.company, 
             instruction, 
             tone,
-            (userJob as any).additionalContext
+            userJob.additionalContext
         );
 
         // Call AI using Primary: deepseek-v4-flash -> 1st Fallback: gemini-3.1-flash-lite
@@ -107,8 +107,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         return new Response(newNetworkingMessage, {
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Networking message generation error:', e);
-        return NextResponse.json({ error: e.message || 'Failed to generate networking message' }, { status: 500 });
+        return NextResponse.json({ error: (e as Error).message || 'Failed to generate networking message' }, { status: 500 });
     }
 }

@@ -1,10 +1,7 @@
 import { prisma } from './prisma';
-import fs from 'fs';
 import { getUserSettings, hasUserUploadedResume } from './settings';
 import { cleanCompanyName } from './cleaners';
 import { callAI } from './ai';
-import Anthropic from '@anthropic-ai/sdk';
-import { checkAiSafeguard, logAiCost, estimateTokens } from './ai-safeguard';
 import { COVER_LETTER_REFERENCE_EXAMPLES, NETWORKING_REFERENCE_EXAMPLES, QA_REFERENCE_EXAMPLES } from './ai-examples';
 
 /** Known preset instruction values that bypass sanitization */
@@ -49,11 +46,7 @@ export function sanitizeCustomInstruction(instruction: string | undefined): stri
     return sanitized || null;
 }
 
-const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY || 'dummy_key',
-});
-
-function parseOrRepairJson(rawText: string, attempt: number = 1): any {
+function parseOrRepairJson(rawText: string, attempt: number = 1): Record<string, unknown> {
     let text = rawText.trim();
     if (text.startsWith('```')) {
         text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
@@ -95,7 +88,7 @@ function parseOrRepairJson(rawText: string, attempt: number = 1): any {
 
         try {
             return JSON.parse(snippet);
-        } catch (repairErr) {
+        } catch (_repairErr) {
             console.error(`[Attempt ${attempt}] JSON repair failed. Raw text snippet:`, text.substring(0, 500));
         }
     }
@@ -104,7 +97,7 @@ function parseOrRepairJson(rawText: string, attempt: number = 1): any {
     throw new Error('No JSON object found in the AI response.');
 }
 
-async function repairJsonWithAi(rawText: string, userId?: string, model?: string): Promise<any> {
+async function repairJsonWithAi(rawText: string, userId?: string, model?: string): Promise<string> {
     console.log('Attempting AI JSON repair subflow for malformed response...');
     const repairSystem = `You are a strict JSON repair utility. Fix the provided text so that it is a valid JSON object matching the required schema. Output ONLY valid JSON without any markdown formatting or explanations. Key names MUST be: "tailored_resume", "cover_letter", "networking_message", "portfolio_recommendation".`;
     const repairUser = `Fix and output valid JSON for this text:\n\n${rawText.slice(0, 8000)}`;
@@ -159,7 +152,6 @@ export async function generateAssetsForJob(
     const cleanCompany = cleanCompanyName(company);
     const settings = await getUserSettings(userId);
     const driftPercentage = settings.resumeCustomizationMaxPercentage || 25;
-    const tone = settings.aiStrictness || 'Standard';
 
     let resolvedContext = additionalContext;
     if (resolvedContext === undefined) {
@@ -252,20 +244,7 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
 
     const jsonTemp = 1.0; // User specified temperature setting
 
-    const fetchRawAssets = async (attempt: number) => {
-        const responseText = await callAiService({
-            system: systemPrompt,
-            userPrompt: userPrompt,
-            maxTokens: 8192,
-            jsonMode: true,
-            userId: userId,
-            temperature: jsonTemp,
-        });
-
-        return responseText.replace(/—/g, '-').replace(/–/g, '-').replace(/--/g, '-');
-    };
-
-    const normalizeAssetKeys = (raw: any) => {
+    const normalizeAssetKeys = (raw: Record<string, any>) => {
         if (!raw || typeof raw !== 'object') return {};
         return {
             tailored_resume: (raw.tailored_resume || raw.tailoredResume || raw.resume || raw.resume_markdown || raw.tailored_resume_markdown || '').trim(),
@@ -293,7 +272,7 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
     };
 
     const runGenerationCycle = async (modelOverride?: string) => {
-        const fetchRaw = async (attempt: number) => {
+        const fetchRaw = async (_attempt: number) => {
             const responseText = await callAiService({
                 system: systemPrompt,
                 userPrompt: userPrompt,
@@ -326,13 +305,13 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
     try {
         // 1. Primary provider (DeepSeek V4 Flash): attempt 1 -> repair subflow -> attempt 2
         assets = await runGenerationCycle('deepseek-v4-flash');
-    } catch (deepseekErr: any) {
-        console.warn('DeepSeek attempts & repair subflow failed. Cascading to fallback model (Gemini 3.1 Flash-Lite)...', deepseekErr.message);
+    } catch (deepseekErr: unknown) {
+        console.warn('DeepSeek attempts & repair subflow failed. Cascading to fallback model (Gemini 3.1 Flash-Lite)...', (deepseekErr as Error).message);
         try {
             // 2. Fallback provider 1 (Gemini 3.1 Flash-Lite): attempt 1 -> repair subflow -> attempt 2
             assets = await runGenerationCycle('gemini-3.1-flash-lite');
-        } catch (geminiErr: any) {
-            console.warn('Gemini fallback failed. Cascading to OpenAI GPT-5 nano...', geminiErr.message);
+        } catch (geminiErr: unknown) {
+            console.warn('Gemini fallback failed. Cascading to OpenAI GPT-5 nano...', (geminiErr as Error).message);
             // 3. Fallback provider 2 (OpenAI GPT-5 nano): attempt 1 -> repair subflow -> attempt 2
             assets = await runGenerationCycle('gpt-5-nano');
         }
@@ -363,9 +342,9 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
         });
 
         return data;
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to save generated assets', e);
-        throw new Error('Failed to save generated assets: ' + e.message);
+        throw new Error('Failed to save generated assets: ' + (e as Error).message);
     }
 }
 
@@ -381,9 +360,8 @@ export async function generateApplicationAnswer(
 ) {
     const cleanCompany = cleanCompanyName(company);
     const settings = await getUserSettings(userId);
-    const finalTone = tone || 'Confident and strategic';
     const profile = settings.profile || 'No profile specified.';
-    const qaExamples: { question: string, answer: string }[] = (settings as any).qaExamples || [];
+    const qaExamples: { question: string, answer: string }[] = (settings as { qaExamples?: { question: string, answer: string }[] }).qaExamples || [];
 
     const baseResume = settings.resumeMarkdown || '';
     if (!hasUserUploadedResume(baseResume)) {
@@ -575,7 +553,6 @@ export async function getCoverLetterPrompts(
     additionalContext?: string | null
 ) {
     const settings = await getUserSettings(userId);
-    const finalTone = tone || 'Confident and strategic';
     
     const baseResume = settings.resumeMarkdown || '';
     if (!hasUserUploadedResume(baseResume)) {
@@ -662,7 +639,6 @@ export async function getNetworkingMessagePrompts(
     additionalContext?: string | null
 ) {
     const settings = await getUserSettings(userId);
-    const finalTone = tone || 'Confident and strategic';
     
     const baseResume = settings.resumeMarkdown || '';
     if (!hasUserUploadedResume(baseResume)) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, Loader2 } from 'lucide-react';
 import SyncOverlay from './SyncOverlay';
@@ -57,7 +57,7 @@ export default function GenerateAssetsButton({
 
     setIsGenerating(true);
     try {
-      const payload: any = { jobId };
+      const payload: { jobId: string; additionalContext?: string } = { jobId };
       if (additionalContext !== undefined) {
         payload.additionalContext = additionalContext;
       }
