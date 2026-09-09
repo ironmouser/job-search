@@ -179,8 +179,9 @@ export default function RecruiterDashboardPage() {
             <Link key={title} href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
               <div
                 style={{
-                  background: 'rgba(0, 0, 0, 0.07)',
-                  border: '1px solid var(--border-glass)',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
                   borderRadius: 12,
                   padding: '1.25rem',
                   transition: 'all 0.2s ease',
@@ -309,8 +310,9 @@ export default function RecruiterDashboardPage() {
                   href={`/recruiter/jobs/${job.id}`}
                   style={{
                     padding: '0.85rem 1rem',
-                    background: 'rgba(0, 0, 0, 0.07)',
-                    border: '1px solid var(--border-glass)',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow-sm)',
                     borderRadius: 10,
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -408,8 +410,9 @@ export default function RecruiterDashboardPage() {
                   key={intro.id}
                   style={{
                     padding: '0.85rem 1rem',
-                    background: 'rgba(0, 0, 0, 0.07)',
-                    border: '1px solid var(--border-glass)',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow-sm)',
                     borderRadius: 10,
                     display: 'flex',
                     justifyContent: 'space-between',

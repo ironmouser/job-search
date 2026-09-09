@@ -6,6 +6,7 @@ import DashboardClient from '@/components/DashboardClient';
 import { detectATSFromUrl } from '@/lib/auto-apply/ats-detector-lite';
 import { getEffectiveTier } from '@/lib/tier';
 import { isBotRelatedFailure } from '@/lib/auto-apply/failure-helpers';
+import { isCandidateDiscoverable } from '@/lib/recruiter/consent';
 
 export const revalidate = 0;
 
@@ -150,6 +151,8 @@ export default async function Dashboard() {
     !userPrefs.resumeMarkdown.startsWith('# Candidate Profile')
   );
 
+  const isDiscoverable = await isCandidateDiscoverable(userId);
+
   return (
     <DashboardClient 
       jobs={jobs} 
@@ -162,6 +165,7 @@ export default async function Dashboard() {
       searchLocation={searchLocation} 
       searchKeyword={searchKeyword}
       hasBaseResume={hasBaseResume}
+      initialIsDiscoverable={isDiscoverable}
     />
   );
 }

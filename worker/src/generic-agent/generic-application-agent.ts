@@ -6,7 +6,7 @@
  * Architecture:
  *  Tier 0: Strategy Memory (re-uses proven selectors/flows for known domains)
  *  Tier 1: Deterministic DOM Analysis & Candidate Ranking
- *  Tier 2: DeepSeek V4 Flash Semantic AXTree Reasoning (structured JSON actions)
+ *  Tier 2: DeepSeek V4.1 Flash Semantic AXTree Reasoning (structured JSON actions)
  *  Tier 3: Gemini Flash-Lite Visual Multimodal Fallback (screenshot coordinate validation)
  *  Tier 4: Manual Intervention (unresolvable state, CAPTCHA, login walls)
  */
@@ -357,7 +357,7 @@ export class GenericApplicationAgent {
             }
           }
 
-          // 6b. Try DeepSeek V4 Flash fallback if GLM was not configured or did not select a control
+          // 6b. Try DeepSeek V4.1 Flash fallback if GLM was not configured or did not select a control
           if (!controlSelected && agentConfig.deepseekApiKey) {
             await logger.info('ai_reasoning', 'GLM unresolved or unconfigured — invoking DeepSeek AXTree navigation engine...');
 
@@ -403,7 +403,7 @@ export class GenericApplicationAgent {
                   url: currentUrl,
                   action: dsResult.decision.action,
                   actionSource: 'deepseek',
-                  model: 'deepseek-v4-flash',
+                  model: 'deepseek-v4.1-flash',
                   modelConfidence: dsResult.decision.confidence,
                   reason: dsResult.decision.reason,
                   result: 'failed',

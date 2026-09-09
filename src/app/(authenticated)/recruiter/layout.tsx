@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { UserPlus, Clock, Loader2, ShieldCheck } from 'lucide-react';
+import { UserPlus, Clock, Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import RecruiterDock from '@/components/recruiter/RecruiterDock';
 
@@ -26,7 +26,12 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
         const res = await fetch('/api/recruiter/profile');
         if (res.ok) {
           const data = await res.json();
-          setProfile(data.hasProfile ? data.profile : null);
+          const currentProfile = data.hasProfile ? data.profile : null;
+          setProfile(currentProfile);
+
+          if (currentProfile && pathname === '/recruiter/register') {
+            router.replace('/recruiter');
+          }
         }
       } catch (err) {
         console.error('Failed to check recruiter profile:', err);
@@ -36,7 +41,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
     };
 
     checkProfile();
-  }, [session, status, router]);
+  }, [session, status, router, pathname]);
 
   if (loading || status === 'loading') {
     return (
@@ -127,18 +132,22 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
           style={{
             padding: '1rem 1.25rem',
             marginBottom: '1.5rem',
-            backgroundColor: 'rgba(234, 179, 8, 0.08)',
-            borderColor: 'rgba(234, 179, 8, 0.25)',
+            backgroundColor: 'rgba(245, 158, 11, 0.08)',
+            borderColor: 'rgba(245, 158, 11, 0.28)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: '0.75rem',
-            color: '#fde047',
+            color: 'var(--text-primary)',
             fontSize: '0.875rem',
+            lineHeight: 1.5,
           }}
         >
-          <Clock size={20} style={{ flexShrink: 0, color: '#f59e0b' }} />
+          <Clock size={20} style={{ flexShrink: 0, color: 'var(--warning, #f59e0b)', marginTop: '2px' }} />
           <div>
-            <strong style={{ color: '#fcd34d' }}>Account Verification Pending:</strong> Your organization and recruiter profile are under review by our administration team. You can explore the portal, create draft job openings, and preview candidate discovery. Full introduction requests will be unlocked upon verification.
+            <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Account Verification Pending:</strong>{' '}
+            <span style={{ color: 'var(--text-primary)', opacity: 0.9 }}>
+              Your organization and recruiter profile are under review by our administration team. You can explore the portal, create draft job openings, and preview candidate discovery. Full introduction requests will be unlocked upon verification.
+            </span>
           </div>
         </div>
       )}

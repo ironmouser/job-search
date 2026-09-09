@@ -76,7 +76,7 @@ export default function RecruiterVisibilitySection() {
     setIsDiscoverable(newValue);
     setSaving(true);
     try {
-      await fetch('/api/candidate/recruiter-visibility', {
+      const res = await fetch('/api/candidate/recruiter-visibility', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -85,6 +85,13 @@ export default function RecruiterVisibilitySection() {
           shareContactOnAccept,
         }),
       });
+      if (res.ok && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('candidate-consent-updated', {
+            detail: { isDiscoverable: newValue },
+          })
+        );
+      }
     } catch (err) {
       console.error('Failed to save visibility:', err);
     } finally {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { grantCandidateConsent, revokeCandidateConsent, isCandidateDiscoverable } from '@/lib/recruiter/consent';
+import { CandidateConsentType } from '@prisma/client';
 
 export async function GET() {
     try {
@@ -9,16 +11,22 @@ export async function GET() {
         if (!session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        const prefs = await prisma.userPreferences.findUnique({
-            where: { userId: session.user.id },
-            select: {
-                searchKeyword: true,
-                searchLocation: true,
-                remoteOnly: true,
-                resumeMarkdown: true,
-            }
+        const [prefs, isDiscoverable] = await Promise.all([
+            prisma.userPreferences.findUnique({
+                where: { userId: session.user.id },
+                select: {
+                    searchKeyword: true,
+                    searchLocation: true,
+                    remoteOnly: true,
+                    resumeMarkdown: true,
+                }
+            }),
+            isCandidateDiscoverable(session.user.id),
+        ]);
+        return NextResponse.json({ 
+            success: true, 
+            preferences: prefs ? { ...prefs, openToRecruiters: isDiscoverable } : null 
         });
-        return NextResponse.json({ success: true, preferences: prefs || null });
     } catch (e: any) {
         return NextResponse.json({ error: e.message || 'Failed to fetch preferences' }, { status: 500 });
     }
@@ -124,6 +132,28 @@ Seeking high-growth tech opportunities as a ${searchKeyword}.
                 sources: sources
             }
         });
+
+        // 4. Save Recruiter Discovery Consent
+        if (!isDraft && typeof data.openToRecruiters === 'boolean') {
+            const ipAddress = request.headers.get('x-forwarded-for') || undefined;
+            const userAgent = request.headers.get('user-agent') || undefined;
+            if (data.openToRecruiters) {
+                await grantCandidateConsent({
+                    candidateId: session.user.id,
+                    consentType: CandidateConsentType.RECRUITER_DISCOVERY,
+                    source: 'onboarding',
+                    ipAddress,
+                    userAgent,
+                });
+            } else {
+                await revokeCandidateConsent({
+                    candidateId: session.user.id,
+                    consentType: CandidateConsentType.RECRUITER_DISCOVERY,
+                    ipAddress,
+                    userAgent,
+                });
+            }
+        }
 
         return NextResponse.json({ success: true, isDraft });
     } catch (e: any) {

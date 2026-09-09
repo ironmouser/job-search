@@ -303,8 +303,8 @@ ${COVER_LETTER_REFERENCE_EXAMPLES}
 
     let assets;
     try {
-        // 1. Primary provider (DeepSeek V4 Flash): attempt 1 -> repair subflow -> attempt 2
-        assets = await runGenerationCycle('deepseek-v4-flash');
+        // 1. Primary provider (DeepSeek V4.1 Flash): attempt 1 -> repair subflow -> attempt 2
+        assets = await runGenerationCycle('deepseek-v4.1-flash');
     } catch (deepseekErr: unknown) {
         console.warn('DeepSeek attempts & repair subflow failed. Cascading to fallback model (Gemini 3.1 Flash-Lite)...', (deepseekErr as Error).message);
         try {

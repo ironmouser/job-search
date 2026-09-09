@@ -16,15 +16,18 @@ import {
   Sparkles,
 } from 'lucide-react';
 import RecruiterHeader from '@/components/recruiter/RecruiterHeader';
+import RecruiterUpgradeModal from '@/components/recruiter/RecruiterUpgradeModal';
 
 export default function RecruiterJobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -34,13 +37,19 @@ export default function RecruiterJobsPage() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
+      setListError(null);
       const res = await fetch('/api/recruiter/jobs');
       if (res.ok) {
         const data = await res.json();
         setJobs(data.jobs || []);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error('Failed to fetch recruiter jobs:', res.status, errData);
+        setListError(errData.error || `Server error (${res.status})`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch recruiter jobs:', err);
+      setListError(err?.message || 'Failed to connect to the server');
     } finally {
       setLoading(false);
     }
@@ -64,6 +73,11 @@ export default function RecruiterJobsPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 402) {
+          setIsModalOpen(false);
+          setIsUpgradeModalOpen(true);
+          return;
+        }
         throw new Error(data.error || 'Failed to create job opening');
       }
 
@@ -115,7 +129,7 @@ export default function RecruiterJobsPage() {
           <div
             style={{
               padding: '1.25rem 1.5rem',
-              borderBottom: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+              borderBottom: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -193,8 +207,8 @@ export default function RecruiterJobsPage() {
             <div
               style={{
                 padding: '1rem 1.5rem',
-                borderTop: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
-                backgroundColor: 'rgba(0, 0, 0, 0.07)',
+                borderTop: '1px solid var(--border)',
+                backgroundColor: 'var(--card-header-bg)',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '0.75rem',
@@ -208,7 +222,7 @@ export default function RecruiterJobsPage() {
                   padding: '0.6rem 1.1rem',
                   backgroundColor: 'transparent',
                   color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
                   cursor: 'pointer',
@@ -309,12 +323,42 @@ export default function RecruiterJobsPage() {
             <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 0.5rem auto' }} />
             <p style={{ margin: 0, fontSize: '0.9rem' }}>Loading job openings...</p>
           </div>
+        ) : listError ? (
+          <div
+            style={{
+              padding: '2.5rem 1.5rem',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: '12px',
+              textAlign: 'center',
+              color: '#f87171',
+            }}
+          >
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 500 }}>
+              {listError}
+            </p>
+            <button
+              onClick={fetchJobs}
+              style={{
+                padding: '0.5rem 1.25rem',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                color: '#fca5a5',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Retry
+            </button>
+          </div>
         ) : jobs.length === 0 ? (
           <div
             style={{
               padding: '3rem 1.5rem',
-              background: 'rgba(0, 0, 0, 0.05)',
-              border: '1px dashed var(--border-glass, rgba(255, 255, 255, 0.1))',
+              background: 'var(--secondary)',
+              border: '1px dashed var(--border)',
               borderRadius: '12px',
               textAlign: 'center',
               color: 'var(--text-secondary)',
@@ -356,8 +400,9 @@ export default function RecruiterJobsPage() {
                 key={job.id}
                 style={{
                   padding: '1.5rem',
-                  background: 'rgba(0, 0, 0, 0.07)',
-                  border: '1px solid var(--border-glass)',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
                   borderRadius: '12px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -492,6 +537,15 @@ export default function RecruiterJobsPage() {
       </div>
 
       {modalContent && createPortal(modalContent, document.body)}
+
+      <RecruiterUpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => {
+          setIsUpgradeModalOpen(false);
+          fetchJobs();
+        }}
+        triggerAction="JOB"
+      />
     </div>
   );
 }

@@ -68,10 +68,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             userJob.additionalContext
         );
 
-        // Call AI using Primary: deepseek-v4-flash -> 1st Fallback: glm-5.3-flash -> 2nd Fallback: gemini-3.1-flash-lite
+        // Call AI using Primary: deepseek-v4.1-flash -> 1st Fallback: glm-5.3-flash -> 2nd Fallback: gemini-3.1-flash-lite
         const rawNetworkingMessage = await callAI({
             task: 'generate',
-            model: 'deepseek-v4-flash',
+            model: 'deepseek-v4.1-flash',
             fallbackModels: ['glm-5.3-flash', 'gemini-3.1-flash-lite'],
             messages: [
                 { role: 'system', content: systemPrompt },

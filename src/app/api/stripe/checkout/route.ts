@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { stripe, createOrgCheckoutSession } from "@/lib/stripe";
+import { stripe, createOrgCheckoutSession, createRecruiterSubscriptionCheckoutSession } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -12,10 +12,66 @@ export async function POST(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { priceId, organizationId, quantity } = await request.json();
+    const { priceId, organizationId, recruiterOrgId, planTier, returnUrl, quantity } = await request.json();
 
-    if (!priceId) {
-      return new NextResponse("Price ID is required", { status: 400 });
+    if (!priceId && !planTier) {
+      return new NextResponse("Price ID or Plan Tier is required", { status: 400 });
+    }
+
+    // ── Recruiter Organization subscription ──────────────────────────────────
+    if (recruiterOrgId) {
+      const sessionUser = session.user as any;
+      const userRole = sessionUser.role as string;
+
+      // Verify recruiter profile belongs to this org
+      const recruiterProfile = await prisma.recruiterProfile.findUnique({
+        where: { userId: sessionUser.id },
+      });
+
+      const isAuthorized =
+        userRole === 'SYSTEM_ADMIN' ||
+        (recruiterProfile &&
+          recruiterProfile.organizationId === recruiterOrgId &&
+          (recruiterProfile.role === 'OWNER' || recruiterProfile.role === 'ADMIN'));
+
+      if (!isAuthorized) {
+        return NextResponse.json(
+          { error: 'Only organization Owners and Admins can manage subscriptions' },
+          { status: 403 }
+        );
+      }
+
+      const recruiterOrg = await prisma.recruiterOrganization.findUnique({
+        where: { id: recruiterOrgId },
+      });
+
+      if (!recruiterOrg) {
+        return NextResponse.json({ error: 'Recruiter organization not found' }, { status: 404 });
+      }
+
+      const checkoutSession = await createRecruiterSubscriptionCheckoutSession({
+        recruiterOrgId,
+        orgName: recruiterOrg.name,
+        billingEmail: recruiterProfile?.businessEmail || session.user.email,
+        stripeCustomerId: recruiterOrg.stripeCustomerId,
+        planTier: (planTier || 'STARTER').toUpperCase() as any,
+        priceId: priceId?.startsWith('price_') ? priceId : undefined,
+        successUrl: returnUrl
+          ? `${process.env.NEXTAUTH_URL}${returnUrl}${returnUrl.includes('?') ? '&' : '?'}checkout=success`
+          : `${process.env.NEXTAUTH_URL}/recruiter/billing?checkout=success`,
+        cancelUrl: returnUrl
+          ? `${process.env.NEXTAUTH_URL}${returnUrl}${returnUrl.includes('?') ? '&' : '?'}checkout=canceled`
+          : `${process.env.NEXTAUTH_URL}/recruiter/billing?canceled=true`,
+      });
+
+      if (!recruiterOrg.stripeCustomerId && checkoutSession.customer) {
+        await prisma.recruiterOrganization.update({
+          where: { id: recruiterOrgId },
+          data: { stripeCustomerId: checkoutSession.customer as string },
+        });
+      }
+
+      return NextResponse.json({ url: checkoutSession.url });
     }
 
     // ── Organization seat purchase ────────────────────────────────────────────

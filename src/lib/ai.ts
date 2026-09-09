@@ -18,7 +18,7 @@ export interface CallAIOptions {
 
 /**
  * Centralized AI router that dispatches tasks to the appropriate model provider
- * (GLM-5.3-Flash, DeepSeek V4 Flash, Gemini 3.1 Flash-Lite, and OpenAI GPT-5 nano) with automatic fallbacks.
+ * (GLM-5.3-Flash, DeepSeek V4.1 Flash, Gemini 3.1 Flash-Lite, and OpenAI GPT-5 nano) with automatic fallbacks.
  */
 export async function callAI(options: CallAIOptions): Promise<string> {
     const { task = 'generate', model, fallbackModels = [], messages, jsonMode, temperature, maxTokens, userId } = options;
@@ -101,7 +101,7 @@ export async function callAI(options: CallAIOptions): Promise<string> {
     // 3. Task-based routing defaults
     switch (task) {
         case 'triage': {
-            // Job page interpretation: GLM-5.3-Flash -> GPT-5 nano -> DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite
+            // Job page interpretation: GLM-5.3-Flash -> GPT-5 nano -> DeepSeek V4.1 Flash -> Gemini 3.1 Flash-Lite
             if (hasGLM && !failedModels.has('glm-5.3-flash')) {
                 const res = await tryInvokeModel('glm-5.3-flash');
                 if (res) return res;
@@ -110,8 +110,8 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                 const res = await tryInvokeModel('gpt-5-nano');
                 if (res) return res;
             }
-            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
-                const res = await tryInvokeModel('deepseek-v4-flash');
+            if (hasDeepSeek && !failedModels.has('deepseek-v4.1-flash')) {
+                const res = await tryInvokeModel('deepseek-v4.1-flash');
                 if (res) return res;
             }
             if (hasGemini && !failedModels.has('gemini-3.1-flash-lite')) {
@@ -124,7 +124,7 @@ export async function callAI(options: CallAIOptions): Promise<string> {
         case 'format':
         case 'extract':
         case 'repair': {
-            // JD extraction / Simple classification / Text format: GPT-5 nano -> GLM-5.3-Flash -> DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite
+            // JD extraction / Simple classification / Text format: GPT-5 nano -> GLM-5.3-Flash -> DeepSeek V4.1 Flash -> Gemini 3.1 Flash-Lite
             if (hasOpenAI && !failedModels.has('gpt-5-nano')) {
                 const res = await tryInvokeModel('gpt-5-nano');
                 if (res) return res;
@@ -133,8 +133,8 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                 const res = await tryInvokeModel('glm-5.3-flash');
                 if (res) return res;
             }
-            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
-                const res = await tryInvokeModel('deepseek-v4-flash');
+            if (hasDeepSeek && !failedModels.has('deepseek-v4.1-flash')) {
+                const res = await tryInvokeModel('deepseek-v4.1-flash');
                 if (res) return res;
             }
             if (hasGemini && !failedModels.has('gemini-3.1-flash-lite')) {
@@ -145,7 +145,7 @@ export async function callAI(options: CallAIOptions): Promise<string> {
         }
 
         case 'score': {
-            // Resume ↔ Job matching & Fit Scoring: GLM-5.3-Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano -> DeepSeek V4 Flash
+            // Resume ↔ Job matching & Fit Scoring: GLM-5.3-Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano -> DeepSeek V4.1 Flash
             if (hasGLM && !failedModels.has('glm-5.3-flash')) {
                 const res = await tryInvokeModel('glm-5.3-flash');
                 if (res) return res;
@@ -158,21 +158,21 @@ export async function callAI(options: CallAIOptions): Promise<string> {
                 const res = await tryInvokeModel('gpt-5-nano');
                 if (res) return res;
             }
-            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
-                const res = await tryInvokeModel('deepseek-v4-flash');
+            if (hasDeepSeek && !failedModels.has('deepseek-v4.1-flash')) {
+                const res = await tryInvokeModel('deepseek-v4.1-flash');
                 if (res) return res;
             }
             break;
         }
 
         case 'qa': {
-            // Application form field mapping / Screening Q&A: GLM-5.3-Flash -> DeepSeek V4 Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano
+            // Application form field mapping / Screening Q&A: GLM-5.3-Flash -> DeepSeek V4.1 Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano
             if (hasGLM && !failedModels.has('glm-5.3-flash')) {
                 const res = await tryInvokeModel('glm-5.3-flash');
                 if (res) return res;
             }
-            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
-                const res = await tryInvokeModel('deepseek-v4-flash');
+            if (hasDeepSeek && !failedModels.has('deepseek-v4.1-flash')) {
+                const res = await tryInvokeModel('deepseek-v4.1-flash');
                 if (res) return res;
             }
             if (hasGemini && !failedModels.has('gemini-3.1-flash-lite')) {
@@ -188,9 +188,9 @@ export async function callAI(options: CallAIOptions): Promise<string> {
 
         case 'generate':
         default: {
-            // Asset Generation (Resume/Cover Letter): DeepSeek V4 Flash -> GLM-5.3-Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano
-            if (hasDeepSeek && !failedModels.has('deepseek-v4-flash')) {
-                const res = await tryInvokeModel('deepseek-v4-flash');
+            // Asset Generation (Resume/Cover Letter): DeepSeek V4.1 Flash -> GLM-5.3-Flash -> Gemini 3.1 Flash-Lite -> GPT-5 nano
+            if (hasDeepSeek && !failedModels.has('deepseek-v4.1-flash')) {
+                const res = await tryInvokeModel('deepseek-v4.1-flash');
                 if (res) return res;
             }
             if (hasGLM && !failedModels.has('glm-5.3-flash')) {

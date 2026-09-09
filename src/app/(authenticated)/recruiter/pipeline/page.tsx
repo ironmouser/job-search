@@ -154,7 +154,7 @@ export default function RecruiterPipelinePage() {
           <div
             style={{
               padding: '1.25rem 1.5rem',
-              borderBottom: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+              borderBottom: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -220,8 +220,8 @@ export default function RecruiterPipelinePage() {
               <div
                 style={{
                   padding: '0.85rem 1rem',
-                  backgroundColor: 'rgba(0, 0, 0, 0.07)',
-                  border: '1px solid var(--border-glass)',
+                  backgroundColor: 'var(--secondary)',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
                 }}
@@ -252,11 +252,11 @@ export default function RecruiterPipelinePage() {
             <div
               style={{
                 padding: '1rem 1.5rem',
-                borderTop: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+                borderTop: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '0.75rem',
-                backgroundColor: 'rgba(0, 0, 0, 0.07)',
+                backgroundColor: 'var(--card-header-bg)',
               }}
             >
               <button
@@ -267,7 +267,7 @@ export default function RecruiterPipelinePage() {
                   padding: '0.6rem 1.1rem',
                   backgroundColor: 'transparent',
                   color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
                   cursor: 'pointer',
@@ -317,7 +317,7 @@ export default function RecruiterPipelinePage() {
             flexWrap: 'wrap',
             marginBottom: '1.5rem',
             paddingBottom: '1rem',
-            borderBottom: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           {[
@@ -344,9 +344,9 @@ export default function RecruiterPipelinePage() {
                   fontWeight: active ? 600 : 500,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
-                  backgroundColor: active ? `${tab.color}25` : 'rgba(255,255,255,0.05)',
+                  backgroundColor: active ? `${tab.color}25` : 'var(--card)',
                   color: active ? tab.color : 'var(--text-secondary)',
-                  border: `1px solid ${active ? `${tab.color}60` : 'var(--border-glass, rgba(255,255,255,0.12))'}`,
+                  border: `1px solid ${active ? `${tab.color}60` : 'var(--border)'}`,
                 }}
               >
                 <span>{tab.label}</span>
@@ -365,8 +365,8 @@ export default function RecruiterPipelinePage() {
           <div
             style={{
               padding: '3rem 1.5rem',
-              background: 'rgba(0, 0, 0, 0.05)',
-              border: '1px dashed var(--border-glass, rgba(255, 255, 255, 0.1))',
+              background: 'var(--secondary)',
+              border: '1px dashed var(--border)',
               borderRadius: '12px',
               textAlign: 'center',
               color: 'var(--text-secondary)',
@@ -395,8 +395,9 @@ export default function RecruiterPipelinePage() {
                   key={intro.id}
                   style={{
                     padding: '1.5rem',
-                    background: 'rgba(0, 0, 0, 0.07)',
-                    border: '1px solid var(--border-glass)',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow-sm)',
                     borderRadius: '12px',
                     display: 'flex',
                     justifyContent: 'space-between',

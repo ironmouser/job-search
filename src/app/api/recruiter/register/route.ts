@@ -20,12 +20,20 @@ export async function POST(req: NextRequest) {
       organizationWebsite,
     } = body;
 
-    if (!firstName || !lastName || !title || !businessEmail || !organizationName) {
+    if (!firstName || !lastName || !title || !businessEmail || !organizationName || !organizationWebsite) {
       return NextResponse.json(
-        { error: 'Missing required fields: firstName, lastName, title, businessEmail, organizationName' },
+        { error: 'Missing required fields: firstName, lastName, title, businessEmail, organizationName, organizationWebsite' },
         { status: 400 }
       );
     }
+
+    const cleanWebsite = organizationWebsite?.trim()
+      ? (!/^https?:\/\//i.test(organizationWebsite.trim()) ? `https://${organizationWebsite.trim()}` : organizationWebsite.trim())
+      : null;
+
+    const cleanLinkedin = linkedinUrl?.trim()
+      ? (!/^https?:\/\//i.test(linkedinUrl.trim()) ? `https://${linkedinUrl.trim()}` : linkedinUrl.trim())
+      : null;
 
     // Check if user already has a recruiter profile
     const existing = await prisma.recruiterProfile.findUnique({
@@ -44,7 +52,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: organizationName,
         type: (organizationType as RecruiterOrgType) || RecruiterOrgType.RECRUITING_AGENCY,
-        website: organizationWebsite || null,
+        website: cleanWebsite,
         verificationStatus: RecruiterVerificationStatus.PENDING,
       },
     });
@@ -58,7 +66,7 @@ export async function POST(req: NextRequest) {
         lastName,
         title,
         businessEmail,
-        linkedinUrl: linkedinUrl || null,
+        linkedinUrl: cleanLinkedin,
         role: RecruiterRole.OWNER,
         verificationStatus: RecruiterVerificationStatus.PENDING,
       },
@@ -84,10 +92,10 @@ export async function POST(req: NextRequest) {
       },
       message: 'Recruiter profile submitted for verification.',
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to register recruiter profile:', err);
     return NextResponse.json(
-      { error: err.message || 'Failed to register recruiter profile' },
+      { error: err instanceof Error ? err.message : 'Failed to register recruiter profile' },
       { status: 500 }
     );
   }

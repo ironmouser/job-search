@@ -14,7 +14,8 @@ import {
   User,
   Image as ImageIcon,
   ListTodo,
-  ChevronRight
+  ChevronRight,
+  UserCheck
 } from 'lucide-react';
 
 interface ProfileChecklistProps {
@@ -83,6 +84,13 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
       return Boolean(img && !img.includes('default-avatar') && !img.includes('placeholder'));
     },
   },
+  {
+    id: 'recruiter-discovery',
+    title: 'Recruiter Matching',
+    shortDesc: 'Opt in for inbound opportunities',
+    icon: UserCheck,
+    isComplete: (settings) => Boolean(settings?.isDiscoverable),
+  },
 ];
 
 export default function ProfileChecklist({ isMinimized = false, onItemClick, onHiddenChange }: ProfileChecklistProps) {
@@ -138,12 +146,22 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick, onH
       }
     };
 
+    const handleConsentUpdate = (e: any) => {
+      if (typeof e.detail?.isDiscoverable === 'boolean') {
+        setSettings((prev: any) => prev ? { ...prev, isDiscoverable: e.detail.isDiscoverable } : prev);
+      } else {
+        fetchSettings();
+      }
+    };
+
     window.addEventListener('settings-updated', handleUpdate);
     window.addEventListener('profile-updated', handleUpdate);
+    window.addEventListener('candidate-consent-updated', handleConsentUpdate);
 
     return () => {
       window.removeEventListener('settings-updated', handleUpdate);
       window.removeEventListener('profile-updated', handleUpdate);
+      window.removeEventListener('candidate-consent-updated', handleConsentUpdate);
     };
   }, [fetchSettings]);
 
@@ -236,6 +254,29 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick, onH
   const handleNavigateToSection = (sectionId: string) => {
     if (onItemClick) {
       onItemClick();
+    }
+
+    if (sectionId === 'recruiter-discovery') {
+      if (pathname === '/dashboard') {
+        const el = document.getElementById('hero-recruiter-optin');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('pulse-highlight');
+          setTimeout(() => el.classList.remove('pulse-highlight'), 2000);
+          return;
+        }
+      }
+      if (pathname === '/settings') {
+        window.location.hash = 'recruiter-discovery';
+        window.dispatchEvent(
+          new CustomEvent('open-settings-section', {
+            detail: { sectionId: 'recruiter-discovery' },
+          })
+        );
+      } else {
+        router.push('/settings#recruiter-discovery');
+      }
+      return;
     }
 
     if (pathname === '/profile') {

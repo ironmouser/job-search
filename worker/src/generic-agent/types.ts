@@ -169,7 +169,7 @@ export type ActionSource =
   | 'strategy_memory'     // Tier 0: known strategy loaded from memory
   | 'deterministic'       // Tier 1: deterministic DOM analysis
   | 'glm'                 // Tier 2: GLM-5.3-Flash AXTree reasoning
-  | 'deepseek'            // Tier 2b: DeepSeek V4 Flash AXTree reasoning
+  | 'deepseek'            // Tier 2b: DeepSeek V4.1 Flash AXTree reasoning
   | 'gemini'              // Tier 3: Gemini visual screenshot fallback
   | 'manual'              // Tier 4: manual intervention
   | 'ats_plugin';         // Tier 0: known ATS-specific plugin

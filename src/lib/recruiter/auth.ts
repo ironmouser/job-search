@@ -71,6 +71,10 @@ export async function requireVerifiedRecruiter(customSession?: any): Promise<Rec
     throw new Error(`FORBIDDEN: Recruiter account status is ${profile.verificationStatus}`);
   }
 
+  if (!profile.organization) {
+    throw new Error('FORBIDDEN: Recruiter organization not found');
+  }
+
   if (profile.organization.verificationStatus !== 'VERIFIED') {
     throw new Error(`FORBIDDEN: Recruiter organization status is ${profile.organization.verificationStatus}`);
   }

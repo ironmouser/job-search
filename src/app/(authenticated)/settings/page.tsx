@@ -185,9 +185,10 @@ export default function SettingsPage() {
         setMounted(true);
         trackSettingsView();
         if (typeof window !== 'undefined') {
-            const hash = window.location.hash;
-            if (hash) {
-                const rawHash = hash.replace('#', '');
+            const openSectionFromHash = (hashString?: string) => {
+                const targetHash = hashString || window.location.hash;
+                if (!targetHash) return;
+                const rawHash = targetHash.replace('#', '');
                 let sectionId = rawHash;
                 if (rawHash === 'active-scrapers' || rawHash === 'active-scraper-sources' || rawHash === 'job-preferences') {
                     sectionId = 'job-discovery';
@@ -210,8 +211,24 @@ export default function SettingsPage() {
                     }
                 };
                 setTimeout(scrollToElement, 100);
-            }
+            };
 
+            openSectionFromHash();
+
+            const handleHashChange = () => openSectionFromHash();
+            const handleOpenSection = (e: any) => {
+                if (e.detail?.sectionId) {
+                    openSectionFromHash(e.detail.sectionId);
+                }
+            };
+
+            window.addEventListener('hashchange', handleHashChange);
+            window.addEventListener('open-settings-section', handleOpenSection);
+
+            return () => {
+                window.removeEventListener('hashchange', handleHashChange);
+                window.removeEventListener('open-settings-section', handleOpenSection);
+            };
         }
     }, []);
 

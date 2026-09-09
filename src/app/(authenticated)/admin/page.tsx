@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail, AlertTriangle, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Filter, Calendar } from "lucide-react";
+import { Users, Shield, Sliders, Check, Search, ShieldAlert, Cpu, Sparkles, Mail, AlertTriangle, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Filter, Calendar, Building2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PageHeader, PageHeaderHeading, PageHeaderDescription } from '@/components/ui/page-header';
@@ -103,12 +103,13 @@ const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: () =>
 };
 
 import { AntiAbuseTab } from "./AntiAbuseTab";
+import { RecruitersTab } from "./RecruitersTab";
 
 export default function AdminDashboard() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'users' | 'gates' | 'scrapers' | 'alerts' | 'anti-abuse'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'gates' | 'scrapers' | 'alerts' | 'anti-abuse' | 'recruiters'>('users');
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -533,6 +534,19 @@ export default function AdminDashboard() {
         <button
           type="button"
           role="tab"
+          aria-selected={activeTab === 'recruiters'}
+          onClick={() => setActiveTab('recruiters')}
+          className={`app-tab-btn ${activeTab === 'recruiters' ? 'active' : ''}`}
+          style={{
+            padding: "0.55rem 1rem",
+            fontSize: "0.88rem",
+          }}
+        >
+          <Building2 size={16} /> Recruiters
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={activeTab === 'alerts'}
           onClick={() => setActiveTab('alerts')}
           className={`app-tab-btn ${activeTab === 'alerts' ? 'active' : ''}`}
@@ -591,6 +605,7 @@ export default function AdminDashboard() {
 
       {/* Tab Contents */}
       {activeTab === 'anti-abuse' && <AntiAbuseTab />}
+      {activeTab === 'recruiters' && <RecruitersTab />}
 
       {activeTab === 'users' && (
         <div className="glass-card" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>

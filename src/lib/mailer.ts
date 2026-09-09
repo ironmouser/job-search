@@ -686,5 +686,77 @@ export async function sendHireConfirmationEmail({
   }
 }
 
+export async function sendRecruiterTeamInvitation({
+  recipientEmail,
+  inviterName,
+  organizationName,
+  role,
+  inviteUrl,
+  expiresAt,
+}: {
+  recipientEmail: string;
+  inviterName: string;
+  organizationName: string;
+  role: string;
+  inviteUrl: string;
+  expiresAt: Date;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <onboarding@resend.dev>';
+    const expiryStr = expiresAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const subject = `${inviterName} invited you to join ${organizationName} on Job Agent HQ`;
+
+    const htmlMessage = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6;">
+        <h2 style="color: #3695e3; margin-bottom: 0.5rem;">Join ${organizationName} on Job Agent HQ</h2>
+        <p><strong>${inviterName}</strong> has invited you to join the <strong>${organizationName}</strong> recruiting team as a <strong>${role}</strong>.</p>
+        <p>Collaborate with your team to post job requisitions, evaluate candidate matches, and manage hiring introductions in one place.</p>
+        <div style="margin: 28px 0;">
+          <a href="${inviteUrl}" style="background: #3695e3; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            Accept Team Invitation
+          </a>
+        </div>
+        <p style="font-size: 13px; color: #64748b;">This invitation expires on ${expiryStr}.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #94a3b8;">Job Agent HQ Recruiter Portal</p>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${pass}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to: recipientEmail, subject, html: htmlMessage }),
+      });
+      return { success: true };
+    }
+
+    const host = process.env.EMAIL_SERVER_HOST;
+    const port = parseInt(process.env.EMAIL_SERVER_PORT || '587', 10);
+    const user = process.env.EMAIL_SERVER_USER;
+
+    if (!host || !user || !pass) {
+      console.warn(`[DEV] Recruiter team invitation email skipped (no SMTP). URL: ${inviteUrl}`);
+      return { success: true };
+    }
+
+    const nodemailer = (await import('nodemailer')).default;
+    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    await transporter.sendMail({
+      from,
+      to: recipientEmail,
+      subject,
+      html: htmlMessage,
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to send recruiter team invitation:', err);
+    return { success: false };
+  }
+}
+
+
 
 

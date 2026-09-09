@@ -261,7 +261,7 @@ describe('Hybrid AI Browser Automation Architecture Tests', () => {
         url: 'http://example.com/job',
         action: 'click',
         actionSource: 'deepseek',
-        model: 'deepseek-v4-flash',
+        model: 'deepseek-v4.1-flash',
         modelConfidence: 0.95,
         targetElement: 'Apply Now',
         reason: 'Selected primary apply button',

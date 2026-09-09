@@ -2,7 +2,7 @@
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, ArrowRight, Search, X, Loader2, SlidersHorizontal, ArrowUpDown, FileText, MoreVertical, AlertOctagon, RotateCcw } from 'lucide-react';
+import { ExternalLink, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, ArrowRight, Search, X, Loader2, SlidersHorizontal, ArrowUpDown, FileText, MoreVertical, AlertOctagon, RotateCcw, UserCheck } from 'lucide-react';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
@@ -97,7 +97,8 @@ export default function DashboardClient({
   noInternational = false, 
   searchLocation = '',
   searchKeyword = '',
-  hasBaseResume = false
+  hasBaseResume = false,
+  initialIsDiscoverable = false
 }: { 
   jobs: DashboardJob[], 
   userPlanTier?: string, 
@@ -108,7 +109,8 @@ export default function DashboardClient({
   noInternational?: boolean, 
   searchLocation?: string,
   searchKeyword?: string,
-  hasBaseResume?: boolean
+  hasBaseResume?: boolean,
+  initialIsDiscoverable?: boolean
 }) {
 
   const router = useRouter();
@@ -121,7 +123,51 @@ export default function DashboardClient({
   const [showIntlLocationModal, setShowIntlLocationModal] = useState(false);
   const [intlJobCount, setIntlJobCount] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isDiscoverable, setIsDiscoverable] = useState(Boolean(initialIsDiscoverable));
+  const [isTogglingDiscoverable, setIsTogglingDiscoverable] = useState(false);
   const hasDismissedNonUsModal = useRef(false);
+
+  useEffect(() => {
+    setIsDiscoverable(Boolean(initialIsDiscoverable));
+  }, [initialIsDiscoverable]);
+
+  useEffect(() => {
+    const handleConsentUpdate = (e: any) => {
+      if (typeof e.detail?.isDiscoverable === 'boolean') {
+        setIsDiscoverable(e.detail.isDiscoverable);
+      }
+    };
+    window.addEventListener('candidate-consent-updated', handleConsentUpdate);
+    return () => window.removeEventListener('candidate-consent-updated', handleConsentUpdate);
+  }, []);
+
+  const handleToggleDiscoverable = async (nextValue: boolean) => {
+    setIsDiscoverable(nextValue);
+    setIsTogglingDiscoverable(true);
+    try {
+      const res = await fetch('/api/candidate/recruiter-visibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isDiscoverable: nextValue }),
+      });
+      if (res.ok) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('candidate-consent-updated', {
+              detail: { isDiscoverable: nextValue },
+            })
+          );
+        }
+      } else {
+        setIsDiscoverable(!nextValue);
+      }
+    } catch (err) {
+      console.error('Failed to update recruiter visibility:', err);
+      setIsDiscoverable(!nextValue);
+    } finally {
+      setIsTogglingDiscoverable(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1436,7 +1482,6 @@ export default function DashboardClient({
           <PageHeader className="dashboard-page-header">
             <div className="page-header-title-col">
               <PageHeaderHeading className="dashboard-mission-control-title">Mission Control</PageHeaderHeading>
-              <PageHeaderDescription className="dashboard-mission-control-subtitle">Your central hub for opportunity management and application tracking</PageHeaderDescription>
             </div>
             <PageHeaderActions className="page-header-banner-col">
               <TrialStatusBanner trialEndsAt={trialEndsAt} planTier={userPlanTier} compact={true} />
@@ -1530,18 +1575,16 @@ export default function DashboardClient({
             </div>
           </div>
 
-          {/* Prepare an Application Action Section (Mockup Spec) */}
-          <div className="prepare-app-section" style={{ marginTop: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Prepare an application
-              </h3>
+          {/* Hero Action Row: Prepare Application (Left) & Recruiter Opt-In (Right) */}
+          <div className="dashboard-hero-action-row">
+            {/* Left: Prepare Application Action */}
+            <div className="dashboard-hero-left">
               <span style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 padding: '0.15rem 0.6rem',
                 borderRadius: '9999px',
-                fontSize: '0.74rem',
+                fontSize: '0.85rem',
                 fontWeight: 600,
                 backgroundColor: 'rgba(37, 99, 235, 0.12)',
                 color: '#2563eb',
@@ -1549,30 +1592,121 @@ export default function DashboardClient({
               }}>
                 Already found a job post?
               </span>
+              <button
+                type="button"
+                onClick={() => router.push('/prepare')}
+                className="btn-primary prepare-app-btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.45rem',
+                  padding: '0.55rem 1.25rem',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  backgroundColor: '#0070f3',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0, 112, 243, 0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>Prepare application</span>
+                <ArrowRight size={14} />
+              </button>
             </div>
-            <button
-              onClick={() => router.push('/prepare')}
-              className="btn-primary prepare-app-btn"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.45rem',
-                padding: '0.55rem 1.25rem',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                backgroundColor: '#0070f3',
-                color: '#ffffff',
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0, 112, 243, 0.25)',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span>Prepare application</span>
-              <ArrowRight size={14} />
-            </button>
+
+            {/* Right: Open to Recruiter Opportunities Opt-in Card */}
+            <div className={`recruiter-optin-card ${isDiscoverable ? 'opted-in' : ''}`} id="hero-recruiter-optin">
+              {isDiscoverable ? (
+                <>
+                  <h4 className="recruiter-optin-title">Open to recruiter opportunities</h4>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={true}
+                    aria-label="Open to recruiter opportunities toggle"
+                    disabled={isTogglingDiscoverable}
+                    onClick={() => handleToggleDiscoverable(false)}
+                    style={{
+                      width: '38px',
+                      height: '20px',
+                      borderRadius: '10px',
+                      backgroundColor: '#0070f3',
+                      position: 'relative',
+                      border: 'none',
+                      cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
+                      padding: 0,
+                      flexShrink: 0,
+                      transition: 'background-color 0.2s ease',
+                      opacity: isTogglingDiscoverable ? 0.7 : 1,
+                      outline: 'none',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        backgroundColor: '#ffffff',
+                        position: 'absolute',
+                        top: '2px',
+                        left: '20px',
+                        transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                      }}
+                    />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h4 className="recruiter-optin-title">Open to recruiter opportunities</h4>
+                  <p className="recruiter-optin-desc">
+                    Let verified recruiters discover your profile and request a connection about relevant opportunities.
+                    <span className="recruiter-optin-switch-inline">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={false}
+                        aria-label="Open to recruiter opportunities toggle"
+                        disabled={isTogglingDiscoverable}
+                        onClick={() => handleToggleDiscoverable(true)}
+                        style={{
+                          width: '38px',
+                          height: '20px',
+                          borderRadius: '10px',
+                          backgroundColor: '#d1d5db',
+                          position: 'relative',
+                          border: 'none',
+                          cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
+                          padding: 0,
+                          flexShrink: 0,
+                          transition: 'background-color 0.2s ease',
+                          opacity: isTogglingDiscoverable ? 0.7 : 1,
+                          outline: 'none',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            backgroundColor: '#ffffff',
+                            position: 'absolute',
+                            top: '2px',
+                            left: '2px',
+                            transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                          }}
+                        />
+                      </button>
+                    </span>
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

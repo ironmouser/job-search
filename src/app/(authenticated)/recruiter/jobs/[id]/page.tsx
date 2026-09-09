@@ -18,6 +18,7 @@ import {
   Award,
 } from 'lucide-react';
 import RecruiterHeader from '@/components/recruiter/RecruiterHeader';
+import RecruiterUpgradeModal from '@/components/recruiter/RecruiterUpgradeModal';
 
 export default function RecruiterJobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -26,6 +27,8 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
   const [loading, setLoading] = useState(true);
   const [matching, setMatching] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [pendingCandidateForUpgrade, setPendingCandidateForUpgrade] = useState<any | null>(null);
 
   // Intro Request Modal State
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
@@ -93,6 +96,12 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 402) {
+          setPendingCandidateForUpgrade(selectedCandidate);
+          setSelectedCandidate(null);
+          setIsUpgradeModalOpen(true);
+          return;
+        }
         throw new Error(data.error || 'Failed to send introduction request');
       }
 
@@ -170,7 +179,7 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
           <div
             style={{
               padding: '1.25rem 1.5rem',
-              borderBottom: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+              borderBottom: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -235,48 +244,44 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
 
               <div
                 style={{
-                  padding: '1rem',
-                  backgroundColor: 'rgba(0, 0, 0, 0.07)',
-                  border: '1px solid var(--border-glass)',
+                  padding: '0.85rem 1rem',
+                  backgroundColor: 'var(--secondary)',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
                 }}
               >
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                  Target Candidate: {selectedCandidate.displayName}
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {selectedCandidate.displayName}
                 </div>
-                <div style={{ color: 'var(--text-secondary)' }}>
-                  Position: {job.title}
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.825rem', marginTop: 2 }}>
+                  {selectedCandidate.headline}
                 </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                  Personalized Note to Candidate (Optional)
+                  Custom Intro Note (Optional)
                 </label>
                 <textarea
                   rows={4}
                   value={introNotes}
                   onChange={(e) => setIntroNotes(e.target.value)}
-                  placeholder="Hi! We noticed your strong background in full stack development and think you would be an exceptional fit for our team. We'd love to connect..."
+                  placeholder={`Hi ${selectedCandidate.displayName.split(' ')[0]}, I was impressed by your experience and would love to introduce you to our team for the ${job.title} role...`}
                   className="input-base"
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', lineHeight: 1.5, resize: 'vertical' }}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', resize: 'vertical' }}
                 />
-              </div>
-
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                The candidate will receive an email notification detailing the role. Contact information will be revealed once the candidate accepts.
               </div>
             </div>
 
             <div
               style={{
                 padding: '1rem 1.5rem',
-                borderTop: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+                borderTop: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '0.75rem',
-                backgroundColor: 'rgba(0, 0, 0, 0.07)',
+                backgroundColor: 'var(--card-header-bg)',
               }}
             >
               <button
@@ -287,7 +292,7 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
                   padding: '0.6rem 1.1rem',
                   backgroundColor: 'transparent',
                   color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
                   cursor: 'pointer',
@@ -523,8 +528,9 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
                   key={candidate.id}
                   style={{
                     padding: '1.5rem',
-                    background: 'rgba(0, 0, 0, 0.07)',
-                    border: '1px solid var(--border-glass)',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow-sm)',
                     borderRadius: '12px',
                     display: 'flex',
                     flexDirection: 'column',
@@ -710,6 +716,13 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {introModalContent && createPortal(introModalContent, document.body)}
+
+      <RecruiterUpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        triggerAction="INTRO"
+        candidateName={pendingCandidateForUpgrade?.headline || 'Candidate'}
+      />
     </div>
   );
 }

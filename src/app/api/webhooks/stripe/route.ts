@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { handleUserUpgradeToPro } from "@/lib/settings";
+import { RECRUITER_PLANS } from "@/lib/recruiter/recruiterBillingService";
 
 function getPeriodEnd(subscription: Stripe.Subscription): Date | null {
   const periodEndSeconds = (subscription as any).current_period_end ?? (subscription as any).items?.data?.[0]?.current_period_end;
@@ -117,6 +118,50 @@ export async function POST(req: Request) {
         }
       } catch (err) {
         console.error("Failed to process org seat purchase:", err);
+      }
+      return new NextResponse(null, { status: 200 });
+    }
+
+    // ── Recruiter Organization subscription ──
+    if (session?.metadata?.recruiterOrgId) {
+      const recruiterOrgId = session.metadata.recruiterOrgId;
+      const planTier = (session.metadata.planTier || 'STARTER').toUpperCase() as 'STARTER' | 'PRO' | 'AGENCY';
+      const plan = RECRUITER_PLANS[planTier] || RECRUITER_PLANS.STARTER;
+
+      try {
+        const customerId = getCustomerId(session.customer);
+        const subscriptionId = getSubscriptionId(session.subscription);
+
+        let periodEnd: Date | null = null;
+        if (subscriptionId) {
+          try {
+            const subObj = await stripe.subscriptions.retrieve(subscriptionId);
+            periodEnd = getPeriodEnd(subObj);
+          } catch (subErr) {
+            console.warn('[Stripe Webhook] Failed to retrieve subscription details:', subErr);
+          }
+        }
+
+        await prisma.recruiterOrganization.update({
+          where: { id: recruiterOrgId },
+          data: {
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+            stripeCurrentPeriodEnd: periodEnd,
+            subscriptionStatus: 'ACTIVE',
+            planTier: plan.id,
+            activeJobQuota: plan.activeJobQuota,
+            monthlyIntroQuota: plan.monthlyIntroQuota,
+            teamSeats: plan.teamSeats,
+            candidateAlertsEnabled: plan.candidateAlerts,
+            collaborationEnabled: plan.collaboration,
+            analyticsTier: plan.analyticsTier,
+          },
+        });
+
+        console.log(`[Stripe Webhook] Recruiter Organization ${recruiterOrgId} successfully activated ${plan.id} plan.`);
+      } catch (err) {
+        console.error('[Stripe Webhook] Failed to process recruiter org checkout:', err);
       }
       return new NextResponse(null, { status: 200 });
     }
@@ -285,7 +330,31 @@ export async function POST(req: Request) {
             });
             console.log(`[Stripe Webhook] Updated org ${org.id} from invoice.payment_succeeded`);
           } else {
-            console.log(`[Stripe Webhook] invoice.payment_succeeded: No matching user or org found for subscription ${subscription.id} / customer ${subCustomerId} / email ${customerEmail}`);
+            // Check recruiter organization
+            const recruiterOrg = await prisma.recruiterOrganization.findFirst({
+              where: {
+                OR: [
+                  { stripeSubscriptionId: subscription.id },
+                  ...(subCustomerId ? [{ stripeCustomerId: subCustomerId }] : []),
+                ],
+              },
+            });
+
+            if (recruiterOrg) {
+              await prisma.recruiterOrganization.update({
+                where: { id: recruiterOrg.id },
+                data: {
+                  stripeSubscriptionId: subscription.id,
+                  stripeCustomerId: subCustomerId || recruiterOrg.stripeCustomerId,
+                  stripeCurrentPeriodEnd: periodEnd || recruiterOrg.stripeCurrentPeriodEnd,
+                  subscriptionStatus: 'ACTIVE',
+                  consumedIntros: 0, // Reset monthly intros on fresh invoice cycle
+                },
+              });
+              console.log(`[Stripe Webhook] Reset monthly intros for Recruiter Org ${recruiterOrg.id} on invoice.payment_succeeded`);
+            } else {
+              console.log(`[Stripe Webhook] invoice.payment_succeeded: No matching user or org found for subscription ${subscription.id} / customer ${subCustomerId} / email ${customerEmail}`);
+            }
           }
         }
       } catch (err) {
@@ -345,6 +414,28 @@ export async function POST(req: Request) {
           await handleUserUpgradeToPro(user.id);
         }
         console.log(`[Stripe Webhook] Updated user ${user.id} from customer.subscription.updated (active: ${isNowActive})`);
+      } else {
+        // Check recruiter organization
+        const recruiterOrg = await prisma.recruiterOrganization.findFirst({
+          where: {
+            OR: [
+              { stripeSubscriptionId: subscription.id },
+              ...(customerId ? [{ stripeCustomerId: customerId }] : []),
+            ],
+          },
+        });
+
+        if (recruiterOrg) {
+          const status = subscription.status === 'active' ? 'ACTIVE' : subscription.status.toUpperCase();
+          await prisma.recruiterOrganization.update({
+            where: { id: recruiterOrg.id },
+            data: {
+              subscriptionStatus: status,
+              stripeCurrentPeriodEnd: periodEnd || recruiterOrg.stripeCurrentPeriodEnd,
+            },
+          });
+          console.log(`[Stripe Webhook] Updated Recruiter Org ${recruiterOrg.id} to ${status}`);
+        }
       }
     } catch (err) {
       console.error("[Stripe Webhook] Error processing customer.subscription.updated:", err);
@@ -422,6 +513,26 @@ export async function POST(req: Request) {
               },
             }).catch(() => {});
             console.log(`[Stripe Webhook] Reset user ${user.id} subscription state from customer.subscription.deleted`);
+          } else {
+            const recruiterOrg = await prisma.recruiterOrganization.findFirst({
+              where: {
+                OR: [
+                  { stripeSubscriptionId: subscription.id },
+                  ...(customerId ? [{ stripeCustomerId: customerId }] : []),
+                ],
+              },
+            });
+
+            if (recruiterOrg) {
+              await prisma.recruiterOrganization.update({
+                where: { id: recruiterOrg.id },
+                data: {
+                  subscriptionStatus: 'CANCELED',
+                  stripeSubscriptionId: null,
+                },
+              });
+              console.log(`[Stripe Webhook] Marked Recruiter Org ${recruiterOrg.id} as CANCELED from customer.subscription.deleted`);
+            }
           }
         }
       }

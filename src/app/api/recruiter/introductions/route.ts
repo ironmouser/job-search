@@ -108,6 +108,12 @@ export async function GET() {
   }
 }
 
+import {
+  assertCanRequestIntroduction,
+  consumeIntroductionCredit,
+  PaymentRequiredError,
+} from '@/lib/recruiter/recruiterBillingService';
+
 export async function POST(req: NextRequest) {
   try {
     const recruiter = await requireVerifiedRecruiter();
@@ -130,8 +136,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 2. High-Value Action Entitlement & Quota Verification
+    await assertCanRequestIntroduction(recruiter.organizationId);
+
     const body = await req.json();
-    const { candidateId, recruiterJobId, notes } = body;
+    const { candidateId, recruiterJobId, notes, assignedRecruiterId } = body;
 
     if (!candidateId || !recruiterJobId) {
       return NextResponse.json(
@@ -160,6 +169,17 @@ export async function POST(req: NextRequest) {
       notes,
     });
 
+    // If a specific team member was assigned, set assignedRecruiterId
+    if (assignedRecruiterId) {
+      await prisma.introduction.update({
+        where: { id: intro.id },
+        data: { assignedRecruiterId },
+      });
+    }
+
+    // Atomically consume one introduction credit from the organization quota
+    await consumeIntroductionCredit(recruiter.organizationId);
+
     return NextResponse.json({
       success: true,
       introduction: {
@@ -172,6 +192,16 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: any) {
+    if (err instanceof PaymentRequiredError) {
+      return NextResponse.json(
+        {
+          error: err.message,
+          code: err.code,
+          entitlements: err.details,
+        },
+        { status: 402 }
+      );
+    }
     const status = err.message?.startsWith('UNAUTHORIZED') ? 401 : err.message?.startsWith('FORBIDDEN') ? 403 : 400;
     return NextResponse.json({ error: err.message || 'Failed to create introduction' }, { status });
   }

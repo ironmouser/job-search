@@ -1,12 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Building2, User, Mail, Globe, CheckCircle2, ArrowRight, Loader2, UserPlus } from 'lucide-react';
+import { ArrowRight, Loader2, UserPlus } from 'lucide-react';
 import RecruiterHeader from '@/components/recruiter/RecruiterHeader';
 
+function normalizeUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+}
+
+function isValidUrl(val: string): boolean {
+  try {
+    const parsed = new URL(val);
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.hostname.includes('.');
+  } catch {
+    return false;
+  }
+}
+
 export default function RecruiterRegisterPage() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -22,14 +38,39 @@ export default function RecruiterRegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    const normalizedWebsite = normalizeUrl(formData.organizationWebsite);
+    const normalizedLinkedin = formData.linkedinUrl.trim() ? normalizeUrl(formData.linkedinUrl) : '';
+
+    if (!normalizedWebsite) {
+      setError('Website URL is required.');
+      return;
+    }
+
+    if (!isValidUrl(normalizedWebsite)) {
+      setError('Please enter a valid website URL (e.g. www.jobagentHQ.com or https://jobagentHQ.com)');
+      return;
+    }
+
+    if (normalizedLinkedin && !isValidUrl(normalizedLinkedin)) {
+      setError('Please enter a valid LinkedIn URL (e.g. https://linkedin.com/in/username)');
+      return;
+    }
+
+    setLoading(true);
+
     try {
+      const payload = {
+        ...formData,
+        organizationWebsite: normalizedWebsite,
+        linkedinUrl: normalizedLinkedin,
+      };
+
       const res = await fetch('/api/recruiter/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -37,9 +78,9 @@ export default function RecruiterRegisterPage() {
         throw new Error(data.error || 'Failed to submit recruiter profile');
       }
 
-      router.push('/recruiter');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during registration');
+      window.location.href = '/recruiter';
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred during registration');
     } finally {
       setLoading(false);
     }
@@ -168,9 +209,18 @@ export default function RecruiterRegisterPage() {
                 LinkedIn Profile URL
               </label>
               <input
-                type="url"
+                type="text"
+                inputMode="url"
                 value={formData.linkedinUrl}
                 onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
+                onBlur={() => {
+                  if (formData.linkedinUrl.trim()) {
+                    setFormData((prev) => ({
+                      ...prev,
+                      linkedinUrl: normalizeUrl(prev.linkedinUrl),
+                    }));
+                  }
+                }}
                 placeholder="https://linkedin.com/in/janesmith"
                 className="input-base"
                 style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px' }}
@@ -230,12 +280,22 @@ export default function RecruiterRegisterPage() {
 
             <div style={{ marginTop: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                Website URL
+                Website URL *
               </label>
               <input
-                type="url"
+                type="text"
+                inputMode="url"
+                required
                 value={formData.organizationWebsite}
                 onChange={(e) => setFormData({ ...formData, organizationWebsite: e.target.value })}
+                onBlur={() => {
+                  if (formData.organizationWebsite.trim()) {
+                    setFormData((prev) => ({
+                      ...prev,
+                      organizationWebsite: normalizeUrl(prev.organizationWebsite),
+                    }));
+                  }
+                }}
                 placeholder="https://www.apextalent.com"
                 className="input-base"
                 style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: '8px' }}

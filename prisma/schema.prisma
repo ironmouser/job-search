@@ -852,15 +852,34 @@ model RecruiterOrganization {
   verifiedAt         DateTime?                   @map("verified_at") @db.Timestamptz(6)
   verifiedBy         String?                     @map("verified_by")
   rejectionReason    String?                     @map("rejection_reason")
+
+  // Stripe Billing & Subscription Fields
+  stripeCustomerId       String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  stripePriceId          String?   @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end") @db.Timestamptz(6)
+  subscriptionStatus     String    @default("INACTIVE") @map("subscription_status")
+  planTier               String?   @map("plan_tier")
+  monthlyIntroQuota      Int       @default(0) @map("monthly_intro_quota")
+  consumedIntros         Int       @default(0) @map("consumed_intros")
+  activeJobQuota         Int       @default(2) @map("active_job_quota")
+  teamSeats              Int       @default(1) @map("team_seats")
+  candidateAlertsEnabled Boolean   @default(false) @map("candidate_alerts_enabled")
+  collaborationEnabled   Boolean   @default(false) @map("collaboration_enabled")
+  analyticsTier          String    @default("NONE") @map("analytics_tier")
+  billingEmail           String?   @map("billing_email")
+
   createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   recruiters      RecruiterProfile[]
+  invitations     RecruiterInvitation[]
   jobs            RecruiterJob[]
   introductions   Introduction[]
   placementEvents PlacementEvent[]
 
   @@index([verificationStatus])
+  @@index([subscriptionStatus])
   @@map("recruiter_organizations")
 }
 
@@ -883,16 +902,42 @@ model RecruiterProfile {
   createdAt          DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization    RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdJobs     RecruiterJob[]
-  introductions   Introduction[]
-  placementEvents PlacementEvent[]
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization          RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdJobs           RecruiterJob[]        @relation("CreatedRecruiterJobs")
+  assignedJobs          RecruiterJob[]        @relation("AssignedRecruiterJobs")
+  introductions         Introduction[]        @relation("CreatedIntroductions")
+  assignedIntroductions Introduction[]        @relation("AssignedIntroductions")
+  sentInvitations       RecruiterInvitation[] @relation("SentRecruiterInvitations")
+  placementEvents       PlacementEvent[]
 
   @@index([organizationId])
   @@index([verificationStatus])
   @@map("recruiter_profiles")
 }
+
+// ─── Recruiter Invitations ─────────────────────────────────────────────────────
+
+model RecruiterInvitation {
+  id                   String           @id @default(uuid()) @db.Uuid
+  organizationId       String           @map("organization_id") @db.Uuid
+  email                String
+  role                 RecruiterRole    @default(RECRUITER)
+  invitedByRecruiterId String           @map("invited_by_recruiter_id") @db.Uuid
+  token                String           @unique @default(uuid())
+  status               InvitationStatus @default(PENDING)
+  expiresAt            DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt           DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    RecruiterProfile      @relation("SentRecruiterInvitations", fields: [invitedByRecruiterId], references: [id], onDelete: Cascade)
+
+  @@index([email, status])
+  @@index([organizationId])
+  @@map("recruiter_invitations")
+}
+
 
 // ─── Candidate Consent ────────────────────────────────────────────────────────
 
@@ -963,6 +1008,7 @@ model RecruiterJob {
   publicId              String             @unique @map("public_id")
   organizationId        String             @map("organization_id") @db.Uuid
   createdByRecruiterId  String             @map("created_by_recruiter_id") @db.Uuid
+  assignedRecruiterId   String?            @map("assigned_recruiter_id") @db.Uuid
   title                 String
   description           String             @db.Text
   normalizedDescription String?            @map("normalized_description") @db.Text
@@ -980,13 +1026,15 @@ model RecruiterJob {
   createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organization    RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  recruiter       RecruiterProfile      @relation(fields: [createdByRecruiterId], references: [id], onDelete: Cascade)
-  matches         RecruiterJobMatch[]
-  introductions   Introduction[]
-  placementEvents PlacementEvent[]
+  organization      RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recruiter         RecruiterProfile      @relation("CreatedRecruiterJobs", fields: [createdByRecruiterId], references: [id], onDelete: Cascade)
+  assignedRecruiter RecruiterProfile?     @relation("AssignedRecruiterJobs", fields: [assignedRecruiterId], references: [id], onDelete: SetNull)
+  matches           RecruiterJobMatch[]
+  introductions     Introduction[]
+  placementEvents   PlacementEvent[]
 
   @@index([organizationId, status])
+  @@index([assignedRecruiterId])
   @@index([status, createdAt(sort: Desc)])
   @@map("recruiter_jobs")
 }
@@ -1025,6 +1073,7 @@ model Introduction {
   organizationId        String             @map("organization_id") @db.Uuid
   recruiterJobId        String             @map("recruiter_job_id") @db.Uuid
   matchId               String?            @map("match_id") @db.Uuid
+  assignedRecruiterId   String?            @map("assigned_recruiter_id") @db.Uuid
 
   jobFitScore           Int?               @map("job_fit_score")
   matchVersion          String?            @default("v1") @map("match_version")
@@ -1044,7 +1093,8 @@ model Introduction {
   updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   candidate       User                  @relation("CandidateIntroductions", fields: [candidateId], references: [id], onDelete: Cascade)
-  recruiter       RecruiterProfile      @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  recruiter       RecruiterProfile      @relation("CreatedIntroductions", fields: [recruiterId], references: [id], onDelete: Cascade)
+  assignedRecruiter RecruiterProfile?   @relation("AssignedIntroductions", fields: [assignedRecruiterId], references: [id], onDelete: SetNull)
   organization    RecruiterOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   recruiterJob    RecruiterJob          @relation(fields: [recruiterJobId], references: [id], onDelete: Cascade)
   match           RecruiterJobMatch?    @relation(fields: [matchId], references: [id], onDelete: SetNull)
@@ -1055,6 +1105,7 @@ model Introduction {
   @@index([organizationId, currentStatus])
   @@index([candidateId, currentStatus])
   @@index([recruiterId])
+  @@index([assignedRecruiterId])
   @@map("introductions")
 }
 

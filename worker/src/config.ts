@@ -14,7 +14,7 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AgentConfig {
-  /** Primary navigation/reasoning model (GLM-5.3-Flash, DeepSeek V4 Flash) */
+  /** Primary navigation/reasoning model (GLM-5.3-Flash, DeepSeek V4.1 Flash) */
   primaryAgentModel: string;
 
   /** Visual fallback model (Gemini Flash-Lite) */

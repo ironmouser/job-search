@@ -14,6 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import RecruiterHeader from '@/components/recruiter/RecruiterHeader';
+import RecruiterUpgradeModal from '@/components/recruiter/RecruiterUpgradeModal';
 
 export default function CandidateDiscoveryPage() {
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -22,6 +23,8 @@ export default function CandidateDiscoveryPage() {
   const [location, setLocation] = useState('');
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [pendingCandidateForUpgrade, setPendingCandidateForUpgrade] = useState<any | null>(null);
 
   // Job selection for Introduction
   const [jobs, setJobs] = useState<any[]>([]);
@@ -103,6 +106,12 @@ export default function CandidateDiscoveryPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 402) {
+          setPendingCandidateForUpgrade(selectedCandidate);
+          setSelectedCandidate(null);
+          setIsUpgradeModalOpen(true);
+          return;
+        }
         throw new Error(data.error || 'Failed to send introduction request');
       }
 
@@ -156,7 +165,7 @@ export default function CandidateDiscoveryPage() {
           <div
             style={{
               padding: '1.25rem 1.5rem',
-              borderBottom: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+              borderBottom: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -226,8 +235,8 @@ export default function CandidateDiscoveryPage() {
                 <div
                   style={{
                     padding: '0.75rem 1rem',
-                    backgroundColor: 'rgba(0, 0, 0, 0.07)',
-                    border: '1px solid var(--border-glass)',
+                    backgroundColor: 'var(--secondary)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     fontSize: '0.9rem',
                     fontWeight: 600,
@@ -280,11 +289,11 @@ export default function CandidateDiscoveryPage() {
             <div
               style={{
                 padding: '1rem 1.5rem',
-                borderTop: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
+                borderTop: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '0.75rem',
-                backgroundColor: 'rgba(0, 0, 0, 0.07)',
+                backgroundColor: 'var(--card-header-bg)',
               }}
             >
               <button
@@ -295,7 +304,7 @@ export default function CandidateDiscoveryPage() {
                   padding: '0.6rem 1.1rem',
                   backgroundColor: 'transparent',
                   color: 'var(--text-secondary)',
-                  border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.12))',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
                   cursor: 'pointer',
@@ -440,8 +449,8 @@ export default function CandidateDiscoveryPage() {
           <div
             style={{
               padding: '3rem 1.5rem',
-              background: 'rgba(0, 0, 0, 0.05)',
-              border: '1px dashed var(--border-glass, rgba(255, 255, 255, 0.1))',
+              background: 'var(--secondary)',
+              border: '1px dashed var(--border)',
               borderRadius: '12px',
               textAlign: 'center',
               color: 'var(--text-secondary)',
@@ -468,8 +477,9 @@ export default function CandidateDiscoveryPage() {
                 key={candidate.id}
                 style={{
                   padding: '1.5rem',
-                  background: 'rgba(0, 0, 0, 0.07)',
-                  border: '1px solid var(--border-glass)',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
                   borderRadius: '12px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -625,6 +635,13 @@ export default function CandidateDiscoveryPage() {
       </div>
 
       {introModalContent && createPortal(introModalContent, document.body)}
+
+      <RecruiterUpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        triggerAction="INTRO"
+        candidateName={pendingCandidateForUpgrade?.headline || 'Candidate'}
+      />
     </div>
   );
 }

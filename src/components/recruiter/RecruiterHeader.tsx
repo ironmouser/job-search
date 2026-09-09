@@ -10,6 +10,8 @@ import {
   GitPullRequest,
   UserCheck,
   CheckCircle2,
+  BarChart3,
+  CreditCard,
 } from "lucide-react";
 
 export const RECRUITER_NAV_ITEMS = [
@@ -36,6 +38,18 @@ export const RECRUITER_NAV_ITEMS = [
     href: "/recruiter/pipeline",
     Icon: GitPullRequest,
     color: "#ec4899",
+  },
+  {
+    title: "Analytics",
+    href: "/recruiter/analytics",
+    Icon: BarChart3,
+    color: "#f59e0b",
+  },
+  {
+    title: "Billing",
+    href: "/recruiter/billing",
+    Icon: CreditCard,
+    color: "#6366f1",
   },
 ];
 
@@ -113,7 +127,7 @@ export function RecruiterHeader({ title, subtitle, hideNav = false }: RecruiterH
             gap: 8,
             flexWrap: "wrap",
             paddingTop: "0.75rem",
-            borderTop: "1px solid var(--border-glass, rgba(255,255,255,0.1))",
+            borderTop: "1px solid var(--border)",
           }}
         >
           {RECRUITER_NAV_ITEMS.map(({ title: navTitle, href, Icon, color }) => {
@@ -133,9 +147,9 @@ export function RecruiterHeader({ title, subtitle, hideNav = false }: RecruiterH
                   fontWeight: active ? 600 : 500,
                   textDecoration: "none",
                   transition: "all 0.15s ease",
-                  backgroundColor: active ? `${color}25` : "rgba(255,255,255,0.05)",
+                  backgroundColor: active ? `${color}25` : "var(--card)",
                   color: active ? color : "var(--text-secondary)",
-                  border: `1px solid ${active ? `${color}60` : "var(--border-glass, rgba(255,255,255,0.12))"}`,
+                  border: `1px solid ${active ? `${color}60` : "var(--border)"}`,
                 }}
               >
                 <Icon size={15} style={{ color: color }} />

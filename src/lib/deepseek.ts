@@ -24,7 +24,7 @@ export async function callDeepSeek(options: CallDeepSeekOptions): Promise<string
         throw new Error('DEEPSEEK_API_KEY is not set in environment variables.');
     }
 
-    const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4-flash';
+    const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4.1-flash';
     const modelsToTry = [preferredModel, ...(options.fallbackModels || [])].filter(
         (m, idx, arr) => arr.indexOf(m) === idx
     );
@@ -126,7 +126,7 @@ export async function* streamDeepSeek(options: CallDeepSeekOptions): AsyncGenera
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) throw new Error('DEEPSEEK_API_KEY is not set');
 
-    const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4-flash';
+    const preferredModel = options.model && options.model.startsWith('deepseek') ? options.model : 'deepseek-v4.1-flash';
     const bodyPayload = {
         model: preferredModel,
         messages: options.messages,

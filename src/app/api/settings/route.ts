@@ -9,6 +9,7 @@ import { getEffectiveTier } from '@/lib/tier';
 import { logSuspiciousActivity } from '@/lib/security';
 import { extractJobTitleFromProfileOrResume } from '@/lib/recovery';
 import { healLocation } from '@/lib/locationNormalizer';
+import { isCandidateDiscoverable } from '@/lib/recruiter/consent';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +37,12 @@ export async function GET() {
             }
         }
         
-        const globalSettings = await prisma.globalSettings.findUnique({
-            where: { id: 'system' }
-        });
+        const [globalSettings, isDiscoverable] = await Promise.all([
+            prisma.globalSettings.findUnique({
+                where: { id: 'system' }
+            }),
+            isCandidateDiscoverable(session.user.id),
+        ]);
 
         const dbUser = await prisma.user.findUnique({
             where: { id: session.user.id },
@@ -169,6 +173,7 @@ export async function GET() {
             coverLetterPdfMargin: (prefs as any).coverLetterPdfMargin || '0.5in',
             coverLetterPdfHeaderLayout: (prefs as any).coverLetterPdfHeaderLayout || 'left',
             customAnswers: (prefs?.sources as any)?.customAnswers || {},
+            isDiscoverable,
             globalSettings
         });
     } catch (e: any) {

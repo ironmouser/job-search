@@ -1,7 +1,7 @@
 /**
  * worker/src/generic-agent/deepseek-navigator.ts
  *
- * DeepSeekNavigator — Reasoning layer using DeepSeek V4 Flash over the semantic AXTree snapshot.
+ * DeepSeekNavigator — Reasoning layer using DeepSeek V4.1 Flash over the semantic AXTree snapshot.
  *
  * Responsibilities:
  *  1. Analyze page structure from AXTree semantic snapshot without raw HTML.

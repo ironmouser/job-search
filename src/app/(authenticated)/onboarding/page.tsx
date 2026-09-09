@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Bot, Search, FileText, CheckCircle, ChevronRight, ChevronLeft, 
-    Loader2, UploadCloud, Sparkles, Check, ArrowRight
+    Loader2, UploadCloud, Sparkles, Check, ArrowRight, UserCheck
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import CloudResumePicker from '@/components/common/CloudResumePicker';
@@ -36,6 +36,7 @@ export default function OnboardingPage() {
                         searchLocation: prev.searchLocation || data.preferences.searchLocation || '',
                         remoteOnly: prev.remoteOnly || Boolean(data.preferences.remoteOnly),
                         resumeMarkdown: prev.resumeMarkdown || data.preferences.resumeMarkdown || '',
+                        openToRecruiters: typeof data.preferences.openToRecruiters === 'boolean' ? data.preferences.openToRecruiters : prev.openToRecruiters,
                     }));
                 }
             })
@@ -47,6 +48,7 @@ export default function OnboardingPage() {
         searchLocation: '',
         remoteOnly: false,
         resumeMarkdown: '',
+        openToRecruiters: true,
     });
     const [titleError, setTitleError] = useState(false);
 
@@ -439,6 +441,70 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                     fontSize: '0.88rem' 
                                 }}
                             />
+                        </div>
+
+                        {/* Recruiter Opportunities Opt-in Card */}
+                        <div 
+                            style={{
+                                marginTop: '1.25rem',
+                                padding: '1.1rem 1.25rem',
+                                background: formData.openToRecruiters ? 'rgba(56, 189, 248, 0.06)' : 'rgba(255, 255, 255, 0.02)',
+                                border: `1px solid ${formData.openToRecruiters ? 'rgba(56, 189, 248, 0.28)' : 'var(--border-glass)'}`,
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '1rem',
+                                transition: 'all 0.2s ease',
+                            }}
+                        >
+                            <div style={{ flex: 1, minWidth: '220px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.25rem' }}>
+                                    <UserCheck size={18} style={{ color: '#38bdf8', flexShrink: 0 }} />
+                                    <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                        Open to recruiter opportunities
+                                    </h4>
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                                    Let verified recruiters discover your profile and request a connection about relevant opportunities.
+                                </p>
+                                <span style={{ display: 'inline-block', marginTop: '0.35rem', fontSize: '0.78rem', color: '#94a3b8' }}>
+                                    Your contact details remain completely private until you explicitly accept an introduction.
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={formData.openToRecruiters}
+                                aria-label="Open to recruiter opportunities toggle"
+                                onClick={() => handleChange('openToRecruiters', !formData.openToRecruiters)}
+                                style={{
+                                    width: '52px',
+                                    height: '28px',
+                                    borderRadius: '14px',
+                                    backgroundColor: formData.openToRecruiters ? '#2563eb' : 'rgba(255, 255, 255, 0.12)',
+                                    position: 'relative',
+                                    border: '1px solid var(--border-glass)',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    flexShrink: 0,
+                                    transition: 'background-color 0.2s ease',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: '22px',
+                                        height: '22px',
+                                        borderRadius: '50%',
+                                        backgroundColor: '#ffffff',
+                                        position: 'absolute',
+                                        top: '2px',
+                                        left: formData.openToRecruiters ? '26px' : '3px',
+                                        transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                    }}
+                                />
+                            </button>
                         </div>
                     </div>
                 )}
