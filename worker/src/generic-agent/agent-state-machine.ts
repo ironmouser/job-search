@@ -12,6 +12,7 @@
  */
 
 import { AgentState } from './types';
+export { AgentState };
 
 // ─── Legal transition map ─────────────────────────────────────────────────────
 
