@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from './ui/modal';
-import { Search, SlidersHorizontal, RotateCcw, Check, Sparkles, X, Calendar } from 'lucide-react';
+import { Search, SlidersHorizontal, RotateCcw, Sparkles, X, Calendar } from 'lucide-react';
 
 import { SortOptionType } from '@/components/DashboardDock';
 
@@ -48,7 +48,7 @@ export default function DashboardFilterModal({
   setSortOption,
   activeFilter = 'all',
   setActiveFilter,
-  minScore = 50,
+  minScore = 0,
   setMinScore,
   onReset
 }: DashboardFilterModalProps) {
@@ -79,7 +79,7 @@ export default function DashboardFilterModal({
       setLocationFilter([]);
       if (setSortOption) setSortOption('role_match');
       if (setActiveFilter) setActiveFilter('all');
-      if (setMinScore) setMinScore(50);
+      if (setMinScore) setMinScore(0);
     }
   };
 
@@ -145,88 +145,64 @@ export default function DashboardFilterModal({
               </div>
             </div>
 
-            {/* Status & Fit Filter Pills */}
-            {setActiveFilter && (
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
-                  Status & Fit Filter
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                  {[
-                    { id: 'all', label: 'All Jobs' },
-                    { id: 'high_fit', label: 'High Fit (80%+)' },
-                    { id: 'scored', label: 'Scored Jobs' },
-                    { id: 'archived', label: 'Archived' }
-                  ].map(opt => {
-                    const isSelected = activeFilter === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        onClick={() => setActiveFilter(opt.id as any)}
-                        style={{
-                          padding: '0.4rem 0.75rem',
-                          fontSize: '0.825rem',
-                          borderRadius: '20px',
-                          border: isSelected ? '1px solid #0070f3' : '1px solid var(--border)',
-                          background: isSelected ? 'rgba(0, 112, 243, 0.1)' : 'var(--background)',
-                          color: isSelected ? '#0070f3' : 'var(--foreground)',
-                          fontWeight: isSelected ? 600 : 400,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.3rem',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        {isSelected && <Check size={14} />}
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* Status & Fit and Minimum Match Score Filters Side-by-Side */}
+            {(setActiveFilter || setMinScore) && (
+              <div style={{ display: 'grid', gridTemplateColumns: (setActiveFilter && setMinScore) ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
+                {setActiveFilter && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                      Status & Fit Filter
+                    </label>
+                    <select
+                      value={activeFilter}
+                      onChange={(e) => setActiveFilter(e.target.value as any)}
+                      style={{
+                        width: '100%',
+                        padding: '0.55rem',
+                        fontSize: '0.85rem',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--background)',
+                        color: 'var(--foreground)',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="all">All Jobs</option>
+                      <option value="high_fit">High Fit (80%+)</option>
+                      <option value="scored">Scored Jobs</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                  </div>
+                )}
 
-            {/* Minimum Match Score Filter */}
-            {setMinScore && (
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
-                  Minimum Match Score
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                  {[
-                    { val: 50, label: 'Hide < 50 (Default)' },
-                    { val: 0, label: 'Show All (0+)' },
-                    { val: 25, label: '25%+' },
-                    { val: 80, label: '80%+ (High Fit)' }
-                  ].map(opt => {
-                    const isSelected = (minScore ?? 50) === opt.val;
-                    return (
-                      <button
-                        key={opt.val}
-                        type="button"
-                        onClick={() => setMinScore(opt.val)}
-                        style={{
-                          padding: '0.35rem 0.7rem',
-                          fontSize: '0.8rem',
-                          borderRadius: '20px',
-                          border: isSelected ? '1px solid #0070f3' : '1px solid var(--border)',
-                          background: isSelected ? 'rgba(0, 112, 243, 0.1)' : 'var(--background)',
-                          color: isSelected ? '#0070f3' : 'var(--foreground)',
-                          fontWeight: isSelected ? 600 : 400,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.3rem',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        {isSelected && <Check size={14} />}
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                {setMinScore && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                      Minimum Match Score
+                    </label>
+                    <select
+                      value={minScore ?? 0}
+                      onChange={(e) => setMinScore(Number(e.target.value))}
+                      style={{
+                        width: '100%',
+                        padding: '0.55rem',
+                        fontSize: '0.85rem',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'var(--background)',
+                        color: 'var(--foreground)',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={0}>Show All (0+) (Default)</option>
+                      <option value={25}>25%+</option>
+                      <option value={50}>Hide &lt; 50</option>
+                      <option value={80}>80%+ (High Fit)</option>
+                    </select>
+                  </div>
+                )}
               </div>
             )}
 

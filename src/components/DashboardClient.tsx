@@ -297,7 +297,7 @@ export default function DashboardClient({
   }, [jobs, hasSeenNonUsPrompt, noInternational]);
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'scored' | 'high_fit' | 'archived'>('all');
-  const [minScoreFilter, setMinScoreFilter] = useState<number>(50);
+  const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
   const [viewMode, setViewMode] = useState<'grid' | 'table' | 'columns'>('columns');
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -450,6 +450,12 @@ export default function DashboardClient({
     }, 50);
   }, []);
 
+  const searchParams = useSearchParams();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(20);
+  const isPageInitialized = useRef(false);
+  const lastFilterRef = useRef<string | null>(null);
+
   const hasActiveFilters = Boolean(
     activeFilter !== 'all' ||
     keywordFilter ||
@@ -458,7 +464,7 @@ export default function DashboardClient({
     endDate ||
     locationFilter.length > 0 ||
     sortOption !== 'role_match' ||
-    minScoreFilter !== 50
+    minScoreFilter !== 0
   );
 
   const handleClearAllFilters = useCallback(() => {
@@ -469,7 +475,7 @@ export default function DashboardClient({
     setEndDate('');
     setLocationFilter([]);
     setSortOption('role_match');
-    setMinScoreFilter(50);
+    setMinScoreFilter(0);
     setCurrentPage(1);
 
     if (typeof window !== 'undefined') {
@@ -489,13 +495,7 @@ export default function DashboardClient({
         // Ignore
       }
     }
-  }, []);
-
-  const searchParams = useSearchParams();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState<number>(20);
-  const isPageInitialized = useRef(false);
-  const lastFilterRef = useRef<string | null>(null);
+  }, [setCurrentPage]);
 
   const handleEmailSync = useCallback(async () => {
     if (userPlanTier !== 'PRO' && !trialEndsAt) {
@@ -617,6 +617,8 @@ export default function DashboardClient({
 
   // Restore page number and items per page from URL, localStorage, or sessionStorage on mount
   useEffect(() => {
+    if (isPageInitialized.current) return;
+
     const urlPage = searchParams?.get('page');
     const urlLimit = searchParams?.get('limit') || searchParams?.get('perPage');
 
@@ -650,17 +652,7 @@ export default function DashboardClient({
         setViewMode('columns');
       }
 
-      // Each time the user logs in or refreshes the page, default the dashboard to shown all found jobs
-      setActiveFilter('all');
-      setKeywordFilter('');
-      setSourceFilter('both');
-      setStartDate('');
-      setEndDate('');
-      setLocationFilter([]);
-      setSortOption('role_match');
-      setMinScoreFilter(50);
-
-      // Clean persistent filter keys from storage so stale filters do not linger
+      // Clean persistent filter keys from storage so stale filters do not linger across logins/refreshes
       try {
         const savedState = localStorage.getItem('jobAgentDashboardState');
         if (savedState) {
@@ -710,6 +702,21 @@ export default function DashboardClient({
     return () => clearTimeout(timer);
   }, [searchParams]);
 
+  // Synchronize page number if URL searchParams change via browser navigation (back/forward)
+  useEffect(() => {
+    if (!isPageInitialized.current) return;
+    const urlPage = searchParams?.get('page');
+    if (urlPage) {
+      const pageNum = parseInt(urlPage, 10);
+      if (!isNaN(pageNum) && pageNum > 0) {
+        const timer = setTimeout(() => {
+          setCurrentPage(prev => (prev !== pageNum ? pageNum : prev));
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [searchParams]);
+
   // Listen for screen resize to dynamically switch from columns view to grid view on mobile/tablet
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -742,11 +749,15 @@ export default function DashboardClient({
       }
 
       const params = new URLSearchParams(window.location.search);
-      params.set('page', newPage.toString());
-      params.set('limit', itemsPerPage.toString());
-      window.history.replaceState(null, '', `?${params.toString()}`);
+      const currentPageParam = params.get('page');
+      const currentLimitParam = params.get('limit') || params.get('perPage');
+      if (currentPageParam !== newPage.toString() || (currentLimitParam && currentLimitParam !== itemsPerPage.toString())) {
+        params.set('page', newPage.toString());
+        params.set('limit', itemsPerPage.toString());
+        window.history.replaceState(null, '', `?${params.toString()}`);
+      }
     }
-  }, [itemsPerPage]);
+  }, [itemsPerPage, setCurrentPage]);
 
   const changeItemsPerPage = useCallback((newLimit: number) => {
     setItemsPerPage(newLimit);
@@ -772,7 +783,7 @@ export default function DashboardClient({
       params.set('limit', newLimit.toString());
       window.history.replaceState(null, '', `?${params.toString()}`);
     }
-  }, []);
+  }, [setCurrentPage, setItemsPerPage]);
 
   const handleViewModeChange = useCallback((mode: 'grid' | 'table' | 'columns') => {
     setViewMode(mode);
@@ -784,7 +795,7 @@ export default function DashboardClient({
     setEndDate('');
     setLocationFilter([]);
     setSortOption('role_match');
-    setMinScoreFilter(50);
+    setMinScoreFilter(0);
     setCurrentPage(1);
 
     if (typeof window !== 'undefined') {
@@ -806,7 +817,7 @@ export default function DashboardClient({
         // Ignore
       }
     }
-  }, []);
+  }, [setCurrentPage]);
 
   const handleMarkViewed = useCallback((jobId: string) => {
     if (typeof window !== 'undefined') {
@@ -911,6 +922,13 @@ export default function DashboardClient({
   const highlyScored = unarchivedJobs.filter(j => (j.opportunity_scores?.[0]?.total_score ?? 0) >= 80).length;
   const totalArchived = jobList?.filter(j => j.is_archived && !isJobLowScore(j)).length || 0;
 
+  // Cleanup page actions only when DashboardClient unmounts
+  useEffect(() => {
+    return () => {
+      setPageActions(null);
+    };
+  }, [setPageActions]);
+
   // Register Dashboard quick actions into the Global Command Bar
   useEffect(() => {
     setPageActions(
@@ -1000,7 +1018,6 @@ export default function DashboardClient({
         </button>
       </div>
     );
-    return () => setPageActions(null);
   }, [
     isEmailSyncing,
     isSyncing,
@@ -1262,9 +1279,14 @@ export default function DashboardClient({
 
     if (lastFilterRef.current !== currentFilterKey) {
       lastFilterRef.current = currentFilterKey;
-      changePage(1);
+      if (currentPage !== 1) {
+        const timer = setTimeout(() => {
+          changePage(1);
+        }, 0);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [activeFilter, minScoreFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, isLoaded, changePage]);
+  }, [activeFilter, minScoreFilter, sortOption, locationFilter, sourceFilter, startDate, endDate, keywordFilter, searchRole, isLoaded, changePage, currentPage]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedJobs.length / itemsPerPage));
   
