@@ -128,7 +128,7 @@ export async function PATCH(
     const recruiter = await requireVerifiedRecruiter();
     const { id } = await params;
     const body = await req.json();
-    const { title, status, location, remoteType, salaryMin, salaryMax } = body;
+    const { title, status, location, remoteType, salaryMin, salaryMax, seniority, description } = body;
 
     const job = await prisma.recruiterJob.findFirst({
       where: { id, organizationId: recruiter.organizationId },
@@ -145,6 +145,8 @@ export async function PATCH(
         status: status ? (status as RecruiterJobStatus) : undefined,
         location: location !== undefined ? location : undefined,
         remoteType: remoteType || undefined,
+        seniority: seniority !== undefined ? seniority : undefined,
+        description: description !== undefined ? description : undefined,
         salaryMin: typeof salaryMin === 'number' ? salaryMin : undefined,
         salaryMax: typeof salaryMax === 'number' ? salaryMax : undefined,
       },

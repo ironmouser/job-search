@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, FileText, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
+import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, FileText, CheckCircle2, ChevronDown, ChevronUp, ArrowRight, Info } from 'lucide-react';
 import { trackAddJobUrl } from '@/lib/analytics';
 
 interface AddJobUrlBarProps {
@@ -18,6 +19,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
   const [statusStep, setStatusStep] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [existingJob, setExistingJob] = useState<{ id: string; title?: string; company?: string } | null>(null);
 
   // Manual Fallback Modal State
   const [showManualModal, setShowManualModal] = useState(false);
@@ -42,6 +44,7 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
 
     setErrorMsg(null);
     setSuccessMsg(null);
+    setExistingJob(null);
     setIsLoading(true);
     setStatusStep('Fetching job page & details...');
 
@@ -64,7 +67,17 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       if (!res.ok) {
         const errText = data.message || data.error || 'Failed to add job from URL';
         trackAddJobUrl(url.trim(), 'error', errText);
-        if (data.error === 'COULD_NOT_SCRAPE') {
+        if (data.error === 'ALREADY_SAVED' || data.jobId || data.job?.id) {
+          const existingId = data.jobId || data.job?.id;
+          if (existingId) {
+            setExistingJob({
+              id: existingId,
+              title: data.job?.title,
+              company: data.job?.company
+            });
+          }
+          setErrorMsg(errText);
+        } else if (data.error === 'COULD_NOT_SCRAPE') {
           // Open manual fallback modal
           if (data.partialData) {
             setManualTitle(data.partialData.title || '');
@@ -120,6 +133,16 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
       if (!res.ok) {
         const errText = data.message || data.error || 'Failed to submit job details';
         trackAddJobUrl(url.trim(), 'error', `Manual submit: ${errText}`);
+        if (data.error === 'ALREADY_SAVED' || data.jobId || data.job?.id) {
+          const existingId = data.jobId || data.job?.id;
+          if (existingId) {
+            setExistingJob({
+              id: existingId,
+              title: data.job?.title,
+              company: data.job?.company
+            });
+          }
+        }
         setErrorMsg(errText);
         setIsSubmittingManual(false);
         return;
@@ -239,9 +262,44 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
           )}
 
           {errorMsg && !showManualModal && (
-            <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#dc2626' }}>
-              <AlertCircle style={{ width: 16, height: 16 }} />
-              <span>{errorMsg}</span>
+            <div style={{
+              marginTop: '0.75rem',
+              display: 'flex',
+              flexDirection: existingJob ? 'column' : 'row',
+              alignItems: existingJob ? 'flex-start' : 'center',
+              gap: '0.5rem',
+              fontSize: '0.85rem',
+              color: existingJob ? 'var(--foreground)' : '#dc2626'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                {existingJob ? (
+                  <Info style={{ width: 16, height: 16, color: 'var(--accent-primary, #6366f1)', flexShrink: 0 }} />
+                ) : (
+                  <AlertCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
+                )}
+                <span>{errorMsg}</span>
+              </div>
+              {existingJob && (
+                <div style={{ marginTop: '0.2rem' }}>
+                  <Link
+                    href={`/job/${existingJob.id}`}
+                    className="btn-primary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      padding: '0.4rem 0.85rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    <span>Take me to the job details</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -365,9 +423,44 @@ export default function AddJobUrlBar({ userPlanTier = 'FREE', onJobAdded }: AddJ
               </div>
 
               {errorMsg && (
-                <div style={{ fontSize: '0.85rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <AlertCircle style={{ width: 15, height: 15 }} />
-                  <span>{errorMsg}</span>
+                <div style={{
+                  fontSize: '0.85rem',
+                  color: existingJob ? 'var(--foreground)' : 'var(--danger)',
+                  display: 'flex',
+                  flexDirection: existingJob ? 'column' : 'row',
+                  alignItems: existingJob ? 'flex-start' : 'center',
+                  gap: '0.45rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    {existingJob ? (
+                      <Info style={{ width: 15, height: 15, color: 'var(--accent-primary, #6366f1)' }} />
+                    ) : (
+                      <AlertCircle style={{ width: 15, height: 15 }} />
+                    )}
+                    <span>{errorMsg}</span>
+                  </div>
+                  {existingJob && (
+                    <div style={{ marginTop: '0.25rem' }}>
+                      <Link
+                        href={`/job/${existingJob.id}`}
+                        onClick={() => setShowManualModal(false)}
+                        className="btn-primary"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          padding: '0.4rem 0.85rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          borderRadius: '6px',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        <span>Take me to the job details</span>
+                        <ArrowRight size={13} />
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
 

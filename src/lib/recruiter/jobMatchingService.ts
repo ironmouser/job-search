@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { callAI } from '@/lib/ai';
 import { RECRUITER_MATCH_VERSION } from './config';
 import { CandidateConsentType, ConsentStatus, RecruiterMatchStatus } from '@prisma/client';
+import { sendCandidateAlertEmail } from '@/lib/mailer';
 
 export interface RecruiterScoringResult {
   candidateId: string;
@@ -198,5 +199,118 @@ export async function runMatchingForJob(
 
   // Sort highest score first
   results.sort((a, b) => b.jobFitScore - a.jobFitScore);
+
+  // Trigger candidate alert notification if eligible (non-blocking)
+  notifyRecruitersOfNewMatches({ jobId: recruiterJobId, matches: results }).catch((err) => {
+    console.error('Failed to notify recruiters of new matches:', err);
+  });
+
   return results;
 }
+
+/**
+ * Notifies active recruiters when new qualified matches (score >= 75) are found for a job,
+ * provided the organization has candidate alerts enabled.
+ */
+export async function notifyRecruitersOfNewMatches({
+  jobId,
+  matches,
+}: {
+  jobId: string;
+  matches: RecruiterScoringResult[];
+}): Promise<{ sent: number }> {
+  try {
+    const job = await prisma.recruiterJob.findUnique({
+      where: { id: jobId },
+      include: {
+        organization: {
+          include: {
+            recruiters: true,
+          },
+        },
+      },
+    });
+
+    if (!job || !job.organization || !job.organization.candidateAlertsEnabled) {
+      return { sent: 0 };
+    }
+
+    const qualifiedMatches = matches.filter((m) => m.jobFitScore >= 75);
+    if (qualifiedMatches.length === 0) {
+      return { sent: 0 };
+    }
+
+    const topScore = Math.max(...qualifiedMatches.map((m) => m.jobFitScore));
+    let sentCount = 0;
+
+    for (const recruiter of job.organization.recruiters) {
+      if (recruiter.businessEmail) {
+        await sendCandidateAlertEmail({
+          to: recruiter.businessEmail,
+          recruiterName: `${recruiter.firstName} ${recruiter.lastName}`.trim() || 'Recruiter',
+          jobTitle: job.title,
+          jobId: job.id,
+          matchCount: qualifiedMatches.length,
+          topScore,
+        });
+        sentCount++;
+      }
+    }
+
+    return { sent: sentCount };
+  } catch (err) {
+    console.error('Error in notifyRecruitersOfNewMatches:', err);
+    return { sent: 0 };
+  }
+}
+
+/**
+ * Evaluates a candidate who just granted discovery consent against active jobs
+ * belonging to organizations that have candidate alerts enabled.
+ */
+export async function evaluateCandidateForAlerts(candidateId: string): Promise<void> {
+  try {
+    const activeJobsWithAlerts = await prisma.recruiterJob.findMany({
+      where: {
+        status: 'ACTIVE',
+        organization: {
+          candidateAlertsEnabled: true,
+        },
+      },
+      include: {
+        organization: {
+          include: {
+            recruiters: true,
+          },
+        },
+      },
+    });
+
+    if (activeJobsWithAlerts.length === 0) return;
+
+    for (const job of activeJobsWithAlerts) {
+      try {
+        const result = await scoreRecruiterMatch(candidateId, job.id);
+        if (result.jobFitScore >= 75) {
+          for (const recruiter of job.organization.recruiters) {
+            if (recruiter.businessEmail) {
+              await sendCandidateAlertEmail({
+                to: recruiter.businessEmail,
+                recruiterName: `${recruiter.firstName} ${recruiter.lastName}`.trim() || 'Recruiter',
+                jobTitle: job.title,
+                jobId: job.id,
+                matchCount: 1,
+                topScore: result.jobFitScore,
+              });
+            }
+          }
+        }
+      } catch (matchErr) {
+        console.error(`Failed to evaluate candidate ${candidateId} for job ${job.id}:`, matchErr);
+      }
+    }
+  } catch (err) {
+    console.error('Failed in evaluateCandidateForAlerts:', err);
+  }
+}
+

@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   BarChart3,
   CreditCard,
+  Settings,
 } from "lucide-react";
 
 export const RECRUITER_NAV_ITEMS = [
@@ -50,6 +51,12 @@ export const RECRUITER_NAV_ITEMS = [
     href: "/recruiter/billing",
     Icon: CreditCard,
     color: "#6366f1",
+  },
+  {
+    title: "Settings",
+    href: "/recruiter/settings",
+    Icon: Settings,
+    color: "#0ea5e9",
   },
 ];
 

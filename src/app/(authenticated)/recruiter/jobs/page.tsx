@@ -14,6 +14,11 @@ import {
   X,
   Loader2,
   Sparkles,
+  MoreVertical,
+  Play,
+  Pause,
+  Archive,
+  Edit3,
 } from 'lucide-react';
 import RecruiterHeader from '@/components/recruiter/RecruiterHeader';
 import RecruiterUpgradeModal from '@/components/recruiter/RecruiterUpgradeModal';
@@ -29,10 +34,45 @@ export default function RecruiterJobsPage() {
   const [error, setError] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
+  const [activeMenuJobId, setActiveMenuJobId] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handleDocumentClick = () => setActiveMenuJobId(null);
+    if (activeMenuJobId) {
+      window.addEventListener('click', handleDocumentClick);
+    }
+    return () => window.removeEventListener('click', handleDocumentClick);
+  }, [activeMenuJobId]);
+
+  const handleUpdateStatus = async (jobId: string, newStatus: 'ACTIVE' | 'PAUSED' | 'CLOSED') => {
+    setUpdatingJobId(jobId);
+    setActiveMenuJobId(null);
+    try {
+      const res = await fetch(`/api/recruiter/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setJobs((prev) =>
+          prev.map((j) => (j.id === jobId ? { ...j, status: newStatus } : j))
+        );
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to update job status.');
+      }
+    } catch (err) {
+      console.error('Failed to update job status:', err);
+      alert('Failed to update job status.');
+    } finally {
+      setUpdatingJobId(null);
+    }
+  };
 
   const fetchJobs = async () => {
     try {
@@ -431,22 +471,187 @@ export default function RecruiterJobsPage() {
                     >
                       {job.title}
                     </h4>
-                    <span
-                      style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        padding: '0.15rem 0.45rem',
-                        borderRadius: '9999px',
-                        backgroundColor:
-                          job.status === 'ACTIVE' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-                        color: job.status === 'ACTIVE' ? '#10b981' : '#94a3b8',
-                        border: `1px solid ${
-                          job.status === 'ACTIVE' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(148, 163, 184, 0.25)'
-                        }`,
-                      }}
-                    >
-                      {job.status}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', position: 'relative' }}>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '9999px',
+                          backgroundColor:
+                            job.status === 'ACTIVE'
+                              ? 'rgba(16, 185, 129, 0.15)'
+                              : job.status === 'PAUSED'
+                              ? 'rgba(245, 158, 11, 0.15)'
+                              : 'rgba(148, 163, 184, 0.15)',
+                          color:
+                            job.status === 'ACTIVE'
+                              ? '#10b981'
+                              : job.status === 'PAUSED'
+                              ? '#f59e0b'
+                              : '#94a3b8',
+                          border: `1px solid ${
+                            job.status === 'ACTIVE'
+                              ? 'rgba(16, 185, 129, 0.3)'
+                              : job.status === 'PAUSED'
+                              ? 'rgba(245, 158, 11, 0.3)'
+                              : 'rgba(148, 163, 184, 0.25)'
+                          }`,
+                        }}
+                      >
+                        {job.status}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuJobId(activeMenuJobId === job.id ? null : job.id);
+                        }}
+                        disabled={updatingJobId === job.id}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          borderRadius: '4px',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title="Manage Position"
+                      >
+                        {updatingJobId === job.id ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <MoreVertical size={15} />
+                        )}
+                      </button>
+
+                      {activeMenuJobId === job.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '4px',
+                            width: '180px',
+                            backgroundColor: 'var(--card)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+                            zIndex: 50,
+                            padding: '4px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
+                          }}
+                        >
+                          <Link
+                            href={`/recruiter/jobs/${job.id}`}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 10px',
+                              fontSize: '0.8rem',
+                              color: 'var(--text-primary)',
+                              textDecoration: 'none',
+                              borderRadius: '6px',
+                              transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--secondary)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            <Edit3 size={13} color="#3695e3" />
+                            <span>Edit Details</span>
+                          </Link>
+
+                          {job.status !== 'ACTIVE' && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(job.id, 'ACTIVE')}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 10px',
+                                fontSize: '0.8rem',
+                                color: '#10b981',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                width: '100%',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s',
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--secondary)')}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Play size={13} />
+                              <span>Set Active</span>
+                            </button>
+                          )}
+
+                          {job.status === 'ACTIVE' && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(job.id, 'PAUSED')}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 10px',
+                                fontSize: '0.8rem',
+                                color: '#f59e0b',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                width: '100%',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s',
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--secondary)')}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Pause size={13} />
+                              <span>Pause Position</span>
+                            </button>
+                          )}
+
+                          {job.status !== 'CLOSED' && (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateStatus(job.id, 'CLOSED')}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 10px',
+                                fontSize: '0.8rem',
+                                color: '#ef4444',
+                                background: 'none',
+                                border: 'none',
+                                textAlign: 'left',
+                                width: '100%',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s',
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--secondary)')}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Archive size={13} />
+                              <span>Close Position</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div

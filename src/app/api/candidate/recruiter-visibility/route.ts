@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-helpers';
 import { getCandidateConsents, grantCandidateConsent, revokeCandidateConsent } from '@/lib/recruiter/consent';
 import { CandidateConsentType } from '@prisma/client';
+import { evaluateCandidateForAlerts } from '@/lib/recruiter/jobMatchingService';
 
 export async function GET() {
   const { user, error } = await requireAuth();
@@ -43,6 +44,11 @@ export async function POST(req: NextRequest) {
           consentType: CandidateConsentType.RECRUITER_DISCOVERY,
           ipAddress,
           userAgent,
+        });
+
+        // Trigger background candidate alert evaluation for subscribed recruiter orgs
+        evaluateCandidateForAlerts(user.id).catch((err) => {
+          console.error('Failed background candidate alert evaluation:', err);
         });
       } else {
         await revokeCandidateConsent({

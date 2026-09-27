@@ -53,6 +53,7 @@ export default function PrepareApplicationFlow({
   const [statusStep, setStatusStep] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [createdJob, setCreatedJob] = useState<PreparedJob | null>(null);
+  const [existingJob, setExistingJob] = useState<{ id: string; title?: string; company?: string } | null>(null);
 
   // Manual Mode State
   const [manualTitle, setManualTitle] = useState('');
@@ -81,6 +82,7 @@ export default function PrepareApplicationFlow({
   const handleTabChange = (tab: 'url' | 'manual') => {
     setActiveTab(tab);
     setErrorMsg(null);
+    setExistingJob(null);
     if (tab === 'manual' && url.trim() && !manualUrl) {
       setManualUrl(url.trim());
     }
@@ -91,6 +93,7 @@ export default function PrepareApplicationFlow({
     if (!url.trim() || isLoading) return;
 
     setErrorMsg(null);
+    setExistingJob(null);
     setScrapeFailureNotice(null);
     setIsLoading(true);
     trackPrepareApplicationStart('url');
@@ -119,7 +122,17 @@ export default function PrepareApplicationFlow({
         const errText = data.message || data.error || 'Unable to import job from this link';
         trackPrepareApplicationError(errText, 'url');
 
-        if (data.error === 'COULD_NOT_SCRAPE' || data.error === 'UNTRUSTED_SOURCE') {
+        if (data.error === 'ALREADY_SAVED' || data.jobId || data.job?.id) {
+          const existingId = data.jobId || data.job?.id;
+          if (existingId) {
+            setExistingJob({
+              id: existingId,
+              title: data.job?.title,
+              company: data.job?.company
+            });
+          }
+          setErrorMsg(errText);
+        } else if (data.error === 'COULD_NOT_SCRAPE' || data.error === 'UNTRUSTED_SOURCE') {
           if (data.partialData) {
             setManualTitle(data.partialData.title || '');
             setManualCompany(data.partialData.company || '');
@@ -165,6 +178,7 @@ export default function PrepareApplicationFlow({
 
     setIsSubmittingManual(true);
     setErrorMsg(null);
+    setExistingJob(null);
     trackPrepareApplicationStart('manual');
 
     try {
@@ -185,6 +199,16 @@ export default function PrepareApplicationFlow({
       if (!res.ok) {
         const errText = data.message || data.error || 'Failed to submit job details';
         trackPrepareApplicationError(errText, 'manual');
+        if (data.error === 'ALREADY_SAVED' || data.jobId || data.job?.id) {
+          const existingId = data.jobId || data.job?.id;
+          if (existingId) {
+            setExistingJob({
+              id: existingId,
+              title: data.job?.title,
+              company: data.job?.company
+            });
+          }
+        }
         setErrorMsg(errText);
         setIsSubmittingManual(false);
         return;
@@ -355,7 +379,11 @@ export default function PrepareApplicationFlow({
                       <input
                         type="url"
                         value={url}
-                        onChange={(e) => setUrl(e.target.value)}
+                        onChange={(e) => {
+                          setUrl(e.target.value);
+                          if (errorMsg) setErrorMsg(null);
+                          if (existingJob) setExistingJob(null);
+                        }}
                         placeholder="https://boards.greenhouse.io/company/jobs/... or any job link"
                         disabled={isLoading}
                         required
@@ -420,18 +448,53 @@ export default function PrepareApplicationFlow({
                   {/* Error Notification */}
                   {errorMsg && (
                     <div style={{ 
-                      padding: '0.85rem 1rem', 
+                      padding: '0.9rem 1rem', 
                       borderRadius: '8px', 
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                      border: '1px solid rgba(239, 68, 68, 0.25)', 
+                      backgroundColor: existingJob ? 'rgba(99, 102, 241, 0.08)' : 'rgba(239, 68, 68, 0.1)', 
+                      border: existingJob ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(239, 68, 68, 0.25)', 
                       display: 'flex', 
-                      alignItems: 'flex-start', 
-                      gap: '0.6rem', 
+                      flexDirection: 'column', 
+                      gap: '0.75rem', 
                       fontSize: '0.86rem', 
-                      color: '#f87171' 
+                      color: existingJob ? 'var(--text-primary)' : '#f87171' 
                     }}>
-                      <AlertCircle size={17} style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <span>{errorMsg}</span>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                        {existingJob ? (
+                          <Info size={18} style={{ color: 'var(--accent-primary, #6366f1)', flexShrink: 0, marginTop: '1px' }} />
+                        ) : (
+                          <AlertCircle size={17} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        )}
+                        <div style={{ lineHeight: 1.45 }}>
+                          <span style={{ fontWeight: existingJob ? 600 : 400 }}>{errorMsg}</span>
+                          {existingJob?.title && (
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                              Found in pipeline: <strong>{existingJob.title}</strong>{existingJob.company ? ` at ${existingJob.company}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {existingJob && (
+                        <div style={{ marginTop: '0.1rem' }}>
+                          <Link
+                            href={`/job/${existingJob.id}`}
+                            className="btn-primary"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.55rem 1.15rem',
+                              fontSize: '0.86rem',
+                              fontWeight: 600,
+                              borderRadius: '8px',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <span>Take me to the job details</span>
+                            <ArrowRight size={15} />
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -502,7 +565,11 @@ export default function PrepareApplicationFlow({
                     <input
                       type="text"
                       value={manualTitle}
-                      onChange={(e) => setManualTitle(e.target.value)}
+                      onChange={(e) => {
+                        setManualTitle(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                        if (existingJob) setExistingJob(null);
+                      }}
                       placeholder="e.g. Staff Product Designer"
                       maxLength={200}
                       required
@@ -527,7 +594,11 @@ export default function PrepareApplicationFlow({
                       <input
                         type="text"
                         value={manualCompany}
-                        onChange={(e) => setManualCompany(e.target.value)}
+                        onChange={(e) => {
+                          setManualCompany(e.target.value);
+                          if (errorMsg) setErrorMsg(null);
+                          if (existingJob) setExistingJob(null);
+                        }}
                         placeholder="e.g. Acme Corp"
                         maxLength={200}
                         required
@@ -600,7 +671,11 @@ export default function PrepareApplicationFlow({
                     </div>
                     <textarea
                       value={manualDescription}
-                      onChange={(e) => setManualDescription(e.target.value)}
+                      onChange={(e) => {
+                        setManualDescription(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                        if (existingJob) setExistingJob(null);
+                      }}
                       placeholder="Paste the full job description, role requirements, qualifications, and responsibilities here..."
                       required
                       maxLength={25000}
@@ -621,18 +696,53 @@ export default function PrepareApplicationFlow({
 
                   {errorMsg && (
                     <div style={{ 
-                      padding: '0.85rem 1rem', 
+                      padding: '0.9rem 1rem', 
                       borderRadius: '8px', 
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                      border: '1px solid rgba(239, 68, 68, 0.25)', 
+                      backgroundColor: existingJob ? 'rgba(99, 102, 241, 0.08)' : 'rgba(239, 68, 68, 0.1)', 
+                      border: existingJob ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(239, 68, 68, 0.25)', 
                       display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.6rem', 
+                      flexDirection: 'column', 
+                      gap: '0.75rem', 
                       fontSize: '0.86rem', 
-                      color: '#f87171' 
+                      color: existingJob ? 'var(--text-primary)' : '#f87171' 
                     }}>
-                      <AlertCircle size={16} />
-                      <span>{errorMsg}</span>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                        {existingJob ? (
+                          <Info size={18} style={{ color: 'var(--accent-primary, #6366f1)', flexShrink: 0, marginTop: '1px' }} />
+                        ) : (
+                          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        )}
+                        <div style={{ lineHeight: 1.45 }}>
+                          <span style={{ fontWeight: existingJob ? 600 : 400 }}>{errorMsg}</span>
+                          {existingJob?.title && (
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                              Found in pipeline: <strong>{existingJob.title}</strong>{existingJob.company ? ` at ${existingJob.company}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {existingJob && (
+                        <div style={{ marginTop: '0.1rem' }}>
+                          <Link
+                            href={`/job/${existingJob.id}`}
+                            className="btn-primary"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              padding: '0.55rem 1.15rem',
+                              fontSize: '0.86rem',
+                              fontWeight: 600,
+                              borderRadius: '8px',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <span>Take me to the job details</span>
+                            <ArrowRight size={15} />
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   )}
 

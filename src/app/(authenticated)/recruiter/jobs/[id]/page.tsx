@@ -16,6 +16,8 @@ import {
   X,
   Loader2,
   Award,
+  Edit3,
+  Save,
 } from 'lucide-react';
 import RecruiterHeader from '@/components/recruiter/RecruiterHeader';
 import RecruiterUpgradeModal from '@/components/recruiter/RecruiterUpgradeModal';
@@ -30,6 +32,19 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [pendingCandidateForUpgrade, setPendingCandidateForUpgrade] = useState<any | null>(null);
 
+  // Edit Job Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editStatus, setEditStatus] = useState<'ACTIVE' | 'PAUSED' | 'CLOSED'>('ACTIVE');
+  const [editLocation, setEditLocation] = useState('');
+  const [editRemoteType, setEditRemoteType] = useState('REMOTE');
+  const [editSeniority, setEditSeniority] = useState('');
+  const [editSalaryMin, setEditSalaryMin] = useState<string>('');
+  const [editSalaryMax, setEditSalaryMax] = useState<string>('');
+  const [editDescription, setEditDescription] = useState('');
+  const [savingJob, setSavingJob] = useState(false);
+  const [editJobError, setEditJobError] = useState<string | null>(null);
+
   // Intro Request Modal State
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [introNotes, setIntroNotes] = useState('');
@@ -40,6 +55,58 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleOpenEditModal = () => {
+    if (!job) return;
+    setEditTitle(job.title || '');
+    setEditStatus(job.status || 'ACTIVE');
+    setEditLocation(job.location || '');
+    setEditRemoteType(job.remoteType || 'REMOTE');
+    setEditSeniority(job.seniority || '');
+    setEditSalaryMin(job.salaryMin !== null && job.salaryMin !== undefined ? String(job.salaryMin) : '');
+    setEditSalaryMax(job.salaryMax !== null && job.salaryMax !== undefined ? String(job.salaryMax) : '');
+    setEditDescription(job.description || '');
+    setEditJobError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingJob(true);
+    setEditJobError(null);
+
+    try {
+      const minNum = editSalaryMin ? parseInt(editSalaryMin, 10) : undefined;
+      const maxNum = editSalaryMax ? parseInt(editSalaryMax, 10) : undefined;
+
+      const res = await fetch(`/api/recruiter/jobs/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          status: editStatus,
+          location: editLocation.trim() || null,
+          remoteType: editRemoteType,
+          seniority: editSeniority.trim() || null,
+          description: editDescription.trim(),
+          salaryMin: Number.isNaN(minNum) ? undefined : minNum,
+          salaryMax: Number.isNaN(maxNum) ? undefined : maxNum,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update job opening');
+      }
+
+      setIsEditModalOpen(false);
+      await fetchJobData();
+    } catch (err: any) {
+      setEditJobError(err.message || 'An error occurred while saving the job');
+    } finally {
+      setSavingJob(false);
+    }
+  };
 
   const fetchJobData = async () => {
     try {
@@ -326,6 +393,344 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
       </div>
     ) : null;
 
+  const editModalContent =
+    mounted && isEditModalOpen && typeof document !== 'undefined' ? (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          padding: '1rem',
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget && !savingJob) setIsEditModalOpen(false);
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            width: '100%',
+            maxWidth: '680px',
+            backgroundColor: 'var(--card)',
+            color: 'var(--card-foreground)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <Edit3 size={18} color="#3695e3" />
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                Edit Job Position
+              </h3>
+            </div>
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              disabled={savingJob}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--muted-foreground)',
+                padding: '4px',
+                borderRadius: '6px',
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveJob} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div
+              style={{
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.15rem',
+                overflowY: 'auto',
+                maxHeight: 'calc(90vh - 140px)',
+              }}
+            >
+              {editJobError && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '8px',
+                    color: '#fca5a5',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  {editJobError}
+                </div>
+              )}
+
+              {/* Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                  Position Title <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.85rem',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--input-bg, var(--background))',
+                    color: 'var(--foreground)',
+                    fontSize: '0.875rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Status and Workplace Type */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                    Position Status
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as any)}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--input-bg, var(--background))',
+                      color: 'var(--foreground)',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="ACTIVE">ACTIVE (Accepting Matches)</option>
+                    <option value="PAUSED">PAUSED (Matching Suspended)</option>
+                    <option value="CLOSED">CLOSED (Position Filled or Archived)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                    Workplace Type
+                  </label>
+                  <select
+                    value={editRemoteType}
+                    onChange={(e) => setEditRemoteType(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--input-bg, var(--background))',
+                      color: 'var(--foreground)',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="REMOTE">Remote</option>
+                    <option value="HYBRID">Hybrid</option>
+                    <option value="ON_SITE">On-Site</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Location and Seniority */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    placeholder="e.g. San Francisco, CA or Remote (US)"
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--input-bg, var(--background))',
+                      color: 'var(--foreground)',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                    Seniority Level
+                  </label>
+                  <input
+                    type="text"
+                    value={editSeniority}
+                    onChange={(e) => setEditSeniority(e.target.value)}
+                    placeholder="e.g. Senior, Staff, Lead"
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--input-bg, var(--background))',
+                      color: 'var(--foreground)',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Salary Range */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                    Minimum Salary (USD)
+                  </label>
+                  <input
+                    type="number"
+                    value={editSalaryMin}
+                    onChange={(e) => setEditSalaryMin(e.target.value)}
+                    placeholder="120000"
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--input-bg, var(--background))',
+                      color: 'var(--foreground)',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                    Maximum Salary (USD)
+                  </label>
+                  <input
+                    type="number"
+                    value={editSalaryMax}
+                    onChange={(e) => setEditSalaryMax(e.target.value)}
+                    placeholder="180000"
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--input-bg, var(--background))',
+                      color: 'var(--foreground)',
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                  Job Description
+                </label>
+                <textarea
+                  rows={6}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Paste or edit the full job description and requirements..."
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.85rem',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--input-bg, var(--background))',
+                    color: 'var(--foreground)',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.5,
+                    boxSizing: 'border-box',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid var(--border)',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+                backgroundColor: 'var(--card-header-bg)',
+              }}
+            >
+              <button
+                type="button"
+                disabled={savingJob}
+                onClick={() => setIsEditModalOpen(false)}
+                style={{
+                  padding: '0.6rem 1.1rem',
+                  backgroundColor: 'transparent',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingJob}
+                style={{
+                  padding: '0.6rem 1.35rem',
+                  backgroundColor: '#3695e3',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: savingJob ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                {savingJob ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                <span>{savingJob ? 'Saving Changes...' : 'Save Position'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    ) : null;
+
   return (
     <div>
       <RecruiterHeader
@@ -374,9 +779,25 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
                   fontWeight: 700,
                   padding: '0.15rem 0.5rem',
                   borderRadius: '9999px',
-                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                  color: '#10b981',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  backgroundColor:
+                    job.status === 'ACTIVE'
+                      ? 'rgba(16, 185, 129, 0.15)'
+                      : job.status === 'PAUSED'
+                      ? 'rgba(245, 158, 11, 0.15)'
+                      : 'rgba(148, 163, 184, 0.15)',
+                  color:
+                    job.status === 'ACTIVE'
+                      ? '#10b981'
+                      : job.status === 'PAUSED'
+                      ? '#f59e0b'
+                      : '#94a3b8',
+                  border: `1px solid ${
+                    job.status === 'ACTIVE'
+                      ? 'rgba(16, 185, 129, 0.3)'
+                      : job.status === 'PAUSED'
+                      ? 'rgba(245, 158, 11, 0.3)'
+                      : 'rgba(148, 163, 184, 0.3)'
+                  }`,
                 }}
               >
                 {job.status}
@@ -429,27 +850,50 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
             )}
           </div>
 
-          <button
-            onClick={handleRunMatching}
-            disabled={matching}
-            style={{
-              padding: '0.65rem 1.25rem',
-              backgroundColor: 'rgba(54,149,227,0.15)',
-              border: '1px solid rgba(54,149,227,0.3)',
-              borderRadius: '8px',
-              color: '#3695e3',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              cursor: matching ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <RefreshCw size={15} className={matching ? 'animate-spin' : ''} />
-            <span>{matching ? 'Scoring Candidates...' : 'Re-run Matching'}</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleOpenEditModal}
+              style={{
+                padding: '0.65rem 1.15rem',
+                backgroundColor: 'var(--card)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Edit3 size={15} color="#3695e3" />
+              <span>Edit Position</span>
+            </button>
+
+            <button
+              onClick={handleRunMatching}
+              disabled={matching}
+              style={{
+                padding: '0.65rem 1.25rem',
+                backgroundColor: 'rgba(54,149,227,0.15)',
+                border: '1px solid rgba(54,149,227,0.3)',
+                borderRadius: '8px',
+                color: '#3695e3',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                cursor: matching ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <RefreshCw size={15} className={matching ? 'animate-spin' : ''} />
+              <span>{matching ? 'Scoring Candidates...' : 'Re-run Matching'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -716,6 +1160,7 @@ export default function RecruiterJobDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {introModalContent && createPortal(introModalContent, document.body)}
+      {editModalContent && createPortal(editModalContent, document.body)}
 
       <RecruiterUpgradeModal
         isOpen={isUpgradeModalOpen}

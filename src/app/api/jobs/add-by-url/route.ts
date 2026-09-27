@@ -176,7 +176,13 @@ export async function POST(request: Request) {
       if (existingUserJob) {
         return NextResponse.json({
           error: 'ALREADY_SAVED',
-          message: 'You have already added this job to your pipeline.'
+          message: 'You have already added this job to your pipeline.',
+          jobId: job.id,
+          job: {
+            id: job.id,
+            title: job.title,
+            company: job.company
+          }
         }, { status: 400 });
       }
 
@@ -189,6 +195,31 @@ export async function POST(request: Request) {
             message: 'Popular submission! This job has been added by too many users already. Try finding a more unique job, or upgrade to Pro to bypass this limit.'
           }, { status: 403 });
         }
+      }
+    }
+
+    if (!job && sanitizedManualTitle && sanitizedManualCompany) {
+      const existingUserJobByTitleCompany = await prisma.userJob.findFirst({
+        where: {
+          userId,
+          job: {
+            title: { equals: sanitizedManualTitle, mode: 'insensitive' },
+            company: { equals: sanitizedManualCompany, mode: 'insensitive' }
+          }
+        },
+        include: { job: true }
+      });
+      if (existingUserJobByTitleCompany?.job) {
+        return NextResponse.json({
+          error: 'ALREADY_SAVED',
+          message: 'You have already added this job to your pipeline.',
+          jobId: existingUserJobByTitleCompany.job.id,
+          job: {
+            id: existingUserJobByTitleCompany.job.id,
+            title: existingUserJobByTitleCompany.job.title,
+            company: existingUserJobByTitleCompany.job.company
+          }
+        }, { status: 400 });
       }
     }
 
@@ -387,6 +418,21 @@ export async function POST(request: Request) {
         if (e.code === 'P2002') {
           job = await prisma.job.findUnique({ where: { url: cleanUrl } });
           if (!job) throw e;
+          const existingUserJob = await prisma.userJob.findUnique({
+            where: { userId_jobId: { userId, jobId: job.id } }
+          });
+          if (existingUserJob) {
+            return NextResponse.json({
+              error: 'ALREADY_SAVED',
+              message: 'You have already added this job to your pipeline.',
+              jobId: job.id,
+              job: {
+                id: job.id,
+                title: job.title,
+                company: job.company
+              }
+            }, { status: 400 });
+          }
         } else {
           throw e;
         }

@@ -757,6 +757,78 @@ export async function sendRecruiterTeamInvitation({
   }
 }
 
+export async function sendCandidateAlertEmail({
+  to,
+  recruiterName,
+  jobTitle,
+  jobId,
+  matchCount,
+  topScore,
+}: {
+  to: string;
+  recruiterName: string;
+  jobTitle: string;
+  jobId: string;
+  matchCount: number;
+  topScore?: number;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@contact.jobagenthq.com>';
+    const appUrl = process.env.NEXTAUTH_URL || 'https://www.jobagenthq.com';
+    const jobUrl = `${appUrl}/recruiter/jobs/${jobId}`;
+
+    const subject = `New Qualified Candidate Matches for ${jobTitle} (${matchCount} found)`;
+
+    const htmlMessage = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <h2 style="color: #0284c7; font-size: 20px; font-weight: 700; margin-top: 0;">New Qualified Matches Discovered</h2>
+        <p>Hi ${recruiterName},</p>
+        <p>Our matching engine just identified <strong>${matchCount} new qualified candidate${matchCount === 1 ? '' : 's'}</strong> for your active opening <strong>${jobTitle}</strong>${topScore ? ` with job fit scores up to <strong>${topScore}%</strong>` : ''}.</p>
+        <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 4px 0;"><strong>Position:</strong> ${jobTitle}</p>
+          <p style="margin: 4px 0;"><strong>New Qualified Matches:</strong> ${matchCount}</p>
+          <p style="margin: 4px 0; font-size: 13px; color: #64748b;">All discovered candidates have explicitly granted recruiter discovery consent.</p>
+        </div>
+        <p>Review their anonymized profiles, evaluated technical fit reasons, and request introductions directly through your portal.</p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${jobUrl}" style="background: #0284c7; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            Review Candidate Matches
+          </a>
+        </div>
+        <p style="font-size: 12px; color: #94a3b8; margin-top: 24px;">
+          You are receiving this alert because Candidate Alerts are enabled for your organization subscription plan.
+        </p>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${pass}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to, subject, html: htmlMessage }),
+      });
+      return { success: true };
+    }
+
+    const host = process.env.EMAIL_SERVER_HOST;
+    const port = parseInt(process.env.EMAIL_SERVER_PORT || '587', 10);
+    const user = process.env.EMAIL_SERVER_USER;
+    if (!host || !user || !pass) {
+      console.log('DEV FALLBACK - Candidate Alert Email:', { to, jobTitle, matchCount, jobId });
+      return { success: true, devMode: true };
+    }
+    const nodemailer = (await import('nodemailer')).default;
+    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    await transporter.sendMail({ from, to, subject, html: htmlMessage });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to send candidate alert email:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+
 
 
 

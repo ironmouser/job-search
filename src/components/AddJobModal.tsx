@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, X, CheckCircle2, Link2, FileText, Info } from 'lucide-react';
+import Link from 'next/link';
+import { PlusCircle, Sparkles, Loader2, AlertCircle, Clipboard, X, CheckCircle2, Link2, FileText, Info, ArrowRight } from 'lucide-react';
 import { trackAddJobUrl } from '@/lib/analytics';
 
 interface AddJobModalProps {
@@ -30,6 +31,7 @@ export default function AddJobModal({
   const [statusStep, setStatusStep] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [existingJob, setExistingJob] = useState<{ id: string; title?: string; company?: string } | null>(null);
 
   // Manual Mode State
   const [manualTitle, setManualTitle] = useState('');
@@ -79,6 +81,7 @@ export default function AddJobModal({
     setErrorMsg(null);
     setSuccessMsg(null);
     setScrapeFailureReason(null);
+    setExistingJob(null);
     setIsLoading(true);
     setStatusStep('Fetching job page & security check...');
 
@@ -101,8 +104,17 @@ export default function AddJobModal({
         const errText = data.message || data.error || 'Failed to add job from URL';
         trackAddJobUrl(url.trim(), 'error', errText);
 
-        // If scraping failed or unverified source, transition smoothly to manual entry with explanation
-        if (data.error === 'COULD_NOT_SCRAPE' || data.error === 'UNTRUSTED_SOURCE') {
+        if (data.error === 'ALREADY_SAVED' || data.jobId || data.job?.id) {
+          const existingId = data.jobId || data.job?.id;
+          if (existingId) {
+            setExistingJob({
+              id: existingId,
+              title: data.job?.title,
+              company: data.job?.company
+            });
+          }
+          setErrorMsg(errText);
+        } else if (data.error === 'COULD_NOT_SCRAPE' || data.error === 'UNTRUSTED_SOURCE') {
           if (data.partialData) {
             setManualTitle(data.partialData.title || '');
             setManualCompany(data.partialData.company || '');
@@ -166,6 +178,16 @@ export default function AddJobModal({
       if (!res.ok) {
         const errText = data.message || data.error || 'Failed to submit job details';
         trackAddJobUrl(manualUrl.trim() || 'manual', 'error', `Manual submit: ${errText}`);
+        if (data.error === 'ALREADY_SAVED' || data.jobId || data.job?.id) {
+          const existingId = data.jobId || data.job?.id;
+          if (existingId) {
+            setExistingJob({
+              id: existingId,
+              title: data.job?.title,
+              company: data.job?.company
+            });
+          }
+        }
         setErrorMsg(errText);
         setIsSubmittingManual(false);
         return;
@@ -594,9 +616,49 @@ export default function AddJobModal({
 
         {/* Error Messages */}
         {errorMsg && (
-          <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--danger)' }}>
-            <AlertCircle size={16} />
-            <span>{errorMsg}</span>
+          <div style={{
+            marginTop: '1rem',
+            padding: existingJob ? '0.75rem 1rem' : 0,
+            borderRadius: existingJob ? '8px' : 0,
+            backgroundColor: existingJob ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+            border: existingJob ? '1px solid rgba(99, 102, 241, 0.25)' : 'none',
+            display: 'flex',
+            flexDirection: existingJob ? 'column' : 'row',
+            alignItems: existingJob ? 'flex-start' : 'center',
+            gap: '0.6rem',
+            fontSize: '0.85rem',
+            color: existingJob ? 'var(--card-foreground)' : 'var(--danger)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {existingJob ? (
+                <Info size={16} style={{ color: 'var(--accent-primary, #6366f1)', flexShrink: 0 }} />
+              ) : (
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+              )}
+              <span style={{ fontWeight: existingJob ? 600 : 400 }}>{errorMsg}</span>
+            </div>
+            {existingJob && (
+              <div style={{ marginTop: '0.15rem' }}>
+                <Link
+                  href={`/job/${existingJob.id}`}
+                  onClick={onClose}
+                  className="btn-primary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    padding: '0.45rem 1rem',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    textDecoration: 'none'
+                  }}
+                >
+                  <span>Take me to the job details</span>
+                  <ArrowRight size={14} />
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
