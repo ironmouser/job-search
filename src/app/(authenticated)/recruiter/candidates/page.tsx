@@ -12,6 +12,9 @@ import {
   CheckCircle2,
   X,
   Loader2,
+  ShieldCheck,
+  AlertCircle,
+  Link2,
 } from 'lucide-react';
 import RecruiterHeader from '@/components/recruiter/RecruiterHeader';
 import RecruiterUpgradeModal from '@/components/recruiter/RecruiterUpgradeModal';
@@ -273,17 +276,63 @@ export default function CandidateDiscoveryPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-                  Note to Candidate (Optional)
+                  Personal Note & Pitch to Candidate (Optional)
                 </label>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={introNotes}
                   onChange={(e) => setIntroNotes(e.target.value)}
-                  placeholder="We think your background in technical leadership would be a great fit..."
+                  placeholder="Hi there! Loved your experience. We think you'd be a great match for this role. Feel free to explore our company page or book a quick chat on my Calendly: https://calendly.com/..."
                   className="input-base"
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', resize: 'vertical', fontSize: '0.875rem' }}
                 />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.35rem', fontSize: '0.775rem', color: 'var(--muted-foreground)' }}>
+                  <Link2 size={13} style={{ color: '#38bdf8', flexShrink: 0 }} />
+                  <span>Any links added (e.g. Calendly or company site) are automatically click-tracked so you know when the candidate interacts.</span>
+                </div>
               </div>
+
+              {/* Dynamic Guarantee vs Direct Contact Callout */}
+              {(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(introNotes) ||
+                /(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(introNotes)) ? (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                    border: '1px solid rgba(234, 179, 8, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '0.825rem',
+                    color: '#facc15',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <AlertCircle size={15} />
+                    Direct Contact Details Included
+                  </div>
+                  <span>Your direct phone or email will be delivered directly to the candidate. Because contact details are shared immediately, this consumes 1 credit permanently and waives the automatic 5-day non-response refund guarantee.</span>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.2)',
+                    borderRadius: '8px',
+                    fontSize: '0.825rem',
+                    color: '#34d399',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <ShieldCheck size={18} style={{ color: '#10b981', flexShrink: 0, marginTop: '1px' }} />
+                  <span>
+                    <strong>5-Day Refund Guarantee:</strong> If the candidate does not respond within 5 business days, your introduction credit is automatically restored to your organization quota.
+                  </span>
+                </div>
+              )}
             </div>
 
             <div

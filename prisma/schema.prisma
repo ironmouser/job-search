@@ -815,6 +815,7 @@ enum IntroductionStatus {
   OFFER
   HIRED
   CLOSED
+  EXPIRED
 }
 
 enum IntroductionEventType {
@@ -829,6 +830,9 @@ enum IntroductionEventType {
   RECRUITER_MARKED_HIRED
   CANDIDATE_CONFIRMED_HIRE
   INTRODUCTION_CLOSED
+  LINK_CLICKED
+  INTRODUCTION_EXPIRED
+  CREDIT_REFUNDED
 }
 
 enum PlacementStatus {
@@ -1089,6 +1093,10 @@ model Introduction {
   closedAt              DateTime?          @map("closed_at") @db.Timestamptz(6)
   attributionWindowDays Int                @default(365) @map("attribution_window_days")
   notes                 String?            @db.Text
+  refundEligible        Boolean            @default(true) @map("refund_eligible")
+  directContactIncluded Boolean            @default(false) @map("direct_contact_included")
+  expiresAt             DateTime?          @map("expires_at") @db.Timestamptz(6)
+  refundedAt            DateTime?          @map("refunded_at") @db.Timestamptz(6)
   createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 

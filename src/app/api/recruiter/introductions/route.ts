@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
     await assertCanRequestIntroduction(recruiter.organizationId);
 
     const body = await req.json();
-    const { candidateId, recruiterJobId, notes, assignedRecruiterId } = body;
+    const { candidateId, recruiterJobId, notes, assignedRecruiterId, refundEligible, directContactIncluded } = body;
 
     if (!candidateId || !recruiterJobId) {
       return NextResponse.json(
@@ -167,6 +167,8 @@ export async function POST(req: NextRequest) {
       organizationId: recruiter.organizationId,
       recruiterJobId,
       notes,
+      refundEligible,
+      directContactIncluded,
     });
 
     // If a specific team member was assigned, set assignedRecruiterId
@@ -189,6 +191,9 @@ export async function POST(req: NextRequest) {
         jobFitScore: intro.jobFitScore,
         matchVersion: intro.matchVersion,
         requestedAt: intro.requestedAt,
+        refundEligible: intro.refundEligible,
+        directContactIncluded: intro.directContactIncluded,
+        expiresAt: intro.expiresAt,
       },
     });
   } catch (err: any) {

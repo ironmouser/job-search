@@ -12,7 +12,9 @@ import {
   sendIntroductionAcceptedEmail,
   sendIntroductionDeclinedEmail,
   sendHireConfirmationEmail,
+  sendIntroductionExpiredRefundEmail,
 } from '@/lib/mailer';
+import { detectDirectContactInfo, calculateBusinessDayExpiry } from './linkTracker';
 
 export interface CreateIntroductionInput {
   candidateId: string;
@@ -20,6 +22,8 @@ export interface CreateIntroductionInput {
   organizationId: string;
   recruiterJobId: string;
   notes?: string;
+  refundEligible?: boolean;
+  directContactIncluded?: boolean;
 }
 
 /**
@@ -66,7 +70,15 @@ export async function createIntroduction(input: CreateIntroductionInput) {
 
   const publicId = generatePublicId('JHQ-INTRO');
 
-  // 4. Create introduction record
+  // 4. Calculate contact details and refund eligibility
+  const contactCheck = detectDirectContactInfo(input.notes);
+  const directContactIncluded =
+    input.directContactIncluded !== undefined ? input.directContactIncluded : contactCheck.detected;
+  const refundEligible =
+    input.refundEligible !== undefined ? input.refundEligible : !directContactIncluded;
+  const expiresAt = refundEligible ? calculateBusinessDayExpiry(new Date(), 5) : null;
+
+  // 5. Create introduction record
   const intro = await prisma.introduction.create({
     data: {
       publicId,
@@ -79,6 +91,9 @@ export async function createIntroduction(input: CreateIntroductionInput) {
       matchVersion: match?.matchVersion ?? 'v1',
       currentStatus: IntroductionStatus.REQUESTED,
       notes: input.notes,
+      refundEligible,
+      directContactIncluded,
+      expiresAt,
     },
     include: {
       candidate: {
@@ -94,6 +109,7 @@ export async function createIntroduction(input: CreateIntroductionInput) {
           firstName: true,
           lastName: true,
           title: true,
+          businessEmail: true,
         },
       },
       organization: {
@@ -105,12 +121,16 @@ export async function createIntroduction(input: CreateIntroductionInput) {
         select: {
           title: true,
           location: true,
+          salaryMin: true,
+          salaryMax: true,
+          salaryCurrency: true,
+          description: true,
         },
       },
     },
   });
 
-  // 5. Append audit event
+  // 6. Append audit event
   try {
     await prisma.introductionEvent.create({
       data: {
@@ -122,6 +142,9 @@ export async function createIntroduction(input: CreateIntroductionInput) {
           publicId,
           jobFitScore: intro.jobFitScore,
           matchVersion: intro.matchVersion,
+          refundEligible: intro.refundEligible,
+          directContactIncluded: intro.directContactIncluded,
+          expiresAt: intro.expiresAt ? intro.expiresAt.toISOString() : null,
         },
       },
     });
@@ -129,9 +152,16 @@ export async function createIntroduction(input: CreateIntroductionInput) {
     console.error('Failed to create introduction requested event:', err);
   }
 
-  // 6. Send transactional notification email to candidate
+  // 7. Send transactional notification email to candidate
   if (intro.candidate.email) {
     try {
+      const salaryRange =
+        intro.recruiterJob.salaryMin && intro.recruiterJob.salaryMax
+          ? `$${Math.round(intro.recruiterJob.salaryMin / 1000)}k - $${Math.round(
+              intro.recruiterJob.salaryMax / 1000
+            )}k ${intro.recruiterJob.salaryCurrency || 'USD'}`
+          : null;
+
       await sendIntroductionRequestEmail({
         to: intro.candidate.email,
         candidateName: intro.candidate.name,
@@ -141,6 +171,11 @@ export async function createIntroduction(input: CreateIntroductionInput) {
         jobTitle: intro.recruiterJob.title,
         jobLocation: intro.recruiterJob.location || 'Remote',
         introPublicId: intro.publicId,
+        notes: intro.notes,
+        salaryRange,
+        jobDescription: intro.recruiterJob.description,
+        directContactIncluded: intro.directContactIncluded,
+        recruiterEmail: intro.recruiter.businessEmail,
       });
     } catch (err) {
       console.warn('Failed to send introduction request email:', err);
@@ -455,4 +490,123 @@ export async function confirmHire(placementId: string, candidateId: string) {
   }
 
   return updated;
+}
+
+/**
+ * Background worker helper to process expired introduction requests.
+ * Automatically refunds 1 credit per expired introduction and marks it EXPIRED.
+ */
+export async function processExpiredIntroductions(): Promise<{
+  processedCount: number;
+  refundedCount: number;
+  expiredIds: string[];
+}> {
+  const now = new Date();
+
+  const expiredIntros = await prisma.introduction.findMany({
+    where: {
+      currentStatus: IntroductionStatus.REQUESTED,
+      refundEligible: true,
+      expiresAt: { lte: now },
+    },
+    include: {
+      organization: true,
+      recruiter: {
+        select: {
+          businessEmail: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+      recruiterJob: {
+        select: {
+          title: true,
+        },
+      },
+      candidate: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  const expiredIds: string[] = [];
+  let refundedCount = 0;
+
+  for (const intro of expiredIntros) {
+    try {
+      await prisma.$transaction([
+        prisma.introduction.update({
+          where: { id: intro.id },
+          data: {
+            currentStatus: IntroductionStatus.EXPIRED,
+            closedAt: now,
+            refundedAt: now,
+          },
+        }),
+        prisma.recruiterOrganization.update({
+          where: { id: intro.organizationId },
+          data: {
+            consumedIntros: {
+              decrement: 1,
+            },
+          },
+        }),
+        prisma.introductionEvent.createMany({
+          data: [
+            {
+              introductionId: intro.id,
+              eventType: IntroductionEventType.INTRODUCTION_EXPIRED,
+              actorType: 'SYSTEM',
+              actorId: 'system',
+              metadata: { expiredAt: now.toISOString() },
+            },
+            {
+              introductionId: intro.id,
+              eventType: IntroductionEventType.CREDIT_REFUNDED,
+              actorType: 'SYSTEM',
+              actorId: 'system',
+              metadata: {
+                refundedAt: now.toISOString(),
+                reason: '5_DAY_NON_RESPONSE_TIMEOUT',
+                refundedCredits: 1,
+              },
+            },
+          ],
+        }),
+      ]);
+
+      expiredIds.push(intro.id);
+      refundedCount++;
+
+      let candidateDisplayName = 'Candidate';
+      if (intro.candidate.name) {
+        const parts = intro.candidate.name.trim().split(/\s+/);
+        candidateDisplayName = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
+      }
+
+      if (intro.recruiter.businessEmail) {
+        try {
+          await sendIntroductionExpiredRefundEmail({
+            to: intro.recruiter.businessEmail,
+            recruiterName: `${intro.recruiter.firstName} ${intro.recruiter.lastName}`,
+            candidateDisplayName,
+            jobTitle: intro.recruiterJob.title,
+            refundedCredits: 1,
+          });
+        } catch (emailErr) {
+          console.warn('[REFUND_WORKER] Failed to send refund notification email:', emailErr);
+        }
+      }
+    } catch (err) {
+      console.error(`[REFUND_WORKER] Error processing expired intro ${intro.id}:`, err);
+    }
+  }
+
+  return {
+    processedCount: expiredIntros.length,
+    refundedCount,
+    expiredIds,
+  };
 }

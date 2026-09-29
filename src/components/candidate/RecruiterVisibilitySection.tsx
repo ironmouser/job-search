@@ -30,6 +30,7 @@ interface IntroductionItem {
     title: string;
     profilePhotoUrl?: string | null;
   };
+  notes?: string | null;
 }
 
 export default function RecruiterVisibilitySection() {
@@ -72,6 +73,20 @@ export default function RecruiterVisibilitySection() {
     fetchData();
   }, []);
 
+  // Auto-open introduction modal if deep-linked from email
+  useEffect(() => {
+    if (typeof window !== 'undefined' && introductions.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('id');
+      if (targetId) {
+        const found = introductions.find((i) => i.id === targetId || i.publicId === targetId);
+        if (found) {
+          handleOpenIntro(found);
+        }
+      }
+    }
+  }, [introductions]);
+
   const handleToggleDiscovery = async (newValue: boolean) => {
     setIsDiscoverable(newValue);
     setSaving(true);
@@ -113,6 +128,7 @@ export default function RecruiterVisibilitySection() {
       salaryRange: intro.job.salaryRange,
       description: intro.job.description,
       requiredSkills: intro.job.requiredSkills,
+      notes: intro.notes,
       status: intro.status,
     });
     setIsModalOpen(true);

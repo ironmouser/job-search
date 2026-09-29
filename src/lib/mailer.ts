@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { wrapTrackedLinks } from '@/lib/recruiter/linkTracker';
 
 export async function sendSystemAlertEmail(subject: string, htmlMessage: string) {
   try {
@@ -451,6 +452,11 @@ export async function sendIntroductionRequestEmail({
   jobTitle,
   jobLocation,
   introPublicId,
+  notes,
+  salaryRange,
+  jobDescription,
+  directContactIncluded,
+  recruiterEmail,
 }: {
   to: string;
   candidateName?: string | null;
@@ -460,6 +466,11 @@ export async function sendIntroductionRequestEmail({
   jobTitle: string;
   jobLocation: string;
   introPublicId: string;
+  notes?: string | null;
+  salaryRange?: string | null;
+  jobDescription?: string | null;
+  directContactIncluded?: boolean;
+  recruiterEmail?: string | null;
 }) {
   try {
     const pass = process.env.EMAIL_SERVER_PASSWORD;
@@ -470,6 +481,39 @@ export async function sendIntroductionRequestEmail({
     const greeting = candidateName ? `Hi ${candidateName.split(' ')[0]},` : 'Hi,';
     const subject = `New Recruiter Introduction Request: ${jobTitle} at ${orgName}`;
 
+    // Process and wrap any links in the recruiter's note with tracking redirect
+    const formattedNotes = notes ? wrapTrackedLinks(notes.trim(), introPublicId, appUrl) : null;
+
+    const noteSection = formattedNotes
+      ? `
+        <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 16px 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.5px;">
+            Personal Note from ${recruiterName}:
+          </p>
+          <div style="font-size: 15px; color: #1e293b; line-height: 1.6; white-space: pre-line;">${formattedNotes}</div>
+        </div>
+      `
+      : '';
+
+    const jobDescriptionSnippet = jobDescription
+      ? `
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+          <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">Role Overview:</p>
+          <p style="margin: 0; font-size: 14px; color: #334155; line-height: 1.6;">
+            ${jobDescription.length > 320 ? `${jobDescription.substring(0, 320)}...` : jobDescription}
+          </p>
+        </div>
+      `
+      : '';
+
+    const directContactSection = directContactIncluded && recruiterEmail
+      ? `
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px 18px; border-radius: 8px; margin: 20px 0; font-size: 14px; color: #166534;">
+          <strong>Direct Recruiter Contact:</strong> You can reach out directly to ${recruiterName} at <a href="mailto:${recruiterEmail}" style="color: #15803d; font-weight: 600;">${recruiterEmail}</a>, or use the connect button below.
+        </div>
+      `
+      : '';
+
     const htmlMessage = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
         <div style="margin-bottom: 24px; text-align: center;">
@@ -479,19 +523,27 @@ export async function sendIntroductionRequestEmail({
         <p style="font-size: 15px; margin-bottom: 16px;">
           A verified recruiter on the Job Agent Network has requested an introduction to discuss an active role with you.
         </p>
-        <div style="background: #f8fafc; border-left: 4px solid #2563eb; padding: 16px 20px; border-radius: 8px; margin: 20px 0;">
+
+        ${noteSection}
+
+        <div style="background: #f8fafc; border-left: 4px solid #64748b; padding: 16px 20px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 4px 0;"><strong>Position:</strong> ${jobTitle}</p>
           <p style="margin: 4px 0;"><strong>Location:</strong> ${jobLocation}</p>
+          ${salaryRange ? `<p style="margin: 4px 0;"><strong>Compensation:</strong> ${salaryRange}</p>` : ''}
           <p style="margin: 4px 0;"><strong>Recruiter:</strong> ${recruiterName} (${recruiterTitle})</p>
           <p style="margin: 4px 0;"><strong>Organization:</strong> ${orgName}</p>
           <p style="margin: 4px 0; font-size: 13px; color: #64748b;">Reference ID: ${introPublicId}</p>
+          ${jobDescriptionSnippet}
         </div>
+
+        ${directContactSection}
+
         <p style="font-size: 14px; color: #475569; margin-bottom: 24px;">
           Your private contact information has not been shared. It will only be provided if you choose to accept this introduction request.
         </p>
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${actionUrl}" style="background: #2563eb; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-            Review Introduction Request
+          <a href="${actionUrl}" style="background: #2563eb; color: #ffffff; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.25);">
+            Review Opportunity & Connect
           </a>
         </div>
         <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-top: 32px;">
@@ -824,6 +876,86 @@ export async function sendCandidateAlertEmail({
     return { success: true };
   } catch (err: any) {
     console.error('Failed to send candidate alert email:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function sendIntroductionExpiredRefundEmail({
+  to,
+  recruiterName,
+  candidateDisplayName,
+  jobTitle,
+  refundedCredits = 1,
+}: {
+  to: string;
+  recruiterName: string;
+  candidateDisplayName: string;
+  jobTitle: string;
+  refundedCredits?: number;
+}) {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.EMAIL_FROM || 'Job Agent HQ <support@contact.jobagenthq.com>';
+    const appUrl = process.env.NEXTAUTH_URL || 'https://www.jobagenthq.com';
+    const dashboardUrl = `${appUrl}/recruiter/pipeline`;
+
+    const subject = `Credit Refunded: Introduction Expired for ${candidateDisplayName}`;
+
+    const htmlMessage = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b; line-height: 1.6; padding: 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div style="margin-bottom: 24px; text-align: center;">
+          <h1 style="color: #2563eb; font-size: 24px; font-weight: 700; margin: 0;">Job Agent HQ</h1>
+        </div>
+        <p style="font-size: 16px; font-weight: 600; color: #0f172a;">Hi ${recruiterName.split(' ')[0]},</p>
+        <p style="font-size: 15px; margin-bottom: 16px;">
+          Candidate <strong>${candidateDisplayName}</strong> did not respond to your introduction request for <strong>${jobTitle}</strong> within our 5-business-day window.
+        </p>
+        <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px 20px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0; font-size: 15px; font-weight: 600; color: #15803d;">
+            ✓ ${refundedCredits} Introduction Credit Returned
+          </p>
+          <p style="margin: 6px 0 0 0; font-size: 14px; color: #166534;">
+            Your introduction quota has been automatically restored so you can connect with another candidate.
+          </p>
+        </div>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${dashboardUrl}" style="background: #2563eb; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            View Recruiter Pipeline
+          </a>
+        </div>
+        <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-top: 24px;">
+          Job Agent HQ Recruiter Network
+        </p>
+      </div>
+    `;
+
+    if (pass && pass.startsWith('re_')) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pass}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ from, to, subject, html: htmlMessage }),
+      });
+      return { success: true };
+    }
+
+    const host = process.env.EMAIL_SERVER_HOST;
+    const port = parseInt(process.env.EMAIL_SERVER_PORT || '587', 10);
+    const user = process.env.EMAIL_SERVER_USER;
+
+    if (!host || !user || !pass) {
+      console.log('DEV FALLBACK - Credit Refund Email:', { to, candidateDisplayName, jobTitle });
+      return { success: true, devMode: true };
+    }
+
+    const nodemailer = (await import('nodemailer')).default;
+    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    await transporter.sendMail({ from, to, subject, html: htmlMessage });
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to send introduction refund email:', err);
     return { success: false, error: err.message };
   }
 }

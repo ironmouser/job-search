@@ -63,6 +63,7 @@ export async function GET() {
         acceptedAt: intro.acceptedAt,
         declinedAt: intro.declinedAt,
         contactSharedAt: intro.contactSharedAt,
+        notes: intro.notes,
         jobFitScore: intro.jobFitScore,
         job: {
           title: intro.recruiterJob.title,
