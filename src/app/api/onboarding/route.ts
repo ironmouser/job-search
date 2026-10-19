@@ -19,6 +19,7 @@ export async function GET() {
                     searchLocation: true,
                     remoteOnly: true,
                     resumeMarkdown: true,
+                    jobMatchEmailsEnabled: true,
                 }
             }),
             isCandidateDiscoverable(session.user.id),
@@ -77,7 +78,11 @@ Seeking high-growth tech opportunities as a ${searchKeyword}.
         const updateData: any = {
             searchLocation: data.searchLocation || '',
             remoteOnly: Boolean(data.remoteOnly),
-            sources: sources
+            sources: sources,
+            ...(typeof data.jobMatchEmailsEnabled === 'boolean' ? {
+                jobMatchEmailsEnabled: data.jobMatchEmailsEnabled,
+                ...(data.jobMatchEmailsEnabled ? { jobMatchEmailsOptedInAt: new Date() } : {})
+            } : {})
         };
         if (searchKeyword) {
             updateData.searchKeyword = searchKeyword;
@@ -129,7 +134,9 @@ Seeking high-growth tech opportunities as a ${searchKeyword}.
                 theme: 'light',
                 resumeMarkdown: resumeText,
                 profile: finalProfile,
-                sources: sources
+                sources: sources,
+                jobMatchEmailsEnabled: Boolean(data.jobMatchEmailsEnabled),
+                jobMatchEmailsOptedInAt: data.jobMatchEmailsEnabled ? new Date() : null,
             }
         });
 

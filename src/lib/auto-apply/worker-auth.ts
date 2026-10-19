@@ -14,6 +14,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * Generate a key with: openssl rand -hex 32
  */
 
+import { timingSafeEqualStrings } from '@/lib/auth-helpers';
+
 export function authenticateWorker(request: NextRequest): NextResponse | null {
   const workerApiKey = process.env.WORKER_API_KEY;
 
@@ -34,7 +36,7 @@ export function authenticateWorker(request: NextRequest): NextResponse | null {
   }
 
   const providedKey = authHeader.slice('Bearer '.length).trim();
-  if (providedKey !== workerApiKey) {
+  if (!timingSafeEqualStrings(providedKey, workerApiKey.trim())) {
     return NextResponse.json(
       { error: 'Invalid worker API key' },
       { status: 403 }

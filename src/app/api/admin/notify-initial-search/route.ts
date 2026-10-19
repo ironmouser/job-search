@@ -3,15 +3,15 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { sendInitialJobSearchNotificationEmail } from "@/lib/mailer";
+import { authenticateInternalRequest } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const authHeader = request.headers.get('authorization');
-    const isValidSecret = process.env.WORKER_API_KEY && authHeader === `Bearer ${process.env.WORKER_API_KEY}`;
     const isAdmin = session?.user && (session.user as any).role === 'SYSTEM_ADMIN';
+    const isInternalAuth = authenticateInternalRequest(request) === null;
 
-    if (!isAdmin && !isValidSecret) {
+    if (!isAdmin && !isInternalAuth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

@@ -720,6 +720,84 @@ export default function SettingsPage() {
                             </span>
                         </div>
 
+                        {/* Job Match Email Alerts Card */}
+                        <div 
+                            style={{
+                                padding: '1.1rem 1.25rem',
+                                background: settings.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                border: `1px solid ${settings.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.3)' : 'var(--border-glass)'}`,
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '1rem',
+                                transition: 'all 0.2s ease',
+                                marginTop: '0.5rem',
+                                marginBottom: '0.25rem',
+                            }}
+                        >
+                            <div style={{ flex: 1, minWidth: '220px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                                    <Mail size={18} className="text-accent" style={{ flexShrink: 0 }} />
+                                    <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                        Job Match Email Alerts
+                                    </h4>
+                                    <span style={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 600,
+                                        padding: '0.15rem 0.5rem',
+                                        borderRadius: '12px',
+                                        background: settings.jobMatchEmailsEnabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                                        color: settings.jobMatchEmailsEnabled ? '#10b981' : 'var(--text-secondary)',
+                                        border: `1px solid ${settings.jobMatchEmailsEnabled ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-glass)'}`,
+                                    }}>
+                                        {settings.jobMatchEmailsEnabled ? 'Active (Every Other Day)' : 'Disabled'}
+                                    </span>
+                                </div>
+                                <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                                    Automatically receive an email every other day when new job postings match your search criteria by 60% or more. Matched jobs will also appear directly in your dashboard feed.
+                                </p>
+                                {settings.jobMatchEmailsOptedInAt && settings.jobMatchEmailsEnabled && (
+                                    <span style={{ display: 'inline-block', marginTop: '0.35rem', fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                                        Opted in on {new Date(settings.jobMatchEmailsOptedInAt).toLocaleDateString()}
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={!!settings.jobMatchEmailsEnabled}
+                                aria-label="Job Match Email Alerts toggle"
+                                onClick={() => handleChange('jobMatchEmailsEnabled', !settings.jobMatchEmailsEnabled)}
+                                style={{
+                                    width: '52px',
+                                    height: '28px',
+                                    borderRadius: '14px',
+                                    backgroundColor: settings.jobMatchEmailsEnabled ? '#2563eb' : 'rgba(255, 255, 255, 0.12)',
+                                    position: 'relative',
+                                    border: '1px solid var(--border-glass)',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    flexShrink: 0,
+                                    transition: 'background-color 0.2s ease',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: '22px',
+                                        height: '22px',
+                                        borderRadius: '50%',
+                                        backgroundColor: '#ffffff',
+                                        position: 'absolute',
+                                        top: '2px',
+                                        left: settings.jobMatchEmailsEnabled ? '26px' : '3px',
+                                        transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                    }}
+                                />
+                            </button>
+                        </div>
+
                         <div id="active-scrapers" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <div>

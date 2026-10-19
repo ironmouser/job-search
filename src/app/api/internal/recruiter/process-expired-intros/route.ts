@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processExpiredIntroductions } from '@/lib/recruiter/attributionService';
+import { authenticateInternalRequest } from '@/lib/auth-helpers';
 
 export async function POST(req: NextRequest) {
   // 1. Verify internal API key authorization
-  const authHeader = req.headers.get('authorization');
-  const expectedKey = process.env.WORKER_API_KEY || process.env.INTERNAL_API_KEY;
-
-  if (expectedKey && authHeader !== `Bearer ${expectedKey}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authError = authenticateInternalRequest(req);
+  if (authError) return authError;
 
   try {
     const result = await processExpiredIntroductions();

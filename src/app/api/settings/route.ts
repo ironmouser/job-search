@@ -78,6 +78,8 @@ export async function GET() {
                 remoteOnly: false,
                 noInternational: false,
                 hasSeenNonUsPrompt: false,
+                jobMatchEmailsEnabled: false,
+                jobMatchEmailsOptedInAt: null,
                 theme: 'light',
                 aiStrictness: 'Standard',
                 resumeCustomizationMaxPercentage: 50,
@@ -119,6 +121,8 @@ export async function GET() {
             remoteOnly: prefs.remoteOnly,
             noInternational: (prefs as any).noInternational || false,
             hasSeenNonUsPrompt: (prefs as any).hasSeenNonUsPrompt || false,
+            jobMatchEmailsEnabled: (prefs as any).jobMatchEmailsEnabled || false,
+            jobMatchEmailsOptedInAt: (prefs as any).jobMatchEmailsOptedInAt || null,
             theme: prefs.theme,
             aiStrictness: prefs.aiStrictness,
             usWorkAuthorization: (prefs as any).usWorkAuthorization || '',
@@ -363,7 +367,7 @@ export async function POST(request: Request) {
             }
         }
 
-        let updateData: any = {
+        const updateData: any = {
             jobLevel: data.jobLevel || 'Mid-level',
             searchLocation: resolvedSearchLocation,
             includeKeywords: data.includeKeywords,
@@ -371,6 +375,10 @@ export async function POST(request: Request) {
             remoteOnly: data.remoteOnly,
             noInternational: data.noInternational || false,
             hasSeenNonUsPrompt: data.hasSeenNonUsPrompt ?? undefined,
+            ...(typeof data.jobMatchEmailsEnabled === 'boolean' ? {
+                jobMatchEmailsEnabled: data.jobMatchEmailsEnabled,
+                ...(data.jobMatchEmailsEnabled ? { jobMatchEmailsOptedInAt: new Date() } : {})
+            } : {}),
             theme: data.theme,
             aiStrictness: data.aiStrictness,
             usWorkAuthorization: data.usWorkAuthorization,
@@ -448,6 +456,8 @@ export async function POST(request: Request) {
                 remoteOnly: data.remoteOnly || false,
                 noInternational: data.noInternational || false,
                 hasSeenNonUsPrompt: data.hasSeenNonUsPrompt || false,
+                jobMatchEmailsEnabled: data.jobMatchEmailsEnabled || false,
+                jobMatchEmailsOptedInAt: data.jobMatchEmailsEnabled ? new Date() : null,
                 theme: data.theme || 'light',
                 aiStrictness: data.aiStrictness || 'Standard',
                 usWorkAuthorization: data.usWorkAuthorization || '',

@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireSystemAdmin } from '@/lib/auth-helpers';
 
 export async function GET(request: Request) {
   try {
+    const adminCheck = await requireSystemAdmin();
+    if (adminCheck.error) return adminCheck.error;
+
     const url = new URL(request.url);
     const dateParam = url.searchParams.get('date'); // optional date YYYY-MM-DD
 
@@ -66,6 +70,9 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const adminCheck = await requireSystemAdmin();
+    if (adminCheck.error) return adminCheck.error;
+
     const url = new URL(request.url);
     const confirm = url.searchParams.get('confirm') === 'true';
     const dateParam = url.searchParams.get('date');

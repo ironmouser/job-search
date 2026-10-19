@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Bot, Search, FileText, CheckCircle, ChevronRight, ChevronLeft, 
-    Loader2, UploadCloud, Sparkles, Check, ArrowRight, UserCheck
+    Loader2, UploadCloud, Sparkles, Check, ArrowRight, UserCheck, Mail
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import CloudResumePicker from '@/components/common/CloudResumePicker';
@@ -37,6 +37,7 @@ export default function OnboardingPage() {
                         remoteOnly: prev.remoteOnly || Boolean(data.preferences.remoteOnly),
                         resumeMarkdown: prev.resumeMarkdown || data.preferences.resumeMarkdown || '',
                         openToRecruiters: typeof data.preferences.openToRecruiters === 'boolean' ? data.preferences.openToRecruiters : prev.openToRecruiters,
+                        jobMatchEmailsEnabled: typeof data.preferences.jobMatchEmailsEnabled === 'boolean' ? data.preferences.jobMatchEmailsEnabled : prev.jobMatchEmailsEnabled,
                     }));
                 }
             })
@@ -49,6 +50,7 @@ export default function OnboardingPage() {
         remoteOnly: false,
         resumeMarkdown: '',
         openToRecruiters: true,
+        jobMatchEmailsEnabled: false,
     });
     const [titleError, setTitleError] = useState(false);
 
@@ -74,6 +76,7 @@ export default function OnboardingPage() {
                     searchKeyword: formData.searchKeyword.trim(),
                     searchLocation: formData.searchLocation,
                     remoteOnly: formData.remoteOnly,
+                    jobMatchEmailsEnabled: formData.jobMatchEmailsEnabled,
                     isDraft: true,
                 })
             }).catch((err) => {
@@ -328,6 +331,44 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                                     Leave blank to search Remote / Anywhere, or specify a city, state, or region.
                                 </span>
+                            </div>
+
+                            {/* Job Match Email Alerts Opt-in */}
+                            <div 
+                                style={{
+                                    marginTop: '0.5rem',
+                                    padding: '1rem 1.15rem',
+                                    background: formData.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                    border: `1px solid ${formData.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.3)' : 'var(--border-glass)'}`,
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '1rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                }}
+                                onClick={() => handleChange('jobMatchEmailsEnabled', !formData.jobMatchEmailsEnabled)}
+                            >
+                                <div style={{ flex: 1, minWidth: '220px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem' }}>
+                                        <Mail size={16} className="text-accent" style={{ flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                            Job Match Email Alerts
+                                        </span>
+                                    </div>
+                                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                                        Receive an email every other day with newly discovered roles that match your search criteria by 60% or more.
+                                    </p>
+                                </div>
+                                <input 
+                                    type="checkbox"
+                                    id="jobMatchEmailsEnabled"
+                                    checked={formData.jobMatchEmailsEnabled}
+                                    onChange={(e) => handleChange('jobMatchEmailsEnabled', e.target.checked)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'var(--accent)', flexShrink: 0 }}
+                                />
                             </div>
                         </div>
                     </div>

@@ -9,14 +9,14 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        if (!session?.user || (session.user as any).role !== 'SYSTEM_ADMIN') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { searchParams } = new URL(request.url);
         const scanAll = searchParams.get('all') === 'true' || true; // Default to all inadequate jobs
 
-        let whereClause: any = {};
+        const whereClause: any = {};
         if (!scanAll) {
             const startOfToday = new Date();
             startOfToday.setHours(0, 0, 0, 0);

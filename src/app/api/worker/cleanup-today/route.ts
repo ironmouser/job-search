@@ -1,8 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { authenticateWorker } from '@/lib/auto-apply/worker-auth';
+import { requireSystemAdmin } from '@/lib/auth-helpers';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    const adminCheck = await requireSystemAdmin();
+    const workerAuthError = authenticateWorker(request);
+
+    if (adminCheck.error && workerAuthError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const url = new URL(request.url);
     const execute = url.searchParams.get('execute') === 'true';
     const dateParam = url.searchParams.get('date');

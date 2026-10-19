@@ -37,6 +37,7 @@ model Job {
   applicationAssets ApplicationAsset[]
   jobFeedbacks      JobFeedback[]
   autoApplySessions AutoApplySession[]
+  jobMatchDigestItems JobMatchDigestItem[]
 
   @@map("jobs")
 }
@@ -338,6 +339,7 @@ model User {
   recruiterMatches       RecruiterJobMatch[]       @relation("CandidateMatches")
   candidateIntroductions Introduction[]            @relation("CandidateIntroductions")
   candidatePlacements    PlacementEvent[]          @relation("CandidatePlacements")
+  jobMatchDigestItems    JobMatchDigestItem[]
 }
 
 
@@ -389,6 +391,8 @@ model UserPreferences {
   remoteOnly        Boolean  @default(false)
   noInternational   Boolean  @default(false) @map("no_international")
   hasSeenNonUsPrompt Boolean @default(false) @map("has_seen_non_us_prompt")
+  jobMatchEmailsEnabled   Boolean   @default(false) @map("job_match_emails_enabled")
+  jobMatchEmailsOptedInAt DateTime? @map("job_match_emails_opted_in_at") @db.Timestamptz(6)
   theme             String   @default("light")
   aiStrictness      String   @default("Standard")
   coverLetterTone       String?  @default("Confident and strategic") @map("cover_letter_tone")
@@ -1202,3 +1206,45 @@ model CareerSource {
   @@index([status, lastCrawledAt])
   @@map("career_sources")
 }
+
+// ─── Scheduled Job Match Models ──────────────────────────────────────────────
+
+model JobMatchRun {
+  id              String    @id @default(uuid()) @db.Uuid
+  status          String    @default("running") // running, completed, failed
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt      DateTime? @map("finished_at") @db.Timestamptz(6)
+  groupCount      Int       @default(0) @map("group_count")
+  userCount       Int       @default(0) @map("user_count")
+  rawJobsFound    Int       @default(0) @map("raw_jobs_found")
+  matchesCreated  Int       @default(0) @map("matches_created")
+  emailsSent      Int       @default(0) @map("emails_sent")
+  details         Json?     @default("{}")
+  error           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  digestItems     JobMatchDigestItem[]
+
+  @@index([status, startedAt])
+  @@map("job_match_runs")
+}
+
+model JobMatchDigestItem {
+  id         String       @id @default(uuid()) @db.Uuid
+  userId     String       @map("user_id")
+  jobId      String       @map("job_id") @db.Uuid
+  runId      String       @map("run_id") @db.Uuid
+  score      Int          @default(0)
+  emailedAt  DateTime?    @map("emailed_at") @db.Timestamptz(6)
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job        Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  run        JobMatchRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId, emailedAt])
+  @@index([runId])
+  @@map("job_match_digest_items")
+}
+

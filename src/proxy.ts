@@ -6,8 +6,8 @@ export default withAuth(
     const token = req.nextauth.token;
     const isAuth = !!token;
     const pathname = req.nextUrl.pathname;
-    const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/worker') || pathname.startsWith('/api/webhooks') || pathname === '/api/support' || pathname === '/api/stripe/checkout';
-    const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms' || pathname === '/about' || pathname === '/checkout';
+    const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/worker') || pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/internal') || pathname.startsWith('/api/email/unsubscribe') || pathname === '/api/support' || pathname === '/api/stripe/checkout';
+    const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms' || pathname === '/about' || pathname === '/checkout' || pathname.startsWith('/unsubscribe');
     const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webmanifest|json)$/);
     const isApiRoute = pathname.startsWith('/api');
     const isOnboardingPage = pathname.startsWith('/onboarding');
@@ -16,7 +16,7 @@ export default withAuth(
     const isPublicInvite = pathname.startsWith('/api/org/invite/accept');
 
     if (isPublicApi || isPublicAsset || isPublicPage || isPublicInvite) {
-      return null;
+      return NextResponse.next();
     }
 
     const userRole = token?.role as string | undefined;
@@ -58,8 +58,8 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const pathname = req.nextUrl.pathname;
-        const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/worker') || pathname === '/api/support' || pathname === '/api/stripe/checkout';
-        const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms' || pathname === '/about' || pathname === '/checkout';
+        const isPublicApi = pathname.startsWith('/api/auth') || pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/worker') || pathname.startsWith('/api/internal') || pathname.startsWith('/api/email/unsubscribe') || pathname === '/api/support' || pathname === '/api/stripe/checkout';
+        const isPublicPage = pathname === '/' || pathname === '/pricing' || pathname === '/login' || pathname === '/privacy' || pathname === '/terms' || pathname === '/about' || pathname === '/checkout' || pathname.startsWith('/unsubscribe');
         const isPublicAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webmanifest|json)$/);
         const isPublicInvite = pathname.startsWith('/api/org/invite/accept');
         if (isPublicPage || isPublicAsset || isPublicApi || isPublicInvite) return true;
@@ -79,11 +79,13 @@ export const config = {
      * - api/auth (API routes for authentication)
      * - api/webhooks (Stripe and other webhooks)
      * - api/worker (DigitalOcean worker endpoints)
+     * - api/internal (Internal cron and background workers)
+     * - api/email/unsubscribe (One-click unsubscribe endpoint)
      * - api/support (Public support request endpoint)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      */
-    '/((?!api/auth|api/webhooks|api/worker|api/support|_next/static|_next/image|favicon.ico|site.webmanifest|sitemap.xml|robots.txt).*)',
+    '/((?!api/auth|api/webhooks|api/worker|api/internal|api/email/unsubscribe|api/support|_next/static|_next/image|favicon.ico|site.webmanifest|sitemap.xml|robots.txt).*)',
   ],
 }

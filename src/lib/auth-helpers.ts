@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 // ─── Role predicates ─────────────────────────────────────────────────────────
 
@@ -92,3 +93,56 @@ export async function requireAuth(): Promise<
   }
   return { user: session.user as any, error: null };
 }
+
+/**
+ * Constant-time string equality check to mitigate timing attacks on tokens and keys.
+ */
+export function timingSafeEqualStrings(a?: string | null, b?: string | null): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+/**
+ * Verifies internal API key authorization from Bearer header.
+ * Accepts CRON_SECRET, INTERNAL_API_KEY, or WORKER_API_KEY.
+ * Returns a NextResponse (401, 403, or 500) if authentication fails, or null if valid.
+ */
+export function authenticateInternalRequest(request: Request): NextResponse | null {
+  const validKeys = [
+    process.env.CRON_SECRET,
+    process.env.INTERNAL_API_KEY,
+    process.env.WORKER_API_KEY,
+  ].filter((k): k is string => typeof k === 'string' && k.trim().length > 0);
+
+  if (validKeys.length === 0) {
+    console.error('[InternalAuth] Server configuration error: No internal auth keys (CRON_SECRET, INTERNAL_API_KEY, WORKER_API_KEY) are configured');
+    return NextResponse.json(
+      { error: 'Internal API authentication is not configured on this server' },
+      { status: 500 }
+    );
+  }
+
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return NextResponse.json(
+      { error: 'Missing or malformed Authorization header' },
+      { status: 401 }
+    );
+  }
+
+  const providedKey = authHeader.slice('Bearer '.length).trim();
+  const isMatch = validKeys.some(key => timingSafeEqualStrings(providedKey, key.trim()));
+
+  if (!isMatch) {
+    return NextResponse.json(
+      { error: 'Unauthorized: Invalid internal API key' },
+      { status: 403 }
+    );
+  }
+
+  return null;
+}
+

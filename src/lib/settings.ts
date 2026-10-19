@@ -58,6 +58,8 @@ export async function getUserSettings(userId: string): Promise<any> {
                     remoteOnly: row.remote_only || false,
                     noInternational: row.no_international || false,
                     hasSeenNonUsPrompt: row.has_seen_non_us_prompt || false,
+                    jobMatchEmailsEnabled: row.job_match_emails_enabled || false,
+                    jobMatchEmailsOptedInAt: row.job_match_emails_opted_in_at || null,
                     theme: row.theme || 'light',
                     aiStrictness: row.ai_strictness || 'Standard',
                     resumeMarkdown: row.resume_markdown || '',

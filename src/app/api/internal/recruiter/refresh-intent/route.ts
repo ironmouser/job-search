@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { refreshCandidateIntentBatch } from '@/lib/recruiter/intentService';
 import { CandidateConsentType, ConsentStatus } from '@prisma/client';
+import { authenticateInternalRequest } from '@/lib/auth-helpers';
 
 export async function POST(req: NextRequest) {
   // 1. Verify internal API key authorization
-  const authHeader = req.headers.get('authorization');
-  const expectedKey = process.env.WORKER_API_KEY || process.env.INTERNAL_API_KEY;
-
-  if (expectedKey && authHeader !== `Bearer ${expectedKey}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authError = authenticateInternalRequest(req);
+  if (authError) return authError;
 
   try {
     // 2. Fetch candidates whose intent snapshot is missing or expires in the next hour

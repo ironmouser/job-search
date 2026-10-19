@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import http from 'http';
 import fs from 'fs';
+import crypto from 'crypto';
 import { chromium } from 'playwright';
 import { WorkerProcess } from './worker';
 import { RailwayAPIClient } from './api-client';
@@ -20,6 +21,15 @@ const HEARTBEAT_INTERVAL_MS = parseInt(process.env.HEARTBEAT_INTERVAL_MS ?? '300
 if (!RAILWAY_API_URL || !WORKER_API_KEY) {
   console.error('[Worker] RAILWAY_API_URL and WORKER_API_KEY are required');
   process.exit(1);
+}
+
+function isValidWorkerAuth(authHeader?: string): boolean {
+  if (!WORKER_API_KEY || !authHeader || !authHeader.startsWith('Bearer ')) return false;
+  const provided = authHeader.slice('Bearer '.length).trim();
+  const bufA = Buffer.from(provided);
+  const bufB = Buffer.from(WORKER_API_KEY.trim());
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
@@ -45,10 +55,8 @@ const healthServer = http.createServer(async (req, res) => {
   if (req.url === '/health' && req.method === 'GET') {
     const health = worker.healthCheck();
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(health));
   } else if (req.url === '/scrape-stealth' && req.method === 'POST') {
-    const authHeader = req.headers.authorization;
-    if (WORKER_API_KEY && authHeader !== `Bearer ${WORKER_API_KEY}`) {
+    if (!isValidWorkerAuth(req.headers.authorization)) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ error: 'Unauthorized' }));
     }
@@ -73,8 +81,7 @@ const healthServer = http.createServer(async (req, res) => {
       }
     });
   } else if (req.url === '/fetch-job-details' && req.method === 'POST') {
-    const authHeader = req.headers.authorization;
-    if (WORKER_API_KEY && authHeader !== `Bearer ${WORKER_API_KEY}`) {
+    if (!isValidWorkerAuth(req.headers.authorization)) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ error: 'Unauthorized' }));
     }

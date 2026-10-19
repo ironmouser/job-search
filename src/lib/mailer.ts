@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { wrapTrackedLinks } from '@/lib/recruiter/linkTracker';
+import { getUnsubscribeUrl, getOneClickUnsubscribeEndpoint } from '@/lib/jobMatch/unsubscribe';
 
 export async function sendSystemAlertEmail(subject: string, htmlMessage: string) {
   try {
@@ -959,6 +960,196 @@ export async function sendIntroductionExpiredRefundEmail({
     return { success: false, error: err.message };
   }
 }
+
+function escapeEmailHtml(str?: string | null): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export interface MatchedJobDigestCard {
+  id: string;
+  title: string;
+  company: string;
+  location?: string | null;
+  salaryRange?: string | null;
+  score: number;
+}
+
+export interface JobMatchDigestEmailParams {
+  userId: string;
+  to: string;
+  name?: string | null;
+  keyword: string;
+  matches: MatchedJobDigestCard[];
+  totalMatchesCount: number;
+}
+
+export async function sendJobMatchDigestEmail({
+  userId,
+  to,
+  name,
+  keyword,
+  matches,
+  totalMatchesCount,
+}: JobMatchDigestEmailParams): Promise<{ success: boolean; error?: string; devMode?: boolean }> {
+  try {
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
+    const from = process.env.JOB_MATCH_EMAIL_FROM || 'Job Agent HQ <matches@jobs.jobagenthq.com>';
+    const baseUrl = (process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.jobagenthq.com').replace(/\/+$/, '');
+
+    let greeting = 'Hi,';
+    if (name && typeof name === 'string' && name.trim().length > 0) {
+      const trimmed = name.trim();
+      const lower = trimmed.toLowerCase();
+      if (lower !== 'user' && lower !== 'no name') {
+        const firstName = trimmed.split(' ')[0];
+        greeting = `Hi ${firstName},`;
+      }
+    }
+
+    const subject = `We found ${totalMatchesCount} new job matches for you!`;
+    const unsubscribeUrl = getUnsubscribeUrl(userId);
+    const unsubscribeEndpoint = getOneClickUnsubscribeEndpoint(userId);
+
+    const cardsHtml = matches
+      .slice(0, 10)
+      .map((job) => {
+        const safeTitle = escapeEmailHtml(job.title);
+        const safeCompany = escapeEmailHtml(job.company);
+        const safeLocation = escapeEmailHtml(job.location || 'Location not specified');
+        const safeSalary = job.salaryRange ? escapeEmailHtml(job.salaryRange) : null;
+        const jobUrl = `${baseUrl}/job/${job.id}`;
+
+        return `
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+            <div style="font-size: 17px; font-weight: 700; color: #1e3a8a; line-height: 1.3;">
+              ${safeTitle}
+            </div>
+            <span style="display: inline-block; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 9999px; white-space: nowrap; margin-left: 10px;">
+              ${job.score}% Match
+            </span>
+          </div>
+          <div style="font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 4px;">
+            ${safeCompany}
+          </div>
+          <div style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
+            📍 ${safeLocation} ${safeSalary ? `&nbsp;•&nbsp; 💰 ${safeSalary}` : ''}
+          </div>
+          <div>
+            <a href="${jobUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 6px;">
+              View on Job Agent HQ &rarr;
+            </a>
+          </div>
+        </div>
+      `;
+      })
+      .join('');
+
+    const dashboardUrl = `${baseUrl}/dashboard`;
+    const settingsUrl = `${baseUrl}/settings`;
+
+    const htmlMessage = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #0f172a; line-height: 1.6; padding: 24px; background: #f8fafc;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #2563eb; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">Job Agent HQ</h1>
+            <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Job Match Digest</p>
+          </div>
+
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #0f172a;">${greeting}</p>
+
+          <p style="font-size: 15px; margin-bottom: 20px; color: #334155;">
+            Great news! We ran our scheduled search across active hiring boards and discovered <strong>${totalMatchesCount} new job matches</strong> that align with your search criteria for <strong>${escapeEmailHtml(keyword)}</strong>.
+          </p>
+
+          <div style="margin-bottom: 24px;">
+            ${cardsHtml}
+          </div>
+
+          <div style="text-align: center; margin-top: 24px; margin-bottom: 24px;">
+            <a href="${dashboardUrl}" style="display: inline-block; background: #0f172a; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 8px;">
+              View All ${totalMatchesCount} Matches on Your Dashboard &rarr;
+            </a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0 20px 0;" />
+
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; line-height: 1.5; margin: 0 0 8px 0;">
+            You are receiving this digest because you enabled Job Match updates on Job Agent HQ.
+          </p>
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; line-height: 1.5; margin: 0;">
+            <a href="${settingsUrl}" style="color: #2563eb; text-decoration: underline;">Update Search Settings</a>
+            &nbsp;•&nbsp;
+            <a href="${unsubscribeUrl}" style="color: #64748b; text-decoration: underline;">Unsubscribe from Job Match Emails</a>
+          </p>
+        </div>
+      </div>
+    `;
+
+    // 1. Resend API Key mode
+    if (pass && pass.startsWith('re_')) {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pass}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from,
+          to,
+          subject,
+          html: htmlMessage,
+          headers: {
+            'List-Unsubscribe': `<${unsubscribeEndpoint}>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
+        }),
+      });
+
+      if (response.ok) {
+        return { success: true };
+      } else {
+        const errText = await response.text();
+        console.warn('[Resend API Error sendJobMatchDigestEmail]:', errText);
+        return { success: false, error: errText };
+      }
+    }
+
+    // 2. Fallback to SMTP
+    const host = process.env.EMAIL_SERVER_HOST;
+    const port = parseInt(process.env.EMAIL_SERVER_PORT || '587', 10);
+    const user = process.env.EMAIL_SERVER_USER;
+
+    if (!host || !user || !pass) {
+      console.log('DEV FALLBACK - Job Match Digest Email:', { to, totalMatchesCount, keyword });
+      return { success: true, devMode: true };
+    }
+
+    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html: htmlMessage,
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeEndpoint}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to send Job Match digest email:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 
 
 
