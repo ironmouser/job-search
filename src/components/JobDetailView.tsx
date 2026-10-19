@@ -117,7 +117,14 @@ export default function JobDetailView({ jobId, embeddedMode = false, onJobUpdate
     try {
       const res = await fetch(`/api/jobs/${id}`);
       if (!res.ok) {
-        throw new Error(`Failed to load job details (${res.status})`);
+        let errMessage = `Failed to load job details (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData?.error) {
+            errMessage = `${errData.error} (${res.status})`;
+          }
+        } catch {}
+        throw new Error(errMessage);
       }
       const json: JobDetailData = await res.json();
       jobDetailCache.set(id, json);

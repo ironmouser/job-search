@@ -27,6 +27,11 @@ export async function GET(
           return NextResponse.json({ error: 'Missing job ID parameter' }, { status: 400 });
         }
 
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!UUID_REGEX.test(id)) {
+          return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+        }
+
         const user = await prisma.user.findUnique({
           where: { id: userId },
           include: { userPreferences: true }
@@ -248,6 +253,11 @@ export async function PATCH(
           return NextResponse.json({ error: 'Missing job ID parameter' }, { status: 400 });
         }
 
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!UUID_REGEX.test(id)) {
+          return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+        }
+
         const body = await request.json().catch(() => ({}));
         const { status, applied_at, applicationUrl, description, additionalContext } = body;
 
@@ -381,6 +391,11 @@ export async function DELETE(
         const id = resolvedParams?.id;
         if (!id) {
             return NextResponse.json({ error: 'Missing job ID parameter' }, { status: 400 });
+        }
+
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!UUID_REGEX.test(id)) {
+            return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
 
         const data = await prisma.userJob.update({
