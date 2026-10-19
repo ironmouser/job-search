@@ -999,7 +999,7 @@ export async function sendJobMatchDigestEmail({
 }: JobMatchDigestEmailParams): Promise<{ success: boolean; error?: string; devMode?: boolean }> {
   try {
     const pass = process.env.EMAIL_SERVER_PASSWORD;
-    const from = process.env.JOB_MATCH_EMAIL_FROM || 'Job Agent HQ <matches@jobs.jobagenthq.com>';
+    const from = process.env.JOB_MATCH_EMAIL_FROM || process.env.EMAIL_FROM || 'Job Agent HQ <support@contact.jobagenthq.com>';
     const baseUrl = (process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.jobagenthq.com').replace(/\/+$/, '');
 
     let greeting = 'Hi,';
