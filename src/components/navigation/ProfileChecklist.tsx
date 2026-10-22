@@ -48,18 +48,6 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
     isComplete: (settings) => Boolean(settings?.profile && settings.profile.trim().length > 10),
   },
   {
-    id: 'work-auth',
-    title: 'Work Authorization',
-    shortDesc: 'Citizenship & sponsorship answers',
-    icon: ShieldCheck,
-    isComplete: (settings) => Boolean(
-      settings?.usWorkAuthorization || 
-      settings?.country || 
-      settings?.skipSelfId || 
-      (settings?.visaSponsorship && settings.visaSponsorship !== '')
-    ),
-  },
-  {
     id: 'personal-info',
     title: 'Contact & Links',
     shortDesc: 'Phone, location & social links',

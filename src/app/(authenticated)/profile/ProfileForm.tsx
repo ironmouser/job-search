@@ -479,7 +479,6 @@ export default function ProfileForm({
         <div style={{ width: "1px", height: "18px", background: "rgba(255, 255, 255, 0.15)", margin: "0 0.1rem" }} />
         {[
           { id: "personal-info", label: "Personal" },
-          { id: "work-auth", label: "Demographics" },
           { id: "target-profile", label: "Target Role" },
           { id: "base-resume", label: "Resume" },
           { id: "avatar-settings", label: "Avatar" },
@@ -971,8 +970,12 @@ export default function ProfileForm({
       )}
       </div>
 
-      {/* -- 2. Work Authorization Section ----------------------------- */}
-      <div className={`glass-card accordion-card responsive-card-padding ${openSections['work-auth'] ? 'open' : ''}`} id="work-auth">
+      {/* -- 2. Work Authorization Section (Hidden) ----------------------------- */}
+      <div 
+        className={`glass-card accordion-card responsive-card-padding ${openSections['work-auth'] ? 'open' : ''}`} 
+        id="work-auth"
+        style={{ display: "none" }}
+      >
         <div className="accordion-card-header" onClick={() => toggleSection('work-auth')}>
           <div>
             <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
