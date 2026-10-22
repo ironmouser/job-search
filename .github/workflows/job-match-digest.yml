@@ -1,0 +1,55 @@
+name: Job Match Digest Cron
+
+on:
+  schedule:
+    # Runs daily at 10:00 AM UTC (6:00 AM EDT)
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Bypass 44-hour frequency guard'
+        required: false
+        type: boolean
+        default: false
+      dryRun:
+        description: 'Simulate without sending actual emails'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  run-digest:
+    name: Execute Job Match Cycle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Job Match API
+        env:
+          WORKER_API_KEY: ${{ secrets.WORKER_API_KEY }}
+          FORCE: ${{ github.event.inputs.force || 'false' }}
+          DRY_RUN: ${{ github.event.inputs.dryRun || 'false' }}
+        run: |
+          if [ -z "$WORKER_API_KEY" ]; then
+            echo "::error::WORKER_API_KEY secret is not configured in repository settings."
+            exit 1
+          fi
+
+          echo "Triggering Job Match Cycle (force: $FORCE, dryRun: $DRY_RUN)..."
+
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
+            "https://www.jobagenthq.com/api/internal/job-match/run?force=${FORCE}&dryRun=${DRY_RUN}&sync=true" \
+            -H "Authorization: Bearer ${WORKER_API_KEY}" \
+            -H "Content-Type: application/json")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response Body:"
+          echo "$BODY"
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::Job match run failed with HTTP $HTTP_CODE: $BODY"
+            exit 1
+          fi
+
+          echo "Job match run completed successfully."
