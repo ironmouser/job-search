@@ -166,6 +166,7 @@ export default async function Dashboard() {
       searchKeyword={searchKeyword}
       hasBaseResume={hasBaseResume}
       initialIsDiscoverable={isDiscoverable}
+      initialJobMatchEmailsEnabled={userPrefs?.jobMatchEmailsEnabled ?? false}
     />
   );
 }

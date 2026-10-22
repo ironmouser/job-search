@@ -98,7 +98,8 @@ export default function DashboardClient({
   searchLocation = '',
   searchKeyword = '',
   hasBaseResume = false,
-  initialIsDiscoverable = false
+  initialIsDiscoverable = false,
+  initialJobMatchEmailsEnabled = false
 }: { 
   jobs: DashboardJob[], 
   userPlanTier?: string, 
@@ -110,7 +111,8 @@ export default function DashboardClient({
   searchLocation?: string,
   searchKeyword?: string,
   hasBaseResume?: boolean,
-  initialIsDiscoverable?: boolean
+  initialIsDiscoverable?: boolean,
+  initialJobMatchEmailsEnabled?: boolean
 }) {
 
   const router = useRouter();
@@ -125,11 +127,55 @@ export default function DashboardClient({
   const [isLoaded, setIsLoaded] = useState(false);
   const [isDiscoverable, setIsDiscoverable] = useState(Boolean(initialIsDiscoverable));
   const [isTogglingDiscoverable, setIsTogglingDiscoverable] = useState(false);
+  const [jobMatchEmailsEnabled, setJobMatchEmailsEnabled] = useState(Boolean(initialJobMatchEmailsEnabled));
+  const [isTogglingJobMatchEmails, setIsTogglingJobMatchEmails] = useState(false);
   const hasDismissedNonUsModal = useRef(false);
 
   useEffect(() => {
     setIsDiscoverable(Boolean(initialIsDiscoverable));
   }, [initialIsDiscoverable]);
+
+  useEffect(() => {
+    setJobMatchEmailsEnabled(Boolean(initialJobMatchEmailsEnabled));
+  }, [initialJobMatchEmailsEnabled]);
+
+  useEffect(() => {
+    const handleSettingsUpdate = (e: any) => {
+      if (typeof e.detail?.settings?.jobMatchEmailsEnabled === 'boolean') {
+        setJobMatchEmailsEnabled(e.detail.settings.jobMatchEmailsEnabled);
+      }
+    };
+    window.addEventListener('settings-updated', handleSettingsUpdate);
+    return () => window.removeEventListener('settings-updated', handleSettingsUpdate);
+  }, []);
+
+  const handleToggleJobMatchEmails = async (nextValue: boolean) => {
+    setJobMatchEmailsEnabled(nextValue);
+    setIsTogglingJobMatchEmails(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobMatchEmailsEnabled: nextValue }),
+      });
+      if (res.ok) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('settings-updated', {
+              detail: { settings: { jobMatchEmailsEnabled: nextValue } },
+            })
+          );
+        }
+      } else {
+        setJobMatchEmailsEnabled(!nextValue);
+      }
+    } catch (err) {
+      console.error('Failed to update job match emails preference:', err);
+      setJobMatchEmailsEnabled(!nextValue);
+    } finally {
+      setIsTogglingJobMatchEmails(false);
+    }
+  };
 
   useEffect(() => {
     const handleConsentUpdate = (e: any) => {
@@ -1789,10 +1835,36 @@ export default function DashboardClient({
         {/* Matches Section Header */}
         <div className="matches-section-header-group" style={{ marginBottom: '1.75rem', marginTop: '-0.5rem' }}>
           {/* Matches Title Row */}
-          <div className="matches-title-row" style={{ marginBottom: '1.25rem' }}>
-            <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-              Matches ({filteredAndSortedJobs.length})
-            </h3>
+          <div className="matches-title-row">
+            <div className="matches-title-left">
+              <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                Matches ({filteredAndSortedJobs.length})
+              </h3>
+
+              {/* Email me job matches toggle */}
+              <div 
+                className="email-job-matches-toggle-wrapper"
+                onClick={() => !isTogglingJobMatchEmails && handleToggleJobMatchEmails(!jobMatchEmailsEnabled)}
+                title="Receive an email every other day with newly discovered roles that match your search criteria by 60% or more"
+              >
+                <Mail size={14} className={`email-job-matches-icon ${jobMatchEmailsEnabled ? 'active' : ''}`} />
+                <span className="email-job-matches-label">Email me job matches</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={jobMatchEmailsEnabled}
+                  aria-label="Email me job matches toggle"
+                  disabled={isTogglingJobMatchEmails}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleJobMatchEmails(!jobMatchEmailsEnabled);
+                  }}
+                  className={`email-job-matches-switch ${jobMatchEmailsEnabled ? 'checked' : ''}`}
+                >
+                  <div className="email-job-matches-knob" />
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Unified Controls Toolbar Row */}
