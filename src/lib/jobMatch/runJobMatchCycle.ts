@@ -79,10 +79,16 @@ export async function runJobMatchCycle(
 
   // Step 2: 44-Hour Frequency Guard
   if (!force && !dryRun && !userId) {
-    const lastCompleted = await prisma.jobMatchRun.findFirst({
+    // Fetch recent completed runs and exclude dry runs so tests don't lock out real email cycles
+    const recentCompletedRuns = await prisma.jobMatchRun.findMany({
       where: { status: 'completed' },
       orderBy: { finishedAt: 'desc' },
+      take: 10,
     });
+
+    const lastCompleted = recentCompletedRuns.find(
+      (r) => (r.details as any)?.dryRun !== true
+    );
 
     if (lastCompleted && lastCompleted.finishedAt) {
       const elapsedSinceLastRun = Date.now() - lastCompleted.finishedAt.getTime();
