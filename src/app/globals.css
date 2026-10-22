@@ -480,6 +480,12 @@ body.light-theme .dashboard-top-section .add-job-url-btn:hover {
     justify-content: flex-start !important;
   }
 
+  .dashboard-hero-right {
+    width: 100% !important;
+    align-items: flex-start !important;
+    margin-left: 0 !important;
+  }
+
   .dashboard-hero-action-row .recruiter-optin-card {
     max-width: none !important;
     width: 100% !important;
@@ -491,12 +497,17 @@ body.light-theme .dashboard-top-section .add-job-url-btn:hover {
     max-width: none !important;
     justify-content: space-between !important;
   }
+
+  .hero-stats-chips {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
 }
 
-/* Dashboard Hero Action Row: Prepare Application (Left) & Recruiter Opt-In Card (Right) */
+/* Dashboard Hero Action Row: Prepare Application (Left) & Recruiter Opt-In Card + Stats Chips (Right) */
 .dashboard-hero-action-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 2rem;
   margin-top: 1.25rem;
@@ -512,6 +523,114 @@ body.light-theme .dashboard-top-section .add-job-url-btn:hover {
   gap: 0.75rem;
   flex-wrap: wrap;
   flex-shrink: 0;
+  padding-top: 0.25rem;
+}
+
+.dashboard-hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.65rem;
+  margin-left: auto;
+}
+
+/* Hero Stats Chips */
+.hero-stats-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hero-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  line-height: 1.25;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  outline: none;
+  user-select: none;
+}
+
+.hero-stat-chip .chip-label {
+  color: #475569;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.hero-stat-chip .chip-value {
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.hero-stat-chip .inline-spinner {
+  color: #2563eb;
+  margin-left: 0.2rem;
+}
+
+.hero-stat-chip:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.hero-stat-chip.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.hero-stat-chip.active .chip-label {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.hero-stat-chip.active .chip-value {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+/* Dark mode overrides for Stats Chips */
+body:not(.light-theme) .hero-stat-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+body:not(.light-theme) .hero-stat-chip .chip-label {
+  color: #94a3b8;
+}
+
+body:not(.light-theme) .hero-stat-chip .chip-value {
+  color: #f8fafc;
+}
+
+body:not(.light-theme) .hero-stat-chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body:not(.light-theme) .hero-stat-chip.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+body:not(.light-theme) .hero-stat-chip.active .chip-label {
+  color: #93c5fd;
+}
+
+body:not(.light-theme) .hero-stat-chip.active .chip-value {
+  color: #60a5fa;
+}
+
+body:not(.light-theme) .hero-stat-chip .inline-spinner {
+  color: #60a5fa;
 }
 
 /* Elevated White Card for Recruiter Opt-In */

@@ -1546,58 +1546,7 @@ export default function DashboardClient({
             }}
           />
 
-          <div className="responsive-grid stat-cards-grid" style={{ marginBottom: '1.25rem' }} data-tour="dashboard-stats">
-            <div 
-              className={`glass-card filter-card top-stat-card stat-card-found ${activeFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('all')}
-              style={{ cursor: 'pointer', padding: '1.1rem 1.25rem', position: 'relative' }}
-            >
-              <h4 className="stat-card-label">Jobs Found</h4>
-              <h2 className="stat-card-number">{totalDiscovered}</h2>
-              {totalDiscovered > 200 && (
-                <div className="stat-card-subtext-red">
-                  Consider a cleanup
-                </div>
-              )}
-            </div>
-            <div 
-              className={`glass-card filter-card top-stat-card stat-card-white ${activeFilter === 'scored' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('scored')}
-              style={{ cursor: 'pointer', padding: '1.1rem 1.25rem' }}
-            >
-              <h4 className="stat-card-label">
-                <span>Scored</span>
-                {isScoringBackground && (
-                  <span title="Background scoring in progress..." style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '0.35rem' }}>
-                    <Loader2 
-                      size={13} 
-                      className="animate-spin" 
-                      style={{ color: '#2563eb', animation: 'spin 1s linear infinite' }} 
-                    />
-                  </span>
-                )}
-              </h4>
-              <h2 className="stat-card-number">{totalScored}</h2>
-            </div>
-            <div 
-              className={`glass-card filter-card top-stat-card stat-card-white ${activeFilter === 'high_fit' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('high_fit')}
-              style={{ cursor: 'pointer', padding: '1.1rem 1.25rem' }}
-            >
-              <h4 className="stat-card-label">Great Matches (&gt;80)</h4>
-              <h2 className="stat-card-number number-blue">{highlyScored}</h2>
-            </div>
-            <div 
-              className={`glass-card filter-card top-stat-card stat-card-white ${activeFilter === 'archived' ? 'active' : ''}`}
-              onClick={() => setActiveFilter('archived')}
-              style={{ cursor: 'pointer', padding: '1.1rem 1.25rem' }}
-            >
-              <h4 className="stat-card-label">Saved</h4>
-              <h2 className="stat-card-number">{totalArchived}</h2>
-            </div>
-          </div>
-
-          {/* Hero Action Row: Prepare Application (Left) & Recruiter Opt-In (Right) */}
+          {/* Hero Action Row: Prepare Application (Left) & Recruiter Opt-In + Stats Chips (Right) */}
           <div className="dashboard-hero-action-row">
             {/* Left: Prepare Application Action */}
             <div className="dashboard-hero-left">
@@ -1640,94 +1589,140 @@ export default function DashboardClient({
               </button>
             </div>
 
-            {/* Right: Open to Recruiter Opportunities Opt-in Card */}
-            <div className={`recruiter-optin-card ${isDiscoverable ? 'opted-in' : ''}`} id="hero-recruiter-optin">
-              {isDiscoverable ? (
-                <>
-                  <h4 className="recruiter-optin-title">Open to recruiter opportunities</h4>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={true}
-                    aria-label="Open to recruiter opportunities toggle"
-                    disabled={isTogglingDiscoverable}
-                    onClick={() => handleToggleDiscoverable(false)}
-                    style={{
-                      width: '38px',
-                      height: '20px',
-                      borderRadius: '10px',
-                      backgroundColor: '#0070f3',
-                      position: 'relative',
-                      border: 'none',
-                      cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
-                      padding: 0,
-                      flexShrink: 0,
-                      transition: 'background-color 0.2s ease',
-                      opacity: isTogglingDiscoverable ? 0.7 : 1,
-                      outline: 'none',
-                    }}
-                  >
-                    <div
+            {/* Right: Open to Recruiter Opportunities Opt-in & Stats Chips */}
+            <div className="dashboard-hero-right">
+              <div className={`recruiter-optin-card ${isDiscoverable ? 'opted-in' : ''}`} id="hero-recruiter-optin">
+                {isDiscoverable ? (
+                  <>
+                    <h4 className="recruiter-optin-title">Open to recruiter opportunities</h4>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={true}
+                      aria-label="Open to recruiter opportunities toggle"
+                      disabled={isTogglingDiscoverable}
+                      onClick={() => handleToggleDiscoverable(false)}
                       style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        backgroundColor: '#ffffff',
-                        position: 'absolute',
-                        top: '2px',
-                        left: '20px',
-                        transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                        width: '38px',
+                        height: '20px',
+                        borderRadius: '10px',
+                        backgroundColor: '#0070f3',
+                        position: 'relative',
+                        border: 'none',
+                        cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
+                        padding: 0,
+                        flexShrink: 0,
+                        transition: 'background-color 0.2s ease',
+                        opacity: isTogglingDiscoverable ? 0.7 : 1,
+                        outline: 'none',
                       }}
-                    />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <h4 className="recruiter-optin-title">Open to recruiter opportunities</h4>
-                  <p className="recruiter-optin-desc">
-                    Let verified recruiters discover your profile and request a connection about relevant opportunities.
-                    <span className="recruiter-optin-switch-inline">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={false}
-                        aria-label="Open to recruiter opportunities toggle"
-                        disabled={isTogglingDiscoverable}
-                        onClick={() => handleToggleDiscoverable(true)}
+                    >
+                      <div
                         style={{
-                          width: '38px',
-                          height: '20px',
-                          borderRadius: '10px',
-                          backgroundColor: '#d1d5db',
-                          position: 'relative',
-                          border: 'none',
-                          cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
-                          padding: 0,
-                          flexShrink: 0,
-                          transition: 'background-color 0.2s ease',
-                          opacity: isTogglingDiscoverable ? 0.7 : 1,
-                          outline: 'none',
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          backgroundColor: '#ffffff',
+                          position: 'absolute',
+                          top: '2px',
+                          left: '20px',
+                          transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
                         }}
-                      >
-                        <div
+                      />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="recruiter-optin-title">Open to recruiter opportunities</h4>
+                    <p className="recruiter-optin-desc">
+                      Let verified recruiters discover your profile and request a connection about relevant opportunities.
+                      <span className="recruiter-optin-switch-inline">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={false}
+                          aria-label="Open to recruiter opportunities toggle"
+                          disabled={isTogglingDiscoverable}
+                          onClick={() => handleToggleDiscoverable(true)}
                           style={{
-                            width: '16px',
-                            height: '16px',
-                            borderRadius: '50%',
-                            backgroundColor: '#ffffff',
-                            position: 'absolute',
-                            top: '2px',
-                            left: '2px',
-                            transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                            width: '38px',
+                            height: '20px',
+                            borderRadius: '10px',
+                            backgroundColor: '#d1d5db',
+                            position: 'relative',
+                            border: 'none',
+                            cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
+                            padding: 0,
+                            flexShrink: 0,
+                            transition: 'background-color 0.2s ease',
+                            opacity: isTogglingDiscoverable ? 0.7 : 1,
+                            outline: 'none',
                           }}
-                        />
-                      </button>
-                    </span>
-                  </p>
-                </>
-              )}
+                        >
+                          <div
+                            style={{
+                              width: '16px',
+                              height: '16px',
+                              borderRadius: '50%',
+                              backgroundColor: '#ffffff',
+                              position: 'absolute',
+                              top: '2px',
+                              left: '2px',
+                              transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                            }}
+                          />
+                        </button>
+                      </span>
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Stats Chips below the recruiter opportunities toggle */}
+              <div className="hero-stats-chips" data-tour="dashboard-stats">
+                <button
+                  type="button"
+                  className={`hero-stat-chip ${activeFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('all')}
+                  title={totalDiscovered > 200 ? "Consider a cleanup" : undefined}
+                >
+                  <span className="chip-label">Found:</span>
+                  <span className="chip-value">{totalDiscovered}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`hero-stat-chip ${activeFilter === 'scored' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('scored')}
+                  title={isScoringBackground ? "Background scoring in progress..." : undefined}
+                >
+                  <span className="chip-label">Scored:</span>
+                  <span className="chip-value">{totalScored}</span>
+                  {isScoringBackground && (
+                    <Loader2 
+                      size={12} 
+                      className="animate-spin inline-spinner" 
+                    />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={`hero-stat-chip ${activeFilter === 'high_fit' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('high_fit')}
+                >
+                  <span className="chip-label">Great Matches:</span>
+                  <span className="chip-value">{highlyScored}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`hero-stat-chip ${activeFilter === 'archived' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('archived')}
+                >
+                  <span className="chip-label">Saved:</span>
+                  <span className="chip-value">{totalArchived}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
