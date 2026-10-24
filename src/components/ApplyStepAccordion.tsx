@@ -65,6 +65,11 @@ export function ApplyStepAccordion({
   const autoApplyEnabled = isAutoApplyEnabled();
   // Default to manual apply tab per user specification
   const [mode, setMode] = useState<'manual' | 'auto'>('manual');
+  const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
+  const [confidenceData, setConfidenceData] = useState<{ platform: string; confidence: number } | null>(null);
+  const [isCheckingConfidence, setIsCheckingConfidence] = useState(false);
+  const [activeSession, setActiveSession] = useState<{ status: string } | null>(null);
+  const [isSessionActive, setIsSessionActive] = useState(false);
 
   useEffect(() => {
     setActiveUrl(applicationUrl || initialUrl);
@@ -74,12 +79,6 @@ export function ApplyStepAccordion({
     setSavedSuccess(false);
     setIsSavingUrl(false);
   }, [jobId, applicationUrl, initialUrl]);
-
-  const [localHasAssets, setLocalHasAssets] = useState(hasAssets);
-  const [confidenceData, setConfidenceData] = useState<{ platform: string; confidence: number } | null>(null);
-  const [isCheckingConfidence, setIsCheckingConfidence] = useState(false);
-  const [activeSession, setActiveSession] = useState<{ status: string } | null>(null);
-  const [isSessionActive, setIsSessionActive] = useState(false);
 
   useEffect(() => {
     setLocalHasAssets(hasAssets);

@@ -42,12 +42,9 @@ export default function FeedbackNudgeInlineBanner({
   const bannerRef = useRef<HTMLDivElement>(null);
   const descriptionRef = useRef<HTMLElement | null>(null);
 
-  // If user already has feedback on this job, don't bother
-  if (initialFeedback) return null;
-
   // Observe scroll position relative to the job description section
   useEffect(() => {
-    if (hasTriggered || dismissed || feedback) return;
+    if (initialFeedback || hasTriggered || dismissed || feedback) return;
     if (!shouldShowNudge1()) return;
 
     // Find the description container by data attribute
@@ -84,7 +81,7 @@ export default function FeedbackNudgeInlineBanner({
       clearTimeout(timer);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, [hasTriggered, dismissed, feedback, shouldShowNudge1, recordNudgeShown]);
+  }, [hasTriggered, dismissed, feedback, shouldShowNudge1, recordNudgeShown, initialFeedback]);
 
   // Auto-dismiss after 15 seconds
   useEffect(() => {
@@ -129,7 +126,7 @@ export default function FeedbackNudgeInlineBanner({
     );
   };
 
-  if (!visible || dismissed) return null;
+  if (initialFeedback || !visible || dismissed) return null;
 
   return (
     <div
