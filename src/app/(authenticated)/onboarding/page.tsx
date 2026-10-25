@@ -358,7 +358,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                         </span>
                                     </div>
                                     <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                                        Receive an email every other day with newly discovered roles that match your search criteria by 60% or more.
+                                        Receive daily email digests with newly discovered roles that match your search criteria by 60% or more.
                                     </p>
                                 </div>
                                 <input 

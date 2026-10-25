@@ -1845,7 +1845,7 @@ export default function DashboardClient({
               <div 
                 className="email-job-matches-toggle-wrapper"
                 onClick={() => !isTogglingJobMatchEmails && handleToggleJobMatchEmails(!jobMatchEmailsEnabled)}
-                title="Receive an email every other day with newly discovered roles that match your search criteria by 60% or more"
+                title="Receive daily email digests with newly discovered roles that match your search criteria by 60% or more"
               >
                 <Mail size={14} className={`email-job-matches-icon ${jobMatchEmailsEnabled ? 'active' : ''}`} />
                 <span className="email-job-matches-label">Email me job matches</span>

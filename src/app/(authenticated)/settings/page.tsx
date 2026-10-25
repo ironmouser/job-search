@@ -751,11 +751,11 @@ export default function SettingsPage() {
                                         color: settings.jobMatchEmailsEnabled ? '#10b981' : 'var(--text-secondary)',
                                         border: `1px solid ${settings.jobMatchEmailsEnabled ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-glass)'}`,
                                     }}>
-                                        {settings.jobMatchEmailsEnabled ? 'Active (Every Other Day)' : 'Disabled'}
+                                        {settings.jobMatchEmailsEnabled ? 'Active (Daily Digests)' : 'Disabled'}
                                     </span>
                                 </div>
                                 <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                                    Automatically receive an email every other day when new job postings match your search criteria by 60% or more. Matched jobs will also appear directly in your dashboard feed.
+                                    Receive daily email digests whenever new job postings match your search criteria by 60% or more. Matched jobs will also appear directly in your dashboard feed.
                                 </p>
                                 {settings.jobMatchEmailsOptedInAt && settings.jobMatchEmailsEnabled && (
                                     <span style={{ display: 'inline-block', marginTop: '0.35rem', fontSize: '0.76rem', color: 'var(--text-secondary)' }}>

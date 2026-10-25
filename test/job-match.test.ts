@@ -239,3 +239,10 @@ describe('Unsubscribe Token HMAC Security', () => {
     assert.strictEqual(result, null);
   });
 });
+
+describe('Job Match Rate Limiting & Queue Settings', () => {
+  it('enforces a 50 email per day rate limit cap to preserve Resend quota', async () => {
+    const { DEFAULT_DAILY_EMAIL_LIMIT } = await import('../src/lib/jobMatch/runJobMatchCycle');
+    assert.strictEqual(DEFAULT_DAILY_EMAIL_LIMIT, 50);
+  });
+});

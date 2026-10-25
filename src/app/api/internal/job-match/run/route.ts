@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateInternalRequest } from '@/lib/auth-helpers';
-import { runJobMatchCycle } from '@/lib/jobMatch/runJobMatchCycle';
+import {
+  runJobMatchCycle,
+  getEmailsSentTodayCount,
+  getPendingQueueUsersCount,
+  DEFAULT_DAILY_EMAIL_LIMIT,
+} from '@/lib/jobMatch/runJobMatchCycle';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 
 /**
  * GET /api/internal/job-match/run
- * Returns the status of the latest Job Match runs and system schedule stats.
+ * Returns the status of the latest Job Match runs, daily send quota usage, and pending queue stats.
  */
 export async function GET(req: NextRequest) {
   // Allow internal auth key OR system admin session
@@ -21,21 +26,28 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const recentRuns = await prisma.jobMatchRun.findMany({
-      orderBy: { startedAt: 'desc' },
-      take: 10,
-    });
-
-    const optedInCount = await prisma.userPreferences.count({
-      where: {
-        jobMatchEmailsEnabled: true,
-        searchKeyword: { not: null },
-      },
-    });
+    const [recentRuns, optedInCount, sentToday, pendingQueueCount] = await Promise.all([
+      prisma.jobMatchRun.findMany({
+        orderBy: { startedAt: 'desc' },
+        take: 10,
+      }),
+      prisma.userPreferences.count({
+        where: {
+          jobMatchEmailsEnabled: true,
+          searchKeyword: { not: null },
+        },
+      }),
+      getEmailsSentTodayCount(),
+      getPendingQueueUsersCount(),
+    ]);
 
     return NextResponse.json({
       success: true,
       optedInUsersCount: optedInCount,
+      pendingQueueUsersCount: pendingQueueCount,
+      emailsSentToday: sentToday,
+      dailyLimit: DEFAULT_DAILY_EMAIL_LIMIT,
+      remainingDailyQuota: Math.max(0, DEFAULT_DAILY_EMAIL_LIMIT - sentToday),
       recentRuns,
     });
   } catch (err: any) {
@@ -48,10 +60,10 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/internal/job-match/run
- * Triggers a Job Match cycle across all opted-in users.
+ * Triggers a Job Match cycle across all opted-in users with a 50 email/day cap and queue draining.
  * Supports:
  *   - Bearer token authentication (CRON_SECRET, INTERNAL_API_KEY, WORKER_API_KEY)
- *   - Query params: ?force=true, ?dryRun=true, ?sync=true, ?userId=<id>
+ *   - Query params: ?force=true, ?dryRun=true, ?sync=true, ?userId=<id>, ?dailyLimit=<num>
  */
 export async function POST(req: NextRequest) {
   // Allow internal auth key OR system admin session
@@ -76,11 +88,13 @@ export async function POST(req: NextRequest) {
   const dryRun = searchParams.get('dryRun') === 'true' || body.dryRun === true;
   const sync = searchParams.get('sync') === 'true' || body.sync === true;
   const userId = searchParams.get('userId') || body.userId || undefined;
+  const dailyLimitParam = searchParams.get('dailyLimit') || body.dailyLimit;
+  const dailyLimit = dailyLimitParam ? parseInt(String(dailyLimitParam), 10) : undefined;
 
   // If synchronous execution is requested (e.g. for testing)
   if (sync) {
     try {
-      const result = await runJobMatchCycle({ force, dryRun, userId });
+      const result = await runJobMatchCycle({ force, dryRun, userId, dailyLimit });
       return NextResponse.json(result);
     } catch (err: any) {
       return NextResponse.json(
@@ -92,7 +106,7 @@ export async function POST(req: NextRequest) {
 
   // Otherwise, kick off the cycle in background and return 202 Accepted immediately
   // to avoid Railway/reverse proxy HTTP timeout aborts.
-  runJobMatchCycle({ force, dryRun, userId }).catch((err) => {
+  runJobMatchCycle({ force, dryRun, userId, dailyLimit }).catch((err) => {
     console.error('[Internal Job Match Route] Background cycle unhandled error:', err);
   });
 
@@ -100,7 +114,7 @@ export async function POST(req: NextRequest) {
     {
       status: 'accepted',
       message: 'Job Match cycle started in background',
-      options: { force, dryRun, userId: userId || null },
+      options: { force, dryRun, userId: userId || null, dailyLimit: dailyLimit || DEFAULT_DAILY_EMAIL_LIMIT },
     },
     { status: 202 }
   );
