@@ -2,8 +2,8 @@ name: Job Match Digest Cron
 
 on:
   schedule:
-    # Runs daily at 10:00 AM UTC (6:00 AM EDT)
-    - cron: '0 10 * * *'
+    # Runs every other day at 10:00 AM UTC (5:00 AM EST / 6:00 AM EDT)
+    - cron: '0 10 */2 * *'
   workflow_dispatch:
     inputs:
       force:
@@ -24,12 +24,12 @@ jobs:
     steps:
       - name: Trigger Job Match API
         env:
-          WORKER_API_KEY: ${{ secrets.WORKER_API_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
           FORCE: ${{ github.event.inputs.force || 'false' }}
           DRY_RUN: ${{ github.event.inputs.dryRun || 'false' }}
         run: |
-          if [ -z "$WORKER_API_KEY" ]; then
-            echo "::error::WORKER_API_KEY secret is not configured in repository settings."
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret is not configured in repository settings."
             exit 1
           fi
 
@@ -37,7 +37,7 @@ jobs:
 
           RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
             "https://www.jobagenthq.com/api/internal/job-match/run?force=${FORCE}&dryRun=${DRY_RUN}&sync=true" \
-            -H "Authorization: Bearer ${WORKER_API_KEY}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
             -H "Content-Type: application/json")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
