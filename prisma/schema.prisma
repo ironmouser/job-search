@@ -184,8 +184,26 @@ model Organization {
   users        User[]
   invitations  OrganizationInvitation[]
   activityLogs OrganizationActivityLog[]
+  seatBatches  OrganizationSeatBatch[]
 
   @@map("organizations")
+}
+
+model OrganizationSeatBatch {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  stripeSessionId String   @unique @map("stripe_session_id")
+  tier            String   @default("standard")
+  totalSeats      Int      @map("total_seats")
+  remainingSeats  Int      @map("remaining_seats")
+  validityDays    Int      @map("validity_days")
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, expiresAt])
+  @@map("organization_seat_batches")
 }
 
 model OrganizationInvitation {

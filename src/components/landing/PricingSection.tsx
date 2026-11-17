@@ -115,7 +115,7 @@ export default function PricingSection() {
                 : "Unlimited AI asset generation & tailored application materials."}
             </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', marginBottom: '2rem' }}>
-              <span style={{ fontSize: '3rem', fontWeight: 800, color: '#ffffff' }}>$20</span>
+              <span style={{ fontSize: '3rem', fontWeight: 800, color: '#ffffff' }}>$9.99</span>
               <span style={{ color: '#94a3b8', fontWeight: 500 }}>/month</span>
             </div>
             {session ? (
@@ -216,10 +216,10 @@ export default function PricingSection() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Starting at</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>$10</span>
-                <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.95rem' }}>/ seat pass</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>$6.99</span>
+                <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.95rem' }}>/ seat / month</span>
               </div>
-              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>Based on access duration & quantity purchased</span>
+              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>Volume discounts up to 30% off · 1-mo, 3-mo, 6-mo &amp; 1-yr passes</span>
             </div>
             <Link 
               href="/login" 

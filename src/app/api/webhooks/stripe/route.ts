@@ -74,8 +74,10 @@ export async function POST(req: Request) {
         const item = lineItems.data[0];
         const quantity = item?.quantity ?? 0;
         
-        let validityDays = 30; // Default (1 Month)
-        if (item?.price) {
+        let validityDays = session.metadata?.validityDays
+          ? parseInt(session.metadata.validityDays, 10)
+          : 30; // Default (1 Month)
+        if (!session.metadata?.validityDays && item?.price) {
           if (item.price.metadata?.validity_days) {
             validityDays = parseInt(item.price.metadata.validity_days, 10);
           } else if (item.price.product) {
@@ -92,28 +94,50 @@ export async function POST(req: Request) {
         }
 
         const org = await prisma.organization.findUnique({ where: { id: orgId } });
-        if (org) {
-          await prisma.$transaction([
-            prisma.organization.update({
-              where: { id: orgId },
-              data: {
-                stripeCustomerId: getCustomerId(session.customer),
-                seatCount: { increment: quantity },
-                seatValidityDays: validityDays,
-              },
-            }),
-            prisma.organizationActivityLog.create({
-              data: {
-                organizationId: orgId,
-                actorId: "system",
-                action: "SEAT_PURCHASED",
-                metadata: { quantity, validityDays, sessionId: session.id },
-              },
-            }),
-          ]);
+        if (org && quantity > 0) {
+          const tier = session.metadata?.tier || "standard";
+          const passExpiration = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
 
-          console.log(`[Stripe Webhook] Org ${orgId} purchased ${quantity} passes (valid for ${validityDays} days)`);
-        } else {
+          try {
+            await prisma.$transaction([
+              prisma.organizationSeatBatch.create({
+                data: {
+                  organizationId: orgId,
+                  stripeSessionId: session.id,
+                  tier,
+                  totalSeats: quantity,
+                  remainingSeats: quantity,
+                  validityDays,
+                  expiresAt: passExpiration,
+                },
+              }),
+              prisma.organization.update({
+                where: { id: orgId },
+                data: {
+                  stripeCustomerId: getCustomerId(session.customer),
+                  seatCount: { increment: quantity },
+                },
+              }),
+              prisma.organizationActivityLog.create({
+                data: {
+                  organizationId: orgId,
+                  actorId: "system",
+                  action: "SEAT_PURCHASED",
+                  targetId: session.id,
+                  metadata: { quantity, validityDays, tier, sessionId: session.id },
+                },
+              }),
+            ]);
+
+            console.log(`[Stripe Webhook] Org ${orgId} purchased ${quantity} passes (${tier}, valid for ${validityDays} days)`);
+          } catch (txErr: any) {
+            if (txErr?.code === "P2002") {
+              console.log(`[Stripe Webhook] Duplicate org seat checkout ignored for session ${session.id}`);
+              return new NextResponse(null, { status: 200 });
+            }
+            throw txErr;
+          }
+        } else if (!org) {
           console.warn(`[Stripe Webhook] Org ${orgId} not found in database for checkout session ${session.id}`);
         }
       } catch (err) {
@@ -548,7 +572,7 @@ export async function POST(req: Request) {
     const customerEmail = invoice.customer_email;
 
     try {
-      let user = await prisma.user.findFirst({
+      const user = await prisma.user.findFirst({
         where: {
           OR: [
             ...(customerId ? [{ stripeCustomerId: customerId }] : []),

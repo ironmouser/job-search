@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { getTierForQuantity, getDurationConfig } from "@/lib/org-pricing";
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-06-24.dahlia" as any, // fallback to any if typescript definitions lag behind
@@ -12,15 +13,15 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 /**
  * Creates a Stripe Checkout Session for an organization purchasing seats.
- * Uses quantity-based pricing where each unit = 1 seat.
+ * Calculates unit price server-side from volume tier & pass duration.
  */
 export async function createOrgCheckoutSession({
   organizationId,
   orgName,
   orgEmail,
   stripeCustomerId,
-  priceId,
   quantity,
+  durationMonths = 1,
   successUrl,
   cancelUrl,
 }: {
@@ -28,12 +29,11 @@ export async function createOrgCheckoutSession({
   orgName: string;
   orgEmail?: string;
   stripeCustomerId?: string | null;
-  priceId: string;
   quantity: number;
+  durationMonths?: number;
   successUrl: string;
   cancelUrl: string;
 }) {
-  // Create a Stripe customer for the org if one doesn't exist yet
   let customerId = stripeCustomerId;
   if (!customerId) {
     const customer = await stripe.customers.create({
@@ -44,6 +44,29 @@ export async function createOrgCheckoutSession({
     customerId = customer.id;
   }
 
+  const tier = getTierForQuantity(quantity);
+  const duration = getDurationConfig(durationMonths);
+  const unitAmountCents = tier.monthlyRateCents * duration.months;
+
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+    {
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: `Job Agent HQ Organization Pass — ${tier.name} (${duration.label})`,
+          description: `${tier.discountLabel} • ${duration.validityDays}-day Pro access per activated pass`,
+          metadata: {
+            validity_days: String(duration.validityDays),
+            tier: tier.id,
+            duration_months: String(duration.months),
+          },
+        },
+        unit_amount: unitAmountCents,
+      },
+      quantity,
+    },
+  ];
+
   return stripe.checkout.sessions.create({
     customer: customerId,
     success_url: successUrl,
@@ -52,10 +75,20 @@ export async function createOrgCheckoutSession({
     mode: "payment",
     allow_promotion_codes: true,
     billing_address_collection: "auto",
-    line_items: [{ price: priceId, quantity }],
-    metadata: { organizationId },
+    line_items: lineItems,
+    metadata: {
+      organizationId,
+      tier: tier.id,
+      durationMonths: String(duration.months),
+      validityDays: String(duration.validityDays),
+    },
     payment_intent_data: {
-      metadata: { organizationId },
+      metadata: {
+        organizationId,
+        tier: tier.id,
+        durationMonths: String(duration.months),
+        validityDays: String(duration.validityDays),
+      },
     },
   });
 }

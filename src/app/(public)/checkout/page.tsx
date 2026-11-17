@@ -111,7 +111,7 @@ function CheckoutAuthContent() {
             }}
           >
             <Zap size={14} fill="currentColor" />
-            Job Agent HQ Pro — $20/month
+            Job Agent HQ Pro — $9.99/month
           </div>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 700, color: "#0f172a", margin: "0 0 0.5rem 0" }}>
             Get Started with Pro

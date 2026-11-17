@@ -121,7 +121,7 @@ function PricingContent() {
             Advanced AI tools for serious candidates.
           </p>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginBottom: "2rem" }}>
-            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--foreground)" }}>$20</span>
+            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--foreground)" }}>$9.99</span>
             <span style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>/month</span>
           </div>
           {isPro ? (
@@ -175,10 +175,10 @@ function PricingContent() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginBottom: "2rem" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "0.35rem" }}>
               <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Starting at</span>
-              <span style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--foreground)", lineHeight: 1 }}>$10</span>
-              <span style={{ color: "var(--muted-foreground)", fontWeight: 600, fontSize: "0.95rem" }}>/ seat pass</span>
+              <span style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--foreground)", lineHeight: 1 }}>$6.99</span>
+              <span style={{ color: "var(--muted-foreground)", fontWeight: 600, fontSize: "0.95rem" }}>/ seat / month</span>
             </div>
-            <span style={{ color: "var(--muted-foreground)", fontSize: "0.8rem", fontWeight: 500 }}>Based on access duration & quantity purchased</span>
+            <span style={{ color: "var(--muted-foreground)", fontSize: "0.8rem", fontWeight: 500 }}>Volume discounts up to 30% off · 1-mo, 3-mo, 6-mo &amp; 1-yr passes</span>
           </div>
           <Button
             variant="outline"

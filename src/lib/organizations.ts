@@ -55,13 +55,39 @@ export async function getOrganization(orgId: string) {
 }
 
 /**
- * Returns remaining available passes for an organization.
+ * Returns remaining available passes for an organization, respecting per-batch
+ * 1-year unassigned pass expirations while remaining backwards-compatible with
+ * legacy pre-batch seat counts.
  */
 export async function getRemainingSeats(org: { id: string; seatCount: number; consumedSeats: number }) {
-  const pendingInvites = await prisma.organizationInvitation.count({
-    where: { organizationId: org.id, status: "PENDING" },
-  });
-  return org.seatCount - org.consumedSeats - pendingInvites;
+  const now = new Date();
+  const [pendingInvites, batches] = await Promise.all([
+    prisma.organizationInvitation.count({
+      where: { organizationId: org.id, status: "PENDING" },
+    }),
+    prisma.organizationSeatBatch.findMany({
+      where: { organizationId: org.id },
+      select: { totalSeats: true, remainingSeats: true, expiresAt: true },
+    }),
+  ]);
+
+  let batchTotal = 0;
+  let batchConsumed = 0;
+  let batchRemainingActive = 0;
+
+  for (const b of batches) {
+    batchTotal += b.totalSeats;
+    batchConsumed += Math.max(0, b.totalSeats - b.remainingSeats);
+    if (b.expiresAt > now) {
+      batchRemainingActive += b.remainingSeats;
+    }
+  }
+
+  const legacyTotal = Math.max(0, org.seatCount - batchTotal);
+  const legacyConsumed = Math.max(0, org.consumedSeats - batchConsumed);
+  const legacyRemaining = Math.max(0, legacyTotal - legacyConsumed);
+
+  return batchRemainingActive + legacyRemaining - pendingInvites;
 }
 
 // ─── User Management ──────────────────────────────────────────────────────────
@@ -207,7 +233,7 @@ export async function inviteUser(input: InviteUserInput) {
  * Atomically increments activeSeatCount.
  */
 export async function acceptInvitation(token: string, userId: string) {
-  const invitation = await prisma.organizationInvitation.findUnique({ 
+  const invitation = await prisma.organizationInvitation.findUnique({
     where: { token },
     include: { organization: true },
   });
@@ -219,26 +245,51 @@ export async function acceptInvitation(token: string, userId: string) {
     throw new Error("INVITATION_EXPIRED");
   }
 
-  await prisma.$transaction([
-    prisma.organizationInvitation.update({
-      where: { id: invitation.id },
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.organizationInvitation.updateMany({
+      where: { id: invitation.id, status: "PENDING" },
       data: { status: "ACCEPTED", acceptedAt: new Date() },
-    }),
-    prisma.user.update({
+    });
+
+    if (claimed.count === 0) {
+      throw new Error("INVITATION_ALREADY_USED");
+    }
+
+    const now = new Date();
+    const activeBatch = await tx.organizationSeatBatch.findFirst({
+      where: {
+        organizationId: invitation.organizationId,
+        remainingSeats: { gt: 0 },
+        expiresAt: { gt: now },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    let validityDays = invitation.organization.seatValidityDays;
+    if (activeBatch) {
+      await tx.organizationSeatBatch.update({
+        where: { id: activeBatch.id },
+        data: { remainingSeats: { decrement: 1 } },
+      });
+      validityDays = activeBatch.validityDays;
+    }
+
+    await tx.user.update({
       where: { id: userId },
       data: {
         organizationId: invitation.organizationId,
         subscriptionType: "GROUP",
         role: "USER",
         isDisabled: false,
-        orgAccessExpiresAt: new Date(Date.now() + (invitation.organization.seatValidityDays * 24 * 60 * 60 * 1000)),
+        orgAccessExpiresAt: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000),
       },
-    }),
-    prisma.organization.update({
+    });
+
+    await tx.organization.update({
       where: { id: invitation.organizationId },
       data: { consumedSeats: { increment: 1 } },
-    }),
-  ]);
+    });
+  });
 
   await logActivity(invitation.organizationId, userId, "INVITE_ACCEPTED", invitation.id);
 

@@ -1,8 +1,29 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
+import Stripe from "stripe";
 import { authOptions } from "@/lib/auth";
 import { stripe, createOrgCheckoutSession, createRecruiterSubscriptionCheckoutSession } from "@/lib/stripe";
+import { PRO_MONTHLY_PRICE_CENTS } from "@/lib/org-pricing";
 import { prisma } from "@/lib/prisma";
+
+function getProLineItems(): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  return [
+    {
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: "Job Agent HQ Pro",
+          description: "Unlimited AI match scoring, tailored resumes, cover letters, Q&A, and inbox sync",
+        },
+        unit_amount: PRO_MONTHLY_PRICE_CENTS,
+        recurring: {
+          interval: "month",
+        },
+      },
+      quantity: 1,
+    },
+  ];
+}
 
 export async function POST(request: Request) {
   try {
@@ -12,11 +33,7 @@ export async function POST(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { priceId, organizationId, recruiterOrgId, planTier, returnUrl, quantity } = await request.json();
-
-    if (!priceId && !planTier) {
-      return new NextResponse("Price ID or Plan Tier is required", { status: 400 });
-    }
+    const { priceId, organizationId, recruiterOrgId, planTier, returnUrl, quantity, durationMonths } = await request.json();
 
     // ── Recruiter Organization subscription ──────────────────────────────────
     if (recruiterOrgId) {
@@ -90,36 +107,16 @@ export async function POST(request: Request) {
       const org = await prisma.organization.findUnique({ where: { id: organizationId } });
       if (!org) return new NextResponse("Organization not found", { status: 404 });
 
-      // Validate price metadata quantity requirements if configured in Stripe
-      if (priceId && quantity) {
-        try {
-          const stripePrice = await stripe.prices.retrieve(priceId);
-          const minQty = stripePrice.metadata?.min_quantity ? parseInt(stripePrice.metadata.min_quantity, 10) : null;
-          const maxQty = stripePrice.metadata?.max_quantity ? parseInt(stripePrice.metadata.max_quantity, 10) : null;
-
-          if (minQty !== null && quantity < minQty) {
-            return NextResponse.json(
-              { error: `This tier requires a minimum purchase of ${minQty} seats.` },
-              { status: 400 }
-            );
-          }
-          if (maxQty !== null && quantity > maxQty) {
-            return NextResponse.json(
-              { error: `This tier supports up to ${maxQty} seats. For higher quantities, please select a higher tier.` },
-              { status: 400 }
-            );
-          }
-        } catch (e) {
-          console.warn("Could not retrieve price metadata from Stripe:", e);
-        }
-      }
+      const validQty = Math.max(1, Math.min(4999, Number(quantity) || 10));
+      const parsedMonths = Number(durationMonths) || 1;
+      const validMonths = [1, 3, 6, 12].includes(parsedMonths) ? parsedMonths : 1;
 
       const checkoutSession = await createOrgCheckoutSession({
         organizationId,
         orgName: org.name,
         stripeCustomerId: org.stripeCustomerId,
-        priceId,
-        quantity: quantity ?? 10,
+        quantity: validQty,
+        durationMonths: validMonths,
         successUrl: `${process.env.NEXTAUTH_URL}/org-admin?success=true`,
         cancelUrl: `${process.env.NEXTAUTH_URL}/org-admin?canceled=true`,
       });
@@ -170,7 +167,7 @@ export async function POST(request: Request) {
       billing_address_collection: "auto",
       customer_email: stripeCustomerId ? undefined : session.user.email,
       customer: stripeCustomerId || undefined,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: getProLineItems(),
       metadata: { userId: user.id },
     });
 
@@ -178,7 +175,7 @@ export async function POST(request: Request) {
       data: {
         userId: user.id,
         status: "ATTEMPTED",
-        priceId,
+        priceId: "pro_999_monthly",
         stripeSessionId: stripeSession.id,
         stripeCustomerId: stripeCustomerId || undefined,
         planTier: "PRO",
@@ -200,8 +197,6 @@ export async function GET(request: Request) {
     if (!session?.user?.email) {
       return NextResponse.redirect(new URL("/checkout", request.url));
     }
-
-    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || "price_dummy";
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -238,7 +233,7 @@ export async function GET(request: Request) {
       billing_address_collection: "auto",
       customer_email: stripeCustomerId ? undefined : session.user.email,
       customer: stripeCustomerId || undefined,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: getProLineItems(),
       metadata: { userId: user.id },
     });
 
@@ -246,7 +241,7 @@ export async function GET(request: Request) {
       data: {
         userId: user.id,
         status: "ATTEMPTED",
-        priceId,
+        priceId: "pro_999_monthly",
         stripeSessionId: stripeSession.id,
         stripeCustomerId: stripeCustomerId || undefined,
         planTier: "PRO",
