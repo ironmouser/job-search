@@ -144,9 +144,10 @@ export default function DashboardClient({
   }, [initialJobMatchEmailsEnabled]);
 
   useEffect(() => {
-    const handleSettingsUpdate = (e: any) => {
-      if (typeof e.detail?.settings?.jobMatchEmailsEnabled === 'boolean') {
-        setJobMatchEmailsEnabled(e.detail.settings.jobMatchEmailsEnabled);
+    const handleSettingsUpdate = (e: Event) => {
+      const detail = (e as CustomEvent<{ settings?: { jobMatchEmailsEnabled?: boolean } }>).detail;
+      if (typeof detail?.settings?.jobMatchEmailsEnabled === 'boolean') {
+        setJobMatchEmailsEnabled(detail.settings.jobMatchEmailsEnabled);
       }
     };
     window.addEventListener('settings-updated', handleSettingsUpdate);
@@ -182,9 +183,10 @@ export default function DashboardClient({
   };
 
   useEffect(() => {
-    const handleConsentUpdate = (e: any) => {
-      if (typeof e.detail?.isDiscoverable === 'boolean') {
-        setIsDiscoverable(e.detail.isDiscoverable);
+    const handleConsentUpdate = (e: Event) => {
+      const detail = (e as CustomEvent<{ isDiscoverable?: boolean }>).detail;
+      if (typeof detail?.isDiscoverable === 'boolean') {
+        setIsDiscoverable(detail.isDiscoverable);
       }
     };
     window.addEventListener('candidate-consent-updated', handleConsentUpdate);

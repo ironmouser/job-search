@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { AlertTriangle, Smartphone, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Modal } from '@/components/ui/modal';
 
 export function AntiAbuseBanner() {
   const { data: session, update } = useSession();
-  const user = session?.user as any;
+  const user = session?.user;
 
   const [isOpen, setIsOpen] = useState(false);
   const [qrToken, setQrToken] = useState<string | null>(null);
@@ -132,11 +133,12 @@ export function AntiAbuseBanner() {
                 display: 'inline-block',
               }}
             >
-              <img
+              <Image
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(verifyUrl)}`}
                 alt="Mobile Verification QR Code"
                 width={180}
                 height={180}
+                unoptimized
                 style={{ display: 'block' }}
               />
             </div>
