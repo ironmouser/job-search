@@ -36,21 +36,21 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
   {
     id: 'base-resume',
     title: 'Base Resume',
-    shortDesc: 'Paste or upload base resume',
+    shortDesc: 'Upload or paste resume',
     icon: FileText,
     isComplete: (settings) => Boolean(settings?.resumeMarkdown && settings.resumeMarkdown.trim().length > 30),
   },
   {
     id: 'target-profile',
     title: 'Target Role & Rubric',
-    shortDesc: 'Set scoring criteria & ideal role',
+    shortDesc: 'Set role & scoring rubric',
     icon: Target,
     isComplete: (settings) => Boolean(settings?.profile && settings.profile.trim().length > 10),
   },
   {
     id: 'personal-info',
     title: 'Contact & Links',
-    shortDesc: 'Phone, location & social links',
+    shortDesc: 'Phone, location & links',
     icon: User,
     isComplete: (settings, session) => Boolean(
       settings?.phone || 
@@ -65,7 +65,7 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
   {
     id: 'avatar-settings',
     title: 'Profile Photo',
-    shortDesc: 'Upload a custom avatar',
+    shortDesc: 'Upload custom avatar',
     icon: ImageIcon,
     isComplete: (_settings, session) => {
       const img = session?.user?.image;
@@ -75,7 +75,7 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
   {
     id: 'recruiter-discovery',
     title: 'Recruiter Matching',
-    shortDesc: 'Opt in for inbound opportunities',
+    shortDesc: 'Opt in for opportunities',
     icon: UserCheck,
     isComplete: (settings) => Boolean(settings?.isDiscoverable),
   },
@@ -295,7 +295,7 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick, onH
           ) : (
             <div className="mini-progress-wrapper">
               <ListTodo size={14} style={{ color: 'var(--accent-primary, #38bdf8)' }} />
-              <span className="mini-badge-count">{completedCount}/{totalCount}</span>
+              <span className="mini-badge-count" style={{ fontSize: '0.75rem' }}>{completedCount}/{totalCount}</span>
             </div>
           )}
         </button>
@@ -314,17 +314,17 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick, onH
       >
         <div className="checklist-header-left">
           <div className="checklist-header-text">
-            <span className="checklist-title">
+            <span className="checklist-title" style={{ fontSize: '0.8125rem' }}>
               {isAllComplete ? 'Profile Complete' : 'Profile Setup'}
             </span>
-            <span className="checklist-fraction">
+            <span className="checklist-fraction" style={{ fontSize: '0.75rem' }}>
               {completedCount} of {totalCount} completed
             </span>
           </div>
         </div>
 
         <div className="checklist-header-right">
-          <span className={`checklist-pct-badge ${isAllComplete ? 'all-done' : ''}`}>
+          <span className={`checklist-pct-badge ${isAllComplete ? 'all-done' : ''}`} style={{ fontSize: '0.75rem' }}>
             {percentage}%
           </span>
           {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -359,8 +359,8 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick, onH
                 </div>
 
                 <div className="checklist-item-content">
-                  <span className="item-title">{item.title}</span>
-                  <span className="item-desc">{item.shortDesc}</span>
+                  <span className="item-title" style={{ fontSize: '0.8125rem' }}>{item.title}</span>
+                  <span className="item-desc" style={{ fontSize: '0.75rem' }}>{item.shortDesc}</span>
                 </div>
 
                 <div className="checklist-item-action">
@@ -371,9 +371,9 @@ export default function ProfileChecklist({ isMinimized = false, onItemClick, onH
           })}
 
           {isAllComplete && (
-            <div className="checklist-complete-note">
+            <div className="checklist-complete-note" style={{ fontSize: '0.75rem' }}>
               <CheckCircle2 size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
-              <span>Great job! Your profile is fully optimized for AI job applications.</span>
+              <span>Profile optimized for AI applications.</span>
             </div>
           )}
         </div>

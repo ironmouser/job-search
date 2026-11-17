@@ -6,7 +6,9 @@ import {
     AlignLeft, AlignCenter, ChevronDown, Columns
 } from 'lucide-react';
 import { generateStyledPdfHtml, PDF_TEMPLATES, PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
+import { AssetFormat } from '@/lib/docxGeneratorHelper';
 import DownloadPdfButton from './DownloadPdfButton';
+import AssetFormatToggle from './AssetFormatToggle';
 
 interface PdfCustomizerSectionProps {
     settings: any;
@@ -91,6 +93,7 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
     const currentTextColor = settings[`${prefix}TextColor`] || '#111827';
     const currentMargin = settings[`${prefix}Margin`] || '0.5in';
     const currentHeaderLayout = settings[`${prefix}HeaderLayout`] || 'left';
+    const preferredAssetFormat: AssetFormat = settings.preferredAssetFormat === 'docx' ? 'docx' : 'pdf';
 
     const currentMarkdown = activeTab === 'resume' 
         ? (settings.resumeMarkdown || SAMPLE_RESUME)
@@ -170,12 +173,16 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>
-                        <Palette size={18} className="text-accent" /> PDF Document Styling
+                        <Palette size={18} className="text-accent" /> Document Format &amp; Styling
                     </h3>
                     <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0.15rem 0 0 0' }}>
-                        Customize layout, typography, colors, and margins for exported PDF documents
+                        Choose your default export format (.pdf or .docx) and customize layout, typography, colors, and margins
                     </p>
                 </div>
+                <AssetFormatToggle
+                    format={preferredAssetFormat}
+                    onChange={(nextFormat) => onChange('preferredAssetFormat', nextFormat)}
+                />
             </div>
 
             {/* Target Selector Tabs (Resume / Cover Letter) */}
@@ -223,7 +230,7 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
             {/* COMPACT STYLING TOOLBAR (EXACT MATCH TO REFERENCE IMAGE)  */}
             {/* ========================================================= */}
             <div style={{
-                background: 'rgba(255, 255, 255, 0.05)',
+                background: 'var(--muted)',
                 border: '1px solid var(--border-glass)',
                 borderRadius: '14px',
                 padding: '0.85rem 1.1rem',
@@ -595,7 +602,7 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                background: 'rgba(255, 255, 255, 0.05)',
+                                background: 'var(--muted)',
                                 border: '1px solid var(--border-glass)',
                                 borderRadius: '6px',
                                 padding: '0.25rem 0.45rem',
@@ -623,9 +630,22 @@ export default function PdfCustomizerSection({ settings, onChange }: PdfCustomiz
                         </label>
 
                         <DownloadPdfButton
-                            filename={activeTab === 'resume' ? 'Test_Resume.pdf' : 'Test_Cover_Letter.pdf'}
-                            label="Download Test PDF"
+                            filename={activeTab === 'resume' ? `Test_Resume.${preferredAssetFormat}` : `Test_Cover_Letter.${preferredAssetFormat}`}
+                            label={preferredAssetFormat === 'docx' ? 'Download Test DOCX' : 'Download Test PDF'}
                             html={previewHtml}
+                            markdownText={currentMarkdown}
+                            type={activeTab}
+                            format={preferredAssetFormat}
+                            styleOptions={{
+                                template: currentTemplate,
+                                fontFamily: currentFontFamily,
+                                fontSize: currentFontSize,
+                                lineHeight: currentLineHeight,
+                                primaryColor: currentPrimaryColor,
+                                textColor: currentTextColor,
+                                margin: currentMargin,
+                                headerLayout: currentHeaderLayout,
+                            }}
                         />
                     </div>
                 </div>

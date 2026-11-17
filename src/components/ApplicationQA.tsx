@@ -163,8 +163,8 @@ export default function ApplicationQA({
         <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
       </summary>
       <div style={{ cursor: 'auto', paddingTop: '1.5rem' }}>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-          <strong>Feature Overview:</strong> Use this tool to answer tricky job application questions (e.g., "Why this company?") or to prepare for your upcoming interviews. Simply paste any question below, and your agent will generate a strategic, highly tailored response that perfectly aligns your background with the specific needs of this role.
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5, fontSize: '0.9rem' }}>
+          Paste any application or interview question to generate a tailored response based on your resume and this role.
         </p>
       
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
@@ -374,7 +374,7 @@ export default function ApplicationQA({
                 gap: '0.5rem',
                 marginTop: '0.75rem',
                 padding: '0.75rem',
-                background: 'var(--glass-bg, rgba(255,255,255,0.04))',
+                background: 'var(--muted)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '0.5rem',
                 flexWrap: 'wrap',
@@ -398,7 +398,7 @@ export default function ApplicationQA({
                     minWidth: '180px',
                     padding: '0.4rem 0.6rem',
                     fontSize: '0.82rem',
-                    background: 'var(--input-bg, rgba(0,0,0,0.2))',
+                    background: 'var(--input)',
                     border: '1px solid var(--border-color)',
                     borderRadius: '0.375rem',
                     color: 'var(--text-primary)',

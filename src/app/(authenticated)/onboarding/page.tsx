@@ -231,7 +231,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
             alignItems: 'center', 
             justifyContent: 'center', 
             padding: 'clamp(0.75rem, 3vw, 2rem)', 
-            background: 'var(--bg-main)', 
+            background: 'var(--background)', 
             width: '100%', 
             boxSizing: 'border-box' 
         }}>
@@ -239,12 +239,14 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                 width: '100%', 
                 maxWidth: '680px', 
                 padding: 'clamp(1.25rem, 4vw, 2.25rem)', 
-                boxSizing: 'border-box' 
+                boxSizing: 'border-box',
+                background: 'var(--card)',
+                border: '1px solid var(--border)'
             }}>
                 
                 {/* 2-Step Progress Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'clamp(1.25rem, 3vw, 2rem)', position: 'relative', maxWidth: '300px', margin: '0 auto clamp(1.25rem, 3vw, 2rem) auto' }}>
-                    <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', background: 'var(--border-glass)', zIndex: 0 }} />
+                    <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', background: 'var(--border)', zIndex: 0 }} />
                     <div style={{ position: 'absolute', top: '50%', left: 0, width: `${(step - 1) * 100}%`, height: '2px', background: 'var(--accent-primary)', zIndex: 0, transition: 'width 0.3s ease' }} />
                     
                     {[1, 2].map(i => (
@@ -252,11 +254,11 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                             position: 'relative', zIndex: 1, 
                             width: '38px', height: '38px', borderRadius: '50%', 
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: step >= i ? 'var(--accent-primary)' : 'var(--bg-surface)',
+                            background: step >= i ? 'var(--accent-primary)' : 'var(--card)',
                             color: step >= i ? '#fff' : 'var(--text-secondary)',
                             fontWeight: 600,
                             fontSize: '0.9rem',
-                            border: `2px solid ${step >= i ? 'var(--accent-primary)' : 'var(--border-glass)'}`,
+                            border: `2px solid ${step >= i ? 'var(--accent-primary)' : 'var(--border)'}`,
                             transition: 'all 0.3s ease'
                         }}>
                             {step > i ? <Check size={18} /> : i}
@@ -297,8 +299,8 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                     inputStyle={{ 
                                         width: '100%', 
                                         boxSizing: 'border-box', 
-                                        background: 'rgba(0,0,0,0.2)', 
-                                        border: `1px solid ${titleError ? '#ef4444' : 'var(--border-glass)'}`, 
+                                        background: 'var(--background)', 
+                                        border: `1px solid ${titleError ? '#ef4444' : 'var(--border)'}`, 
                                         color: 'var(--text-primary)', 
                                         padding: '0.85rem 1rem', 
                                         borderRadius: '8px', 
@@ -326,7 +328,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                         }
                                     }}
                                     placeholder="Remote, Austin TX, London, etc."
-                                    style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
+                                    style={{ width: '100%', boxSizing: 'border-box', background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--text-primary)', padding: '0.85rem 1rem', borderRadius: '8px', fontSize: '1rem' }}
                                 />
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                                     Leave blank to search Remote / Anywhere, or specify a city, state, or region.
@@ -338,8 +340,8 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                 style={{
                                     marginTop: '0.5rem',
                                     padding: '1rem 1.15rem',
-                                    background: formData.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                                    border: `1px solid ${formData.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.3)' : 'var(--border-glass)'}`,
+                                    background: formData.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.08)' : 'var(--background)',
+                                    border: `1px solid ${formData.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.3)' : 'var(--border)'}`,
                                     borderRadius: '10px',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -415,8 +417,8 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                             onDrop={handleDrop}
                             onClick={() => fileInputRef.current?.click()}
                             style={{ 
-                                border: `2px dashed ${isDragging ? 'var(--accent-primary)' : hasResumeUploaded ? 'rgba(16, 185, 129, 0.4)' : 'var(--border-glass)'}`, 
-                                background: isDragging ? 'rgba(99, 102, 241, 0.1)' : hasResumeUploaded ? 'rgba(16, 185, 129, 0.04)' : 'rgba(0,0,0,0.2)', 
+                                border: `2px dashed ${isDragging ? 'var(--accent-primary)' : hasResumeUploaded ? 'rgba(16, 185, 129, 0.4)' : 'var(--border)'}`, 
+                                background: isDragging ? 'rgba(99, 102, 241, 0.1)' : hasResumeUploaded ? 'rgba(16, 185, 129, 0.04)' : 'var(--background)', 
                                 padding: 'clamp(1.25rem, 3.5vw, 1.75rem)', 
                                 borderRadius: '8px', 
                                 textAlign: 'center',
@@ -459,9 +461,9 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                         />
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1rem 0' }}>
-                            <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
+                            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 500 }}>OR PASTE RESUME TEXT</span>
-                            <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
+                            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
@@ -472,8 +474,8 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                                 style={{ 
                                     width: '100%', 
                                     boxSizing: 'border-box', 
-                                    background: 'rgba(0,0,0,0.2)', 
-                                    border: '1px solid var(--border-glass)', 
+                                    background: 'var(--background)', 
+                                    border: '1px solid var(--border)', 
                                     color: 'var(--text-primary)', 
                                     padding: '0.85rem 1rem', 
                                     borderRadius: '8px', 
@@ -489,8 +491,8 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                             style={{
                                 marginTop: '1.25rem',
                                 padding: '1.1rem 1.25rem',
-                                background: formData.openToRecruiters ? 'rgba(56, 189, 248, 0.06)' : 'rgba(255, 255, 255, 0.02)',
-                                border: `1px solid ${formData.openToRecruiters ? 'rgba(56, 189, 248, 0.28)' : 'var(--border-glass)'}`,
+                                background: formData.openToRecruiters ? 'rgba(56, 189, 248, 0.06)' : 'var(--background)',
+                                border: `1px solid ${formData.openToRecruiters ? 'rgba(56, 189, 248, 0.28)' : 'var(--border)'}`,
                                 borderRadius: '10px',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -557,7 +559,7 @@ Seeking high-growth opportunities as a ${formData.searchKeyword.trim()}.
                     alignItems: 'center', 
                     marginTop: 'clamp(1.5rem, 4vw, 2.25rem)', 
                     paddingTop: '1.25rem', 
-                    borderTop: '1px solid var(--border-glass)',
+                    borderTop: '1px solid var(--border)',
                     flexWrap: 'wrap',
                     gap: '0.75rem'
                 }}>

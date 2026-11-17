@@ -1,8 +1,10 @@
 "use client";
 // Force Railway fresh build trigger
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { ExternalLink, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, ArrowRight, Search, X, Loader2, SlidersHorizontal, ArrowUpDown, FileText, MoreVertical, AlertOctagon, RotateCcw, UserCheck } from 'lucide-react';
+import { ExternalLink, Bookmark, BookmarkX, Mail, LayoutGrid, List, Columns2, MapPin, DollarSign, Clock, CheckCircle2, Check, Trash2, Lock, Sparkles, Search, X, Loader2, SlidersHorizontal, ArrowUpDown, FileText, MoreVertical, AlertOctagon, RotateCcw, UserCheck, Plus, ListFilter, ChevronDown, Compass } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { cleanCompanyName } from '@/lib/cleaners';
 import FeedbackButtons from '@/components/FeedbackButtons';
 import SyncButton, { SyncButtonHandle } from '@/components/SyncButton';
@@ -19,8 +21,8 @@ import { US_STATE_ABBRS, extractStateAbbr, isUsLocation, isRemoteLocation, isInt
 import { computeRoleMatchScore } from '@/lib/roleMatcher';
 import { isDescriptionAdequate } from '@/lib/descriptionUtils';
 import InternationalLocationModal from '@/components/InternationalLocationModal';
-import { PageHeader, PageHeaderHeading, PageHeaderDescription, PageHeaderActions } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
+import { useHelp } from '@/contexts/HelpContext';
 
 import SyncOverlay from './SyncOverlay';
 import NonUsJobsFocusModal from '@/components/NonUsJobsFocusModal';
@@ -76,14 +78,14 @@ const getConfidenceBadge = (
       return (
         <span 
           title="Automated attempt blocked by anti-bot verification or security challenge. Manual apply recommended." 
-          style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}
+          style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}
         >
           Low Auto
         </span>
       );
     }
     if (score === undefined || score === null) return null;
-    if (score >= 70) return <span title="High Automation Confidence" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>High Auto</span>;
+    if (score >= 70) return <span title="High Automation Confidence" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>High Auto</span>;
     return null;
 };
 
@@ -132,11 +134,13 @@ export default function DashboardClient({
   const hasDismissedNonUsModal = useRef(false);
 
   useEffect(() => {
-    setIsDiscoverable(Boolean(initialIsDiscoverable));
+    const timer = setTimeout(() => setIsDiscoverable(Boolean(initialIsDiscoverable)), 0);
+    return () => clearTimeout(timer);
   }, [initialIsDiscoverable]);
 
   useEffect(() => {
-    setJobMatchEmailsEnabled(Boolean(initialJobMatchEmailsEnabled));
+    const timer = setTimeout(() => setJobMatchEmailsEnabled(Boolean(initialJobMatchEmailsEnabled)), 0);
+    return () => clearTimeout(timer);
   }, [initialJobMatchEmailsEnabled]);
 
   useEffect(() => {
@@ -359,11 +363,39 @@ export default function DashboardClient({
   const [fetchQueue, setFetchQueue] = useState<{id: string, title: string, company: string}[]>([]);
   const [activeFetches, setActiveFetches] = useState<{id: string, title: string, company: string}[]>([]);
   const [showQueueOverlay, setShowQueueOverlay] = useState(false);
+  const searchParams = useSearchParams();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
   const [jobsFoundCount, setJobsFoundCount] = useState<number | null>(null);
   const [isRefiningJobs, setIsRefiningJobs] = useState(false);
-  const [shouldAutoSync] = useState(false);
+  const [shouldAutoSync, setShouldAutoSync] = useState(false);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+  const { startTour } = useHelp();
+
+  useEffect(() => {
+    const urlAutoSync = searchParams?.get('autoSync') === 'true';
+    const urlWelcome = searchParams?.get('welcome_prompt') === 'true';
+    let storageAutoSync = false;
+    let welcomeDismissed = false;
+    try {
+      storageAutoSync = localStorage.getItem('job_agent_auto_sync_on_mount') === 'true';
+      if (storageAutoSync) {
+        localStorage.removeItem('job_agent_auto_sync_on_mount');
+      }
+      welcomeDismissed = localStorage.getItem('jahq_welcome_banner_dismissed') === 'true';
+    } catch {
+      // Ignore
+    }
+    const timer = setTimeout(() => {
+      if (urlAutoSync || storageAutoSync) {
+        setShouldAutoSync(true);
+      }
+      if ((urlWelcome || (jobs || []).length === 0) && !welcomeDismissed) {
+        setShowWelcomeBanner(true);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [searchParams, jobs]);
   const [checkedJobs, setCheckedJobs] = useState<Set<string>>(new Set());
   const [isStartingBatch, setIsStartingBatch] = useState(false);
   const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
@@ -496,7 +528,6 @@ export default function DashboardClient({
     }, 50);
   }, []);
 
-  const searchParams = useSearchParams();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
   const isPageInitialized = useRef(false);
@@ -1545,310 +1576,50 @@ export default function DashboardClient({
   return (
     <>
       <div className="animate-fade-in" style={{ paddingBottom: '5.5rem' }}>
-        {/* Dark Navy Header Section Container */}
+        {/* Header Section Container */}
         <div className="dashboard-top-section">
-          <PageHeader className="dashboard-page-header">
-            <div className="page-header-title-col">
-              <PageHeaderHeading className="dashboard-mission-control-title">Mission Control</PageHeaderHeading>
-            </div>
-            <PageHeaderActions className="page-header-banner-col">
-              <TrialStatusBanner trialEndsAt={trialEndsAt} planTier={userPlanTier} compact={true} />
-            </PageHeaderActions>
-          </PageHeader>
-
-          <AntiAbuseBanner />
-
-          {showUpgradeModal && userPlanTier !== 'PRO' && (
-            <UpgradePrompt
-              variant="modal"
-              feature="email-sync"
-              stats={{
-                resumesTailored: jobList?.filter((j: DashboardJob) => j.opportunity_scores?.[0]?.total_score).length,
-                jobsApplied: jobList?.filter((j: DashboardJob) => j.applied_at || j.status === 'applied').length,
-                jobsSynced: jobList?.length,
-              }}
-              onDismiss={() => setShowUpgradeModal(false)}
-            />
-          )}
-
-          {showNonUsModal && (
-            <NonUsJobsFocusModal
-              intlJobCount={intlJobCount}
-              onKeepAll={handleKeepAllNonUs}
-              onUsOnly={handleUsOnlyNonUs}
-            />
-          )}
-
-          <InternationalLocationModal
-            isOpen={showIntlLocationModal}
-            locationPreference={searchLocation}
-            onClose={() => {
-              try {
-                if (searchLocation) {
-                  localStorage.setItem('intl_sources_notice_dismissed_loc', searchLocation);
-                }
-              } catch {}
-              setShowIntlLocationModal(false);
-            }}
-          />
-
-          {/* Hero Action Row: Prepare Application (Left) & Recruiter Opt-In + Stats Chips (Right) */}
-          <div className="dashboard-hero-action-row">
-            {/* Left: Prepare Application Action */}
-            <div className="dashboard-hero-left">
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '0.15rem 0.6rem',
-                borderRadius: '9999px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                backgroundColor: 'rgba(37, 99, 235, 0.12)',
-                color: '#2563eb',
-                border: '1px solid rgba(37, 99, 235, 0.25)'
-              }}>
-                Already found a job post?
-              </span>
-              <button
-                type="button"
-                onClick={() => router.push('/prepare')}
-                className="btn-primary prepare-app-btn"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.45rem',
-                  padding: '0.55rem 1.25rem',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  backgroundColor: '#0070f3',
-                  color: '#ffffff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0, 112, 243, 0.25)',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <span>Prepare application</span>
-                <ArrowRight size={14} />
-              </button>
-            </div>
-
-            {/* Right: Open to Recruiter Opportunities Opt-in & Stats Chips */}
-            <div className="dashboard-hero-right">
-              <div className={`recruiter-optin-card ${isDiscoverable ? 'opted-in' : ''}`} id="hero-recruiter-optin">
-                {isDiscoverable ? (
-                  <>
-                    <h4 className="recruiter-optin-title">Open to recruiter opportunities</h4>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={true}
-                      aria-label="Open to recruiter opportunities toggle"
-                      disabled={isTogglingDiscoverable}
-                      onClick={() => handleToggleDiscoverable(false)}
-                      style={{
-                        width: '38px',
-                        height: '20px',
-                        borderRadius: '10px',
-                        backgroundColor: '#0070f3',
-                        position: 'relative',
-                        border: 'none',
-                        cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
-                        padding: 0,
-                        flexShrink: 0,
-                        transition: 'background-color 0.2s ease',
-                        opacity: isTogglingDiscoverable ? 0.7 : 1,
-                        outline: 'none',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '16px',
-                          height: '16px',
-                          borderRadius: '50%',
-                          backgroundColor: '#ffffff',
-                          position: 'absolute',
-                          top: '2px',
-                          left: '20px',
-                          transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                        }}
-                      />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <h4 className="recruiter-optin-title">Open to recruiter opportunities</h4>
-                    <p className="recruiter-optin-desc">
-                      Let verified recruiters discover your profile and request a connection about relevant opportunities.
-                      <span className="recruiter-optin-switch-inline">
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={false}
-                          aria-label="Open to recruiter opportunities toggle"
-                          disabled={isTogglingDiscoverable}
-                          onClick={() => handleToggleDiscoverable(true)}
-                          style={{
-                            width: '38px',
-                            height: '20px',
-                            borderRadius: '10px',
-                            backgroundColor: '#d1d5db',
-                            position: 'relative',
-                            border: 'none',
-                            cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
-                            padding: 0,
-                            flexShrink: 0,
-                            transition: 'background-color 0.2s ease',
-                            opacity: isTogglingDiscoverable ? 0.7 : 1,
-                            outline: 'none',
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '16px',
-                              height: '16px',
-                              borderRadius: '50%',
-                              backgroundColor: '#ffffff',
-                              position: 'absolute',
-                              top: '2px',
-                              left: '2px',
-                              transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                            }}
-                          />
-                        </button>
-                      </span>
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {/* Stats Chips below the recruiter opportunities toggle */}
-              <div className="hero-stats-chips" data-tour="dashboard-stats">
-                <button
-                  type="button"
-                  className={`hero-stat-chip ${activeFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('all')}
-                  title={totalDiscovered > 200 ? "Consider a cleanup" : undefined}
-                >
-                  <span className="chip-label">Found:</span>
-                  <span className="chip-value">{totalDiscovered}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`hero-stat-chip ${activeFilter === 'scored' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('scored')}
-                  title={isScoringBackground ? "Background scoring in progress..." : undefined}
-                >
-                  <span className="chip-label">Scored:</span>
-                  <span className="chip-value">{totalScored}</span>
-                  {isScoringBackground && (
-                    <Loader2 
-                      size={12} 
-                      className="animate-spin inline-spinner" 
-                    />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className={`hero-stat-chip ${activeFilter === 'high_fit' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('high_fit')}
-                >
-                  <span className="chip-label">Great Matches:</span>
-                  <span className="chip-value">{highlyScored}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`hero-stat-chip ${activeFilter === 'archived' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('archived')}
-                >
-                  <span className="chip-label">Saved:</span>
-                  <span className="chip-value">{totalArchived}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Resume Activation Banner (Above Matches Section) */}
-        {!hasResumeState && (
-          <div 
-            className="glass-card animate-fade-in" 
-            style={{ 
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%)',
-              border: '1px solid rgba(99, 102, 241, 0.25)',
-              borderRadius: '12px',
-              padding: '1.1rem 1.35rem',
-              marginTop: '2.5rem',
-              marginBottom: '3rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '1rem'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: '280px' }}>
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                background: 'rgba(99, 102, 241, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--accent-primary, #6366f1)',
-                flexShrink: 0
-              }}>
-                <Sparkles size={22} />
-              </div>
-              <div>
-                <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '0.96rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {isAutoApplyEnabled() ? 'Unlock AI Opportunity Fit Scoring & Auto-Apply' : 'Unlock AI Opportunity Fit Scoring & Tailored Packets'}
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                  Upload your resume to evaluate match breakdown across all opportunities and enable tailored application generation.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsJitResumeOpen(true)}
-              className="btn-primary"
+          <div className="dashboard-top-row">
+            <h1
+              className="dashboard-mission-control-title"
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.65rem 1.25rem',
-                fontSize: '0.88rem',
-                fontWeight: 600,
-                whiteSpace: 'nowrap'
+                margin: 0,
+                fontSize: '1.625rem',
+                fontWeight: 700,
+                letterSpacing: '-0.025em',
+                lineHeight: 1.2,
+                color: 'var(--foreground)',
               }}
             >
-              <FileText size={16} /> Upload Resume
-            </button>
-          </div>
-        )}
+              Dashboard
+            </h1>
 
-        {/* Matches Section Header */}
-        <div className="matches-section-header-group" style={{ marginBottom: '1.75rem', marginTop: '-0.5rem' }}>
-          {/* Matches Title Row */}
-          <div className="matches-title-row">
-            <div className="matches-title-left">
-              <h3 className="matches-header-title" style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                Matches ({filteredAndSortedJobs.length})
-              </h3>
-
+            <div className="dashboard-top-toggles">
               {/* Email me job matches toggle */}
-              <div 
+              <div
                 className="email-job-matches-toggle-wrapper"
                 onClick={() => !isTogglingJobMatchEmails && handleToggleJobMatchEmails(!jobMatchEmailsEnabled)}
                 title="Receive daily email digests with newly discovered roles that match your search criteria by 60% or more"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: '9999px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--card)',
+                  boxShadow: 'var(--shadow-sm)',
+                  fontSize: '0.8125rem',
+                }}
               >
-                <Mail size={14} className={`email-job-matches-icon ${jobMatchEmailsEnabled ? 'active' : ''}`} />
-                <span className="email-job-matches-label">Email me job matches</span>
+                <Mail
+                  size={15}
+                  className={`email-job-matches-icon ${jobMatchEmailsEnabled ? 'active' : ''}`}
+                  style={{ color: 'var(--primary, #0070f3)', flexShrink: 0 }}
+                  aria-hidden="true"
+                />
+                <span className="email-job-matches-label" style={{ margin: 0, fontWeight: 600, fontSize: '0.8125rem', color: 'var(--foreground)' }}>
+                  Email me job matches
+                </span>
                 <button
                   type="button"
                   role="switch"
@@ -1860,10 +1631,284 @@ export default function DashboardClient({
                     handleToggleJobMatchEmails(!jobMatchEmailsEnabled);
                   }}
                   className={`email-job-matches-switch ${jobMatchEmailsEnabled ? 'checked' : ''}`}
+                  style={{ marginLeft: '0.15rem' }}
                 >
                   <div className="email-job-matches-knob" />
                 </button>
               </div>
+
+              {/* Allow Recruiters to Find You toggle */}
+              <div
+                className={`recruiter-optin-card ${isDiscoverable ? 'opted-in' : ''}`}
+                id="hero-recruiter-optin"
+                onClick={() => !isTogglingDiscoverable && handleToggleDiscoverable(!isDiscoverable)}
+                title="Let verified recruiters discover your profile"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  padding: '0.45rem 0.85rem',
+                  borderRadius: '9999px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--card)',
+                  boxShadow: 'var(--shadow-sm)',
+                  fontSize: '0.8125rem',
+                  marginLeft: 0,
+                  maxWidth: 'none',
+                  cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <UserCheck size={15} style={{ color: 'var(--primary, #0070f3)', flexShrink: 0 }} aria-hidden="true" />
+                <span className="recruiter-optin-title" style={{ margin: 0, fontWeight: 600, fontSize: '0.8125rem', color: 'var(--foreground)' }}>
+                  Allow Recruiters to Find You
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isDiscoverable}
+                  aria-label="Open to recruiter opportunities toggle"
+                  disabled={isTogglingDiscoverable}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleDiscoverable(!isDiscoverable);
+                  }}
+                  style={{
+                    width: '34px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    backgroundColor: isDiscoverable ? '#0070f3' : '#cbd5e1',
+                    position: 'relative',
+                    border: 'none',
+                    cursor: isTogglingDiscoverable ? 'not-allowed' : 'pointer',
+                    padding: 0,
+                    flexShrink: 0,
+                    transition: 'background-color 0.2s ease',
+                    opacity: isTogglingDiscoverable ? 0.7 : 1,
+                    outline: 'none',
+                    marginLeft: '0.15rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: '#ffffff',
+                      position: 'absolute',
+                      top: '2px',
+                      left: isDiscoverable ? '18px' : '2px',
+                      transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                    }}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.65rem' }}>
+            <p className="dashboard-mission-control-subtitle" style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+              Found the perfect job and need to get your application ready?
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push('/prepare')}
+              className="prepare-app-btn"
+            >
+              <Plus size={15} aria-hidden="true" />
+              <span>Prepare Application</span>
+            </button>
+          </div>
+        </div>
+
+        {showUpgradeModal && userPlanTier !== 'PRO' && (
+          <UpgradePrompt
+            variant="modal"
+            feature="email-sync"
+            stats={{
+              resumesTailored: jobList?.filter((j: DashboardJob) => j.opportunity_scores?.[0]?.total_score).length,
+              jobsApplied: jobList?.filter((j: DashboardJob) => j.applied_at || j.status === 'applied').length,
+              jobsSynced: jobList?.length,
+            }}
+            onDismiss={() => setShowUpgradeModal(false)}
+          />
+        )}
+
+        {showNonUsModal && (
+          <NonUsJobsFocusModal
+            intlJobCount={intlJobCount}
+            onKeepAll={handleKeepAllNonUs}
+            onUsOnly={handleUsOnlyNonUs}
+          />
+        )}
+
+        <InternationalLocationModal
+          isOpen={showIntlLocationModal}
+          locationPreference={searchLocation}
+          onClose={() => {
+            try {
+              if (searchLocation) {
+                localStorage.setItem('intl_sources_notice_dismissed_loc', searchLocation);
+              }
+            } catch {}
+            setShowIntlLocationModal(false);
+          }}
+        />
+
+        {/* Conditional Banners Stack (First-Time User, Anti-Abuse, Free Tier / Trial, Missing Resume) */}
+        <div className="dashboard-banners-stack">
+          {showWelcomeBanner && (
+            <div
+              role="region"
+              aria-label="First-time user welcome"
+              className="animate-fade-in"
+              style={{
+                padding: '0.9rem 1.15rem',
+                background: 'rgba(0, 112, 243, 0.06)',
+                border: '1px solid rgba(0, 112, 243, 0.22)',
+                borderRadius: 'var(--radius-lg, 12px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.875rem',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 240px', minWidth: 0 }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: 'rgba(0, 112, 243, 0.12)',
+                    color: 'var(--primary, #0070f3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Compass size={18} aria-hidden="true" />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9375rem', color: 'var(--foreground)' }}>
+                    Welcome to Job Agent HQ
+                  </p>
+                  <p style={{ margin: '0.15rem 0 0', fontSize: '0.875rem', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
+                    Search matched roles below, score your fit, and tailor your application in one workspace.
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => startTour('dashboard')}
+                >
+                  Take Quick Tour
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowWelcomeBanner(false);
+                    try {
+                      localStorage.setItem('jahq_welcome_banner_dismissed', 'true');
+                    } catch {}
+                  }}
+                  aria-label="Dismiss welcome banner"
+                  title="Dismiss"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--muted-foreground)',
+                    cursor: 'pointer',
+                    padding: '0.375rem',
+                    borderRadius: '6px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '32px',
+                    minHeight: '32px',
+                  }}
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <AntiAbuseBanner />
+
+          <TrialStatusBanner trialEndsAt={trialEndsAt} planTier={userPlanTier} />
+
+          {!hasResumeState && (
+            <div
+              role="region"
+              aria-label="Resume upload prompt"
+              className="animate-fade-in"
+              style={{
+                background: 'rgba(0, 112, 243, 0.06)',
+                border: '1px solid rgba(0, 112, 243, 0.22)',
+                borderRadius: 'var(--radius-lg, 12px)',
+                padding: '1rem 1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.875rem',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 240px', minWidth: 0 }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: 'rgba(0, 112, 243, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--primary, #0070f3)',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Sparkles size={18} aria-hidden="true" />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                    {isAutoApplyEnabled() ? 'Unlock AI Opportunity Fit Scoring & Auto-Apply' : 'Unlock AI Opportunity Fit Scoring & Tailored Packets'}
+                  </p>
+                  <p style={{ margin: '0.15rem 0 0', fontSize: '0.875rem', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
+                    Upload your resume to evaluate match breakdown across all opportunities and enable tailored application generation.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setIsJitResumeOpen(true)}
+              >
+                <FileText size={15} aria-hidden="true" />
+                <span>Upload Resume</span>
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Matches Section Header */}
+        <div className="matches-section-header-group" style={{ marginBottom: '1.5rem', marginTop: 0 }}>
+          {/* Matches Title Row */}
+          <div className="matches-title-row">
+            <div className="matches-title-left">
+              <h3 className="matches-header-title">
+                Matches ({filteredAndSortedJobs.length})
+              </h3>
             </div>
           </div>
 
@@ -1932,6 +1977,7 @@ export default function DashboardClient({
                       }
                     }}
                     title="Clear job title"
+                    aria-label="Clear job title"
                     className="matches-search-clear-btn"
                     style={{
                       position: 'absolute',
@@ -2016,6 +2062,7 @@ export default function DashboardClient({
                       }
                     }}
                     title="Clear location"
+                    aria-label="Clear location"
                     className="matches-search-clear-btn"
                     style={{
                       position: 'absolute',
@@ -2060,35 +2107,151 @@ export default function DashboardClient({
               />
             </div>
 
-            {/* Action Controls: Filter | Sort | View Toggles */}
+            {/* Action Controls: Sort Bucket Dropdown | Filter | Clear Filters | Sort Order | Clean Up | View Toggles */}
             <div className="matches-action-controls">
+              {/* Sort Bucket Dropdown (Found / Scored / Great Matches / Saved Jobs) */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    type="button"
+                    data-tour="dashboard-stats"
+                    className="action-control-btn btn-sort-bucket"
+                    aria-label="Sort jobs by status category"
+                    style={{
+                      height: '38px',
+                      borderRadius: '8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      padding: '0 0.75rem',
+                      fontSize: '0.85rem',
+                      fontWeight: 500,
+                      background: 'var(--card)',
+                      border: activeFilter !== 'all' ? '1px solid var(--primary, #0070f3)' : '1px solid var(--border)',
+                      color: 'var(--foreground)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <ListFilter
+                      size={15}
+                      style={{ color: activeFilter !== 'all' ? 'var(--primary, #0070f3)' : 'var(--muted-foreground)' }}
+                      aria-hidden="true"
+                    />
+                    <span>
+                      {activeFilter === 'all'
+                        ? 'Sort'
+                        : activeFilter === 'scored'
+                        ? 'Scored'
+                        : activeFilter === 'high_fit'
+                        ? 'Great Matches'
+                        : 'Saved Jobs'}
+                    </span>
+                    {isScoringBackground && (
+                      <Loader2 size={12} className="animate-spin" style={{ color: 'var(--primary, #0070f3)' }} aria-hidden="true" />
+                    )}
+                    <ChevronDown size={14} style={{ color: 'var(--muted-foreground)' }} aria-hidden="true" />
+                  </button>
+                </DropdownMenu.Trigger>
+
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    align="start"
+                    sideOffset={6}
+                    style={{
+                      minWidth: '215px',
+                      background: 'var(--popover, var(--card))',
+                      color: 'var(--popover-foreground, var(--foreground))',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      boxShadow: 'var(--shadow-lg)',
+                      padding: '0.35rem',
+                      zIndex: 9980,
+                    }}
+                  >
+                    {[
+                      { id: 'all' as const, label: 'Found', count: totalDiscovered },
+                      { id: 'scored' as const, label: 'Scored', count: totalScored, loading: isScoringBackground },
+                      { id: 'high_fit' as const, label: 'Great Matches', count: highlyScored },
+                      { id: 'archived' as const, label: 'Saved Jobs', count: totalArchived },
+                    ].map((opt) => {
+                      const isSelected = activeFilter === opt.id;
+                      return (
+                        <DropdownMenu.Item
+                          key={opt.id}
+                          onSelect={() => setActiveFilter(opt.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.75rem',
+                            padding: '0.5rem 0.65rem',
+                            borderRadius: '6px',
+                            fontSize: '0.875rem',
+                            fontWeight: isSelected ? 600 : 500,
+                            color: isSelected ? 'var(--primary, #0070f3)' : 'var(--foreground)',
+                            background: isSelected ? 'rgba(0, 112, 243, 0.08)' : 'transparent',
+                            cursor: 'pointer',
+                            outline: 'none',
+                          }}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                            <Check
+                              size={14}
+                              style={{ opacity: isSelected ? 1 : 0, color: 'var(--primary, #0070f3)' }}
+                              aria-hidden="true"
+                            />
+                            <span>{opt.label}</span>
+                            {opt.loading && (
+                              <Loader2 size={12} className="animate-spin" style={{ color: 'var(--primary, #0070f3)' }} aria-hidden="true" />
+                            )}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: isSelected ? 'var(--primary, #0070f3)' : 'var(--muted-foreground)',
+                              background: 'var(--muted)',
+                              padding: '0.1rem 0.45rem',
+                              borderRadius: '9999px',
+                            }}
+                          >
+                            {opt.count}
+                          </span>
+                        </DropdownMenu.Item>
+                      );
+                    })}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+
               {/* Filter Toggle Button */}
               <div style={{ position: 'relative' }}>
                 <button
+                  type="button"
                   onClick={() => setIsFilterModalOpen(true)}
                   className={`action-control-btn btn-filter ${hasActiveFilters ? 'active-filter' : ''}`}
                   style={{
                     position: 'relative',
-                    background: hasActiveFilters ? 'rgba(0, 112, 243, 0.15)' : undefined,
-                    borderColor: hasActiveFilters ? '#0070f3' : undefined,
-                    color: hasActiveFilters ? '#0070f3' : undefined,
+                    background: 'var(--card)',
+                    borderColor: hasActiveFilters ? 'var(--primary, #0070f3)' : 'var(--border)',
+                    color: 'var(--foreground)',
                     height: '38px',
                     borderRadius: '8px'
                   }}
                 >
-                  <SlidersHorizontal size={15} />
+                  <SlidersHorizontal size={15} style={{ color: 'var(--muted-foreground)' }} aria-hidden="true" />
                   <span>Filter</span>
                   {hasActiveFilters && (
                     <span
                       style={{
                         position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        width: '7px',
-                        height: '7px',
+                        top: '5px',
+                        right: '5px',
+                        width: '6px',
+                        height: '6px',
                         borderRadius: '50%',
-                        background: '#0070f3',
-                        boxShadow: '0 0 6px #0070f3'
+                        background: 'var(--primary, #0070f3)'
                       }}
                     />
                   )}
@@ -2110,25 +2273,26 @@ export default function DashboardClient({
                     gap: '0.35rem',
                     padding: '0 0.75rem',
                     fontSize: '0.85rem',
-                    color: '#0070f3',
-                    borderColor: 'rgba(0, 112, 243, 0.3)',
-                    background: 'rgba(0, 112, 243, 0.06)',
+                    color: 'var(--muted-foreground)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--card)',
                     cursor: 'pointer'
                   }}
                 >
-                  <RotateCcw size={13} />
+                  <RotateCcw size={13} aria-hidden="true" />
                   <span>Clear Filters</span>
                 </button>
               )}
 
-              {/* Sort Selector Dropdown */}
+              {/* Sort Order Selector Dropdown */}
               <div
                 className="action-control-btn btn-sort"
-                title="Sort Job Feed"
-                style={{ height: '38px', borderRadius: '8px' }}
+                title="Order job feed"
+                style={{ height: '38px', borderRadius: '8px', background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
               >
-                <ArrowUpDown size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
+                <ArrowUpDown size={15} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} aria-hidden="true" />
                 <select
+                  aria-label="Order jobs by"
                   value={sortOption}
                   onChange={(e) => setSortOption(e.target.value as SortOptionType)}
                   style={{
@@ -2154,6 +2318,32 @@ export default function DashboardClient({
                 </select>
               </div>
 
+              {/* Clean Up Button */}
+              <button
+                type="button"
+                onClick={() => setIsCleanupModalOpen(true)}
+                className="action-control-btn btn-cleanup"
+                style={{
+                  height: '38px',
+                  borderRadius: '8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.35rem',
+                  padding: '0 0.75rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--muted-foreground)',
+                  cursor: 'pointer',
+                }}
+                title="Clean up dashboard"
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                <span>Clean Up</span>
+              </button>
+
               {/* View Mode Toggle Segmented Control */}
               <div
                 className="dashboard-view-toggles app-segmented-tabs"
@@ -2165,13 +2355,17 @@ export default function DashboardClient({
                   padding: '3px',
                   gap: '3px',
                   height: '38px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
                 }}
               >
                 <button 
                   type="button"
                   role="tab"
                   aria-selected={viewMode === 'grid'}
+                  aria-label="Grid View"
                   onClick={() => handleViewModeChange('grid')}
                   className={`view-toggle-btn app-tab-btn ${viewMode === 'grid' ? 'active' : ''}`}
                   title="Grid View"
@@ -2182,12 +2376,13 @@ export default function DashboardClient({
                     borderRadius: '6px',
                   }}
                 >
-                  <LayoutGrid size={16} />
+                  <LayoutGrid size={16} aria-hidden="true" />
                 </button>
                 <button 
                   type="button"
                   role="tab"
                   aria-selected={viewMode === 'table'}
+                  aria-label="Table View"
                   onClick={() => handleViewModeChange('table')}
                   className={`view-toggle-btn app-tab-btn ${viewMode === 'table' ? 'active' : ''}`}
                   title="Table View"
@@ -2198,12 +2393,13 @@ export default function DashboardClient({
                     borderRadius: '6px',
                   }}
                 >
-                  <List size={16} />
+                  <List size={16} aria-hidden="true" />
                 </button>
                 <button 
                   type="button"
                   role="tab"
                   aria-selected={viewMode === 'columns'}
+                  aria-label="Column Split View"
                   onClick={() => handleViewModeChange('columns')}
                   className={`view-toggle-btn desktop-only-toggle app-tab-btn ${viewMode === 'columns' ? 'active' : ''}`}
                   title="Column Split View"
@@ -2214,7 +2410,7 @@ export default function DashboardClient({
                     borderRadius: '6px',
                   }}
                 >
-                  <Columns2 size={16} />
+                  <Columns2 size={16} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -2292,10 +2488,10 @@ export default function DashboardClient({
                           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures, job.has_bot_failure, job.has_run_auto_apply)}
                             {isEmailJob && (
-                              <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>Emailed Job</span>
+                              <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>Emailed Job</span>
                             )}
                             {job.isEasyApply && (
-                              <span title="In-network Easy Apply role (requires personal account)" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600 }}>
+                              <span title="In-network Easy Apply role (requires personal account)" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>
                                 {job.source && !job.source.toLowerCase().includes('google') ? `${job.source} Easy Apply` : 'Easy Apply'}
                               </span>
                             )}
@@ -2478,7 +2674,7 @@ export default function DashboardClient({
                   {/* Bottom Row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                     {/* Lower Left Corner: Checkbox + Badges */}
-                    <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: '-6px', marginBottom: '-22px' }}>
+                    <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <input 
                         type="checkbox" 
                         checked={checkedJobs.has(job.id)} 
@@ -2494,11 +2690,11 @@ export default function DashboardClient({
                         }}
                         title="Select for batch apply"
                       />
-                      {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Email</span>}
-                      {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Easy Apply</span>}
-                      {getEffectiveStatus(job) === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.68rem', padding: '1px 5px' }}>Applied</span>}
+                      {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>Email</span>}
+                      {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>Easy Apply</span>}
+                      {getEffectiveStatus(job) === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.75rem', padding: '1px 5px' }}>Applied</span>}
                       {getEffectiveStatus(job) === 'closed' && (
-                        <span className="badge badge-closed" style={{ fontSize: '0.68rem', padding: '1px 5px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <span className="badge badge-closed" style={{ fontSize: '0.75rem', padding: '1px 5px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                           <AlertOctagon size={11} /> Closed
                         </span>
                       )}
@@ -2764,7 +2960,7 @@ export default function DashboardClient({
                   {/* Bottom Row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.35rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                     {/* Lower Left Corner: Checkbox + Badges */}
-                    <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: '-6px', marginBottom: '-22px' }}>
+                    <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <input 
                         type="checkbox" 
                         checked={checkedJobs.has(job.id)} 
@@ -2781,11 +2977,11 @@ export default function DashboardClient({
                         title="Select for batch apply"
                       />
                       {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures, job.has_bot_failure, job.has_run_auto_apply)}
-                      {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Email</span>}
-                      {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 600 }}>Easy Apply</span>}
-                      {getEffectiveStatus(job) === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.68rem', padding: '1px 5px' }}>Applied</span>}
+                      {isEmailJob && <span style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>Email</span>}
+                      {job.isEasyApply && <span style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>Easy Apply</span>}
+                      {getEffectiveStatus(job) === 'applied' && <span className="badge badge-applied" style={{ fontSize: '0.75rem', padding: '1px 5px' }}>Applied</span>}
                       {getEffectiveStatus(job) === 'closed' && (
-                        <span className="badge badge-closed" style={{ fontSize: '0.68rem', padding: '1px 5px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <span className="badge badge-closed" style={{ fontSize: '0.75rem', padding: '1px 5px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                           <AlertOctagon size={11} /> Closed
                         </span>
                       )}
@@ -2913,10 +3109,10 @@ export default function DashboardClient({
                       {cleanCompanyName(job.company)}
                       {getConfidenceBadge(job.automation_confidence, job.consecutive_auto_failures, job.has_bot_failure, job.has_run_auto_apply)}
                       {isEmailJob && (
-                        <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>Emailed Job</span>
+                        <span title="Discovered via email sync" style={{ color: '#0cc22d', background: 'rgba(12, 194, 45, 0.12)', border: '1px solid rgba(12, 194, 45, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'none' }}>Emailed Job</span>
                       )}
                       {job.isEasyApply && (
-                        <span title="In-network Easy Apply role (requires personal account)" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>
+                        <span title="In-network Easy Apply role (requires personal account)" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'none' }}>
                           {job.source && !job.source.toLowerCase().includes('google') ? `${job.source} Easy Apply` : 'Easy Apply'}
                         </span>
                       )}
@@ -2985,8 +3181,6 @@ export default function DashboardClient({
                         height: '20px', 
                         borderRadius: '4px', 
                         flexShrink: 0, 
-                        marginTop: '-6px',
-                        marginRight: '-6px',
                         accentColor: 'var(--accent-primary, #0070f3)' 
                       }}
                       title="Select job"
@@ -3301,100 +3495,116 @@ export default function DashboardClient({
       />
       </div>
 
-      {showUpgradeModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '2rem' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Pro Feature</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Email Sync is a Pro feature. Upgrade your plan to automatically pull job posts from your email.
+      {typeof document !== 'undefined' && showConfigModal && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => setShowConfigModal(false)}
+        >
+          <div
+            className="glass-card"
+            style={{ maxWidth: '420px', width: '100%', textAlign: 'center', padding: '2rem', background: 'var(--card)', border: '1px solid var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginBottom: '0.75rem', marginTop: 0 }}>Configuration Required</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              Connect an email account in Settings to automatically import job alerts from your inbox.
             </p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-               <button onClick={() => setShowUpgradeModal(false)} className="btn-outline">Cancel</button>
-              <a href="/api/stripe/checkout" className="btn-primary" onClick={() => setShowUpgradeModal(false)}>Upgrade Plan</a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showConfigModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center', padding: '2rem' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Configuration Required</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              You&apos;ll need to configure account to be able to pull job post from your email.
-            </p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button onClick={() => setShowConfigModal(false)} className="btn-outline">Cancel</button>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button type="button" onClick={() => setShowConfigModal(false)} className="btn-outline">Cancel</button>
               <Link href="/settings#email-sync" className="btn-primary" onClick={() => setShowConfigModal(false)}>Set up now</Link>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showQueueOverlay && (
-        <div style={{ 
-          position: 'fixed', 
-          bottom: '2rem', 
-          right: '2rem', 
-          width: '320px', 
-          zIndex: 9999,
-          background: 'var(--bg-glass)',
-          border: '1px solid var(--border-glass)',
-          borderRadius: '12px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(16px)',
-          padding: '1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.8rem'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>Fetch Queue</h3>
-            {activeFetches.length === 0 && fetchQueue.length === 0 ? (
-              <span style={{ fontSize: '0.8rem', color: 'var(--success)' }}>Complete</span>
-            ) : (
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                {activeFetches.length} active, {fetchQueue.length} queued
-              </span>
-            )}
-          </div>
-          
-          <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {activeFetches.map(job => (
-              <div key={job.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '6px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-primary)', animation: 'pulse 1.5s infinite' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.company}</div>
-                </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)' }}>Fetching...</span>
-              </div>
-            ))}
+      {typeof document !== 'undefined' && showQueueOverlay && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => setShowQueueOverlay(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '360px',
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.8rem'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem' }}>Fetch Queue</h3>
+              {activeFetches.length === 0 && fetchQueue.length === 0 ? (
+                <span style={{ fontSize: '0.8rem', color: 'var(--success)' }}>Complete</span>
+              ) : (
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  {activeFetches.length} active, {fetchQueue.length} queued
+                </span>
+              )}
+            </div>
             
-            {fetchQueue.map(job => (
-              <div key={job.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '6px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--text-secondary)' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.company}</div>
+            <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {activeFetches.map(job => (
+                <div key={job.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '0.5rem', borderRadius: '6px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-primary)', animation: 'pulse 1.5s infinite' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.company}</div>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-primary)' }}>Fetching...</span>
                 </div>
-                <button 
-                  onClick={() => removeQueuedItem(job.id)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.2rem' }}
-                  title="Remove from queue"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            
-            {activeFetches.length === 0 && fetchQueue.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                All details fetched successfully!
-              </div>
-            )}
+              ))}
+              
+              {fetchQueue.map(job => (
+                <div key={job.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '6px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--text-secondary)' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.company}</div>
+                  </div>
+                  <button 
+                    onClick={() => removeQueuedItem(job.id)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.2rem' }}
+                    title="Remove from queue"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              
+              {activeFetches.length === 0 && fetchQueue.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                  All details fetched successfully!
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
 

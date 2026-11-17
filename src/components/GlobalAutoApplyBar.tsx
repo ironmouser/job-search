@@ -200,10 +200,33 @@ export function GlobalAutoApplyBar() {
     return () => clearTimeout(timer);
   }, [pathname]);
 
-  if (isOnboarding) return null;
-
+  const isDashboardPage = pathname === '/dashboard' || pathname === '/';
   const hasActiveQueue = autoApplyEnabled && activeSessions.length > 0 && !isDismissed;
   const hasSelection = Boolean(selectionState && selectionState.count > 0);
+  const hasContextualPageActions = Boolean(pageActions) && !isDashboardPage;
+
+  // Contextual bottom bar: only show when there is an active auto-apply queue, batch selection, or non-dashboard page actions
+  const shouldShowBottomBar = !isOnboarding && (
+    hasActiveQueue ||
+    (!isMobile && (hasSelection || hasContextualPageActions))
+  );
+
+  const shouldShowMobileFab = !isOnboarding && isMobile && (
+    hasActiveQueue || hasSelection || hasContextualPageActions
+  );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.style.setProperty(
+      '--auto-apply-bar-offset',
+      shouldShowBottomBar ? '52px' : '0px'
+    );
+    return () => {
+      document.documentElement.style.setProperty('--auto-apply-bar-offset', '0px');
+    };
+  }, [shouldShowBottomBar]);
+
+  if (isOnboarding) return null;
 
   const ongoingCount = activeSessions.filter(
     (s) => s.status !== 'applied' && s.status !== 'failed' && s.status !== 'cancelled'
@@ -306,9 +329,6 @@ export function GlobalAutoApplyBar() {
       setIsExpanded(true);
     }
   };
-
-  // On mobile & tablet, only show the bottom command bar if there is an active auto-apply task or user intervention
-  const shouldShowBottomBar = !isMobile || hasActiveQueue;
 
   if (!mounted || typeof document === 'undefined') return null;
 
@@ -420,12 +440,12 @@ export function GlobalAutoApplyBar() {
                   );
                 })()}
               </div>
-            ) : (
+            ) : hasContextualPageActions ? (
               /* Page Registered Context Actions */
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'nowrap' }}>
                 {pageActions}
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -436,7 +456,7 @@ export function GlobalAutoApplyBar() {
               Auto Apply Queue
             </span>
             <span style={{
-              fontSize: '0.72rem',
+              fontSize: '0.75rem',
               fontWeight: 600,
               color: '#0070f3',
               background: 'rgba(0, 112, 243, 0.08)',
@@ -448,7 +468,7 @@ export function GlobalAutoApplyBar() {
             </span>
             {quota && quota.tier !== 'FREE' && (
               <span style={{
-                fontSize: '0.72rem',
+                fontSize: '0.75rem',
                 fontWeight: 600,
                 color: '#f59e0b',
                 background: 'rgba(245, 158, 11, 0.08)',
@@ -589,7 +609,7 @@ export function GlobalAutoApplyBar() {
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                       <span style={{
-                        fontSize: '0.72rem',
+                        fontSize: '0.75rem',
                         fontWeight: 600,
                         color: '#0070f3',
                         background: 'rgba(0, 112, 243, 0.08)',
@@ -601,7 +621,7 @@ export function GlobalAutoApplyBar() {
                       </span>
                       {quota && quota.tier !== 'FREE' && (
                         <span style={{
-                          fontSize: '0.72rem',
+                          fontSize: '0.75rem',
                           fontWeight: 600,
                           color: '#f59e0b',
                           background: 'rgba(245, 158, 11, 0.08)',
@@ -630,7 +650,7 @@ export function GlobalAutoApplyBar() {
                       color: '#0070f3',
                       padding: '0.15rem 0.55rem',
                       borderRadius: '9999px',
-                      fontSize: '0.72rem',
+                      fontSize: '0.75rem',
                       fontWeight: 700,
                       border: '1px solid rgba(0, 112, 243, 0.2)',
                     }}>
@@ -644,7 +664,7 @@ export function GlobalAutoApplyBar() {
                           background: 'transparent',
                           border: 'none',
                           color: '#94a3b8',
-                          fontSize: '0.7rem',
+                          fontSize: '0.75rem',
                           fontWeight: 600,
                           cursor: 'pointer',
                           textDecoration: 'underline',
@@ -694,12 +714,12 @@ export function GlobalAutoApplyBar() {
                           )}
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', gap: '0.4rem' }}>
                           <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>
                             {session.job?.company || ''}
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 600 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 600 }}>
                               <span style={{
                                 width: '6px',
                                 height: '6px',
@@ -740,8 +760,8 @@ export function GlobalAutoApplyBar() {
                                   border: '1px solid var(--border, rgba(255,255,255,0.12))',
                                   color: 'var(--text-secondary)',
                                   borderRadius: '4px',
-                                  padding: '0.1rem 0.35rem',
-                                  fontSize: '0.68rem',
+                                  padding: '0.15rem 0.45rem',
+                                  fontSize: '0.75rem',
                                   fontWeight: 600,
                                   cursor: 'pointer',
                                   transition: 'all 0.15s ease',
@@ -768,8 +788,8 @@ export function GlobalAutoApplyBar() {
                                   border: '1px solid var(--border, rgba(255,255,255,0.12))',
                                   color: 'var(--text-secondary)',
                                   borderRadius: '4px',
-                                  padding: '0.1rem 0.35rem',
-                                  fontSize: '0.68rem',
+                                  padding: '0.15rem 0.45rem',
+                                  fontSize: '0.75rem',
                                   fontWeight: 600,
                                   cursor: 'pointer',
                                   transition: 'all 0.15s ease',
@@ -1054,10 +1074,10 @@ export function GlobalAutoApplyBar() {
 
                           return (
                             <span key={st.num} className={isStepActive ? 'stepper-label-active' : 'stepper-label-inactive'} style={{
-                              width: '32px',
+                              minWidth: '64px',
                               display: 'flex',
                               justifyContent: 'center',
-                              fontSize: '0.62rem',
+                              fontSize: '0.75rem',
                               fontWeight: 700,
                               letterSpacing: '0.04em',
                               textTransform: 'uppercase',
@@ -1084,7 +1104,7 @@ export function GlobalAutoApplyBar() {
                     }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         <span style={{
-                          fontSize: '0.72rem',
+                          fontSize: '0.75rem',
                           fontWeight: 700,
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
@@ -1127,7 +1147,7 @@ export function GlobalAutoApplyBar() {
       )}
 
       {/* ─── Mobile Multi-Button Speed Dial FAB ─── */}
-      {!isExpanded && (
+      {!isExpanded && shouldShowMobileFab && (
         <>
           {/* FAB backdrop */}
           {isFabOpen && (

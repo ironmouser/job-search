@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserPlus, Clock, Loader2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import RecruiterDock from '@/components/recruiter/RecruiterDock';
 
 export default function RecruiterLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -51,12 +50,11 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // If on the register page, render directly with dock space
+  // If on the register page, render directly
   if (pathname === '/recruiter/register') {
     return (
-      <div style={{ minHeight: '100vh', padding: '1.5rem 0 5.5rem 0' }}>
+      <div style={{ minHeight: '100vh', padding: '1.5rem 0 3rem 0' }}>
         {children}
-        <RecruiterDock />
       </div>
     );
   }
@@ -64,7 +62,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
   // If user has no recruiter profile, prompt them to register
   if (!profile) {
     return (
-      <div style={{ minHeight: '100vh', padding: '1.5rem 0 5.5rem 0' }}>
+      <div style={{ minHeight: '100vh', padding: '1.5rem 0 3rem 0' }}>
         <div
           className="glass-card"
           style={{
@@ -115,7 +113,6 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
             Register Recruiter Profile
           </Link>
         </div>
-        <RecruiterDock />
       </div>
     );
   }
@@ -124,7 +121,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
   const isPending = profile.verificationStatus === 'PENDING' || profile.organization?.verificationStatus === 'PENDING';
 
   return (
-    <div style={{ minHeight: '100vh', padding: '1.5rem 0 5.5rem 0' }}>
+    <div style={{ minHeight: '100vh', padding: '1.5rem 0 3rem 0' }}>
       {/* Pending verification notice banner if applicable */}
       {isPending && (
         <div
@@ -154,7 +151,6 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
 
       {/* Main Page Content */}
       <main>{children}</main>
-      <RecruiterDock />
     </div>
   );
 }

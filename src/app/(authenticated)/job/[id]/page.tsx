@@ -12,10 +12,8 @@ import ApplicationQA from '@/components/ApplicationQA';
 import CopyToClipboardButton from '@/components/CopyToClipboardButton';
 import BackToTopButton from '@/components/BackToTopButton';
 import GenerateAssetsButton from '@/components/GenerateAssetsButton';
-import NetworkingAssetCard from '@/components/NetworkingAssetCard';
+import JobAssetsSection from '@/components/JobAssetsSection';
 import { cleanCompanyName } from '@/lib/cleaners';
-import CoverLetterAssetCard from '@/components/CoverLetterAssetCard';
-import ResumeAssetCard from '@/components/ResumeAssetCard';
 import AutoFetchJobDetails from '@/components/AutoFetchJobDetails';
 import OpportunityScoreRefresh from '@/components/OpportunityScoreRefresh';
 import { isDescriptionAdequate } from '@/lib/jobFetcher';
@@ -293,60 +291,19 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               />
 
               {assets ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                  <NetworkingAssetCard 
-                    jobId={job.id} 
-                    initialContent={assets.networkingMessage || ''} 
-                    initialPreviousContent={assets.previousNetworkingMessage || undefined}
-                    initialRegensUsed={assets.networkingMessageRegensUsed || 0} 
-                    planTier={planTier} 
-                    initialTone={preferences?.networkingMessageTone || 'Confident and strategic'} 
-                  />
-
-                  <CoverLetterAssetCard 
-                    jobId={job.id} 
-                    initialContent={assets.coverLetterMarkdown || ''} 
-                    initialPreviousContent={assets.previousCoverLetterMarkdown || undefined}
-                    initialRegensUsed={assets.coverLetterRegensUsed || 0} 
-                    planTier={planTier} 
-                    initialTone={preferences?.coverLetterTone || 'Confident and strategic'} 
-                    userName={userName}
-                    userLocation={userLocation}
-                    userPhone={userPhone}
-                    userEmail={user?.email || undefined}
-                    companyName={cleanCompanyName(job.company)}
-                    companyLocation={job.location || undefined}
-                    initialPdfSettings={{
-                      template: preferences?.coverLetterPdfTemplate || 'classic',
-                      fontFamily: preferences?.coverLetterPdfFontFamily || 'Helvetica, Arial, sans-serif',
-                      fontSize: preferences?.coverLetterPdfFontSize || '11pt',
-                      lineHeight: preferences?.coverLetterPdfLineHeight || '1.5',
-                      primaryColor: preferences?.coverLetterPdfPrimaryColor || '#1e3a8a',
-                      textColor: preferences?.coverLetterPdfTextColor || '#111827',
-                      margin: preferences?.coverLetterPdfMargin || '0.5in',
-                      headerLayout: preferences?.coverLetterPdfHeaderLayout || 'left',
-                    }}
-                  />
-                  
-                  <ResumeAssetCard 
-                    jobId={job.id} 
-                    initialContent={assets.tailoredResumeMarkdown || ''} 
-                    initialPreviousContent={assets.previousTailoredResumeMarkdown || undefined}
-                    initialRegensUsed={assets.resumeRegensUsed || 0} 
-                    planTier={planTier} 
-                    initialCustomization={preferences?.resumeCustomizationMaxPercentage || 50} 
-                    initialPdfSettings={{
-                      template: preferences?.resumePdfTemplate || 'classic',
-                      fontFamily: preferences?.resumePdfFontFamily || 'Helvetica, Arial, sans-serif',
-                      fontSize: preferences?.resumePdfFontSize || '11pt',
-                      lineHeight: preferences?.resumePdfLineHeight || '1.5',
-                      primaryColor: preferences?.resumePdfPrimaryColor || '#1e3a8a',
-                      textColor: preferences?.resumePdfTextColor || '#111827',
-                      margin: preferences?.resumePdfMargin || '0.5in',
-                      headerLayout: preferences?.resumePdfHeaderLayout || 'left',
-                    }}
-                  />
-                </div>
+                <JobAssetsSection
+                  jobId={job.id}
+                  assets={assets}
+                  planTier={planTier}
+                  preferences={preferences}
+                  userName={userName}
+                  userLocation={userLocation}
+                  userPhone={userPhone}
+                  userEmail={user?.email || undefined}
+                  companyName={cleanCompanyName(job.company)}
+                  companyLocation={job.location || undefined}
+                  gap="2rem"
+                />
               ) : (
                 <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '2rem' }}>
                   <div>
@@ -487,10 +444,10 @@ function ScoreRow({ label, score }: { label: string, score: number }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
-        <span style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', fontWeight: 700 }}>{cleanLabel}</span>
+        <span style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 700 }}>{cleanLabel}</span>
         <span style={{ fontWeight: 600, color }}>{score}/100</span>
       </div>
-      <div style={{ width: '100%', height: '6px', background: '#eceded', borderRadius: '99px', overflow: 'hidden' }}>
+      <div style={{ width: '100%', height: '6px', background: 'var(--muted, rgba(148, 163, 184, 0.2))', borderRadius: '99px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: '99px' }} />
       </div>
     </div>

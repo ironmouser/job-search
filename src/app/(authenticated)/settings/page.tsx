@@ -168,6 +168,7 @@ export default function SettingsPage() {
         setOpenSections({
             general: nextState,
             'job-discovery': nextState,
+            'recruiter-discovery': nextState,
             'connected-accounts': nextState,
             scoring: nextState,
             'email-sync': nextState,
@@ -362,7 +363,7 @@ export default function SettingsPage() {
     const isAdmin = (session?.user as any)?.role === 'SYSTEM_ADMIN';
     const isPro = session?.user ? getEffectiveTier(session.user as any) === 'PRO' : false;
 
-    const isAnthropicConfigured = !!process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || true;
+    const isAnthropicConfigured = Boolean(process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY);
 
     useEffect(() => {
         fetch('/api/settings', { cache: 'no-store' })
@@ -540,6 +541,17 @@ export default function SettingsPage() {
                         {allExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                         <span>{allExpanded ? 'Collapse All' : 'Expand All'}</span>
                     </Button>
+                    <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleSave()}
+                        disabled={saving}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+                    >
+                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+                    </Button>
                 </PageHeaderActions>
             </PageHeader>
 
@@ -554,12 +566,6 @@ export default function SettingsPage() {
                         <ChevronDown size={20} className="accordion-chevron" />
                     </div>
 
-                    {!openSections.general && (
-                        <div className="accordion-summary-box" onClick={() => toggleSection('general')}>
-                            UI Theme & interface customization settings. Click to view settings.
-                        </div>
-                    )}
-
                     {openSections.general && (
                         <div className="accordion-body">
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -568,7 +574,7 @@ export default function SettingsPage() {
                                     <select 
                                         value={settings.theme || 'light'} 
                                         onChange={(e) => handleChange('theme', e.target.value)}
-                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                        style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                                     >
                                         <option value="dark">Dark Mode</option>
                                         <option value="light">Light Mode</option>
@@ -589,12 +595,6 @@ export default function SettingsPage() {
                         <ChevronDown size={20} className="accordion-chevron" />
                     </div>
 
-                    {!openSections['job-discovery'] && (
-                        <div className="accordion-summary-box" onClick={() => toggleSection('job-discovery')}>
-                            Primary role titles, seniority levels, target locations, pre-filtering keywords, and scraper sources. Click to edit preferences.
-                        </div>
-                    )}
-
                     {openSections['job-discovery'] && (
                         <div className="accordion-body">
                         
@@ -611,7 +611,7 @@ export default function SettingsPage() {
                                         value={settings.searchKeyword || ''}
                                         onChange={(e) => handleChange('searchKeyword', e.target.value)}
                                         placeholder='e.g. "Senior Product Manager"'
-                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
+                                        style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
                                     />
                                     <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Target role to search across job boards</span>
                                 </div>
@@ -621,7 +621,7 @@ export default function SettingsPage() {
                                     <select 
                                         value={settings.jobLevel || 'Mid-level'} 
                                         onChange={(e) => handleChange('jobLevel', e.target.value)}
-                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%', height: '44px' }}
+                                        style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%', height: '44px' }}
                                     >
                                         <option value="Entry-Level">Entry-Level</option>
                                         <option value="Mid-level">Mid-level</option>
@@ -641,7 +641,7 @@ export default function SettingsPage() {
                                         value={settings.searchLocation || ''}
                                         onChange={(e) => handleChange('searchLocation', e.target.value)}
                                         placeholder='e.g. "Remote", "Austin, TX"'
-                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
+                                        style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
                                     />
                                     <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Leave blank to search Remote / Anywhere, or specify a city, state, or region</span>
                                 </div>
@@ -663,7 +663,7 @@ export default function SettingsPage() {
                                         value={settings.includeKeywords || ''}
                                         onChange={(e) => handleChange('includeKeywords', e.target.value)}
                                         placeholder='e.g. "React, Node.js, Remote, TypeScript"'
-                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
+                                        style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
                                     />
                                     <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                                         Comma-separated terms. At least one must appear in the job title or description during pre-filtering (leave empty for maximum matches).
@@ -677,7 +677,7 @@ export default function SettingsPage() {
                                         value={settings.excludeKeywords || ''}
                                         onChange={(e) => handleChange('excludeKeywords', e.target.value)}
                                         placeholder='e.g. "Intern, Junior, Sales, Manager, Associate"'
-                                        style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
+                                        style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', width: '100%' }}
                                     />
                                     <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                                         Comma-separated terms. Any listing with a job title or company matching these words will be rejected immediately (leave empty for maximum matches).
@@ -724,7 +724,7 @@ export default function SettingsPage() {
                         <div 
                             style={{
                                 padding: '1.1rem 1.25rem',
-                                background: settings.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                background: settings.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.08)' : 'var(--muted)',
                                 border: `1px solid ${settings.jobMatchEmailsEnabled ? 'rgba(99, 102, 241, 0.3)' : 'var(--border-glass)'}`,
                                 borderRadius: '10px',
                                 display: 'flex',
@@ -835,7 +835,7 @@ export default function SettingsPage() {
                                                         opacity: isDisabled ? 0.55 : 1,
                                                         padding: '0.35rem 0.65rem',
                                                         borderRadius: '6px',
-                                                        background: isChecked ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                                        background: isChecked ? 'rgba(99, 102, 241, 0.08)' : 'var(--muted)',
                                                         border: `1px solid ${isChecked ? 'rgba(99, 102, 241, 0.3)' : 'var(--border-glass)'}`,
                                                         transition: 'all 0.15s ease'
                                                     }} 
@@ -884,7 +884,7 @@ export default function SettingsPage() {
                                 }}
                                 placeholder={isPro ? "https://boards.greenhouse.io/anthropic\nhttps://jobs.lever.co/openai" : "Upgrade to Pro to add custom career pages"}
                                 title={!isPro ? "Upgrade to Pro to use this feature" : ""}
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', minHeight: '100px', resize: isPro ? 'vertical' : 'none', cursor: isPro ? 'text' : 'not-allowed' }}
+                                style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', minHeight: '100px', resize: isPro ? 'vertical' : 'none', cursor: isPro ? 'text' : 'not-allowed' }}
                             />
                             <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                                 {isPro ? 'Put each URL on a new line. These bypass the generic Search Keyword and directly scrape the company page.' : 'Upgrade to Pro to bypass the generic search and directly scrape specific company career pages.'}
@@ -903,12 +903,6 @@ export default function SettingsPage() {
                 <ChevronDown size={20} className="accordion-chevron" />
             </div>
 
-            {!openSections.scoring && (
-                <div className="accordion-summary-box" onClick={() => toggleSection('scoring')}>
-                    AI strictness rules, prompt customization, and automated scoring parameters. Click to configure.
-                </div>
-            )}
-
             {openSections.scoring && (
                 <div className="accordion-body">
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -916,7 +910,7 @@ export default function SettingsPage() {
                             <select 
                                 value={settings.aiStrictness || 'Standard'}
                                 onChange={(e) => handleChange('aiStrictness', e.target.value)}
-                                style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                             >
                                 <option value="Strict">Strict (Focus purely on exact match facts)</option>
                                 <option value="Standard">Standard (Balanced professional tone)</option>
@@ -979,7 +973,7 @@ export default function SettingsPage() {
             </div>
             <div className="card-action-grid" style={{ width: '100%' }}>
                 <button 
-                    onClick={() => router.push('/profile')} 
+                    onClick={() => router.push('/profile#work-auth')} 
                     className="btn-outline full-width-mobile full-width-tablet"
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
                 >
@@ -996,12 +990,6 @@ export default function SettingsPage() {
                 </h3>
                 <ChevronDown size={20} className="accordion-chevron" />
             </div>
-
-            {!openSections['pdf-customizer'] && (
-                <div className="accordion-summary-box" onClick={() => toggleSection('pdf-customizer')}>
-                    Customize PDF margins, font families, accent colors, and styling rules. Click to adjust styling.
-                </div>
-            )}
 
             {openSections['pdf-customizer'] && (
                 <div className="accordion-body">
@@ -1020,12 +1008,6 @@ export default function SettingsPage() {
                     <ChevronDown size={20} className="accordion-chevron" />
                 </div>
 
-                {!openSections['connected-accounts'] && (
-                    <div className="accordion-summary-box" onClick={() => toggleSection('connected-accounts')}>
-                        Connect your LinkedIn, Indeed, ZipRecruiter, and Dice accounts for automated job applications.
-                    </div>
-                )}
-
                 {openSections['connected-accounts'] && (
                     <div className="accordion-body">
                         <ConnectedAccountsSection />
@@ -1043,12 +1025,6 @@ export default function SettingsPage() {
                 <ChevronDown size={20} className="accordion-chevron" />
             </div>
 
-            {!openSections['recruiter-discovery'] && (
-                <div className="accordion-summary-box" onClick={() => toggleSection('recruiter-discovery')}>
-                    Manage your visibility to verified recruiters, review introduction requests, and control contact sharing.
-                </div>
-            )}
-
             {openSections['recruiter-discovery'] && (
                 <div className="accordion-body">
                     <RecruiterVisibilitySection />
@@ -1064,12 +1040,6 @@ export default function SettingsPage() {
                 </h3>
                 <ChevronDown size={20} className="accordion-chevron" />
             </div>
-
-            {!openSections['email-sync'] && (
-                <div className="accordion-summary-box" onClick={() => toggleSection('email-sync')}>
-                    Connect Gmail/Outlook/Yahoo/iCloud app passwords for automated application status updates. Click to manage credentials.
-                </div>
-            )}
 
             {openSections['email-sync'] && (() => {
                 const currentAccount = settings.emailAccounts?.[emailProvider] || {
@@ -1133,7 +1103,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
+                        <div style={{ padding: '1rem', background: 'var(--muted)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>
                                     {providerDisplay} Connection Instructions
@@ -1212,7 +1182,7 @@ export default function SettingsPage() {
                                     value={currentAccount.emailAddress || ''}
                                     onChange={(e) => handleEmailAccountChange('emailAddress', e.target.value)}
                                     placeholder={`john@${providerDomain}`}
-                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
+                                    style={{ background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px' }}
                                 />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '200px' }}>
@@ -1225,7 +1195,7 @@ export default function SettingsPage() {
                                         value={currentAccount.emailAppPassword || ''}
                                         onChange={(e) => handleEmailAccountChange('emailAppPassword', e.target.value)}
                                         placeholder={`Enter ${providerDisplay} App Password`}
-                                        style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem 2.5rem 0.75rem 0.75rem', borderRadius: '8px' }}
+                                        style={{ width: '100%', background: 'var(--input)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', padding: '0.75rem 2.5rem 0.75rem 0.75rem', borderRadius: '8px' }}
                                     />
                                     <button
                                         type="button"
@@ -1259,7 +1229,7 @@ export default function SettingsPage() {
                                     onChange={(e) => handleEmailAccountChange('imapHost', e.target.value)}
                                     placeholder={emailProvider === 'other' ? "imap.example.com" : (DEFAULT_PROVIDER_CONFIGS[emailProvider]?.imapHost || "")}
                                     disabled={emailProvider !== 'other'}
-                                    style={{ background: emailProvider !== 'other' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
+                                    style={{ background: emailProvider !== 'other' ? 'var(--muted)' : 'var(--input)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
                                 />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '100px' }}>
@@ -1270,7 +1240,7 @@ export default function SettingsPage() {
                                     onChange={(e) => handleEmailAccountChange('imapPort', Number(e.target.value))}
                                     placeholder="993"
                                     disabled={emailProvider !== 'other'}
-                                    style={{ background: emailProvider !== 'other' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
+                                    style={{ background: emailProvider !== 'other' ? 'var(--muted)' : 'var(--input)', border: '1px solid var(--border-glass)', color: emailProvider !== 'other' ? 'var(--text-secondary)' : 'var(--text-primary)', padding: '0.75rem', borderRadius: '8px', cursor: emailProvider !== 'other' ? 'not-allowed' : 'text' }}
                                 />
                             </div>
                         </div>
@@ -1330,7 +1300,7 @@ export default function SettingsPage() {
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <ConnectionRow name="PostgreSQL Database" status="Connected" connected={true} />
-                        <ConnectionRow name="Anthropic (Claude AI)" status={isAnthropicConfigured ? 'Connected' : 'Missing'} connected={isAnthropicConfigured} />
+                        <ConnectionRow name="Anthropic (Claude AI)" status={isAnthropicConfigured ? 'Connected' : 'Managed by Server Environment'} connected={isAnthropicConfigured} />
                     </div>
                 </div>
                 )}
@@ -1462,7 +1432,7 @@ export default function SettingsPage() {
 
 function ConnectionRow({ name, status, connected }: { name: string, status: string, connected: boolean }) {
     return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--muted)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <Key size={16} color="var(--text-secondary)" />
                 <span style={{ fontSize: '0.95rem' }}>{name}</span>

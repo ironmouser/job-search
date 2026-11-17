@@ -92,6 +92,7 @@ export async function GET() {
                 emailAppPassword: '',
                 imapHost: 'imap.gmail.com',
                 imapPort: 993,
+                preferredAssetFormat: 'pdf',
                 resumePdfTemplate: 'classic',
                 resumePdfFontFamily: 'Helvetica, Arial, sans-serif',
                 resumePdfFontSize: '11pt',
@@ -160,6 +161,7 @@ export async function GET() {
             emailAppPassword: prefs.emailAppPassword ? '********' : '',
             imapHost: prefs.imapHost || 'imap.gmail.com',
             imapPort: prefs.imapPort || 993,
+            preferredAssetFormat: (prefs as any).preferredAssetFormat === 'docx' ? 'docx' : 'pdf',
             resumePdfTemplate: (prefs as any).resumePdfTemplate || 'classic',
             resumePdfFontFamily: (prefs as any).resumePdfFontFamily || 'Helvetica, Arial, sans-serif',
             resumePdfFontSize: (prefs as any).resumePdfFontSize || '11pt',
@@ -413,6 +415,7 @@ export async function POST(request: Request) {
             emailAddress: primaryEmailAddress,
             imapHost: primaryImapHost,
             imapPort: primaryImapPort,
+            preferredAssetFormat: data.preferredAssetFormat === 'docx' ? 'docx' : data.preferredAssetFormat === 'pdf' ? 'pdf' : undefined,
             resumePdfTemplate: data.resumePdfTemplate,
             resumePdfFontFamily: data.resumePdfFontFamily,
             resumePdfFontSize: data.resumePdfFontSize,
@@ -493,6 +496,7 @@ export async function POST(request: Request) {
                     : {}),
                 imapHost: primaryImapHost || 'imap.gmail.com',
                 imapPort: primaryImapPort || 993,
+                preferredAssetFormat: data.preferredAssetFormat === 'docx' ? 'docx' : 'pdf',
                 resumePdfTemplate: data.resumePdfTemplate || 'classic',
                 resumePdfFontFamily: data.resumePdfFontFamily || 'Helvetica, Arial, sans-serif',
                 resumePdfFontSize: data.resumePdfFontSize || '11pt',
@@ -513,6 +517,41 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ success: true, prefs });
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const data = await request.json();
+        const updateData: Record<string, any> = {};
+
+        if (data.preferredAssetFormat === 'pdf' || data.preferredAssetFormat === 'docx') {
+            updateData.preferredAssetFormat = data.preferredAssetFormat;
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'No valid fields provided' }, { status: 400 });
+        }
+
+        const prefs = await prisma.userPreferences.upsert({
+            where: { userId: session.user.id },
+            update: updateData,
+            create: {
+                userId: session.user.id,
+                searchKeyword: '',
+                searchLocation: '',
+                ...updateData,
+            } as any,
+        });
+
+        return NextResponse.json({ success: true, preferredAssetFormat: (prefs as any).preferredAssetFormat });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }

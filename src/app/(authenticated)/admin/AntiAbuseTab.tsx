@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldAlert, AlertTriangle, UserCheck, RefreshCw } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 export function AntiAbuseTab() {
   const [data, setData] = useState<any>(null);
@@ -29,8 +31,19 @@ export function AntiAbuseTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 text-slate-400 text-sm">
-        <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Loading Anti-Abuse & Multi-Account Incidents...
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '3rem',
+          color: 'var(--muted-foreground)',
+          fontSize: '0.875rem',
+          gap: '0.5rem',
+        }}
+      >
+        <RefreshCw size={18} className="animate-spin" aria-hidden="true" />
+        <span>Loading Anti-Abuse &amp; Multi-Account Incidents...</span>
       </div>
     );
   }
@@ -39,60 +52,81 @@ export function AntiAbuseTab() {
   const incidents = data?.recentIncidents || [];
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Metric Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-slate-900/60 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-500" /> Total Collision Incidents
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+        <Card>
+          <CardHeader style={{ paddingBottom: '0.5rem' }}>
+            <CardTitle style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ShieldAlert size={16} style={{ color: '#f59e0b' }} aria-hidden="true" /> Total Collision Incidents
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-100">{data?.totalIncidents || 0}</div>
-            <p className="text-xs text-slate-400 mt-1">Logged multi-account detection triggers</p>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--foreground)' }}>{data?.totalIncidents || 0}</div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>Logged multi-account detection triggers</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/60 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-500" /> Multi-Flagged Accounts (&gt;1)
+        <Card>
+          <CardHeader style={{ paddingBottom: '0.5rem' }}>
+            <CardTitle style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <AlertTriangle size={16} style={{ color: '#ef4444' }} aria-hidden="true" /> Multi-Flagged Accounts (&gt;1)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-400">{data?.multiFlaggedCount || 0}</div>
-            <p className="text-xs text-slate-400 mt-1">Accounts flagged multiple times across signals</p>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#ef4444' }}>{data?.multiFlaggedCount || 0}</div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>Accounts flagged multiple times across signals</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Multi-Flagged Accounts Section */}
       {multiFlagged.length > 0 && (
-        <Card className="bg-slate-900/80 border-red-500/40">
+        <Card style={{ borderColor: 'rgba(239, 68, 68, 0.35)' }}>
           <CardHeader>
-            <CardTitle className="text-sm font-bold text-red-400 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" /> Multi-Flagged User Summary (&gt;1 Trigger)
+            <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+              <AlertTriangle size={16} aria-hidden="true" /> Multi-Flagged User Summary (&gt;1 Trigger)
             </CardTitle>
-            <CardDescription className="text-xs text-slate-400">
+            <CardDescription>
               Users with multiple identity collisions sharing a unified quota group
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             {multiFlagged.map((u: any) => (
-              <div key={u.id} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-200 text-sm">{u.name || 'Unnamed'} ({u.email})</span>
-                  <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-900/60 text-red-300 border border-red-500/50">
-                    {u.collisionLogsTarget?.length || 0} Incidences
+              <div
+                key={u.id}
+                style={{
+                  padding: '1rem',
+                  background: 'var(--muted)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--foreground)', fontSize: '0.875rem' }}>
+                    {u.name || 'Unnamed'} ({u.email})
                   </span>
+                  <Badge variant="destructive">
+                    {u.collisionLogsTarget?.length || 0} Incidences
+                  </Badge>
                 </div>
 
-                <div className="text-xs text-slate-400 grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                  <div><strong className="text-slate-300">Normalized Email:</strong> {u.normalizedEmail || 'N/A'}</div>
-                  <div><strong className="text-slate-300">Unified Quota Group:</strong> {u.unifiedQuotaGroupId || u.id}</div>
-                  <div><strong className="text-slate-300">Deferral Reason:</strong> {u.trialDeferralReason || 'None'}</div>
-                  <div><strong className="text-slate-300">Created:</strong> {new Date(u.createdAt).toLocaleDateString()}</div>
+                <div
+                  style={{
+                    fontSize: '0.8125rem',
+                    color: 'var(--muted-foreground)',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <div><strong style={{ color: 'var(--foreground)' }}>Normalized Email:</strong> {u.normalizedEmail || 'N/A'}</div>
+                  <div><strong style={{ color: 'var(--foreground)' }}>Unified Quota Group:</strong> {u.unifiedQuotaGroupId || u.id}</div>
+                  <div><strong style={{ color: 'var(--foreground)' }}>Deferral Reason:</strong> {u.trialDeferralReason || 'None'}</div>
+                  <div><strong style={{ color: 'var(--foreground)' }}>Created:</strong> {new Date(u.createdAt).toLocaleDateString()}</div>
                 </div>
               </div>
             ))}
@@ -101,55 +135,51 @@ export function AntiAbuseTab() {
       )}
 
       {/* Recent Incidents Table */}
-      <Card className="bg-slate-900/60 border-slate-800">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-bold text-slate-200">
-            Recent Identity Collision Logs
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-400">
+          <CardTitle>Recent Identity Collision Logs</CardTitle>
+          <CardDescription>
             Real-time feed of email normalization, disposable domain, mobile device, and profile collisions
           </CardDescription>
         </CardHeader>
         <CardContent>
           {incidents.length === 0 ? (
-            <div className="text-xs text-slate-500 py-6 text-center">No collision incidents logged yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
-                  <tr>
-                    <th className="p-3">Target User</th>
-                    <th className="p-3">Signal Type</th>
-                    <th className="p-3">Matched Primary User</th>
-                    <th className="p-3">IP Address</th>
-                    <th className="p-3">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {incidents.map((log: any) => (
-                    <tr key={log.id} className="hover:bg-slate-800/40">
-                      <td className="p-3 font-medium text-slate-200">
-                        {log.targetUser?.email || log.targetUserId}
-                      </td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-900/40 text-amber-300 border border-amber-500/30">
-                          {log.signalType}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-400">
-                        {log.primaryUser ? `${log.primaryUser.email} (${log.primaryUser.id.substring(0, 8)}...)` : 'None / N/A'}
-                      </td>
-                      <td className="p-3 text-slate-400 font-mono text-[11px]">
-                        {log.ipAddress || 'Unknown'}
-                      </td>
-                      <td className="p-3 text-slate-400">
-                        {new Date(log.createdAt).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', padding: '1.5rem 0', textAlign: 'center' }}>
+              No collision incidents logged yet.
             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Target User</TableHead>
+                  <TableHead scope="col">Signal Type</TableHead>
+                  <TableHead scope="col">Matched Primary User</TableHead>
+                  <TableHead scope="col">IP Address</TableHead>
+                  <TableHead scope="col">Timestamp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {incidents.map((log: any) => (
+                  <TableRow key={log.id}>
+                    <TableCell style={{ fontWeight: 500 }}>
+                      {log.targetUser?.email || log.targetUserId}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="warning">{log.signalType}</Badge>
+                    </TableCell>
+                    <TableCell style={{ color: 'var(--muted-foreground)' }}>
+                      {log.primaryUser ? `${log.primaryUser.email} (${log.primaryUser.id.substring(0, 8)}...)` : 'None / N/A'}
+                    </TableCell>
+                    <TableCell style={{ color: 'var(--muted-foreground)', fontFamily: 'monospace', fontSize: '0.8125rem' }}>
+                      {log.ipAddress || 'Unknown'}
+                    </TableCell>
+                    <TableCell style={{ color: 'var(--muted-foreground)' }}>
+                      {new Date(log.createdAt).toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

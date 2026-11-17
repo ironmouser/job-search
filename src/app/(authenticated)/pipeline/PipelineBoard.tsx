@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, MoreVertical, MapPin, Trash2, Calendar, Sparkles } from 'lucide-react';
+import { ExternalLink, MoreVertical, MapPin, Trash2, Calendar, Sparkles, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 
 type Job = {
     id: string;
@@ -17,16 +18,23 @@ type Job = {
 
 const COLUMNS = [
     { id: 'applied', label: 'Applied', color: '#3b82f6' },
-    { id: 'interviewing', label: 'Interviewing', color: '#fbbf24' },
+    { id: 'interviewing', label: 'Interviewing', color: '#f59e0b' },
     { id: 'offer', label: 'Offer', color: '#10b981' },
     { id: 'rejected', label: 'Rejected', color: '#ef4444' },
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-    applied: '#0045ff1c',
-    interviewing: '#fcf49b78',
-    offer: '#01e96e47',
-    rejected: '#ff000029',
+const STAGE_ACCENT_COLORS: Record<string, string> = {
+    applied: '#3b82f6',
+    interviewing: '#f59e0b',
+    offer: '#10b981',
+    rejected: '#ef4444',
+};
+
+const STAGE_BADGE_STYLES: Record<string, { bg: string; border: string; text: string }> = {
+    applied: { bg: 'rgba(59, 130, 246, 0.14)', border: 'rgba(59, 130, 246, 0.35)', text: '#3b82f6' },
+    interviewing: { bg: 'rgba(245, 158, 11, 0.14)', border: 'rgba(245, 158, 11, 0.35)', text: '#f59e0b' },
+    offer: { bg: 'rgba(16, 185, 129, 0.14)', border: 'rgba(16, 185, 129, 0.35)', text: '#10b981' },
+    rejected: { bg: 'rgba(239, 68, 68, 0.14)', border: 'rgba(239, 68, 68, 0.35)', text: '#ef4444' },
 };
 
 const formatDate = (dateStr?: string | null) => {
@@ -46,7 +54,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
     const [jobs, setJobs] = useState<Job[]>(initialJobs);
     const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
 
-    const updateJobStatus = async (jobId: string, newStatus: string) => {
+    const handleStageChange = async (jobId: string, newStatus: string) => {
         // Optimistic UI update
         const previousJobs = [...jobs];
         setJobs(jobs.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
@@ -63,6 +71,19 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
             console.error(e);
             alert('Failed to update job status.');
             setJobs(previousJobs); // Revert on failure
+        }
+    };
+
+    const updateJobStatus = handleStageChange;
+
+    const handleDragEnd = (result: DropResult) => {
+        const { destination, source, draggableId } = result;
+        if (!destination) return;
+        if (destination.droppableId === source.droppableId && destination.index === source.index) {
+            return;
+        }
+        if (destination.droppableId !== source.droppableId) {
+            handleStageChange(draggableId, destination.droppableId);
         }
     };
 
@@ -157,7 +178,7 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
 
                 {/* Row 2: Mobile Column Selector Pills */}
                 <div 
-                    className="mobile-col-pills no-scrollbar" 
+                    className="mobile-col-pills md:hidden no-scrollbar" 
                     style={{ 
                         display: 'flex', 
                         gap: '0.4rem', 
@@ -215,143 +236,211 @@ export default function PipelineBoard({ initialJobs }: { initialJobs: Job[] }) {
             </div>
 
             {viewMode === 'kanban' ? (
-                <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, scrollSnapType: 'x mandatory' }} data-tour="pipeline-kanban">
-                    {visibleColumns.map(col => (
-                        <div key={col.id} style={{ flex: mobileActiveCol === 'all' ? '0 0 min(300px, 85vw)' : '1 1 100%', display: 'flex', flexDirection: 'column', gap: '1rem', scrollSnapAlign: 'start' }}>
-                            <div style={{ 
-                                padding: '0.75rem', 
-                                background: 'rgba(255,255,255,0.03)', 
-                                borderTop: `3px solid ${col.color}`,
-                                borderRadius: '8px 8px 0 0',
-                                fontWeight: 600,
-                                display: 'flex',
-                                justifyContent: 'space-between'
-                            }}>
-                                <span>{col.label}</span>
-                                <span style={{ color: 'var(--text-secondary)' }}>
-                                    {jobs.filter(j => j.status?.toLowerCase() === col.id).length}
-                                </span>
-                            </div>
+                <DragDropContext onDragEnd={handleDragEnd}>
+                    <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, scrollSnapType: 'x mandatory' }} data-tour="pipeline-kanban">
+                        {visibleColumns.map(col => (
+                            <div key={col.id} style={{ flex: mobileActiveCol === 'all' ? '0 0 min(300px, 85vw)' : '1 1 100%', display: 'flex', flexDirection: 'column', gap: '1rem', scrollSnapAlign: 'start' }}>
+                                <div style={{ 
+                                    padding: '0.75rem', 
+                                    background: 'var(--card)', 
+                                    border: '1px solid var(--border)',
+                                    borderTop: `3px solid ${col.color}`,
+                                    borderRadius: '8px 8px 0 0',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}>
+                                    <span>{col.label}</span>
+                                    <span style={{
+                                        color: col.color,
+                                        background: STAGE_BADGE_STYLES[col.id]?.bg,
+                                        border: `1px solid ${STAGE_BADGE_STYLES[col.id]?.border}`,
+                                        padding: '0.1rem 0.5rem',
+                                        borderRadius: '9999px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 700
+                                    }}>
+                                        {jobs.filter(j => j.status?.toLowerCase() === col.id).length}
+                                    </span>
+                                </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '100px' }}>
-                                {jobs.filter(j => j.status?.toLowerCase() === col.id).map(job => (
-                                    <div key={job.id} className="glass-card pipeline-card" style={{ padding: '1rem', position: 'relative', background: STATUS_COLORS[job.status?.toLowerCase()] || STATUS_COLORS[col.id] }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{job.company}</h4>
-                                            
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                {/* Status Dropdown */}
-                                                <select 
-                                                    data-tour="pipeline-status-dropdown"
-                                                    value={job.status} 
-                                                    onChange={(e) => updateJobStatus(job.id, e.target.value)}
-                                                    style={{ 
-                                                        background: 'transparent', 
-                                                        border: '1px solid var(--border-glass)', 
-                                                        color: 'var(--text-primary)', 
-                                                        borderRadius: '4px',
-                                                        fontSize: '16px',
-                                                        padding: '0.2rem 0.4rem',
-                                                        minHeight: '36px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    {COLUMNS.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>{c.label}</option>)}
-                                                </select>
+                                <Droppable droppableId={col.id}>
+                                    {(provided, snapshot) => (
+                                        <div
+                                            ref={provided.innerRef}
+                                            {...provided.droppableProps}
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '1rem',
+                                                minHeight: '140px',
+                                                padding: '0.25rem',
+                                                borderRadius: '8px',
+                                                background: snapshot.isDraggingOver ? 'rgba(59, 130, 246, 0.06)' : 'transparent',
+                                                transition: 'background-color 0.15s ease',
+                                            }}
+                                        >
+                                            {jobs.filter(j => j.status?.toLowerCase() === col.id).map((job, index) => {
+                                                const accentColor = STAGE_ACCENT_COLORS[job.status?.toLowerCase()] || col.color;
+                                                return (
+                                                    <Draggable key={job.id} draggableId={job.id} index={index}>
+                                                        {(dragProvided, dragSnapshot) => (
+                                                            <div
+                                                                ref={dragProvided.innerRef}
+                                                                {...dragProvided.draggableProps}
+                                                                {...dragProvided.dragHandleProps}
+                                                                className="glass-card pipeline-card"
+                                                                style={{
+                                                                    ...dragProvided.draggableProps.style,
+                                                                    padding: '1rem',
+                                                                    position: 'relative',
+                                                                    background: 'var(--card)',
+                                                                    border: '1px solid var(--border)',
+                                                                    borderLeft: `3px solid ${accentColor}`,
+                                                                    boxShadow: dragSnapshot.isDragging ? '0 12px 28px rgba(0, 0, 0, 0.3)' : undefined,
+                                                                    cursor: 'grab',
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
+                                                                        <GripVertical size={14} style={{ color: 'var(--muted-foreground)', flexShrink: 0, opacity: 0.6 }} />
+                                                                        <h4 style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                            {job.company}
+                                                                        </h4>
+                                                                    </div>
+                                                                    
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                                                                        {/* Accessible Status Dropdown for Keyboard Users */}
+                                                                        <select 
+                                                                            data-tour="pipeline-status-dropdown"
+                                                                            aria-label={`Change stage for ${job.title} at ${job.company}`}
+                                                                            value={job.status?.toLowerCase()} 
+                                                                            onChange={(e) => updateJobStatus(job.id, e.target.value)}
+                                                                            style={{ 
+                                                                                background: 'var(--background)', 
+                                                                                border: '1px solid var(--border)', 
+                                                                                color: 'var(--foreground)', 
+                                                                                borderRadius: '6px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: 600,
+                                                                                padding: '0.2rem 0.45rem',
+                                                                                minHeight: '32px',
+                                                                                cursor: 'pointer'
+                                                                            }}
+                                                                        >
+                                                                            {COLUMNS.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>{c.label}</option>)}
+                                                                        </select>
 
-                                                <button 
-                                                    onClick={() => deleteJob(job.id)}
-                                                    title="Delete job"
-                                                    style={{ 
-                                                        background: 'transparent', 
-                                                        border: 'none', 
-                                                        color: 'var(--danger)', 
-                                                        cursor: 'pointer',
-                                                        padding: '0.4rem',
-                                                        minWidth: '36px',
-                                                        minHeight: '36px',
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center'
-                                                    }}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
+                                                                        <button 
+                                                                            onClick={() => deleteJob(job.id)}
+                                                                            title="Delete job"
+                                                                            aria-label={`Delete ${job.title} at ${job.company}`}
+                                                                            style={{ 
+                                                                                background: 'transparent', 
+                                                                                border: 'none', 
+                                                                                color: 'var(--danger)', 
+                                                                                cursor: 'pointer',
+                                                                                padding: '0.35rem',
+                                                                                minWidth: '32px',
+                                                                                minHeight: '32px',
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center'
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 size={15} />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                <h3 style={{ margin: '0.5rem 0', fontSize: '0.95rem' }}>
+                                                                    <Link href={`/job/${job.id}`} className="job-title" style={{ textDecoration: 'none' }}>
+                                                                        {job.title}
+                                                                    </Link>
+                                                                </h3>
+                                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                                    {job.location && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={14} /> {job.location}</span>}
+                                                                    {job.applied_at && (
+                                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }} title="Date Applied">
+                                                                            <Calendar size={14} /> Applied {formatDate(job.applied_at)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </Draggable>
+                                                );
+                                            })}
+                                            {provided.placeholder}
                                         </div>
-                                        <h3 style={{ margin: '0.5rem 0' }}>
-                                            <Link href={`/job/${job.id}`} className="job-title" style={{ textDecoration: 'none' }}>
-                                                {job.title}
-                                            </Link>
-                                        </h3>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                                            {job.location && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={14} /> {job.location}</span>}
-                                            {job.applied_at && (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }} title="Date Applied">
-                                                    <Calendar size={14} /> Applied {formatDate(job.applied_at)}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                    )}
+                                </Droppable>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                </DragDropContext>
             ) : (
-                <div className="glass-card" style={{ overflowX: 'auto' }}>
+                <div className="glass-card" style={{ overflowX: 'auto', background: 'var(--card)', border: '1px solid var(--border)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
-                            <tr style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Company</th>
-                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Role</th>
-                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Status</th>
-                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Date Applied</th>
-                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Location</th>
-                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Salary</th>
-                                <th style={{ padding: '1rem', color: 'var(--text-secondary)' }}>Action</th>
+                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>Company</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>Role</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>Status</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>Date Applied</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>Location</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>Salary</th>
+                                <th style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {jobs.map(job => (
-                                <tr key={job.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <td style={{ padding: '1rem', fontWeight: 600 }}>{job.company}</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <Link href={`/job/${job.id}`} className="job-title" style={{ textDecoration: 'none' }}>
-                                            {job.title}
-                                        </Link>
-                                    </td>
-                                    <td style={{ padding: '1rem', background: STATUS_COLORS[job.status?.toLowerCase()] }}>
-                                        <select 
-                                            value={job.status} 
-                                            onChange={(e) => updateJobStatus(job.id, e.target.value)}
-                                            style={{ 
-                                                background: 'transparent', 
-                                                border: '1px solid var(--border-glass)', 
-                                                color: 'var(--text-primary)', 
-                                                borderRadius: '4px',
-                                                padding: '0.3rem',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {COLUMNS.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>{c.label}</option>)}
-                                        </select>
-                                    </td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{formatDate(job.applied_at) || 'N/A'}</td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.location || 'Remote'}</td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.salary_range || 'Not Listed'}</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <button 
-                                            onClick={() => deleteJob(job.id)}
-                                            className="btn-outline"
-                                            style={{ padding: '0.3rem 0.5rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                                            title="Delete job"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                            {jobs.map(job => {
+                                const stageKey = job.status?.toLowerCase() || 'applied';
+                                const badgeStyle = STAGE_BADGE_STYLES[stageKey] || STAGE_BADGE_STYLES.applied;
+                                return (
+                                    <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <td style={{ padding: '1rem', fontWeight: 600 }}>{job.company}</td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <Link href={`/job/${job.id}`} className="job-title" style={{ textDecoration: 'none' }}>
+                                                {job.title}
+                                            </Link>
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <select 
+                                                aria-label={`Change stage for ${job.title} at ${job.company}`}
+                                                value={stageKey} 
+                                                onChange={(e) => updateJobStatus(job.id, e.target.value)}
+                                                style={{ 
+                                                    background: badgeStyle.bg, 
+                                                    border: `1px solid ${badgeStyle.border}`, 
+                                                    color: badgeStyle.text, 
+                                                    borderRadius: '9999px',
+                                                    padding: '0.25rem 0.65rem',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                {COLUMNS.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>{c.label}</option>)}
+                                            </select>
+                                        </td>
+                                        <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{formatDate(job.applied_at) || 'N/A'}</td>
+                                        <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.location || 'Remote'}</td>
+                                        <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{job.salary_range || 'Not Listed'}</td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <button 
+                                                onClick={() => deleteJob(job.id)}
+                                                className="btn-outline"
+                                                aria-label={`Delete ${job.title} at ${job.company}`}
+                                                style={{ padding: '0.3rem 0.5rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                                                title="Delete job"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             {jobs.length === 0 && (
                                 <tr>
                                     <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No jobs in pipeline.</td>

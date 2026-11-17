@@ -601,10 +601,12 @@ export class GenericFormFiller {
     if (!context.resumeMarkdown) return;
 
     try {
-      const resumeFilename = getAssetFilename(context.userProfile?.name, 'resume', context.resumeMarkdown);
-      const resumePath = await browser.writeMarkdownToPdf(
+      const assetFormat = context.userProfile?.preferredAssetFormat === 'docx' ? 'docx' : 'pdf';
+      const resumeFilename = getAssetFilename(context.userProfile?.name, 'resume', context.resumeMarkdown, assetFormat);
+      const resumePath = await browser.writeMarkdownAsset(
         context.resumeMarkdown,
-        resumeFilename
+        resumeFilename,
+        assetFormat
       );
 
       // 1. Scoped container search (Resume / CV containers, excluding Cover Letter).
@@ -701,10 +703,12 @@ export class GenericFormFiller {
         return;
       }
 
-      const clFilename = getAssetFilename(context.userProfile?.name, 'cover-letter', context.coverLetterMarkdown);
-      const clPath = await browser.writeMarkdownToPdf(
+      const assetFormat = context.userProfile?.preferredAssetFormat === 'docx' ? 'docx' : 'pdf';
+      const clFilename = getAssetFilename(context.userProfile?.name, 'cover-letter', context.coverLetterMarkdown, assetFormat);
+      const clPath = await browser.writeMarkdownAsset(
         context.coverLetterMarkdown,
-        clFilename
+        clFilename,
+        assetFormat
       );
 
       // 2. Check container-scoped upload widgets (e.g. Phenom People "Cover Letter" section).

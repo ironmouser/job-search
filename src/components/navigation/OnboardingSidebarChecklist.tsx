@@ -23,6 +23,12 @@ interface OnboardingSidebarChecklistProps {
 
 export const ONBOARDING_DISMISSED_KEY = 'onboarding_sidebar_dismissed';
 
+const CONCISE_TASK_DESCRIPTIONS: Record<string, string> = {
+  dashboard: 'Explore dashboard & workflow',
+  settings: 'Set target role & resume',
+  refine_search: 'Tune keywords & job goals',
+};
+
 export default function OnboardingSidebarChecklist({
   isMinimized = false,
   onItemClick,
@@ -116,7 +122,7 @@ export default function OnboardingSidebarChecklist({
           ) : (
             <div className="mini-progress-wrapper">
               <Rocket size={14} style={{ color: 'var(--accent-primary, #38bdf8)' }} />
-              <span className="mini-badge-count">{progress.completed}/{progress.total}</span>
+              <span className="mini-badge-count" style={{ fontSize: '0.75rem' }}>{progress.completed}/{progress.total}</span>
             </div>
           )}
         </button>
@@ -130,7 +136,7 @@ export default function OnboardingSidebarChecklist({
       <div className="workspace-setup-header">
         {/* Top Row: Title + Action Buttons */}
         <div className="workspace-setup-top-row">
-          <span className="workspace-setup-title">
+          <span className="workspace-setup-title" style={{ fontSize: '0.8125rem' }}>
             {isAllComplete ? 'Setup Complete' : 'Workspace Setup'}
           </span>
           <div className="workspace-setup-actions">
@@ -155,10 +161,10 @@ export default function OnboardingSidebarChecklist({
 
         {/* Sub Row: Task count + Percentage badge */}
         <div className="workspace-setup-sub-row">
-          <span className="workspace-setup-fraction">
+          <span className="workspace-setup-fraction" style={{ fontSize: '0.75rem' }}>
             {progress.completed} of {progress.total} tasks
           </span>
-          <span className={`workspace-setup-pct-badge ${isAllComplete ? 'all-done' : ''}`}>
+          <span className={`workspace-setup-pct-badge ${isAllComplete ? 'all-done' : ''}`} style={{ fontSize: '0.75rem' }}>
             {progress.percentage}%
           </span>
         </div>
@@ -177,6 +183,7 @@ export default function OnboardingSidebarChecklist({
         <div className="workspace-setup-items-container">
           {allTasks.map((task) => {
             const isCompleted = completedOnboardingTasks.has(task.id);
+            const conciseDesc = CONCISE_TASK_DESCRIPTIONS[task.id] || task.description;
             return (
               <button
                 key={task.id}
@@ -193,17 +200,17 @@ export default function OnboardingSidebarChecklist({
                 </div>
 
                 <div className="workspace-setup-item-content">
-                  <span className="workspace-setup-item-title">{task.title}</span>
-                  <span className="workspace-setup-item-desc">{task.description}</span>
+                  <span className="workspace-setup-item-title" style={{ fontSize: '0.8125rem' }}>{task.title}</span>
+                  <span className="workspace-setup-item-desc" style={{ fontSize: '0.75rem' }}>{conciseDesc}</span>
                 </div>
               </button>
             );
           })}
 
           {isAllComplete && (
-            <div className="workspace-setup-complete-note">
+            <div className="workspace-setup-complete-note" style={{ fontSize: '0.75rem' }}>
               <CheckCircle2 size={14} style={{ color: '#22c55e', flexShrink: 0 }} />
-              <span>Workspace setup finished! You're ready to automate applications.</span>
+              <span>Setup finished! Ready to automate.</span>
             </div>
           )}
         </div>

@@ -22,6 +22,8 @@ export function Modal({
   maxWidth = "550px",
 }: ModalProps) {
   const [mounted, setMounted] = React.useState(false);
+  const titleId = React.useId();
+  const descId = React.useId();
 
   React.useEffect(() => {
     setMounted(true);
@@ -54,6 +56,10 @@ export function Modal({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descId : undefined}
         style={{
           width: '100%',
           maxWidth: maxWidth,
@@ -62,7 +68,7 @@ export function Modal({
           flexDirection: 'column',
           background: 'var(--card)',
           color: 'var(--card-foreground)',
-          borderRadius: 'var(--radius, 12px)',
+          borderRadius: 'var(--radius-xl, 12px)',
           border: '1px solid var(--border)',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
           overflow: 'hidden',
@@ -84,7 +90,8 @@ export function Modal({
           >
             <div>
               {title && (
-                <h3
+                <h2
+                  id={titleId}
                   style={{
                     margin: 0,
                     fontSize: '1.125rem',
@@ -94,10 +101,11 @@ export function Modal({
                   }}
                 >
                   {title}
-                </h3>
+                </h2>
               )}
               {description && (
                 <p
+                  id={descId}
                   style={{
                     margin: '0.25rem 0 0 0',
                     fontSize: '0.875rem',
@@ -109,21 +117,24 @@ export function Modal({
               )}
             </div>
             <button
+              type="button"
               onClick={onClose}
+              aria-label="Close dialog"
               style={{
                 background: 'transparent',
                 border: 'none',
                 color: 'var(--muted-foreground)',
                 cursor: 'pointer',
-                padding: '0.25rem',
-                borderRadius: '4px',
+                padding: '0.375rem',
+                minWidth: '32px',
+                minHeight: '32px',
+                borderRadius: '6px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              title="Close modal"
             >
-              <X size={18} />
+              <X size={18} aria-hidden="true" />
             </button>
           </div>
         )}

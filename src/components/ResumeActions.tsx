@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { Download, Copy, CheckCircle } from 'lucide-react';
 
 import { generateStyledPdfHtml, PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
+import { AssetFormat, generateDocxBlob } from '@/lib/docxGeneratorHelper';
 import { safeCopyToClipboard } from '@/lib/clipboard';
 
-export default function ResumeActions({ jobId, markdownText, selectedColor = "#06af9e", pdfSettings }: { jobId: string, markdownText: string, selectedColor?: string, pdfSettings?: PdfStyleOptions }) {
+export default function ResumeActions({ jobId, markdownText, selectedColor = "#06af9e", pdfSettings, assetFormat }: { jobId: string, markdownText: string, selectedColor?: string, pdfSettings?: PdfStyleOptions, assetFormat?: AssetFormat }) {
     const [isCopied, setIsCopied] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [showToast, setShowToast] = useState(false);
@@ -22,29 +23,34 @@ export default function ResumeActions({ jobId, markdownText, selectedColor = "#0
     const handleDownload = async () => {
         setIsDownloading(true);
         try {
-            const html2pdf = (await import('html2pdf.js')).default;
+            let activeFormat: AssetFormat | undefined = assetFormat;
             let options = pdfSettings;
 
-            if (!options) {
+            if (!options || !activeFormat) {
                 try {
                     const res = await fetch('/api/settings');
                     const settings = await res.json();
-                    options = {
-                        template: settings.resumePdfTemplate,
-                        fontFamily: settings.resumePdfFontFamily,
-                        fontSize: settings.resumePdfFontSize,
-                        lineHeight: settings.resumePdfLineHeight,
-                        primaryColor: settings.resumePdfPrimaryColor,
-                        textColor: settings.resumePdfTextColor,
-                        margin: settings.resumePdfMargin,
-                        headerLayout: settings.resumePdfHeaderLayout,
-                    };
+                    if (!activeFormat) {
+                        activeFormat = settings?.preferredAssetFormat === 'docx' ? 'docx' : 'pdf';
+                    }
+                    if (!options) {
+                        options = {
+                            template: settings.resumePdfTemplate,
+                            fontFamily: settings.resumePdfFontFamily,
+                            fontSize: settings.resumePdfFontSize,
+                            lineHeight: settings.resumePdfLineHeight,
+                            primaryColor: settings.resumePdfPrimaryColor,
+                            textColor: settings.resumePdfTextColor,
+                            margin: settings.resumePdfMargin,
+                            headerLayout: settings.resumePdfHeaderLayout,
+                        };
+                    }
                 } catch (e) {
-                    console.warn('Could not fetch user PDF settings, using defaults');
+                    console.warn('Could not fetch user asset settings, using defaults');
                 }
             }
 
-            const html = generateStyledPdfHtml(markdownText || '', options);
+            const finalFormat: AssetFormat = activeFormat || 'pdf';
 
             let extractedName = 'My';
             const nameMatch = markdownText.match(/^#\s+([^\n]+)/);
@@ -52,22 +58,37 @@ export default function ResumeActions({ jobId, markdownText, selectedColor = "#0
                 extractedName = nameMatch[1].trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
             }
 
-            const opt: any = {
-                margin:       [0.4, 0, 0.4, 0],
-                filename:     `${extractedName}_Resume.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
-                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-            };
+            if (finalFormat === 'docx') {
+                const blob = await generateDocxBlob(markdownText || '', options);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${extractedName}_Resume.docx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else {
+                const html2pdf = (await import('html2pdf.js')).default;
+                const html = generateStyledPdfHtml(markdownText || '', options);
 
-            await html2pdf().set(opt).from(html).save();
+                const opt: any = {
+                    margin:       [0.4, 0, 0.4, 0],
+                    filename:     `${extractedName}_Resume.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true },
+                    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
+                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                };
+
+                await html2pdf().set(opt).from(html).save();
+            }
 
             // Track download asynchronously
             fetch('/api/analytics/track-download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'resume', jobId }),
+                body: JSON.stringify({ type: 'resume', jobId, format: finalFormat }),
             }).catch((err) => console.warn('Could not record download tracking:', err));
 
             setShowToast(true);
@@ -97,7 +118,7 @@ export default function ResumeActions({ jobId, markdownText, selectedColor = "#0
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
             >
                 <Download size={16} className={isDownloading ? "animate-pulse" : ""} />
-                <span>{isDownloading ? 'Generating...' : 'Download PDF'}</span>
+                <span>{isDownloading ? 'Generating...' : (assetFormat === 'docx' ? 'Download DOCX' : 'Download PDF')}</span>
             </button>
 
             {showToast && (

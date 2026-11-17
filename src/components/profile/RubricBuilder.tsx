@@ -294,7 +294,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                         style={{
                             width: '100%',
                             minHeight: '220px',
-                            background: 'rgba(0,0,0,0.2)',
+                            background: 'var(--input)',
                             border: '1px solid var(--border-glass)',
                             borderRadius: '8px',
                             color: 'var(--text-primary)',
@@ -328,7 +328,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                                     ({mustHaves.length} / 2)
                                 </span>
                             </div>
-                            <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, background: 'rgba(16, 185, 129, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
                                 ~25% Weight Each
                             </span>
                         </div>
@@ -365,7 +365,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                                                 onClick={() => handleRemoveNonNegotiable(id)}
                                                 title="Move to Nice to Have"
                                                 style={{
-                                                    background: 'rgba(0, 0, 0, 0.25)',
+                                                    background: 'var(--muted)',
                                                     border: 'none',
                                                     borderRadius: '50%',
                                                     width: '18px',
@@ -404,7 +404,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                                     ({important.length} / 2)
                                 </span>
                             </div>
-                            <span style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600, background: 'rgba(245, 158, 11, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
                                 ~15% Weight Each
                             </span>
                         </div>
@@ -441,7 +441,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                                                 onClick={() => handleRemoveHighPriority(id)}
                                                 title="Move to Nice to Have"
                                                 style={{
-                                                    background: 'rgba(0, 0, 0, 0.25)',
+                                                    background: 'var(--muted)',
                                                     border: 'none',
                                                     borderRadius: '50%',
                                                     width: '18px',
@@ -465,7 +465,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
 
                     {/* 3. Nice to Have Section */}
                     <div style={{ 
-                        background: 'rgba(255, 255, 255, 0.02)', 
+                        background: 'var(--muted)', 
                         border: '1px solid var(--border-glass)', 
                         borderRadius: '10px', 
                         padding: '1rem' 
@@ -480,7 +480,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                                     ({niceToHaves.length} items)
                                 </span>
                             </div>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
                                 ~5% Weight Each
                             </span>
                         </div>
@@ -500,7 +500,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             gap: '0.4rem',
-                                            background: 'rgba(255, 255, 255, 0.04)',
+                                            background: 'var(--card)',
                                             border: '1px solid var(--border-glass)',
                                             color: 'var(--text-secondary)',
                                             padding: showPromotionButtons ? '0.35rem 0.65rem' : '0.4rem 0.8rem',
@@ -522,7 +522,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                                                             background: 'rgba(16, 185, 129, 0.2)',
                                                             border: '1px solid rgba(16, 185, 129, 0.4)',
                                                             color: '#10b981',
-                                                            fontSize: '0.68rem',
+                                                            fontSize: '0.75rem',
                                                             fontWeight: 700,
                                                             padding: '0.12rem 0.45rem',
                                                             borderRadius: '10px',
@@ -541,7 +541,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                                                             background: 'rgba(245, 158, 11, 0.2)',
                                                             border: '1px solid rgba(245, 158, 11, 0.4)',
                                                             color: '#f59e0b',
-                                                            fontSize: '0.68rem',
+                                                            fontSize: '0.75rem',
                                                             fontWeight: 700,
                                                             padding: '0.12rem 0.45rem',
                                                             borderRadius: '10px',
@@ -578,7 +578,7 @@ export default function RubricBuilder({ value, onChange }: RubricBuilderProps) {
                             style={{ 
                                 width: '100%', 
                                 boxSizing: 'border-box', 
-                                background: 'rgba(0,0,0,0.2)', 
+                                background: 'var(--input)', 
                                 border: '1px solid var(--border-glass)', 
                                 color: 'var(--text-primary)', 
                                 padding: '0.75rem 1rem', 

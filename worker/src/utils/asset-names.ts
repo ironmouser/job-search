@@ -9,7 +9,8 @@
 export function getAssetFilename(
   profileName: string | undefined | null,
   assetType: 'resume' | 'cover-letter',
-  fallbackMarkdown?: string
+  fallbackMarkdown?: string,
+  format: 'pdf' | 'docx' = 'pdf'
 ): string {
   let name = (profileName || '').trim();
 
@@ -38,6 +39,7 @@ export function getAssetFilename(
     prefix = parts[0];
   }
 
-  const suffix = assetType === 'resume' ? 'resume.pdf' : 'cover-letter.pdf';
+  const ext = format === 'docx' ? 'docx' : 'pdf';
+  const suffix = assetType === 'resume' ? `resume.${ext}` : `cover-letter.${ext}`;
   return prefix ? `${prefix}_${suffix}` : suffix;
 }

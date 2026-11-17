@@ -434,7 +434,8 @@ model UserPreferences {
   autoApplyMode          String? @default("autopilot") @map("auto_apply_mode")
   maxConcurrentAutoApplies Int?   @default(3) @map("max_concurrent_auto_applies")
 
-  // PDF Styling Customization
+  // Asset Format & PDF Styling Customization
+  preferredAssetFormat      String? @default("pdf") @map("preferred_asset_format")
   resumePdfTemplate         String? @default("classic") @map("resume_pdf_template")
   resumePdfFontFamily       String? @default("Helvetica, Arial, sans-serif") @map("resume_pdf_font_family")
   resumePdfFontSize         String? @default("11pt") @map("resume_pdf_font_size")

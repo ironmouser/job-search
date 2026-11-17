@@ -2,6 +2,7 @@ import { chromium, Browser, Page, BrowserContext, Frame } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
+import { BorderStyle, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 
 /**
  * BrowserSession — manages the Playwright browser lifecycle.
@@ -400,6 +401,171 @@ export class BrowserSession {
       await pdfContext.close().catch(() => {});
     }
 
+    return filePath;
+  }
+
+  /**
+   * Dispatches asset generation to either PDF or DOCX based on the requested format.
+   */
+  async writeMarkdownAsset(
+    markdown: string,
+    filename: string,
+    format: 'pdf' | 'docx' = 'pdf'
+  ): Promise<string> {
+    if (format === 'docx') {
+      return this.writeMarkdownToDocx(markdown, filename);
+    }
+    return this.writeMarkdownToPdf(markdown, filename);
+  }
+
+  /**
+   * Writes markdown content to a clean .docx file in the session's temp directory.
+   */
+  async writeMarkdownToDocx(markdown: string, filename: string): Promise<string> {
+    if (!this.tempDir) throw new Error('BrowserSession not started — call launch() first');
+
+    const cleanBase = filename.replace(/\.(pdf|docx|txt|md)$/i, '');
+    const docxFilename = `${cleanBase}.docx`;
+    const filePath = path.join(this.tempDir, docxFilename);
+
+    const parseInlineRuns = (text: string, baseBold = false): TextRun[] => {
+      const runs: TextRun[] = [];
+      const tokenRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+      let lastIndex = 0;
+      let match: RegExpExecArray | null;
+
+      while ((match = tokenRegex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+          runs.push(
+            new TextRun({
+              text: text.slice(lastIndex, match.index),
+              font: 'Calibri',
+              size: 22,
+              bold: baseBold,
+            })
+          );
+        }
+        const tok = match[0];
+        if (tok.startsWith('**') && tok.endsWith('**')) {
+          runs.push(
+            new TextRun({
+              text: tok.slice(2, -2),
+              font: 'Calibri',
+              size: 22,
+              bold: true,
+            })
+          );
+        } else if (tok.startsWith('*') && tok.endsWith('*')) {
+          runs.push(
+            new TextRun({
+              text: tok.slice(1, -1),
+              font: 'Calibri',
+              size: 22,
+              bold: baseBold,
+              italics: true,
+            })
+          );
+        } else if (tok.startsWith('`') && tok.endsWith('`')) {
+          runs.push(
+            new TextRun({
+              text: tok.slice(1, -1),
+              font: 'Courier New',
+              size: 20,
+              bold: baseBold,
+            })
+          );
+        }
+        lastIndex = tokenRegex.lastIndex;
+      }
+
+      if (lastIndex < text.length) {
+        runs.push(
+          new TextRun({
+            text: text.slice(lastIndex),
+            font: 'Calibri',
+            size: 22,
+            bold: baseBold,
+          })
+        );
+      }
+
+      return runs.length > 0 ? runs : [new TextRun({ text, font: 'Calibri', size: 22, bold: baseBold })];
+    };
+
+    const lines = (markdown || '').split(/\r?\n/);
+    const children: Paragraph[] = [];
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      if (/^---+$/.test(line)) {
+        children.push(
+          new Paragraph({
+            spacing: { before: 100, after: 100 },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '1e3a8a', space: 1 } },
+            children: [],
+          })
+        );
+      } else if (line.startsWith('# ')) {
+        children.push(
+          new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 0, after: 100 },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: '1e3a8a', space: 4 } },
+            children: [new TextRun({ text: line.slice(2).trim(), font: 'Calibri', size: 40, bold: true, color: '1e3a8a' })],
+          })
+        );
+      } else if (line.startsWith('## ')) {
+        children.push(
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 80 },
+            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '1e3a8a', space: 3 } },
+            children: [new TextRun({ text: line.slice(3).trim().toUpperCase(), font: 'Calibri', size: 26, bold: true, color: '1e3a8a' })],
+          })
+        );
+      } else if (line.startsWith('### ')) {
+        children.push(
+          new Paragraph({
+            heading: HeadingLevel.HEADING_3,
+            spacing: { before: 140, after: 60 },
+            children: [new TextRun({ text: line.slice(4).trim(), font: 'Calibri', size: 23, bold: true, color: '1e3a8a' })],
+          })
+        );
+      } else if (/^[-*]\s+/.test(line)) {
+        children.push(
+          new Paragraph({
+            bullet: { level: 0 },
+            spacing: { before: 20, after: 60, line: 300 },
+            children: parseInlineRuns(line.replace(/^[-*]\s+/, '')),
+          })
+        );
+      } else {
+        children.push(
+          new Paragraph({
+            spacing: { before: 40, after: 80, line: 300 },
+            children: parseInlineRuns(line),
+          })
+        );
+      }
+    }
+
+    const doc = new Document({
+      sections: [
+        {
+          properties: {
+            page: {
+              margin: { top: 720, right: 720, bottom: 720, left: 720 },
+            },
+          },
+          children: children.length > 0 ? children : [new Paragraph({ children: [new TextRun({ text: markdown || '' })] })],
+        },
+      ],
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    await fs.writeFile(filePath, buffer);
     return filePath;
   }
 

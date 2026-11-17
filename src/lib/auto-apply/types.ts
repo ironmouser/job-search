@@ -158,6 +158,7 @@ export interface UserProfile {
   accountAuthMode?: 'sign_in' | 'create_account';
   otpCode?: string;
   customAnswers?: Record<string, string>;
+  preferredAssetFormat?: 'pdf' | 'docx';
 }
 
 export interface WorkflowResult {

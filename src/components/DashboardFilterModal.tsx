@@ -150,9 +150,12 @@ export default function DashboardFilterModal({
               <div style={{ display: 'grid', gridTemplateColumns: (setActiveFilter && setMinScore) ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
                 {setActiveFilter && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.2rem' }}>
                       Status & Fit Filter
                     </label>
+                    <p style={{ margin: '0 0 0.4rem 0', fontSize: '0.8125rem', color: 'var(--muted-foreground)', lineHeight: 1.3 }}>
+                      Filter by pipeline status or match tier.
+                    </p>
                     <select
                       value={activeFilter}
                       onChange={(e) => setActiveFilter(e.target.value as any)}
@@ -178,9 +181,12 @@ export default function DashboardFilterModal({
 
                 {setMinScore && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.4rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.2rem' }}>
                       Minimum Match Score
                     </label>
+                    <p style={{ margin: '0 0 0.4rem 0', fontSize: '0.8125rem', color: 'var(--muted-foreground)', lineHeight: 1.3 }}>
+                      Hide jobs below your fit score threshold.
+                    </p>
                     <select
                       value={minScore ?? 0}
                       onChange={(e) => setMinScore(Number(e.target.value))}
@@ -297,7 +303,7 @@ export default function DashboardFilterModal({
                       type="button"
                       onClick={p.action}
                       style={{
-                        fontSize: '0.725rem',
+                        fontSize: '0.75rem',
                         padding: '2px 8px',
                         borderRadius: '12px',
                         border: '1px solid var(--border)',
@@ -443,37 +449,58 @@ export default function DashboardFilterModal({
           marginTop: '0.25rem'
         }}>
           <button
+            type="button"
             onClick={handleReset}
+            className="btn-outline"
             style={{
-              background: 'none',
-              border: 'none',
+              background: 'transparent',
+              border: '1px solid var(--border)',
               color: 'var(--muted-foreground)',
               cursor: 'pointer',
               fontSize: '0.825rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.35rem',
-              padding: '0.4rem 0.6rem',
-              borderRadius: '6px'
+              padding: '0.45rem 0.85rem',
+              borderRadius: '8px'
             }}
           >
             <RotateCcw size={14} /> Clear All Filters
           </button>
 
-          <button
-            onClick={onClose}
-            className="btn-primary"
-            style={{
-              fontSize: '0.825rem',
-              padding: '0.45rem 1.2rem',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem'
-            }}
-          >
-            Apply Filters
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-outline"
+              style={{
+                fontSize: '0.825rem',
+                padding: '0.45rem 1rem',
+                borderRadius: '8px'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-primary"
+              style={{
+                background: 'var(--primary, #0070f3)',
+                color: '#ffffff',
+                border: '1px solid var(--primary, #0070f3)',
+                fontSize: '0.825rem',
+                fontWeight: 600,
+                padding: '0.45rem 1.2rem',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+            >
+              Apply Filters
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

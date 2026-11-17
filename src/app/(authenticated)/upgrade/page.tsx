@@ -17,6 +17,7 @@ function PricingContent() {
   const [isLoading, setIsLoading] = useState(false);
 
   const sessionUser = session?.user as any;
+  const isPro = sessionUser?.planTier === "PRO";
   const isOrgUser = !!sessionUser?.organizationId || sessionUser?.role === "ORGANIZATION_ADMIN" || sessionUser?.role === "SYSTEM_ADMIN";
 
   const handleSubscribe = async () => {
@@ -69,32 +70,32 @@ function PricingContent() {
       <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", justifyContent: "center", position: "relative", zIndex: 10, maxWidth: "1150px", width: "100%" }}>
         
         {/* Free Tier */}
-        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column" }}>
-          <h3 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.5rem" }}>
+        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", background: "var(--card)", border: "1px solid var(--border)" }}>
+          <h3 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--foreground)", marginBottom: "0.5rem" }}>
             Starter
           </h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
+          <p style={{ color: "var(--muted-foreground)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
             Free tier with 7-day Pro trial included (no card required).
           </p>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginBottom: "2rem" }}>
-            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--text-primary)" }}>$0</span>
-            <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>/month</span>
+            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--foreground)" }}>$0</span>
+            <span style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>/month</span>
           </div>
-          <button
+          <Button
+            variant="outline"
             disabled
-            className="btn-outline"
-            style={{ width: "100%", marginBottom: "2rem", opacity: 0.5 }}
+            style={{ width: "100%", marginBottom: "2rem" }}
           >
-            Current Plan
-          </button>
-          <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "1rem", padding: 0 }}>
+            {isPro ? "Included in Pro" : "Current Plan"}
+          </Button>
+          <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "1rem", padding: 0, color: "var(--muted-foreground)" }}>
             {[
               "Instant 7-day Pro trial unlock",
               "Multi-board job search",
               "1 tailored resume generation / week (after trial)",
               "All created work & saved jobs preserved forever"
             ].map((feature) => (
-              <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+              <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--muted-foreground)", fontSize: "0.95rem" }}>
                 <Check size={20} color="#3695e3" style={{ flexShrink: 0 }} />
                 <span>{feature}</span>
               </li>
@@ -103,35 +104,45 @@ function PricingContent() {
         </div>
 
         {/* Pro Tier */}
-        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", border: "2px solid #3695e3", background: "rgba(54, 149, 227, 0.05)", position: "relative", overflow: "hidden" }}>
+        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", border: "2px solid var(--primary, #0070f3)", background: "var(--card)", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: "-40px", right: "-40px", opacity: 0.1, transform: "rotate(12deg)", pointerEvents: "none" }}>
             <Sparkles size={160} color="#3695e3" />
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-            <h3 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h3 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--foreground)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               Pro <Zap size={20} color="#f2a900" fill="currentColor" />
             </h3>
-            <span style={{ background: "rgba(54, 149, 227, 0.2)", color: "#3695e3", padding: "0.25rem 0.75rem", borderRadius: "99px", fontSize: "0.75rem", fontWeight: 600 }}>
+            <span style={{ background: "rgba(0, 112, 243, 0.14)", color: "var(--primary, #0070f3)", padding: "0.25rem 0.75rem", borderRadius: "99px", fontSize: "0.75rem", fontWeight: 600 }}>
               Most popular
             </span>
           </div>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
+          <p style={{ color: "var(--muted-foreground)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
             Advanced AI tools for serious candidates.
           </p>
           <div style={{ display: "flex", alignItems: "baseline", gap: "0.25rem", marginBottom: "2rem" }}>
-            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--text-primary)" }}>$20</span>
-            <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>/month</span>
+            <span style={{ fontSize: "3rem", fontWeight: 700, color: "var(--foreground)" }}>$20</span>
+            <span style={{ color: "var(--muted-foreground)", fontWeight: 500 }}>/month</span>
           </div>
-          <button
-            onClick={handleSubscribe}
-            disabled={isLoading}
-            className="btn-primary"
-            style={{ width: "100%", marginBottom: "2rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
-          >
-            {isLoading ? <Loader2 className="animate-spin" size={18} /> : "Upgrade to Pro"}
-          </button>
-          <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "1rem", padding: 0 }}>
+          {isPro ? (
+            <Button
+              variant="outline"
+              disabled
+              style={{ width: "100%", marginBottom: "2rem" }}
+            >
+              Current Plan
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={handleSubscribe}
+              disabled={isLoading}
+              style={{ width: "100%", marginBottom: "2rem" }}
+            >
+              {isLoading ? <Loader2 className="animate-spin" size={18} /> : "Upgrade to Pro"}
+            </Button>
+          )}
+          <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "1rem", padding: 0, color: "var(--foreground)" }}>
             {[
               "Unlimited job discoveries",
               "Advanced AI Opportunity Scoring",
@@ -140,7 +151,7 @@ function PricingContent() {
               "Interview Prep & Insights",
               "Priority Support"
             ].map((feature) => (
-              <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--text-primary)", fontSize: "0.95rem", fontWeight: 500 }}>
+              <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--foreground)", fontSize: "0.95rem", fontWeight: 500 }}>
                 <Check size={20} color="#3695e3" style={{ flexShrink: 0 }} />
                 <span>{feature}</span>
               </li>
@@ -149,27 +160,28 @@ function PricingContent() {
         </div>
 
         {/* Organization Plan */}
-        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", border: "1px solid var(--border-glass)", position: "relative" }}>
+        <div className="glass-card" style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", background: "var(--card)", border: "1px solid var(--border)", position: "relative" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-            <h3 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h3 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--foreground)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               Organization <Building2 size={20} color="#8b5cf6" />
             </h3>
-            <span style={{ background: "rgba(139, 92, 246, 0.15)", color: "#a78bfa", padding: "0.25rem 0.75rem", borderRadius: "99px", fontSize: "0.75rem", fontWeight: 600 }}>
+            <span style={{ background: "rgba(139, 92, 246, 0.15)", color: "#8b5cf6", padding: "0.25rem 0.75rem", borderRadius: "99px", fontSize: "0.75rem", fontWeight: 600 }}>
               Teams & Orgs
             </span>
           </div>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
+          <p style={{ color: "var(--muted-foreground)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
             Multi-seat passes for businesses, career centers & agencies.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginBottom: "2rem" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "0.35rem" }}>
-              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Starting at</span>
-              <span style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>$10</span>
-              <span style={{ color: "var(--text-secondary)", fontWeight: 600, fontSize: "0.95rem" }}>/ seat pass</span>
+              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Starting at</span>
+              <span style={{ fontSize: "2.5rem", fontWeight: 700, color: "var(--foreground)", lineHeight: 1 }}>$10</span>
+              <span style={{ color: "var(--muted-foreground)", fontWeight: 600, fontSize: "0.95rem" }}>/ seat pass</span>
             </div>
-            <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem", fontWeight: 500 }}>Based on access duration & quantity purchased</span>
+            <span style={{ color: "var(--muted-foreground)", fontSize: "0.8rem", fontWeight: 500 }}>Based on access duration & quantity purchased</span>
           </div>
-          <button
+          <Button
+            variant="outline"
             onClick={() => {
               if (isOrgUser) {
                 router.push("/org-admin");
@@ -177,12 +189,11 @@ function PricingContent() {
                 window.location.href = "mailto:support@jobagenthq.com?subject=Organization%20Account%20Inquiry";
               }
             }}
-            className="btn-outline"
-            style={{ width: "100%", marginBottom: "2rem", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
+            style={{ width: "100%", marginBottom: "2rem" }}
           >
             {isOrgUser ? "Manage Org Passes" : "Contact Sales / Buy Passes"}
-          </button>
-          <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "1rem", padding: 0, margin: "0 0 1.25rem 0" }}>
+          </Button>
+          <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "1rem", padding: 0, margin: "0 0 1.25rem 0", color: "var(--foreground)" }}>
             {[
               "Multi-seat pass management dashboard",
               "Batch candidate & student email invitations",
@@ -190,13 +201,13 @@ function PricingContent() {
               "Full Pro features for all assigned members",
               "Centralized activity logs & seat usage metrics"
             ].map((feature) => (
-              <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--text-primary)", fontSize: "0.95rem", fontWeight: 500 }}>
+              <li key={feature} style={{ display: "flex", gap: "0.75rem", color: "var(--foreground)", fontSize: "0.95rem", fontWeight: 500 }}>
                 <Check size={20} color="#8b5cf6" style={{ flexShrink: 0 }} />
                 <span>{feature}</span>
               </li>
             ))}
           </ul>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.75rem", margin: 0, fontStyle: "italic", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "0.75rem", lineHeight: 1.4 }}>
+          <p style={{ color: "var(--muted-foreground)", fontSize: "0.75rem", margin: 0, fontStyle: "italic", borderTop: "1px solid var(--border)", paddingTop: "0.75rem", lineHeight: 1.4 }}>
             * Unassigned organization seat passes expire 1 year (365 days) after purchase.
           </p>
         </div>

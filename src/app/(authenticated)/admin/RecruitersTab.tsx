@@ -194,61 +194,61 @@ export function RecruitersTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 text-slate-400 text-sm">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading Recruiter Organizations...
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem', color: 'var(--muted-foreground)', fontSize: '0.875rem', gap: '0.5rem' }}>
+        <Loader2 className="animate-spin" size={18} aria-hidden="true" /> Loading Recruiter Organizations...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Metric Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-slate-900/60 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-blue-400" /> Total Organizations
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        <Card>
+          <CardHeader style={{ paddingBottom: '0.5rem' }}>
+            <CardTitle style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Building2 size={16} style={{ color: 'var(--primary)' }} aria-hidden="true" /> Total Organizations
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-100">{organizations.length}</div>
-            <p className="text-xs text-slate-400 mt-1">Registered recruiting entities</p>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--foreground)' }}>{organizations.length}</div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>Registered recruiting entities</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/60 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-400" /> Pending Review
+        <Card>
+          <CardHeader style={{ paddingBottom: '0.5rem' }}>
+            <CardTitle style={{ fontSize: '0.75rem', fontWeight: 600, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Clock size={16} style={{ color: '#f59e0b' }} aria-hidden="true" /> Pending Review
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-400">{pendingCount}</div>
-            <p className="text-xs text-slate-400 mt-1">Awaiting verification</p>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f59e0b' }}>{pendingCount}</div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>Awaiting verification</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/60 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Verified Entities
+        <Card>
+          <CardHeader style={{ paddingBottom: '0.5rem' }}>
+            <CardTitle style={{ fontSize: '0.75rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ShieldCheck size={16} style={{ color: '#10b981' }} aria-hidden="true" /> Verified Entities
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-400">{verifiedCount}</div>
-            <p className="text-xs text-slate-400 mt-1">Full candidate discovery unlocked</p>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#10b981' }}>{verifiedCount}</div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>Full candidate discovery unlocked</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/60 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-rose-400 uppercase tracking-wider flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-rose-400" /> Rejected / Suspended
+        <Card>
+          <CardHeader style={{ paddingBottom: '0.5rem' }}>
+            <CardTitle style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ShieldAlert size={16} style={{ color: '#ef4444' }} aria-hidden="true" /> Rejected / Suspended
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-400">{rejectedCount}</div>
-            <p className="text-xs text-slate-400 mt-1">Blocked from network access</p>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#ef4444' }}>{rejectedCount}</div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>Blocked from network access</p>
           </CardContent>
         </Card>
       </div>

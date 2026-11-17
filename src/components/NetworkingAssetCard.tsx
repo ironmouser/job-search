@@ -4,7 +4,8 @@ import { useState, useRef } from 'react';
 import { Copy, Loader2, ThumbsUp, RefreshCw, Minimize2, Maximize2, CheckCircle, ChevronDown, Edit2, Save, X, RotateCcw, Pencil, Send } from 'lucide-react';
 import { marked } from 'marked';
 import CopyToClipboardButton from './CopyToClipboardButton';
-import DownloadTextButton from './DownloadTextButton';
+import DownloadPdfButton from './DownloadPdfButton';
+import { AssetFormat } from '@/lib/docxGeneratorHelper';
 import { trackAssetAction } from '@/lib/analytics';
 import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 
@@ -14,7 +15,8 @@ export default function NetworkingAssetCard({
     initialPreviousContent,
     initialRegensUsed,
     planTier,
-    initialTone
+    initialTone,
+    assetFormat,
 }: {
     jobId: string;
     initialContent: string;
@@ -22,6 +24,7 @@ export default function NetworkingAssetCard({
     initialRegensUsed: number;
     planTier: string;
     initialTone: string;
+    assetFormat?: AssetFormat;
 }) {
     const [content, setContent] = useState(initialContent);
     const [previousContent, setPreviousContent] = useState<string | undefined>(initialPreviousContent);
@@ -203,7 +206,13 @@ export default function NetworkingAssetCard({
                     <CheckCircle size={20} /> Tailored Networking Message
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <DownloadTextButton textToDownload={content || ''} filename={`NetworkingMessage_${jobId.slice(0,8)}.txt`} />
+                    <DownloadPdfButton
+                        markdownText={content || ''}
+                        filename={`NetworkingMessage_${jobId.slice(0,8)}.${assetFormat || 'pdf'}`}
+                        type="networkingMessage"
+                        jobId={jobId}
+                        format={assetFormat}
+                    />
                     <CopyToClipboardButton textToCopy={content || ''} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>

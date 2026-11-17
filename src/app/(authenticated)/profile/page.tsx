@@ -23,11 +23,6 @@ export default async function ProfilePage() {
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: "4rem", maxWidth: "800px", margin: "0 auto" }}>
-      <div style={{ marginBottom: "3rem" }}>
-        <h1 className="page-title">Profile & Settings</h1>
-        <p className="page-subtitle">Manage your account information and billing</p>
-      </div>
-
       <ProfileForm 
         initialName={user.name || ""} 
         initialImage={user.image || ""} 

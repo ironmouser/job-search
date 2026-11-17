@@ -336,7 +336,7 @@ export function ApplyStepAccordion({
               <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                 <Zap size={16} /> Easy Apply on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'Job Platform'}
               </span>
-              <span style={{ fontSize: '0.7rem', background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Personal Account</span>
+              <span style={{ fontSize: '0.75rem', background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Personal Account</span>
             </div>
             <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4, maxWidth: '580px' }}>
               This role is hosted directly on {jobSource && !jobSource.toLowerCase().includes('google') ? jobSource : 'the platform'}&apos;s internal network and requires signing into your personal account.
@@ -372,8 +372,8 @@ export function ApplyStepAccordion({
           className="apply-manual-card"
           style={{
             borderRadius: '12px',
-            border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
-            background: 'var(--card, #111111)',
+            border: '1px solid var(--border-glass)',
+            background: 'var(--card)',
             padding: '1.5rem',
             display: 'flex',
             flexDirection: 'column',
@@ -412,8 +412,8 @@ export function ApplyStepAccordion({
           className="apply-auto-card"
           style={{
             borderRadius: '14px',
-            border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.08))',
-            background: 'var(--bg-secondary, rgba(255, 255, 255, 0.02))',
+            border: '1px solid var(--border-glass)',
+            background: 'var(--muted)',
             padding: '1.35rem',
             display: 'flex',
             flexDirection: 'column',
@@ -543,6 +543,7 @@ export function ApplyStepAccordion({
                 <button
                   onClick={() => handleSaveCustomUrl()}
                   disabled={(!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl}
+                  className="btn-outline"
                   style={{
                     whiteSpace: 'nowrap',
                     display: 'flex',
@@ -551,14 +552,13 @@ export function ApplyStepAccordion({
                     fontSize: '0.88rem',
                     padding: '0.7rem 1.25rem',
                     borderRadius: '8px',
-                    border: savedSuccess ? '1px solid #16a34a' : '1px solid var(--border-subtle-blue, rgba(2, 132, 199, 0.25))',
-                    background: savedSuccess ? 'rgba(22, 163, 74, 0.12)' : 'var(--bg-primary, #ffffff)',
-                    color: savedSuccess ? '#16a34a' : customUrl.trim() && customUrl.trim() !== activeUrl ? 'var(--accent-primary, #0070f3)' : 'var(--text-secondary, #475569)',
+                    border: savedSuccess ? '1px solid #16a34a' : '1px solid var(--border-glass)',
+                    background: savedSuccess ? 'rgba(22, 163, 74, 0.12)' : 'var(--card)',
+                    color: savedSuccess ? '#16a34a' : customUrl.trim() && customUrl.trim() !== activeUrl ? 'var(--primary, #0070f3)' : 'var(--text-secondary)',
                     fontWeight: 600,
                     cursor: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 'not-allowed' : 'pointer',
                     opacity: (!customUrl.trim() || (customUrl.trim() === activeUrl && !savedSuccess)) && !isSavingUrl ? 0.6 : 1,
                     transition: 'all 0.2s ease',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
                   }}
                 >
                   {isSavingUrl ? (

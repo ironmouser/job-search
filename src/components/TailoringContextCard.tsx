@@ -113,8 +113,8 @@ export default function TailoringContextCard({
         marginBottom: '1.5rem',
         padding: '1.25rem 1.5rem',
         borderRadius: '12px',
-        border: '1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))',
-        background: 'var(--card-bg, rgba(255, 255, 255, 0.03))',
+        border: '1px solid var(--border-glass)',
+        background: 'var(--card)',
         position: 'relative',
         transition: 'all 0.2s ease',
       }}
@@ -154,13 +154,13 @@ export default function TailoringContextCard({
               </span>
               <span
                 style={{
-                  fontSize: '0.7rem',
+                  fontSize: '0.75rem',
                   fontWeight: 600,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
                   padding: '0.15rem 0.45rem',
                   borderRadius: '999px',
-                  background: context.trim() ? 'rgba(45, 181, 165, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                  background: context.trim() ? 'rgba(45, 181, 165, 0.2)' : 'var(--muted)',
                   color: context.trim() ? 'var(--accent-secondary, #2db5a5)' : 'var(--text-secondary)',
                 }}
               >
@@ -176,7 +176,7 @@ export default function TailoringContextCard({
                   lineHeight: 1.4,
                 }}
               >
-                Add specific achievements, projects, or background relevant to this job. The AI will selectively integrate them into your resume, cover letter, networking outreach, and Q&A only where they align with the role.
+                Add job-specific notes to guide your tailored resume, cover letter, networking note, and Q&amp;A.
               </p>
             )}
           </div>
@@ -234,8 +234,8 @@ export default function TailoringContextCard({
                 width: '100%',
                 padding: '0.75rem 0.85rem',
                 borderRadius: '8px',
-                border: '1px solid var(--border-color, rgba(255, 255, 255, 0.12))',
-                background: 'var(--input-bg, rgba(0, 0, 0, 0.2))',
+                border: '1px solid var(--border-glass)',
+                background: 'var(--input)',
                 color: 'var(--text-primary)',
                 fontSize: '0.85rem',
                 lineHeight: 1.5,
@@ -252,7 +252,7 @@ export default function TailoringContextCard({
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
               <Info size={13} style={{ flexShrink: 0 }} />
               <span>
-                Irrelevant skills (e.g., insurance sales experience for a software engineering role at a media company) will not be forced into your materials.
+                Only details relevant to this role will be woven into your materials.
               </span>
             </div>
 
@@ -286,28 +286,6 @@ export default function TailoringContextCard({
               )}
             </div>
           </div>
-
-          {hasAssets && context.trim() && (
-            <div
-              style={{
-                marginTop: '0.35rem',
-                padding: '0.55rem 0.75rem',
-                borderRadius: '6px',
-                background: 'rgba(45, 181, 165, 0.08)',
-                border: '1px solid rgba(45, 181, 165, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.75rem',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              <Sparkles size={13} style={{ color: 'var(--accent-secondary, #2db5a5)', flexShrink: 0 }} />
-              <span>
-                <strong>Context ready:</strong> Click <em>Regenerate</em> on any asset below or use <em>Application Q&A</em> to update your materials with these details.
-              </span>
-            </div>
-          )}
         </div>
       )}
     </div>

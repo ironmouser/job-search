@@ -64,6 +64,7 @@ export async function getUserSettings(userId: string): Promise<any> {
                     aiStrictness: row.ai_strictness || 'Standard',
                     resumeMarkdown: row.resume_markdown || '',
                     profile: row.profile || '',
+                    preferredAssetFormat: row.preferred_asset_format === 'docx' ? 'docx' : 'pdf',
                     resumePdfTemplate: row.resume_pdf_template || 'classic',
                     resumePdfFontFamily: row.resume_pdf_font_family || 'Helvetica, Arial, sans-serif',
                     resumePdfFontSize: row.resume_pdf_font_size || '11pt',

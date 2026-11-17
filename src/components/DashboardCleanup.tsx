@@ -202,19 +202,22 @@ export default function DashboardCleanup({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button 
+                type="button"
                 onClick={handleClose}
                 className="btn-outline"
                 disabled={isCleaning}
+                style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', borderRadius: '8px' }}
               >
                 Cancel
               </button>
               <button 
+                type="button"
                 onClick={handleCleanup}
                 className="btn-primary"
-                style={{ background: 'var(--danger)', color: 'white' }}
-                disabled={isCleaning || (!filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays)}
+                style={{ background: 'var(--destructive, var(--danger))', borderColor: 'var(--destructive, var(--danger))', color: '#ffffff', fontSize: '0.875rem', padding: '0.5rem 1.15rem', borderRadius: '8px', fontWeight: 600 }}
+                disabled={isCleaning || (!filters.lowScore && !filters.disliked && !filters.viewed && !filters.applied && !filters.archived && !filters.checked && !filters.olderThanDays)}
               >
                 {isCleaning ? 'Deleting...' : 'Delete Jobs'}
               </button>

@@ -681,7 +681,7 @@ export function AutoApplyPanel({
                   <p
                     style={{
                       margin: 0,
-                      fontSize: '0.72rem',
+                      fontSize: '0.75rem',
                       color: 'var(--text-secondary, #a3a3a3)',
                       lineHeight: 1.35,
                       maxWidth: '135px',
@@ -837,7 +837,7 @@ export function AutoApplyPanel({
                       color: '#ffffff',
                       padding: '3px 8px',
                       borderRadius: '4px',
-                      fontSize: '0.72rem',
+                      fontSize: '0.75rem',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
@@ -1338,9 +1338,9 @@ export function AutoApplyPanel({
                 fontSize: '0.88rem',
                 fontWeight: 600,
                 cursor: 'pointer',
-                background: 'transparent',
-                border: '1px solid var(--border-glass, rgba(255, 255, 255, 0.15))',
-                color: 'var(--text-primary, #ededed)',
+                background: 'var(--card)',
+                border: '1px solid var(--border-glass)',
+                color: 'var(--text-primary)',
                 transition: 'all 0.2s ease',
               }}
             >

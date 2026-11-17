@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { marked } from 'marked';
 import { generateStyledPdfHtml, PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
+import { AssetFormat } from '@/lib/docxGeneratorHelper';
 import ResumeActions from './ResumeActions';
 import DownloadPdfButton from './DownloadPdfButton';
 import CopyToClipboardButton from './CopyToClipboardButton';
@@ -19,7 +20,8 @@ export default function ResumeAssetCard({
     initialRegensUsed,
     planTier,
     initialCustomization,
-    initialPdfSettings
+    initialPdfSettings,
+    assetFormat,
 }: {
     jobId: string;
     initialContent: string;
@@ -28,6 +30,7 @@ export default function ResumeAssetCard({
     planTier: string;
     initialCustomization: number;
     initialPdfSettings?: PdfStyleOptions;
+    assetFormat?: AssetFormat;
 }) {
     const router = useRouter();
     const [content, setContent] = useState(initialContent);
@@ -265,7 +268,7 @@ export default function ResumeAssetCard({
     if (nameMatch && nameMatch[1]) {
         extractedName = nameMatch[1].trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
     }
-    const resumeFilename = `${extractedName}_Resume.pdf`;
+    const resumeFilename = `${extractedName}_Resume.${assetFormat || 'pdf'}`;
     const styledResumeHtml = generateStyledPdfHtml(content || '', pdfSettings);
 
     return (
@@ -275,7 +278,7 @@ export default function ResumeAssetCard({
                     <CheckCircle size={20} /> Tailored Resume Extract
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} onClick={(e) => e.stopPropagation()}>
-                    <DownloadPdfButton markdownText={content} filename={resumeFilename} type="resume" jobId={jobId} styleOptions={pdfSettings} />
+                    <DownloadPdfButton markdownText={content} filename={resumeFilename} type="resume" jobId={jobId} styleOptions={pdfSettings} format={assetFormat} />
                     <CopyToClipboardButton textToCopy={content || ''} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
@@ -389,7 +392,7 @@ export default function ResumeAssetCard({
                     />
                 )}
                 
-                <ResumeActions jobId={jobId} markdownText={content} selectedColor={pdfSettings.primaryColor || selectedColor} pdfSettings={pdfSettings} />
+                <ResumeActions jobId={jobId} markdownText={content} selectedColor={pdfSettings.primaryColor || selectedColor} pdfSettings={pdfSettings} assetFormat={assetFormat} />
 
                 {error && (
                     <div style={{ padding: '1rem', background: 'rgba(255, 77, 77, 0.1)', color: 'var(--danger)', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '1rem', marginTop: '1rem' }}>

@@ -149,6 +149,7 @@ export async function GET(request: NextRequest) {
       willingToTravel: (prefs as any)?.willingToTravel ?? undefined,
       isOver18: (prefs as any)?.isOver18 ?? undefined,
       willingToRelocate: (prefs as any)?.willingToRelocate ?? undefined,
+      preferredAssetFormat: (prefs as any)?.preferredAssetFormat === 'docx' ? 'docx' : 'pdf',
     };
 
     let connectedSession: { provider: string; storageState: any } | null = null;

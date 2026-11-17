@@ -1,14 +1,11 @@
-import OrgAdminDock from "@/components/admin/OrgAdminDock";
-
 export default function OrgAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ paddingBottom: "5.5rem" }}>
+    <div style={{ paddingBottom: "3rem" }}>
       {children}
-      <OrgAdminDock />
     </div>
   );
 }

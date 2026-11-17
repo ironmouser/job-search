@@ -131,17 +131,23 @@ export default function Navigation() {
               onClick={toggleMinimize}
               className="minimize-btn"
               title={isMinimized ? "Expand sidebar (⌘B)" : "Collapse sidebar (⌘B)"}
+              aria-label={isMinimized ? "Expand sidebar" : "Collapse sidebar"}
             >
               {isMinimized ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
-            <button className="burger-btn" onClick={toggleMenu} aria-label="Toggle navigation">
+            <button
+              className="burger-btn"
+              onClick={toggleMenu}
+              aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
+            >
               {isOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
 
         {/* Nav Links */}
-        <nav className={`nav-menu ${isOpen ? 'open' : ''}`}>
+        <nav aria-label="Primary" className={`nav-menu ${isOpen ? 'open' : ''}`}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.125rem', flex: 1, width: '100%' }}>
           {isOrgAdminOnly ? (
             <>
               <li className="nav-item">
@@ -351,7 +357,7 @@ export default function Navigation() {
                           {session.user?.name || session.user?.email}
                         </span>
                         <span style={{
-                          fontSize: '0.6875rem',
+                          fontSize: '0.75rem',
                           color: isPro ? '#60a5fa' : 'var(--muted-foreground)',
                           fontWeight: isPro ? 600 : 400,
                           display: 'flex',
@@ -369,7 +375,7 @@ export default function Navigation() {
                       href="/api/stripe/checkout"
                       style={{
                         padding: '0.2rem 0.5rem',
-                        fontSize: '0.6875rem',
+                        fontSize: '0.75rem',
                         fontWeight: 600,
                         color: '#a855f7',
                         background: 'rgba(168, 85, 247, 0.1)',
@@ -393,7 +399,7 @@ export default function Navigation() {
                       href="/api/stripe/checkout"
                       style={{
                         padding: '0.2rem 0.5rem',
-                        fontSize: '0.6875rem',
+                        fontSize: '0.75rem',
                         fontWeight: 600,
                         color: 'var(--primary)',
                         background: 'rgba(0, 112, 243, 0.1)',
@@ -413,18 +419,19 @@ export default function Navigation() {
                     </a>
                   )}
                 </div>
-                <button onClick={() => signOut()} className="logout-btn" title="Logout">
+                <button onClick={() => signOut()} className="logout-btn" title="Logout" aria-label="Log out">
                   <LogOut size={14} style={{ flexShrink: 0 }} />
                   <span className="nav-text" style={{ fontSize: '0.8125rem' }}>Log out</span>
                 </button>
               </div>
             ) : (
-              <button onClick={() => signIn('google')} className="login-btn" title="Login">
+              <button onClick={() => signIn('google')} className="login-btn" title="Login" aria-label="Log in">
                 <LogIn size={16} style={{ flexShrink: 0 }} />
                 <span className="nav-text">Log in</span>
               </button>
             )}
           </li>
+          </ul>
         </nav>
       </aside>
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />

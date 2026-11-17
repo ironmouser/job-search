@@ -1,6 +1,8 @@
 'use client';
 
-import { Sparkles, Zap, ArrowRight, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sparkles, Zap, ArrowRight, Clock, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface TrialStatusBannerProps {
   trialEndsAt: Date | string | null;
@@ -9,89 +11,182 @@ interface TrialStatusBannerProps {
 }
 
 /**
- * Shows one of three states:
- *   - First 24 hours: welcome message ("Pro features unlocked for 7 days")
- *   - Days 2–7: countdown ("3 days left of your Pro trial")
- *   - Trial expired + FREE: nothing (upgrade prompts shown at action moments instead)
+ * Shows contextual plan/trial status for non-PRO users:
+ *   - First 24 hours of trial: welcome message ("Pro features unlocked for 7 days")
+ *   - Days 2–7 of trial: countdown ("X days left of your Pro trial")
+ *   - Free tier (no active trial / expired): dismissible Starter plan notice with Upgrade CTA
  */
 export default function TrialStatusBanner({ trialEndsAt, planTier, compact = false }: TrialStatusBannerProps) {
+  const [freeBannerDismissed, setFreeBannerDismissed] = useState(true);
+
+  useEffect(() => {
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem('jahq_free_tier_banner_dismissed') === 'true';
+    } catch {
+      dismissed = false;
+    }
+    const timer = setTimeout(() => setFreeBannerDismissed(dismissed), 0);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Paid users see nothing
   if (planTier === 'PRO') return null;
 
-  if (!trialEndsAt) return null;
-
-  const trialEnd = new Date(trialEndsAt);
   const now = new Date();
+  const trialEnd = trialEndsAt ? new Date(trialEndsAt) : null;
+  const hasActiveTrial = Boolean(trialEnd && trialEnd > now);
 
-  // Trial expired
-  if (trialEnd <= now) return null;
+  if (!hasActiveTrial) {
+    if (freeBannerDismissed) return null;
 
-  const msRemaining = trialEnd.getTime() - now.getTime();
+    return (
+      <div
+        role="region"
+        aria-label="Free tier plan notice"
+        style={{
+          padding: compact ? '0.85rem 1.15rem' : '1rem 1.25rem',
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg, 12px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.875rem',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 240px', minWidth: 0 }}>
+          <div
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              background: 'rgba(0, 112, 243, 0.12)',
+              color: 'var(--primary, #0070f3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Zap size={18} aria-hidden="true" />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9375rem', color: 'var(--foreground)' }}>
+              You&apos;re on the Starter (Free) Plan
+            </p>
+            <p style={{ margin: '0.15rem 0 0', fontSize: '0.875rem', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
+              Upgrade to Pro for unlimited AI match scoring, tailored packets, and inbox job sync.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              window.location.href = '/api/stripe/checkout';
+            }}
+          >
+            <Zap size={14} fill="currentColor" aria-hidden="true" />
+            <span>Upgrade to Pro</span>
+            <ArrowRight size={14} aria-hidden="true" />
+          </Button>
+          <button
+            type="button"
+            onClick={() => {
+              setFreeBannerDismissed(true);
+              try {
+                localStorage.setItem('jahq_free_tier_banner_dismissed', 'true');
+              } catch {}
+            }}
+            aria-label="Dismiss free tier notice"
+            title="Dismiss"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--muted-foreground)',
+              cursor: 'pointer',
+              padding: '0.375rem',
+              borderRadius: '6px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '32px',
+              minHeight: '32px',
+            }}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const msRemaining = trialEnd!.getTime() - now.getTime();
   const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
-
-  // Figure out if we're in the first 24 hours
-  const trialStartApprox = trialEnd.getTime() - 7 * 24 * 60 * 60 * 1000;
+  const trialStartApprox = trialEnd!.getTime() - 7 * 24 * 60 * 60 * 1000;
   const hoursSinceStart = (now.getTime() - trialStartApprox) / (1000 * 60 * 60);
   const isWelcomeWindow = hoursSinceStart < 24;
 
   return (
     <div
+      role="region"
+      aria-label="Pro trial status"
       style={{
-        marginBottom: compact ? 0 : '2rem',
-        padding: compact ? '0.75rem 1.25rem' : '1.25rem 1.75rem',
+        padding: compact ? '0.85rem 1.15rem' : '1rem 1.25rem',
         background: isWelcomeWindow
-          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(54, 149, 227, 0.12) 100%)'
-          : 'linear-gradient(135deg, rgba(38, 99, 235, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+          ? 'rgba(16, 185, 129, 0.08)'
+          : 'rgba(0, 112, 243, 0.08)',
         border: isWelcomeWindow
-          ? '1px solid rgba(16, 185, 129, 0.35)'
-          : '1px solid rgba(168, 85, 247, 0.3)',
-        borderRadius: '12px',
+          ? '1px solid rgba(16, 185, 129, 0.28)'
+          : '1px solid rgba(0, 112, 243, 0.25)',
+        borderRadius: 'var(--radius-lg, 12px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: compact ? '0.75rem' : '1rem',
-        animation: 'fadeIn 0.4s ease',
+        gap: '0.875rem',
         width: '100%',
-        maxWidth: '1050px'
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '240px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 240px', minWidth: 0 }}>
         <div
           style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '50%',
-            background: isWelcomeWindow
-              ? 'linear-gradient(135deg, #10b981, #3695e3)'
-              : 'linear-gradient(135deg, #3b82f6, #a855f7)',
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: isWelcomeWindow ? '#10b981' : 'var(--primary, #0070f3)',
+            color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          {isWelcomeWindow
-            ? <Sparkles size={18} color="#fff" />
-            : <Clock size={18} color="#fff" />
-          }
+          {isWelcomeWindow ? <Sparkles size={18} aria-hidden="true" /> : <Clock size={18} aria-hidden="true" />}
         </div>
-        <div>
+        <div style={{ minWidth: 0 }}>
           {isWelcomeWindow ? (
             <>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9375rem', color: 'var(--foreground)' }}>
                 Welcome! Pro features are unlocked for your first 7 days.
               </p>
-              <p style={{ margin: '0.15rem 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                Use unlimited scoring, resume tailoring, cover letters, Q&amp;A, and all job sources. No credit card needed.
+              <p style={{ margin: '0.15rem 0 0', fontSize: '0.875rem', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
+                Use unlimited scoring, resume tailoring, cover letters, Q&amp;A, and all job sources.
               </p>
             </>
           ) : (
             <>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                {daysRemaining} day{daysRemaining === 1 ? '' : 's'} left of your Pro trial.
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9375rem', color: 'var(--foreground)' }}>
+                {daysRemaining} day{daysRemaining === 1 ? '' : 's'} left of your Pro trial
               </p>
-              <p style={{ margin: '0.15rem 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              <p style={{ margin: '0.15rem 0 0', fontSize: '0.875rem', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
                 Upgrade before your trial ends to keep unlimited access.
               </p>
             </>
@@ -99,30 +194,17 @@ export default function TrialStatusBanner({ trialEndsAt, planTier, compact = fal
         </div>
       </div>
 
-      <UpgradeButton />
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() => {
+          window.location.href = '/api/stripe/checkout';
+        }}
+      >
+        <Zap size={14} fill="currentColor" aria-hidden="true" />
+        <span>Upgrade to Pro</span>
+        <ArrowRight size={14} aria-hidden="true" />
+      </Button>
     </div>
-  );
-}
-
-function UpgradeButton() {
-  return (
-    <button
-      onClick={() => { window.location.href = '/api/stripe/checkout'; }}
-      className="btn-primary"
-      style={{
-        padding: '0.6rem 1.25rem',
-        fontSize: '0.875rem',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.4rem',
-        boxShadow: '0 4px 14px rgba(168, 85, 247, 0.3)',
-      }}
-    >
-      <Zap size={14} fill="currentColor" />
-      Upgrade to Pro
-      <ArrowRight size={14} />
-    </button>
   );
 }

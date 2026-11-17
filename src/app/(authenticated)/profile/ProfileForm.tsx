@@ -262,14 +262,17 @@ export default function ProfileForm({
 
   // Smooth scroll and auto-expand on initial load if hash is present
   useEffect(() => {
-    if (!loadingSettings && typeof window !== 'undefined' && window.location.hash) {
+    if (typeof window !== 'undefined' && window.location.hash) {
       const targetId = window.location.hash.replace('#', '');
-      const timer = setTimeout(() => {
-        scrollToAndHighlightSection(targetId);
-      }, 50);
-      return () => clearTimeout(timer);
+      toggleSection(targetId, true);
+      if (!loadingSettings) {
+        const timer = setTimeout(() => {
+          scrollToAndHighlightSection(targetId);
+        }, 50);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [loadingSettings, scrollToAndHighlightSection]);
+  }, [loadingSettings, scrollToAndHighlightSection, toggleSection]);
 
   // Cropper state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -642,7 +645,7 @@ export default function ProfileForm({
             onClick={handleSaveProfile}
             disabled={saving}
             className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--primary, #0070f3)', borderColor: 'var(--primary, #0070f3)', color: '#ffffff' }}
           >
             <Save size={18} />
             {saving ? 'Saving...' : 'Save All Changes'}
@@ -660,14 +663,6 @@ export default function ProfileForm({
           </div>
           <ChevronDown size={20} className="accordion-chevron" />
         </div>
-
-        {!openSections['personal-info'] && (
-          <div className="accordion-summary-box" onClick={() => toggleSection('personal-info')}>
-            {autoApplyEnabled
-              ? "Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for automatic job applications. Click to view or edit."
-              : "Contact details (name, email, phone, location, LinkedIn, GitHub, portfolio) used for document tailoring and application generation. Click to view or edit."}
-          </div>
-        )}
 
         {openSections['personal-info'] && (
           <div className="accordion-body">
@@ -750,7 +745,7 @@ export default function ProfileForm({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Jane Doe"
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -766,7 +761,7 @@ export default function ProfileForm({
                 value={email || ""}
                 disabled
                 style={{
-                  background: "rgba(0,0,0,0.1)",
+                  background: "var(--muted)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-secondary)",
                   padding: "0.75rem",
@@ -792,7 +787,7 @@ export default function ProfileForm({
                 onChange={(e) => handleSettingsChange('phone', e.target.value)}
                 placeholder='e.g. "+1 (555) 019-2834"'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -811,7 +806,7 @@ export default function ProfileForm({
                 onChange={(e) => handleSettingsChange('streetAddress', e.target.value)}
                 placeholder='e.g. "123 Main Street, Apt 4B"'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -838,7 +833,7 @@ export default function ProfileForm({
                 }}
                 placeholder='e.g. "San Francisco"'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -862,7 +857,7 @@ export default function ProfileForm({
                 }}
                 placeholder='e.g. "CA"'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -879,7 +874,7 @@ export default function ProfileForm({
                 onChange={(e) => handleSettingsChange('postalCode', e.target.value)}
                 placeholder='e.g. "94105"'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -896,7 +891,7 @@ export default function ProfileForm({
                 onChange={(e) => handleSettingsChange('country', e.target.value)}
                 placeholder='e.g. "United States"'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -918,7 +913,7 @@ export default function ProfileForm({
                 onChange={(e) => handleSettingsChange('linkedinUrl', e.target.value)}
                 placeholder='https://linkedin.com/in/janedoe'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -937,7 +932,7 @@ export default function ProfileForm({
                 onChange={(e) => handleSettingsChange('githubUrl', e.target.value)}
                 placeholder='https://github.com/janedoe'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -956,7 +951,7 @@ export default function ProfileForm({
                 onChange={(e) => handleSettingsChange('websiteUrl', e.target.value)}
                 placeholder='https://janedoe.com'
                 style={{
-                  background: "rgba(0,0,0,0.2)",
+                  background: "var(--input)",
                   border: "1px solid var(--border-glass)",
                   color: "var(--text-primary)",
                   padding: "0.75rem",
@@ -970,11 +965,10 @@ export default function ProfileForm({
       )}
       </div>
 
-      {/* -- 2. Work Authorization Section (Hidden) ----------------------------- */}
+      {/* -- 2. Work Authorization Section ----------------------------- */}
       <div 
         className={`glass-card accordion-card responsive-card-padding ${openSections['work-auth'] ? 'open' : ''}`} 
         id="work-auth"
-        style={{ display: "none" }}
       >
         <div className="accordion-card-header" onClick={() => toggleSection('work-auth')}>
           <div>
@@ -984,14 +978,6 @@ export default function ProfileForm({
           </div>
           <ChevronDown size={20} className="accordion-chevron" />
         </div>
-
-        {!openSections['work-auth'] && (
-          <div className="accordion-summary-box" onClick={() => toggleSection('work-auth')}>
-            {autoApplyEnabled
-              ? "Required for Auto Applying. Work authorization, visa sponsorship, and voluntary EEOC self-identification injected into application questionnaires. Click to configure."
-              : "Work authorization, visa sponsorship, and voluntary EEOC self-identification saved for your application records. Click to configure."}
-          </div>
-        )}
 
         {openSections['work-auth'] && (
           <div className="accordion-body">
@@ -1006,7 +992,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.usWorkAuthorization || ''}
                   onChange={(e) => handleSettingsChange('usWorkAuthorization', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Yes">Yes, I am authorized to work in the US</option>
@@ -1018,7 +1004,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.visaSponsorship || ''}
                   onChange={(e) => handleSettingsChange('visaSponsorship', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Yes">Yes, I require sponsorship now or in the future</option>
@@ -1035,7 +1021,7 @@ export default function ProfileForm({
                   value={settings.workingRemotelyFrom || ''}
                   onChange={(e) => handleSettingsChange('workingRemotelyFrom', e.target.value)}
                   placeholder='e.g. "New York, NY", "California"'
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
@@ -1045,7 +1031,7 @@ export default function ProfileForm({
                   value={settings.country || ''}
                   onChange={(e) => handleSettingsChange('country', e.target.value)}
                   placeholder='e.g. "United States"'
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 />
               </div>
             </div>
@@ -1057,7 +1043,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.startDate || ''}
                   onChange={(e) => handleSettingsChange('startDate', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="tomorrow">Tomorrow</option>
@@ -1076,7 +1062,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.expectedSalary || ''}
                   onChange={(e) => handleSettingsChange('expectedSalary', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="20,000 - 30,000">$20,000 - $30,000</option>
@@ -1116,7 +1102,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.willingToTravel || ''}
                   onChange={(e) => handleSettingsChange('willingToTravel', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Yes">Yes</option>
@@ -1132,7 +1118,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.isOver18 || ''}
                   onChange={(e) => handleSettingsChange('isOver18', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Yes">Yes</option>
@@ -1145,7 +1131,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.willingToRelocate || ''}
                   onChange={(e) => handleSettingsChange('willingToRelocate', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Yes">Yes</option>
@@ -1167,7 +1153,7 @@ export default function ProfileForm({
                     value={settings.defaultAccountPassword || ''}
                     onChange={(e) => handleSettingsChange('defaultAccountPassword', e.target.value)}
                     placeholder="Optional password for automated candidate account creation"
-                    style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem 2.5rem 0.75rem 0.75rem", borderRadius: "8px" }}
+                    style={{ width: "100%", background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem 2.5rem 0.75rem 0.75rem", borderRadius: "8px" }}
                   />
                   <button
                     type="button"
@@ -1242,7 +1228,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.eeocGender || ''}
                   onChange={(e) => handleSettingsChange('eeocGender', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Male">Male</option>
@@ -1255,7 +1241,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.eeocRace || ''}
                   onChange={(e) => handleSettingsChange('eeocRace', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Hispanic or Latino">Hispanic or Latino</option>
@@ -1273,7 +1259,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.eeocVeteran || ''}
                   onChange={(e) => handleSettingsChange('eeocVeteran', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Yes">I identify as one or more of the classifications of protected veteran</option>
@@ -1286,7 +1272,7 @@ export default function ProfileForm({
                 <select 
                   value={settings.eeocDisability || ''}
                   onChange={(e) => handleSettingsChange('eeocDisability', e.target.value)}
-                  style={{ background: "rgba(0,0,0,0.2)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
+                  style={{ background: "var(--input)", border: "1px solid var(--border-glass)", color: "var(--text-primary)", padding: "0.75rem", borderRadius: "8px" }}
                 >
                   <option value="">Select...</option>
                   <option value="Yes">Yes, I have a disability (or previously had one)</option>
@@ -1310,12 +1296,6 @@ export default function ProfileForm({
           <ChevronDown size={20} className="accordion-chevron" />
         </div>
 
-        {!openSections['target-profile'] && (
-          <div className="accordion-summary-box" onClick={() => toggleSection('target-profile')}>
-            Ideal role titles, seniority levels, salary expectations, and work preferences. Click to configure.
-          </div>
-        )}
-
         {openSections['target-profile'] && (
           <div className="accordion-body">
             <RubricBuilder
@@ -1334,12 +1314,6 @@ export default function ProfileForm({
           </h3>
           <ChevronDown size={20} className="accordion-chevron" />
         </div>
-
-        {!openSections['base-resume'] && (
-          <div className="accordion-summary-box" onClick={() => toggleSection('base-resume')}>
-            Core master resume text used by AI to generate targeted cover letters and application answers. Click to edit resume.
-          </div>
-        )}
 
         {openSections['base-resume'] && (
           <div className="accordion-body">
@@ -1380,7 +1354,7 @@ export default function ProfileForm({
               style={{
                 width: '100%',
                 minHeight: '400px',
-                background: 'rgba(0,0,0,0.2)',
+                background: 'var(--input)',
                 border: '1px solid var(--border-glass)',
                 borderRadius: '8px',
                 color: 'var(--text-primary)',
@@ -1401,12 +1375,6 @@ export default function ProfileForm({
           </h3>
           <ChevronDown size={20} className="accordion-chevron" />
         </div>
-
-        {!openSections['avatar-settings'] && (
-          <div className="accordion-summary-box" onClick={() => toggleSection('avatar-settings')}>
-            Profile picture upload and avatar photo settings. Click to change photo.
-          </div>
-        )}
 
         {openSections['avatar-settings'] && (
           <div className="accordion-body">
@@ -1438,7 +1406,7 @@ export default function ProfileForm({
                       onChange={(e) => setImage(e.target.value)}
                       placeholder="https://example.com/my-photo.jpg"
                       style={{
-                        background: "rgba(0,0,0,0.2)",
+                        background: "var(--input)",
                         border: "1px solid var(--border-glass)",
                         color: "var(--text-primary)",
                         padding: "0.75rem",
@@ -1464,16 +1432,10 @@ export default function ProfileForm({
           <ChevronDown size={20} className="accordion-chevron" />
         </div>
 
-        {!openSections.subscription && (
-          <div className="accordion-summary-box" onClick={() => toggleSection('subscription')}>
-            Current subscription plan tier and billing features. Click to view details.
-          </div>
-        )}
-
         {openSections.subscription && (
           <div className="accordion-body">
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", background: "var(--muted)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                   <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>Current Plan</span>
                   <span style={{ fontSize: "1.25rem", fontWeight: 600, color: planTier === "PRO" ? "var(--accent-primary)" : "var(--text-primary)" }}>

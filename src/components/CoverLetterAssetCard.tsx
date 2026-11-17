@@ -10,6 +10,7 @@ import DownloadPdfButton from './DownloadPdfButton';
 import JitResumeUploadModal from '@/components/common/JitResumeUploadModal';
 import { cleanCompanyName, cleanCompanyLocation } from '@/lib/cleaners';
 import { PdfStyleOptions } from '@/lib/pdfGeneratorHelper';
+import { AssetFormat } from '@/lib/docxGeneratorHelper';
 import { trackAssetAction } from '@/lib/analytics';
 
 const cleanContent = (text: string) => {
@@ -38,6 +39,7 @@ export default function CoverLetterAssetCard({
     companyName,
     companyLocation,
     initialPdfSettings,
+    assetFormat,
 }: {
     jobId: string;
     initialContent: string;
@@ -52,6 +54,7 @@ export default function CoverLetterAssetCard({
     companyName?: string;
     companyLocation?: string;
     initialPdfSettings?: PdfStyleOptions;
+    assetFormat?: AssetFormat;
 }) {
     const router = useRouter();
     const today = new Date().toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' });
@@ -405,6 +408,24 @@ export default function CoverLetterAssetCard({
         senderName || '',
     ].filter((line, i, arr) => line !== '' || (i > 0 && arr[i - 1] !== '')).join('\n');
 
+    const fullLetterMarkdown = [
+        senderName ? `# ${senderName}` : '',
+        senderContact || '',
+        '',
+        headerDate || '',
+        '',
+        recipientDept || '',
+        customCompany || '',
+        customLocation || '',
+        '',
+        salutation ? `**${salutation}**` : '',
+        '',
+        content || '',
+        '',
+        signOff || '',
+        senderName || '',
+    ].filter((line, i, arr) => line !== '' || (i > 0 && arr[i - 1] !== '')).join('\n');
+
     const inlineInputStyle: React.CSSProperties = {
         background: '#f4f4f5',
         border: '1px solid #d4d4d8',
@@ -424,7 +445,7 @@ export default function CoverLetterAssetCard({
                     <CheckCircle size={20} /> Cover Letter
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.pdf`} type="coverLetter" jobId={jobId} styleOptions={pdfSettings} />
+                    <DownloadPdfButton html={customCoverLetterHtml} markdownText={fullLetterMarkdown} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.${assetFormat || 'pdf'}`} type="coverLetter" jobId={jobId} styleOptions={pdfSettings} format={assetFormat} />
                     <CopyToClipboardButton textToCopy={fullLetterText} />
                     <ChevronDown className="accordion-chevron" size={20} style={{ color: 'var(--text-secondary)' }} />
                 </div>
@@ -672,7 +693,7 @@ export default function CoverLetterAssetCard({
 
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
                     <CopyToClipboardButton textToCopy={fullLetterText} label="Copy Text" />
-                    <DownloadPdfButton html={customCoverLetterHtml} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.pdf`} label="Download PDF" type="coverLetter" jobId={jobId} styleOptions={pdfSettings} />
+                    <DownloadPdfButton html={customCoverLetterHtml} markdownText={fullLetterMarkdown} filename={`CoverLetter_${(senderName || 'Document').replace(/\s+/g, '_')}.${assetFormat || 'pdf'}`} label={assetFormat === 'docx' ? 'Download DOCX' : 'Download PDF'} type="coverLetter" jobId={jobId} styleOptions={pdfSettings} format={assetFormat} />
                 </div>
 
                 {error && (
