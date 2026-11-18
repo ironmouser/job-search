@@ -1027,14 +1027,18 @@ export async function sendJobMatchDigestEmail({
 
         return `
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; margin-bottom: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-            <div style="font-size: 17px; font-weight: 700; color: #1e3a8a; line-height: 1.3;">
-              ${safeTitle}
-            </div>
-            <span style="display: inline-block; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 9999px; white-space: nowrap; margin-left: 10px;">
-              ${job.score}% Match
-            </span>
-          </div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
+            <tr>
+              <td valign="top" style="font-size: 17px; font-weight: 700; color: #1e3a8a; line-height: 1.3; padding: 0;">
+                ${safeTitle}
+              </td>
+              <td valign="top" align="right" style="padding: 0 0 0 10px; white-space: nowrap; width: 1%;">
+                <span style="display: inline-block; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; white-space: nowrap; text-align: center; line-height: 1.2;">
+                  ${job.score}% Match
+                </span>
+              </td>
+            </tr>
+          </table>
           <div style="font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 4px;">
             ${safeCompany}
           </div>
@@ -1055,8 +1059,8 @@ export async function sendJobMatchDigestEmail({
     const settingsUrl = `${baseUrl}/settings`;
 
     const htmlMessage = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #0f172a; line-height: 1.6; padding: 24px; background: #f8fafc;">
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #0f172a; line-height: 1.6; padding: 24px 2px; background: #f8fafc;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px 14px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);">
           <div style="text-align: center; margin-bottom: 24px;">
             <h1 style="color: #2563eb; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">Job Agent HQ</h1>
             <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Job Match Digest</p>
